@@ -91,6 +91,13 @@ declare namespace mysql {
     typeCast?: boolean | Function;
   }
 
+  interface PrepareOptions {
+    sql: string;
+    timeout?: number;
+    nestTables?: boolean | string;
+    typeCast?: boolean | Function;
+  }
+
   interface FieldInfo {
     name?: string;
     table?: string;
@@ -161,6 +168,28 @@ declare namespace mysql {
     reprepares: number;
   }
 
+  interface PreparedStatement {
+    readonly id: number;
+    readonly query: string;
+    readonly sql: string;
+    readonly columns: FieldInfo[];
+    readonly parameters: FieldInfo[];
+    readonly numColumns: number;
+    readonly numParams: number;
+    execute<T = QueryResult>(values?: unknown[], callback?: (error: Error | null, rows?: T, fields?: QueryFields) => void): unknown;
+    close(): this;
+  }
+
+  interface PromisePreparedStatement {
+    readonly statement: PreparedStatement;
+    readonly id: number;
+    readonly query: string;
+    readonly columns: FieldInfo[];
+    readonly parameters: FieldInfo[];
+    execute<T = QueryResult>(values?: unknown[]): Promise<QueryTuple<T>>;
+    close(): Promise<void>;
+  }
+
   interface Query {
     stream(options?: Record<string, unknown>): AsyncRowStream;
   }
@@ -172,6 +201,7 @@ declare namespace mysql {
     connect(callback?: (error?: Error) => void): void;
     query(sql: string | QueryOptions, values?: unknown[], callback?: Function): Query;
     execute(sql: string | ExecuteOptions, values?: unknown[], callback?: Function): unknown;
+    prepare(sql: string | PrepareOptions, callback?: (error: Error | null, statement?: PreparedStatement) => void): unknown;
     unprepare(sql: string): this;
     clearPreparedStatementCache(): this;
     preparedStatementCacheStats(): PreparedStatementCacheStats;
@@ -204,6 +234,7 @@ declare namespace mysql {
     connect(options?: object): Promise<this>;
     query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[]): Promise<QueryTuple<T>>;
     execute<T = QueryResult>(sql: string | ExecuteOptions, values?: unknown[]): Promise<QueryTuple<T>>;
+    prepare(sql: string | PrepareOptions): Promise<PromisePreparedStatement>;
     unprepare(sql: string): this;
     clearPreparedStatementCache(): this;
     preparedStatementCacheStats(): PreparedStatementCacheStats;

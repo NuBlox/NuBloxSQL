@@ -91,7 +91,12 @@ var promiseConnection = callbackConnection.promise();
 var promisePool = callbackPool.promise();
 
 assert.strictEqual(typeof callbackConnection.execute, 'function');
+assert.strictEqual(typeof callbackConnection.prepare, 'function');
+assert.strictEqual(typeof callbackConnection.unprepare, 'function');
 assert.strictEqual(typeof callbackPool.execute, 'function');
 assert.strictEqual(typeof promiseConnection.execute, 'function');
+assert.strictEqual(typeof promiseConnection.prepare, 'function');
+assert.strictEqual(typeof promiseConnection.unprepare, 'function');
 assert.strictEqual(typeof promisePool.execute, 'function');
 assert.strictEqual(typeof nublox.PromiseConnection.prototype.execute, 'function');
+assert.strictEqual(typeof nublox.PromiseConnection.prototype.prepare, 'function');
