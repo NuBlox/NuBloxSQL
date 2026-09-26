@@ -12,6 +12,7 @@ import mysql, {
   escape,
   escapeId,
   format,
+  param,
   raw
 } from '@nublox/mysql';
 import promiseMysql, {
@@ -21,6 +22,7 @@ import promiseMysql, {
   escape as promiseEscape,
   escapeId as promiseEscapeId,
   format as promiseFormat,
+  param as promiseParam,
   raw as promiseRaw
 } from '@nublox/mysql/promise';
 
@@ -38,6 +40,7 @@ assert.equal(createQuery, callbackCjs.createQuery);
 assert.equal(escape, callbackCjs.escape);
 assert.equal(escapeId, callbackCjs.escapeId);
 assert.equal(format, callbackCjs.format);
+assert.equal(param, callbackCjs.param);
 assert.equal(raw, callbackCjs.raw);
 assert.equal(Types, callbackCjs.Types);
 assert.equal(PromiseConnection, callbackCjs.PromiseConnection);
@@ -48,8 +51,11 @@ assert.equal(createPromisePool, promiseCjs.createPool);
 assert.equal(promiseEscape, promiseCjs.escape);
 assert.equal(promiseEscapeId, promiseCjs.escapeId);
 assert.equal(promiseFormat, promiseCjs.format);
+assert.equal(promiseParam, promiseCjs.param);
 assert.equal(promiseRaw, promiseCjs.raw);
 assert.equal(PromiseTypes, promiseCjs.Types);
 
 assert.equal(format('SELECT ? AS value', [42]), 'SELECT 42 AS value');
 assert.equal(promiseFormat('SELECT ? AS value', [42]), 'SELECT 42 AS value');
+assert.equal(param.uint32(4294967295).unsigned, true);
+assert.equal(promiseParam.int8(-1).type, Types.TINY);
