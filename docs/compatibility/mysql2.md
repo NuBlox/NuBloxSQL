@@ -23,7 +23,7 @@ The compatibility reference for this document is mysql2 `3.24.4`, reviewed on 20
 | Prepared statement cache | Supported | Bounded per-connection LRU, `unprepare()`, stats, live reuse/eviction tests |
 | Manual `prepare()` statements | Supported | Callback + Promise statement lifecycle, acquired pool connections, live mysql2 parity |
 | TypeScript declarations | Partial | Present; broader mysql2 type parity remains open |
-| ESM consumption | Partial | CommonJS package is importable; native ESM surface remains open |
+| Native ESM consumption | Supported | Conditional exports for root and `/promise`, named/default import contract on Node 22/24/26 |
 | AbortSignal cancellation | Partial / NuBlox extension | Promise query cancellation exists; prepared-execute cancellation remains open |
 | Compression | Planned | M4 |
 | Query attributes | Planned | M6 |
@@ -58,6 +58,36 @@ const [rows] = await pool.execute(
 ```
 
 NuBloxSQL `execute()` is a real prepared-statement operation. It prepares on the server, sends parameters using the MySQL binary protocol, decodes binary result rows and reuses the prepared statement from a per-connection LRU cache.
+
+## Native ESM and CommonJS
+
+NuBloxSQL publishes explicit conditional package exports. Existing CommonJS applications continue to receive the established `.js` entrypoints, while `import` consumers receive native `.mjs` entrypoints.
+
+ESM callback/core API:
+
+```js
+import mysql, {createPool, escape} from '@nublox/mysql';
+
+const pool = createPool(config);
+```
+
+ESM Promise API:
+
+```js
+import mysql, {createPool} from '@nublox/mysql/promise';
+
+const pool = createPool(config);
+const [rows] = await pool.execute('SELECT ? AS value', [42]);
+```
+
+CommonJS remains unchanged:
+
+```js
+const mysql = require('@nublox/mysql');
+const promiseMysql = require('@nublox/mysql/promise');
+```
+
+The ESM entrypoints are adapters over the same driver implementation rather than a second protocol implementation. This avoids behavioural drift between module systems. CI validates default imports, named imports, root and `/promise` entrypoints, CommonJS parity and package self-resolution on every supported Node.js line.
 
 ## Named placeholders
 
@@ -177,7 +207,13 @@ The migration surface is intentionally compatible where practical, but NuBloxSQL
 
 ## Automated checks
 
-Offline contract checks:
+Native ESM/CommonJS contract:
+
+```bash
+npm run test:esm
+```
+
+Offline mysql2 contract checks:
 
 ```bash
 npm run test:compat:mysql2:contract
@@ -238,4 +274,4 @@ MYSQL_DATABASE=test \
 npm run test:compat:mysql2:named
 ```
 
-CI executes all live compatibility suites against the supported MySQL server matrix.
+CI executes the offline module/API contracts on Node 22/24/26 and all live database compatibility suites against the supported MySQL server matrix.

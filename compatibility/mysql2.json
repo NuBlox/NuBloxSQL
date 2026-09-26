@@ -60,9 +60,14 @@
     },
     {
       "id": "esm-consumption",
-      "status": "partial",
+      "status": "supported",
       "milestone": "M1",
-      "evidence": ["package.json"]
+      "evidence": [
+        "index.mjs",
+        "promise.mjs",
+        "package.json",
+        "test/compatibility/esm-contract.mjs"
+      ]
     },
     {
       "id": "abort-signal",
