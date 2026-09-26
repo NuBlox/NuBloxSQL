@@ -11,6 +11,7 @@ exports.createConnection = function createConnection(config) {
   var ConnectionConfig = loadClass('ConnectionConfig');
   var connection       = new Connection({config: new ConnectionConfig(config)});
 
+  loadClass('PreparedStatements').decorateConnection(connection);
   return decorateConnection(connection, getPromiseImplementation(config));
 };
 
@@ -25,6 +26,7 @@ exports.createPool = function createPool(config) {
   var PoolConfig = loadClass('PoolConfig');
   var pool       = new Pool({config: new PoolConfig(config)});
 
+  loadClass('PreparedStatements').decoratePool(pool);
   return decoratePool(pool, getPromiseImplementation(config));
 };
 
@@ -139,8 +141,9 @@ function decorateConnection(connection, PromiseImpl) {
       enumerable   : false,
       value        : function promise(overridePromise) {
         var PromiseConnection = loadClass('PromiseConnection');
+        var wrapper = new PromiseConnection(connection, overridePromise || PromiseImpl || global.Promise);
 
-        return new PromiseConnection(connection, overridePromise || PromiseImpl || global.Promise);
+        return loadClass('PreparedStatements').decoratePromiseConnection(wrapper);
       }
     });
   }
@@ -155,8 +158,9 @@ function decoratePool(pool, PromiseImpl) {
       enumerable   : false,
       value        : function promise(overridePromise) {
         var PromisePool = loadClass('PromisePool');
+        var wrapper = new PromisePool(pool, overridePromise || PromiseImpl || global.Promise);
 
-        return new PromisePool(pool, overridePromise || PromiseImpl || global.Promise);
+        return loadClass('PreparedStatements').decoratePromisePool(wrapper);
       }
     });
   }
@@ -201,6 +205,9 @@ function loadClass(className) {
       break;
     case 'PoolConfig':
       Class = require('./lib/PoolConfig');
+      break;
+    case 'PreparedStatements':
+      Class = require('./lib/PreparedStatements');
       break;
     case 'PromiseConnection':
       Class = require('./lib/PromiseConnection');

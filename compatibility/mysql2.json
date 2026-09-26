@@ -72,9 +72,14 @@
     },
     {
       "id": "prepared-statements-execute",
-      "status": "planned",
+      "status": "supported",
       "milestone": "M3",
-      "evidence": []
+      "evidence": [
+        "lib/protocol/packets/ComStmtPreparePacket.js",
+        "lib/protocol/packets/ComStmtExecutePacket.js",
+        "lib/protocol/packets/ComStmtClosePacket.js",
+        "test/compatibility/mysql2/execute-live.js"
+      ]
     },
     {
       "id": "prepared-statement-cache",

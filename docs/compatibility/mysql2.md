@@ -18,10 +18,10 @@ The compatibility reference for this document is mysql2 `3.24.4`, reviewed on 20
 | Transactions | Supported | Live begin/query/rollback checks |
 | Pool query flow | Supported | Live compatibility tests |
 | MySQL 8.4 / 9.x modern authentication | Supported | Live CI |
-| TypeScript declarations | Partial | Present; parity programme remains open |
+| `execute()` prepared statements | Supported | Native `COM_STMT_PREPARE` / `COM_STMT_EXECUTE` / `COM_STMT_CLOSE`, binary rows, live mysql2 parity |
+| TypeScript declarations | Partial | Present; broader mysql2 type parity remains open |
 | ESM consumption | Partial | CommonJS package is importable; native ESM surface remains open |
-| AbortSignal cancellation | Partial / NuBlox extension | Promise query cancellation exists; mysql2 call-shape parity is not claimed |
-| `execute()` prepared statements | Planned | M3 |
+| AbortSignal cancellation | Partial / NuBlox extension | Promise query cancellation exists; prepared-execute cancellation remains open |
 | Prepared statement cache | Planned | M3 |
 | Named placeholders | Planned | M3 |
 | Compression | Planned | M4 |
@@ -32,14 +32,17 @@ A capability moves to **Supported** only when executable evidence exists in the 
 
 ## Migration target
 
-For the overlapping API, the intended migration should be close to an import replacement.
+For supported API areas, migration should be close to an import replacement.
 
 mysql2:
 
 ```js
 const mysql = require('mysql2/promise');
 const pool = mysql.createPool(config);
-const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
+const [rows] = await pool.execute(
+  'SELECT * FROM users WHERE id = ?',
+  [id]
+);
 ```
 
 NuBloxSQL:
@@ -47,10 +50,15 @@ NuBloxSQL:
 ```js
 const mysql = require('@nublox/mysql/promise');
 const pool = mysql.createPool(config);
-const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
+const [rows] = await pool.execute(
+  'SELECT * FROM users WHERE id = ?',
+  [id]
+);
 ```
 
-Do not migrate mysql2 applications that depend on `execute()` yet. NuBloxSQL will only claim prepared-statement compatibility after COM_STMT_PREPARE / COM_STMT_EXECUTE and binary-protocol tests are implemented and passing.
+NuBloxSQL `execute()` is a real prepared-statement operation. It prepares on the server, sends parameters using the MySQL binary protocol, decodes binary result rows and closes the statement after execution.
+
+The current implementation intentionally prepares and closes on every `execute()` call. It does **not** yet claim mysql2 statement-cache parity. A bounded prepared-statement cache is the next M3 optimisation.
 
 ## NuBlox extensions already available
 
@@ -65,13 +73,13 @@ The migration surface is intentionally compatible where practical, but NuBloxSQL
 
 ## Automated checks
 
-Local contract checks:
+Offline contract checks:
 
 ```bash
 npm run test:compat:mysql2:contract
 ```
 
-Live parity checks require a MySQL server:
+Live text-query parity:
 
 ```bash
 MYSQL_HOST=127.0.0.1 \
@@ -82,4 +90,15 @@ MYSQL_DATABASE=test \
 npm run test:compat:mysql2
 ```
 
-CI executes the live parity suite against the supported MySQL server matrix.
+Live prepared-execute parity:
+
+```bash
+MYSQL_HOST=127.0.0.1 \
+MYSQL_PORT=3306 \
+MYSQL_USER=root \
+MYSQL_PASSWORD=secret \
+MYSQL_DATABASE=test \
+npm run test:compat:mysql2:execute
+```
+
+CI executes both live parity suites against the supported MySQL server matrix.
