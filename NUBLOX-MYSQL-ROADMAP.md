@@ -25,7 +25,7 @@ Current competitor capability floors include:
 | Promise / async-await API | No | Yes | Yes | Implemented |
 | TypeScript declarations | No | Yes | Yes | Implemented; parity programme ongoing |
 | Prepared statements / binary protocol | No | Yes | Yes | Native `execute()` implemented and live-tested |
-| Prepared statement cache | No | LRU | Yes | M3 adaptive bounded cache |
+| Prepared statement cache | No | LRU | Yes | Bounded LRU implemented with stats and diagnostics |
 | Modern auth plugins | Partial auth switch, native password only | Yes | Yes | Implemented and live-tested |
 | Compression | Explicitly disabled | Yes | Yes | M4 |
 | Connection/query attributes | Explicitly disabled | Yes | Connector-specific | Planned with trace propagation |
@@ -87,12 +87,17 @@ Delivered:
 - binary parameter encoding for common JavaScript value types;
 - binary result decoding for core MySQL type families;
 - callback and Promise `execute()` APIs on connections and pools;
+- bounded per-connection LRU prepared-statement cache;
+- mysql2-compatible `maxPreparedStatements`, including `0` to disable caching;
+- explicit `unprepare()` and cache-clear controls;
+- cache hit/miss/eviction/reprepare statistics and diagnostics events;
+- one-shot recovery from `ER_NEED_REPREPARE` and invalid statement handles;
+- atomic prepare/execute queue ordering under concurrent commands;
 - mysql2-compatible execute surface checks;
-- live prepared-execute parity tests against MySQL 8.4 and 9.x.
+- live prepared-execute and cache tests against MySQL 8.4 and 9.x.
 
 Remaining M3 work:
 
-- bounded LRU prepared-statement cache with telemetry and explicit invalidation;
 - explicit `prepare()` / statement object lifecycle;
 - `COM_STMT_RESET` where needed;
 - named-placeholder compatibility strategy;
