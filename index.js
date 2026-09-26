@@ -12,6 +12,7 @@ exports.createConnection = function createConnection(config) {
   var connection       = new Connection({config: new ConnectionConfig(config)});
 
   loadClass('PreparedStatements').decorateConnection(connection);
+  loadClass('PreparedStatementReset').decorateConnection(connection);
   loadClass('NamedPlaceholders').decorateConnection(connection);
   return decorateConnection(connection, getPromiseImplementation(config));
 };
@@ -19,7 +20,7 @@ exports.createConnection = function createConnection(config) {
 /**
  * Create a new Pool instance.
  * @param {object|string} config Configuration or connection string for new MySQL connections
- * @return {Pool} A new MySQL pool
+ * @return {Pool} New MySQL pool
  * @public
  */
 exports.createPool = function createPool(config) {
@@ -28,6 +29,7 @@ exports.createPool = function createPool(config) {
   var pool       = new Pool({config: new PoolConfig(config)});
 
   loadClass('PreparedStatements').decoratePool(pool);
+  loadClass('PreparedStatementReset').decoratePool(pool);
   loadClass('NamedPlaceholders').decoratePool(pool);
   return decoratePool(pool, getPromiseImplementation(config));
 };
@@ -91,7 +93,7 @@ exports.escapeId = function escapeId(value, forbidQualified) {
  * @param {array} [values] Any values to insert into placeholders in sql
  * @param {boolean} [stringifyObjects=false] Setting if objects should be stringified
  * @param {string} [timeZone=local] Setting for time zone to use for Date conversion
- * @return {string} Formatted SQL string
+ * @return {string} Formatted string
  * @public
  */
 exports.format = function format(sql, values, stringifyObjects, timeZone) {
@@ -145,7 +147,8 @@ function decorateConnection(connection, PromiseImpl) {
         var PromiseConnection = loadClass('PromiseConnection');
         var wrapper = new PromiseConnection(connection, overridePromise || PromiseImpl || global.Promise);
 
-        return loadClass('PreparedStatements').decoratePromiseConnection(wrapper);
+        wrapper = loadClass('PreparedStatements').decoratePromiseConnection(wrapper);
+        return loadClass('PreparedStatementReset').decoratePromiseConnection(wrapper);
       }
     });
   }
@@ -162,7 +165,8 @@ function decoratePool(pool, PromiseImpl) {
         var PromisePool = loadClass('PromisePool');
         var wrapper = new PromisePool(pool, overridePromise || PromiseImpl || global.Promise);
 
-        return loadClass('PreparedStatements').decoratePromisePool(wrapper);
+        wrapper = loadClass('PreparedStatements').decoratePromisePool(wrapper);
+        return loadClass('PreparedStatementReset').decoratePromisePool(wrapper);
       }
     });
   }
@@ -210,6 +214,9 @@ function loadClass(className) {
       break;
     case 'PoolConfig':
       Class = require('./lib/PoolConfig');
+      break;
+    case 'PreparedStatementReset':
+      Class = require('./lib/PreparedStatementReset');
       break;
     case 'PreparedStatements':
       Class = require('./lib/PreparedStatements');
