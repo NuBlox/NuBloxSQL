@@ -64,6 +64,7 @@ declare namespace mysql {
     allowPublicKeyRetrieval?: boolean;
     serverPublicKey?: string | Buffer;
     onServerPublicKey?: (key: string | Buffer) => void;
+    maxPreparedStatements?: number;
   }
 
   interface PoolOptions extends ConnectionOptions {
@@ -148,6 +149,18 @@ declare namespace mysql {
     pool: PoolStats;
   }
 
+  interface PreparedStatementCacheStats {
+    limit: number;
+    size: number;
+    hits: number;
+    misses: number;
+    hitRate: number | null;
+    prepares: number;
+    evictions: number;
+    invalidations: number;
+    reprepares: number;
+  }
+
   interface Query {
     stream(options?: Record<string, unknown>): AsyncRowStream;
   }
@@ -159,6 +172,9 @@ declare namespace mysql {
     connect(callback?: (error?: Error) => void): void;
     query(sql: string | QueryOptions, values?: unknown[], callback?: Function): Query;
     execute(sql: string | ExecuteOptions, values?: unknown[], callback?: Function): unknown;
+    unprepare(sql: string): this;
+    clearPreparedStatementCache(): this;
+    preparedStatementCacheStats(): PreparedStatementCacheStats;
     beginTransaction(options?: object, callback?: Function): Query;
     commit(options?: object, callback?: Function): Query;
     rollback(options?: object, callback?: Function): Query;
@@ -188,6 +204,9 @@ declare namespace mysql {
     connect(options?: object): Promise<this>;
     query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[]): Promise<QueryTuple<T>>;
     execute<T = QueryResult>(sql: string | ExecuteOptions, values?: unknown[]): Promise<QueryTuple<T>>;
+    unprepare(sql: string): this;
+    clearPreparedStatementCache(): this;
+    preparedStatementCacheStats(): PreparedStatementCacheStats;
     beginTransaction(options?: object): Promise<this>;
     commit(options?: object): Promise<this>;
     rollback(options?: object): Promise<this>;
