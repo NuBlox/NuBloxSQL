@@ -125,7 +125,7 @@ connection.connect()
   })
   .then(function () {
     var selectiveConfig = Object.assign({}, baseConfig, {
-      dateStrings : ['DATE']
+      dateStrings: ['DATE']
     });
 
     selectiveConnection = mysql.createConnection(selectiveConfig);
