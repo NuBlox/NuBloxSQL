@@ -82,6 +82,14 @@ declare namespace mysql {
     signal?: AbortSignalLike;
   }
 
+  interface ExecuteOptions {
+    sql: string;
+    values?: unknown[];
+    timeout?: number;
+    nestTables?: boolean | string;
+    typeCast?: boolean | Function;
+  }
+
   interface FieldInfo {
     name?: string;
     table?: string;
@@ -150,6 +158,7 @@ declare namespace mysql {
     config: ConnectionOptions;
     connect(callback?: (error?: Error) => void): void;
     query(sql: string | QueryOptions, values?: unknown[], callback?: Function): Query;
+    execute(sql: string | ExecuteOptions, values?: unknown[], callback?: Function): unknown;
     beginTransaction(options?: object, callback?: Function): Query;
     commit(options?: object, callback?: Function): Query;
     rollback(options?: object, callback?: Function): Query;
@@ -164,6 +173,7 @@ declare namespace mysql {
   interface Pool {
     getConnection(callback: (error: Error | null, connection?: Connection) => void): void;
     query(sql: string | QueryOptions, values?: unknown[], callback?: Function): Query;
+    execute(sql: string | ExecuteOptions, values?: unknown[], callback?: Function): unknown;
     end(callback?: (error?: Error) => void): void;
     escape(value: unknown): string;
     escapeId(value: unknown): string;
@@ -177,6 +187,7 @@ declare namespace mysql {
     readonly config: ConnectionOptions;
     connect(options?: object): Promise<this>;
     query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[]): Promise<QueryTuple<T>>;
+    execute<T = QueryResult>(sql: string | ExecuteOptions, values?: unknown[]): Promise<QueryTuple<T>>;
     beginTransaction(options?: object): Promise<this>;
     commit(options?: object): Promise<this>;
     rollback(options?: object): Promise<this>;
@@ -200,6 +211,7 @@ declare namespace mysql {
     readonly config: PoolOptions;
     getConnection(): Promise<PromiseConnection>;
     query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[]): Promise<QueryTuple<T>>;
+    execute<T = QueryResult>(sql: string | ExecuteOptions, values?: unknown[]): Promise<QueryTuple<T>>;
     end(): Promise<void>;
     withTransaction<T>(work: (connection: PromiseConnection, attempt: number) => T | Promise<T>, options?: TransactionOptions): Promise<T>;
     healthCheck(): Promise<HealthCheckResult>;
