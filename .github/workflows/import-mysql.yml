@@ -1,0 +1,60 @@
+name: Import MySQL package
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout NuBloxSQL
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: target
+          fetch-depth: 0
+
+      - name: Checkout Enterprise Operating System source
+        uses: actions/checkout@v4
+        with:
+          repository: NuBlox/Enterprise-Operating-System
+          ref: feature/mysql-modern-auth
+          path: source
+          sparse-checkout: packages/mastered/mysql
+          sparse-checkout-cone-mode: false
+
+      - name: Replace target with standalone MySQL package
+        shell: bash
+        run: |
+          set -euo pipefail
+          find target -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a source/packages/mastered/mysql/. target/
+
+      - name: Verify expected package contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f target/package.json
+          test -f target/index.js
+          test -f target/lib/protocol/AuthPlugins.js
+          test -f target/test/integration/modern-auth-smoke.js
+          test -f target/.github/workflows/ci.yml
+          test ! -f target/.github/workflows/import-mysql.yml
+
+      - name: Commit imported package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd target
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: import modern MySQL driver from Enterprise Operating System"
+          git push origin HEAD:main
