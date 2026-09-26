@@ -39,6 +39,7 @@
   "devDependencies": {
     "after": "0.8.2",
     "eslint": "7.32.0",
+    "mysql2": "3.24.4",
     "seedrandom": "3.0.5",
     "selfsigned": "5.5.0",
     "urun": "0.0.8",
@@ -46,6 +47,8 @@
   },
   "files": [
     "lib/",
+    "compatibility/",
+    "docs/compatibility/",
     "Changes.md",
     "License",
     "Readme.md",
@@ -61,12 +64,16 @@
     "node": ">=22"
   },
   "scripts": {
+    "benchmark:mysql2": "node benchmark/competitors/mysql2-query.js",
+    "compatibility:check": "node tool/check-compatibility-manifest.js",
     "lint": "eslint . && node tool/lint-readme.js",
     "test": "node test/run.js",
+    "test:compat:mysql2": "node test/compatibility/mysql2/live.js",
+    "test:compat:mysql2:contract": "node test/compatibility/mysql2/contract.js",
     "test:unit": "FILTER=unit node test/run.js",
     "test-ci": "node tool/install-nyc.js --nyc-optional --reporter=lcovonly --reporter=text -- npm test",
     "test-cov": "node tool/install-nyc.js --reporter=html --reporter=text -- npm test",
-    "verify": "npm run lint && npm run test:unit && npm pack --dry-run"
+    "verify": "npm run lint && npm run test:unit && npm run compatibility:check && npm run test:compat:mysql2:contract && npm pack --dry-run"
   },
   "nublox": {
     "packageType": "NuBlox Mastered Package",
