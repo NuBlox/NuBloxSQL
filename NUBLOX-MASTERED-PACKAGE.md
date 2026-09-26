@@ -1,9 +1,10 @@
 # NuBlox Mastered Package — MySQL
 
-This directory is the NuBlox-owned evolution of the `mysqljs/mysql` Node.js MySQL driver.
+This repository is the NuBlox-owned evolution of the `mysqljs/mysql` Node.js MySQL driver and is the authoritative source for `@nublox/mysql`.
 
 ## Provenance
 
+- NuBlox repository: `https://github.com/NuBlox/NuBloxSQL`
 - Upstream repository: `https://github.com/mysqljs/mysql`
 - Upstream version at initial mastering: `2.18.1`
 - Initial upstream commit: `dc9c152a87ec51a1f647447268917243d2eab1fd`
@@ -13,11 +14,11 @@ This directory is the NuBlox-owned evolution of the `mysqljs/mysql` Node.js MySQ
 
 ## Mastering model
 
-`packages/mastered/mysql` is authoritative NuBlox source. It is not a mirror and it must never be automatically replaced from upstream.
+`NuBlox/NuBloxSQL` is authoritative NuBlox source. It is not a mirror and it must never be automatically replaced from upstream.
 
 NuBlox changes are normal first-class source changes reviewed and tested through NuBlox pull requests. The upstream licence and attribution remain intact.
 
-The `Review MySQL upstream candidate` workflow accepts an immutable 40-character upstream commit SHA, downloads that source into an isolated runner directory, and publishes a candidate snapshot plus diff artifacts. It has read-only repository permissions and cannot modify the mastered package. Upstream changes are applied selectively through a normal NuBlox pull request.
+Upstream changes must be reviewed as immutable candidate commits and applied selectively through normal NuBlox pull requests rather than replacing the mastered codebase wholesale.
 
 ## Modern NuBlox foundation
 
@@ -34,6 +35,7 @@ The first NuBlox evolution layer adds:
 - pool health checks;
 - `diagnostics_channel` events for query timing, query failure, pool acquisition and transaction retry without publishing parameter values;
 - built-in TypeScript declarations;
-- dedicated CI on supported LTS and current Node.js lines.
+- modern MySQL authentication including `caching_sha2_password`;
+- standalone CI across supported Node.js versions and live modern MySQL versions.
 
 See `NUBLOX-MYSQL-ROADMAP.md` for the competitive capability programme.
