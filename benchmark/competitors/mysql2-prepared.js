@@ -45,9 +45,9 @@ function memorySnapshot() {
   var usage = process.memoryUsage();
 
   return {
-    rss       : usage.rss,
-    heapUsed  : usage.heapUsed,
-    external  : usage.external,
+    rss          : usage.rss,
+    heapUsed     : usage.heapUsed,
+    external     : usage.external,
     arrayBuffers : usage.arrayBuffers
   };
 }
