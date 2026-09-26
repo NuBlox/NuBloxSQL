@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "bignumber.js": "9.0.2",
+    "named-placeholders": "1.1.6",
     "readable-stream": "2.3.7",
     "safe-buffer": "5.2.1",
     "sqlstring": "2.3.3"
@@ -72,6 +73,7 @@
     "test:compat:mysql2:cache": "node test/compatibility/mysql2/cache-live.js",
     "test:compat:mysql2:contract": "node test/compatibility/mysql2/contract.js",
     "test:compat:mysql2:execute": "node test/compatibility/mysql2/execute-live.js",
+    "test:compat:mysql2:named": "node test/compatibility/mysql2/named-placeholders-live.js",
     "test:compat:mysql2:prepare": "node test/compatibility/mysql2/prepare-live.js",
     "test:unit": "FILTER=unit node test/run.js",
     "test-ci": "node tool/install-nyc.js --nyc-optional --reporter=lcovonly --reporter=text -- npm test",
