@@ -6,10 +6,23 @@ var path = require('path');
 var test = require('utest');
 
 var BinaryCodec = require(path.resolve(common.lib, 'protocol/BinaryCodec'));
+var ComStmtExecutePacket = require(path.resolve(common.lib, 'protocol/packets/ComStmtExecutePacket'));
 var Mysql = require(path.resolve(common.lib, '../index'));
 
 function descriptor(parameter) {
   return BinaryCodec.describeParameter(parameter);
+}
+
+function encodedHex(parameter) {
+  var buffers = [];
+  var writer = {
+    writeBuffer: function writeBuffer(value) {
+      buffers.push(Buffer.from(value));
+    }
+  };
+
+  BinaryCodec.writeParameterValue(writer, parameter, descriptor(parameter));
+  return Buffer.concat(buffers).toString('hex');
 }
 
 test('TypedParameter', {
@@ -29,6 +42,42 @@ test('TypedParameter', {
     assert.deepStrictEqual(descriptor(Mysql.param.uint32(4294967295)), {type: Mysql.Types.LONG, unsigned: true});
     assert.deepStrictEqual(descriptor(Mysql.param.int64('-9223372036854775808')), {type: Mysql.Types.LONGLONG, unsigned: false});
     assert.deepStrictEqual(descriptor(Mysql.param.uint64('18446744073709551615')), {type: Mysql.Types.LONGLONG, unsigned: true});
+  },
+
+  'encodes exact integer widths at the wire boundary': function() {
+    assert.strictEqual(encodedHex(Mysql.param.int8(-1)), 'ff');
+    assert.strictEqual(encodedHex(Mysql.param.uint8(255)), 'ff');
+    assert.strictEqual(encodedHex(Mysql.param.int16(-32768)), '0080');
+    assert.strictEqual(encodedHex(Mysql.param.uint16(65535)), 'ffff');
+    assert.strictEqual(encodedHex(Mysql.param.int32(-2147483648)), '00000080');
+    assert.strictEqual(encodedHex(Mysql.param.uint32(4294967295)), 'ffffffff');
+    assert.strictEqual(encodedHex(Mysql.param.int64('-9223372036854775808')), '0000000000000080');
+    assert.strictEqual(encodedHex(Mysql.param.uint64('18446744073709551615')), 'ffffffffffffffff');
+  },
+
+  'writes type and unsigned flags into COM_STMT_EXECUTE metadata': function() {
+    var numbers = [];
+    var writer = {
+      writeUnsignedNumber: function writeUnsignedNumber(bytes, value) {
+        numbers.push([bytes, value]);
+      },
+      writeBuffer: function writeBuffer() {}
+    };
+    var packet = new ComStmtExecutePacket(7, [
+      Mysql.param.int8(-1),
+      Mysql.param.uint16(65535),
+      Mysql.param.int32(-2147483648),
+      Mysql.param.uint64('18446744073709551615')
+    ]);
+
+    packet.write(writer);
+
+    assert.deepStrictEqual(numbers.slice(5), [
+      [1, Mysql.Types.TINY], [1, 0x00],
+      [1, Mysql.Types.SHORT], [1, 0x80],
+      [1, Mysql.Types.LONG], [1, 0x00],
+      [1, Mysql.Types.LONGLONG], [1, 0x80]
+    ]);
   },
 
   'rejects out-of-range integers': function() {
