@@ -104,14 +104,16 @@ Delivered:
 - mysql2-compatible named placeholders for text query and `execute()` paths;
 - connection-wide and per-operation named-placeholder enable/disable behaviour;
 - positional `?` fallback when arrays are supplied with named placeholders enabled;
+- explicit typed prepared-parameter constructors for signed and unsigned 8/16/32/64-bit integers, float/double, exact decimal, text and binary intent;
+- range validation and safe 64-bit input rules, with direct wire-byte and `COM_STMT_EXECUTE` metadata tests;
+- live typed-parameter boundary testing against MySQL 8.4 and 9.x, including signed minimum and unsigned maximum 64-bit values;
+- reproducible mysql2 prepared-statement benchmark with throughput, percentile latency and memory-delta evidence;
 - mysql2-compatible execute, manual-prepare and named-placeholder surface checks;
 - live prepared-execute, cache, manual-lifecycle, reset-lifecycle and named-placeholder tests against MySQL 8.4 and 9.x.
 
 Remaining M3 work:
 
-- exact typed-parameter controls for integer width, signedness and binary/text intent;
-- broader binary-protocol type and edge-case coverage;
-- prepared-statement performance benchmarks.
+- broader binary-protocol type and edge-case coverage.
 
 ### M4 — Performance and transport
 
