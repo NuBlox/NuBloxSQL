@@ -13,8 +13,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NuBlox/Enterprise-Operating-System.git",
-    "directory": "packages/mastered/mysql"
+    "url": "git+https://github.com/NuBlox/NuBloxSQL.git"
   },
   "main": "index.js",
   "types": "index.d.ts",
