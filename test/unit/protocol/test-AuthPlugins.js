@@ -42,8 +42,8 @@ assert.throws(function () {
 });
 
 var pair = Crypto.generateKeyPairSync('rsa', {
-  modulusLength: 2048,
-  publicKeyEncoding: {
+  modulusLength     : 2048,
+  publicKeyEncoding : {
     type   : 'spki',
     format : 'pem'
   },
