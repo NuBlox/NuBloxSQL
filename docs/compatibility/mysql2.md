@@ -15,6 +15,7 @@ The compatibility reference for this document is mysql2 `3.24.4`, reviewed on 20
 | Promise query API | Supported | Contract + live compatibility tests |
 | `escape()`, `escapeId()`, `format()`, `raw()` | Supported | Contract parity checks |
 | Placeholder text queries | Supported | Live compatibility tests |
+| Named placeholders | Supported | Connection/query/execute opt-in, repeated names, pool flow, quoted SQL and positional fallback |
 | Transactions | Supported | Live begin/query/rollback checks |
 | Pool query flow | Supported | Live compatibility tests |
 | MySQL 8.4 / 9.x modern authentication | Supported | Live CI |
@@ -24,7 +25,6 @@ The compatibility reference for this document is mysql2 `3.24.4`, reviewed on 20
 | TypeScript declarations | Partial | Present; broader mysql2 type parity remains open |
 | ESM consumption | Partial | CommonJS package is importable; native ESM surface remains open |
 | AbortSignal cancellation | Partial / NuBlox extension | Promise query cancellation exists; prepared-execute cancellation remains open |
-| Named placeholders | Planned | M3 |
 | Compression | Planned | M4 |
 | Query attributes | Planned | M6 |
 | Binary log / CDC | Planned | M7 |
@@ -58,6 +58,36 @@ const [rows] = await pool.execute(
 ```
 
 NuBloxSQL `execute()` is a real prepared-statement operation. It prepares on the server, sends parameters using the MySQL binary protocol, decodes binary result rows and reuses the prepared statement from a per-connection LRU cache.
+
+## Named placeholders
+
+NuBloxSQL supports the mysql2 `namedPlaceholders` option for both text queries and `execute()` calls.
+
+```js
+const connection = mysql.createConnection({
+  ...config,
+  namedPlaceholders: true
+});
+
+const [rows] = await connection.promise().execute(
+  'SELECT :left + :right AS total, :left AS repeated',
+  {left: 20, right: 22}
+);
+```
+
+Named placeholders are rewritten client-side to ordinary `?` placeholders because the MySQL wire protocol has no native named-parameter representation. Repeated names therefore produce repeated positional values.
+
+The option can be enabled per operation even when it is disabled on the connection:
+
+```js
+connection.query({
+  sql: 'SELECT :id AS id',
+  values: {id: 42},
+  namedPlaceholders: true
+});
+```
+
+It can also be disabled per operation when the connection default is enabled. Passing an array continues to use ordinary positional `?` placeholders, matching mysql2 behaviour. Conversion uses the same maintained `named-placeholders` parser used by mysql2 so placeholder-looking text inside supported quoted SQL is not treated as a bind parameter.
 
 ## Manual prepared statements
 
@@ -197,4 +227,15 @@ MYSQL_DATABASE=test \
 npm run test:compat:mysql2:prepare
 ```
 
-CI executes the live parity, prepared-execute, cache and manual-prepare suites against the supported MySQL server matrix.
+Live named-placeholder parity:
+
+```bash
+MYSQL_HOST=127.0.0.1 \
+MYSQL_PORT=3306 \
+MYSQL_USER=root \
+MYSQL_PASSWORD=secret \
+MYSQL_DATABASE=test \
+npm run test:compat:mysql2:named
+```
+
+CI executes all live compatibility suites against the supported MySQL server matrix.

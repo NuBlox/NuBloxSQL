@@ -12,6 +12,7 @@ exports.createConnection = function createConnection(config) {
   var connection       = new Connection({config: new ConnectionConfig(config)});
 
   loadClass('PreparedStatements').decorateConnection(connection);
+  loadClass('NamedPlaceholders').decorateConnection(connection);
   return decorateConnection(connection, getPromiseImplementation(config));
 };
 
@@ -27,6 +28,7 @@ exports.createPool = function createPool(config) {
   var pool       = new Pool({config: new PoolConfig(config)});
 
   loadClass('PreparedStatements').decoratePool(pool);
+  loadClass('NamedPlaceholders').decoratePool(pool);
   return decoratePool(pool, getPromiseImplementation(config));
 };
 
@@ -196,6 +198,9 @@ function loadClass(className) {
       break;
     case 'ConnectionConfig':
       Class = require('./lib/ConnectionConfig');
+      break;
+    case 'NamedPlaceholders':
+      Class = require('./lib/NamedPlaceholders');
       break;
     case 'Pool':
       Class = require('./lib/Pool');

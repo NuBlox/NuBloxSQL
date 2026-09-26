@@ -52,6 +52,7 @@ declare namespace mysql {
     ssl?: string | SslOptions | false;
     localInfile?: boolean;
     multipleStatements?: boolean;
+    namedPlaceholders?: boolean;
     supportBigNumbers?: boolean;
     bigNumberStrings?: boolean;
     dateStrings?: boolean | string[];
@@ -81,14 +82,16 @@ declare namespace mysql {
     nestTables?: boolean | string;
     typeCast?: boolean | Function;
     signal?: AbortSignalLike;
+    namedPlaceholders?: boolean;
   }
 
   interface ExecuteOptions {
     sql: string;
-    values?: unknown[];
+    values?: unknown[] | Record<string, unknown>;
     timeout?: number;
     nestTables?: boolean | string;
     typeCast?: boolean | Function;
+    namedPlaceholders?: boolean;
   }
 
   interface PrepareOptions {
@@ -199,8 +202,8 @@ declare namespace mysql {
     state: string;
     config: ConnectionOptions;
     connect(callback?: (error?: Error) => void): void;
-    query(sql: string | QueryOptions, values?: unknown[], callback?: Function): Query;
-    execute(sql: string | ExecuteOptions, values?: unknown[], callback?: Function): unknown;
+    query(sql: string | QueryOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): Query;
+    execute(sql: string | ExecuteOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): unknown;
     prepare(sql: string | PrepareOptions, callback?: (error: Error | null, statement?: PreparedStatement) => void): unknown;
     unprepare(sql: string): this;
     clearPreparedStatementCache(): this;
@@ -218,8 +221,8 @@ declare namespace mysql {
 
   interface Pool {
     getConnection(callback: (error: Error | null, connection?: Connection) => void): void;
-    query(sql: string | QueryOptions, values?: unknown[], callback?: Function): Query;
-    execute(sql: string | ExecuteOptions, values?: unknown[], callback?: Function): unknown;
+    query(sql: string | QueryOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): Query;
+    execute(sql: string | ExecuteOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): unknown;
     end(callback?: (error?: Error) => void): void;
     escape(value: unknown): string;
     escapeId(value: unknown): string;
@@ -232,8 +235,8 @@ declare namespace mysql {
     readonly state: string;
     readonly config: ConnectionOptions;
     connect(options?: object): Promise<this>;
-    query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[]): Promise<QueryTuple<T>>;
-    execute<T = QueryResult>(sql: string | ExecuteOptions, values?: unknown[]): Promise<QueryTuple<T>>;
+    query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[] | Record<string, unknown>): Promise<QueryTuple<T>>;
+    execute<T = QueryResult>(sql: string | ExecuteOptions, values?: unknown[] | Record<string, unknown>): Promise<QueryTuple<T>>;
     prepare(sql: string | PrepareOptions): Promise<PromisePreparedStatement>;
     unprepare(sql: string): this;
     clearPreparedStatementCache(): this;
@@ -260,8 +263,8 @@ declare namespace mysql {
     readonly pool: Pool;
     readonly config: PoolOptions;
     getConnection(): Promise<PromiseConnection>;
-    query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[]): Promise<QueryTuple<T>>;
-    execute<T = QueryResult>(sql: string | ExecuteOptions, values?: unknown[]): Promise<QueryTuple<T>>;
+    query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[] | Record<string, unknown>): Promise<QueryTuple<T>>;
+    execute<T = QueryResult>(sql: string | ExecuteOptions, values?: unknown[] | Record<string, unknown>): Promise<QueryTuple<T>>;
     end(): Promise<void>;
     withTransaction<T>(work: (connection: PromiseConnection, attempt: number) => T | Promise<T>, options?: TransactionOptions): Promise<T>;
     healthCheck(): Promise<HealthCheckResult>;
@@ -276,7 +279,7 @@ declare namespace mysql {
   function createConnection(config: string | ConnectionOptions): Connection;
   function createPool(config: string | PoolOptions): Pool;
   function createPoolCluster(config?: object): unknown;
-  function createQuery(sql: string, values?: unknown[], callback?: Function): Query;
+  function createQuery(sql: string, values?: unknown[] | Record<string, unknown>, callback?: Function): Query;
   function escape(value: unknown, stringifyObjects?: boolean, timeZone?: string): string;
   function escapeId(value: unknown, forbidQualified?: boolean): string;
   function format(sql: string, values?: unknown[], stringifyObjects?: boolean, timeZone?: string): string;
