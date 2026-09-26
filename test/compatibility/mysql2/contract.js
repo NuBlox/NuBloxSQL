@@ -95,6 +95,3 @@ assert.strictEqual(typeof callbackPool.execute, 'function');
 assert.strictEqual(typeof promiseConnection.execute, 'function');
 assert.strictEqual(typeof promisePool.execute, 'function');
 assert.strictEqual(typeof nublox.PromiseConnection.prototype.execute, 'function');
-
-callbackConnection.destroy();
-callbackPool.end(function () {});
