@@ -84,3 +84,17 @@ assert.strictEqual(typeof nublox.PromiseConnection.prototype.iterate, 'function'
 assert.strictEqual(typeof nublox.PromiseConnection.prototype.withTransaction, 'function');
 assert.strictEqual(typeof nublox.PromisePool.prototype.healthCheck, 'function');
 assert.strictEqual(typeof nublox.PromisePool.prototype.stats, 'function');
+
+var callbackConnection = nublox.createConnection({host: '127.0.0.1'});
+var callbackPool = nublox.createPool({host: '127.0.0.1'});
+var promiseConnection = callbackConnection.promise();
+var promisePool = callbackPool.promise();
+
+assert.strictEqual(typeof callbackConnection.execute, 'function');
+assert.strictEqual(typeof callbackPool.execute, 'function');
+assert.strictEqual(typeof promiseConnection.execute, 'function');
+assert.strictEqual(typeof promisePool.execute, 'function');
+assert.strictEqual(typeof nublox.PromiseConnection.prototype.execute, 'function');
+
+callbackConnection.destroy();
+callbackPool.end(function () {});
