@@ -26,6 +26,7 @@ Current competitor capability floors include:
 | TypeScript declarations | No | Yes | Yes | Implemented; parity programme ongoing |
 | Prepared statements / binary protocol | No | Yes | Yes | Native `execute()` and explicit `prepare()` implemented and live-tested |
 | Prepared statement cache | No | LRU | Yes | Bounded LRU implemented with stats and diagnostics |
+| Named placeholders | No built-in parity target | Yes | Connector-specific | Implemented for query/execute with mysql2-compatible opt-in semantics |
 | Modern auth plugins | Partial auth switch, native password only | Yes | Yes | Implemented and live-tested |
 | Compression | Explicitly disabled | Yes | Yes | M4 |
 | Connection/query attributes | Explicitly disabled | Yes | Connector-specific | Planned with trace propagation |
@@ -98,13 +99,15 @@ Delivered:
 - manual statement invalidation guards across `close()` and `changeUser()`;
 - manual statement lifecycle diagnostics without bind values;
 - prepared APIs on physical connections acquired from pools;
-- mysql2-compatible execute and manual-prepare surface checks;
-- live prepared-execute, cache and manual-lifecycle tests against MySQL 8.4 and 9.x.
+- mysql2-compatible named placeholders for text query and `execute()` paths;
+- connection-wide and per-operation named-placeholder enable/disable behaviour;
+- positional `?` fallback when arrays are supplied with named placeholders enabled;
+- mysql2-compatible execute, manual-prepare and named-placeholder surface checks;
+- live prepared-execute, cache, manual-lifecycle and named-placeholder tests against MySQL 8.4 and 9.x.
 
 Remaining M3 work:
 
 - `COM_STMT_RESET` where needed;
-- named-placeholder compatibility strategy;
 - exact typed-parameter controls for integer width, signedness and binary/text intent;
 - broader binary-protocol type and edge-case coverage;
 - prepared-statement performance benchmarks.
