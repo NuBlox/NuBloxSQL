@@ -82,6 +82,7 @@
     "test:compat:mysql2:prepare": "node test/compatibility/mysql2/prepare-live.js",
     "test:compat:mysql2:reset": "node test/compatibility/mysql2/reset-live.js",
     "test:esm": "node test/compatibility/esm-contract.mjs",
+    "test:typed-parameters": "node test/integration/typed-parameters-smoke.js",
     "test:unit": "FILTER=unit node test/run.js",
     "test-ci": "node tool/install-nyc.js --nyc-optional --reporter=lcovonly --reporter=text -- npm test",
     "test-cov": "node tool/install-nyc.js --reporter=html --reporter=text -- npm test",
