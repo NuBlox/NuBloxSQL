@@ -180,6 +180,7 @@ declare namespace mysql {
     readonly numColumns: number;
     readonly numParams: number;
     execute<T = QueryResult>(values?: unknown[], callback?: (error: Error | null, rows?: T, fields?: QueryFields) => void): unknown;
+    reset(callback?: (error: Error | null, statement?: PreparedStatement) => void): this;
     close(): this;
   }
 
@@ -190,6 +191,7 @@ declare namespace mysql {
     readonly columns: FieldInfo[];
     readonly parameters: FieldInfo[];
     execute<T = QueryResult>(values?: unknown[]): Promise<QueryTuple<T>>;
+    reset(): Promise<PromisePreparedStatement>;
     close(): Promise<void>;
   }
 
