@@ -103,9 +103,13 @@
     },
     {
       "id": "named-placeholders",
-      "status": "planned",
+      "status": "supported",
       "milestone": "M3",
-      "evidence": []
+      "evidence": [
+        "lib/NamedPlaceholders.js",
+        "test/unit/test-NamedPlaceholders.js",
+        "test/compatibility/mysql2/named-placeholders-live.js"
+      ]
     },
     {
       "id": "compression",
