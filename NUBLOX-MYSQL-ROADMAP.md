@@ -23,6 +23,7 @@ Current competitor capability floors include:
 | Capability | mysqljs/mysql 2.18.1 baseline | MySQL2 3.x | MariaDB Connector/Node.js 3.5 | NuBlox programme |
 | --- | --- | --- | --- | --- |
 | Promise / async-await API | No | Yes | Yes | Implemented |
+| Native ESM entrypoints | No | Yes | Yes | Implemented with conditional exports and CommonJS parity |
 | TypeScript declarations | No | Yes | Yes | Implemented; parity programme ongoing |
 | Prepared statements / binary protocol | No | Yes | Yes | Native `execute()` and explicit `prepare()` implemented and live-tested |
 | Prepared statement cache | No | LRU | Yes | Bounded LRU implemented with stats and diagnostics |
@@ -58,6 +59,7 @@ Current competitor capability floors include:
 
 - Node.js >=22 baseline.
 - Promise entry point and wrapper APIs.
+- Native ESM root and `/promise` entrypoints using conditional package exports, with CommonJS parity tests.
 - AbortSignal-aware connection queries.
 - Async iteration over query streams.
 - TypeScript declarations.
