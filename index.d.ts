@@ -1,0 +1,228 @@
+declare namespace mysql {
+  type IsolationLevel = 'READ UNCOMMITTED' | 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
+
+  interface AbortSignalLike {
+    readonly aborted: boolean;
+    readonly reason?: unknown;
+    addEventListener(type: 'abort', listener: () => void, options?: { once?: boolean }): void;
+    removeEventListener(type: 'abort', listener: () => void): void;
+  }
+
+  interface AuthPluginContext {
+    readonly config: ConnectionOptions;
+    readonly pluginName: string;
+    readonly secure: boolean;
+  }
+
+  interface AuthPluginStep {
+    readonly phase: 'initial' | 'continue';
+    readonly pluginName: string;
+    readonly secure: boolean;
+    readonly step: number;
+  }
+
+  type AuthPluginHandler = (
+    data: Buffer,
+    step: AuthPluginStep
+  ) => Buffer | null | undefined | Promise<Buffer | null | undefined>;
+  type AuthPluginFactory = (context: AuthPluginContext) => AuthPluginHandler;
+
+  interface SslOptions {
+    ca?: string | Buffer | Array<string | Buffer>;
+    cert?: string | Buffer;
+    key?: string | Buffer;
+    passphrase?: string;
+    ciphers?: string;
+    minVersion?: string;
+    maxVersion?: string;
+    rejectUnauthorized?: boolean;
+  }
+
+  interface ConnectionOptions {
+    host?: string;
+    port?: number;
+    localAddress?: string;
+    socketPath?: string;
+    user?: string;
+    password?: string;
+    database?: string;
+    connectTimeout?: number;
+    charset?: string;
+    timezone?: string;
+    ssl?: string | SslOptions | false;
+    localInfile?: boolean;
+    multipleStatements?: boolean;
+    supportBigNumbers?: boolean;
+    bigNumberStrings?: boolean;
+    dateStrings?: boolean | string[];
+    trace?: boolean;
+    typeCast?: boolean | Function;
+    queryFormat?: Function;
+    Promise?: PromiseConstructor;
+    authPlugins?: Record<string, AuthPluginFactory>;
+    defaultAuthPlugin?: string;
+    allowPublicKeyRetrieval?: boolean;
+    serverPublicKey?: string | Buffer;
+    onServerPublicKey?: (key: string | Buffer) => void;
+  }
+
+  interface PoolOptions extends ConnectionOptions {
+    acquireTimeout?: number;
+    waitForConnections?: boolean;
+    connectionLimit?: number;
+    queueLimit?: number;
+  }
+
+  interface QueryOptions {
+    sql: string;
+    values?: unknown[] | Record<string, unknown>;
+    timeout?: number;
+    nestTables?: boolean | string;
+    typeCast?: boolean | Function;
+    signal?: AbortSignalLike;
+  }
+
+  interface FieldInfo {
+    name?: string;
+    table?: string;
+    db?: string;
+    type?: number;
+    length?: number;
+    flags?: number;
+    charsetNr?: number;
+  }
+
+  interface OkPacket {
+    fieldCount?: number;
+    affectedRows?: number;
+    changedRows?: number;
+    insertId?: number;
+    serverStatus?: number;
+    warningCount?: number;
+    message?: string;
+  }
+
+  type Row = Record<string, unknown>;
+  type QueryResult = Row[] | OkPacket | Array<Row[] | OkPacket>;
+  type QueryFields = FieldInfo[] | FieldInfo[][] | undefined;
+  type QueryTuple<T = QueryResult> = [T, QueryFields];
+
+  interface AsyncRowStream<T = Row> extends AsyncIterable<T> {
+    on(event: string, listener: (...args: unknown[]) => void): this;
+  }
+
+  interface TransactionOptions {
+    isolationLevel?: IsolationLevel;
+    readOnly?: boolean;
+    maxRetries?: number;
+    retryDelayMs?: number;
+    maxRetryDelayMs?: number;
+    shouldRetry?: (error: unknown, attempt: number) => boolean;
+  }
+
+  interface PoolStats {
+    total: number;
+    active: number;
+    idle: number;
+    acquiring: number;
+    queued: number;
+    limit: number;
+    queueLimit: number;
+    closed: boolean;
+    utilization: number | null;
+    saturated: boolean;
+  }
+
+  interface HealthCheckResult {
+    ok: boolean;
+    latencyMs: number;
+    errorCode?: string;
+    pool: PoolStats;
+  }
+
+  interface Query {
+    stream(options?: Record<string, unknown>): AsyncRowStream;
+  }
+
+  interface Connection {
+    threadId: number | null;
+    state: string;
+    config: ConnectionOptions;
+    connect(callback?: (error?: Error) => void): void;
+    query(sql: string | QueryOptions, values?: unknown[], callback?: Function): Query;
+    beginTransaction(options?: object, callback?: Function): Query;
+    commit(options?: object, callback?: Function): Query;
+    rollback(options?: object, callback?: Function): Query;
+    end(options?: object, callback?: Function): void;
+    destroy(): void;
+    escape(value: unknown): string;
+    escapeId(value: unknown): string;
+    format(sql: string, values?: unknown[]): string;
+    promise(PromiseImpl?: PromiseConstructor): PromiseConnection;
+  }
+
+  interface Pool {
+    getConnection(callback: (error: Error | null, connection?: Connection) => void): void;
+    query(sql: string | QueryOptions, values?: unknown[], callback?: Function): Query;
+    end(callback?: (error?: Error) => void): void;
+    escape(value: unknown): string;
+    escapeId(value: unknown): string;
+    promise(PromiseImpl?: PromiseConstructor): PromisePool;
+  }
+
+  interface PromiseConnection {
+    readonly connection: Connection;
+    readonly threadId: number | null;
+    readonly state: string;
+    readonly config: ConnectionOptions;
+    connect(options?: object): Promise<this>;
+    query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[]): Promise<QueryTuple<T>>;
+    beginTransaction(options?: object): Promise<this>;
+    commit(options?: object): Promise<this>;
+    rollback(options?: object): Promise<this>;
+    changeUser(options?: ConnectionOptions): Promise<this>;
+    ping(options?: object): Promise<this>;
+    statistics(options?: object): Promise<unknown>;
+    end(options?: object): Promise<void>;
+    destroy(): void;
+    release(): void;
+    escape(value: unknown): string;
+    escapeId(value: unknown): string;
+    format(sql: string, values?: unknown[]): string;
+    stream<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: object): AsyncRowStream<T>;
+    iterate<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: object): AsyncRowStream<T>;
+    withTransaction<T>(work: (connection: PromiseConnection, attempt: number) => T | Promise<T>, options?: TransactionOptions): Promise<T>;
+    promise(): this;
+  }
+
+  interface PromisePool {
+    readonly pool: Pool;
+    readonly config: PoolOptions;
+    getConnection(): Promise<PromiseConnection>;
+    query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[]): Promise<QueryTuple<T>>;
+    end(): Promise<void>;
+    withTransaction<T>(work: (connection: PromiseConnection, attempt: number) => T | Promise<T>, options?: TransactionOptions): Promise<T>;
+    healthCheck(): Promise<HealthCheckResult>;
+    stats(): PoolStats;
+    escape(value: unknown): string;
+    escapeId(value: unknown): string;
+    stream<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: object): AsyncRowStream<T>;
+    iterate<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: object): AsyncRowStream<T>;
+    promise(): this;
+  }
+
+  function createConnection(config: string | ConnectionOptions): Connection;
+  function createPool(config: string | PoolOptions): Pool;
+  function createPoolCluster(config?: object): unknown;
+  function createQuery(sql: string, values?: unknown[], callback?: Function): Query;
+  function escape(value: unknown, stringifyObjects?: boolean, timeZone?: string): string;
+  function escapeId(value: unknown, forbidQualified?: boolean): string;
+  function format(sql: string, values?: unknown[], stringifyObjects?: boolean, timeZone?: string): string;
+  function raw(sql: string): object;
+
+  const Types: Record<string, number>;
+  const PromiseConnection: Function;
+  const PromisePool: Function;
+}
+
+export = mysql;

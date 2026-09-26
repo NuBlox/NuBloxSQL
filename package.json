@@ -1,0 +1,77 @@
+{
+  "name": "@nublox/mysql",
+  "description": "NuBlox mastered high-resilience MySQL client for modern Node.js applications.",
+  "version": "3.1.0-nublox.1",
+  "license": "MIT",
+  "author": "Felix Geisendörfer <felix@debuggable.com> (http://debuggable.com/)",
+  "contributors": [
+    "Andrey Sidorov <sidorares@yandex.ru>",
+    "Bradley Grainger <bgrainger@gmail.com>",
+    "Douglas Christopher Wilson <doug@somethingdoug.com>",
+    "Diogo Resende <dresende@thinkdigital.pt>",
+    "Nathan Woltman <nwoltman@outlook.com>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NuBlox/Enterprise-Operating-System.git",
+    "directory": "packages/mastered/mysql"
+  },
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "require": "./index.js",
+      "default": "./index.js"
+    },
+    "./promise": {
+      "types": "./promise.d.ts",
+      "require": "./promise.js",
+      "default": "./promise.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "bignumber.js": "9.0.2",
+    "readable-stream": "2.3.7",
+    "safe-buffer": "5.2.1",
+    "sqlstring": "2.3.3"
+  },
+  "devDependencies": {
+    "after": "0.8.2",
+    "eslint": "7.32.0",
+    "seedrandom": "3.0.5",
+    "selfsigned": "5.5.0",
+    "urun": "0.0.8",
+    "utest": "0.0.8"
+  },
+  "files": [
+    "lib/",
+    "Changes.md",
+    "License",
+    "Readme.md",
+    "NUBLOX-MASTERED-PACKAGE.md",
+    "NUBLOX-MYSQL-ROADMAP.md",
+    "NUBLOX-UPSTREAM.json",
+    "index.js",
+    "index.d.ts",
+    "promise.js",
+    "promise.d.ts"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "eslint . && node tool/lint-readme.js",
+    "test": "node test/run.js",
+    "test:unit": "FILTER=unit node test/run.js",
+    "test-ci": "node tool/install-nyc.js --nyc-optional --reporter=lcovonly --reporter=text -- npm test",
+    "test-cov": "node tool/install-nyc.js --reporter=html --reporter=text -- npm test",
+    "verify": "npm run lint && npm run test:unit && npm pack --dry-run"
+  },
+  "nublox": {
+    "packageType": "NuBlox Mastered Package",
+    "upstream": "mysqljs/mysql@dc9c152a87ec51a1f647447268917243d2eab1fd",
+    "compatibilityLineage": "mysqljs/mysql 2.18.1"
+  }
+}
