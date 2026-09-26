@@ -2,10 +2,11 @@
   "packageType": "NuBlox Mastered Package",
   "package": "mysql",
   "nubloxPackage": "@nublox/mysql",
-  "nubloxVersion": "3.0.0-nublox.1",
+  "nubloxVersion": "3.1.0-nublox.1",
+  "repository": "NuBlox/NuBloxSQL",
   "upstreamRepository": "mysqljs/mysql",
   "upstreamCommit": "dc9c152a87ec51a1f647447268917243d2eab1fd",
   "upstreamVersion": "2.18.1",
   "license": "MIT",
-  "masteredPath": "packages/mastered/mysql"
+  "masteredPath": "."
 }
