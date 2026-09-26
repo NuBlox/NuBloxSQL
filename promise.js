@@ -12,6 +12,7 @@ exports.escape = mysql.escape;
 exports.escapeId = mysql.escapeId;
 exports.format = mysql.format;
 exports.raw = mysql.raw;
+exports.param = mysql.param;
 
 Object.defineProperty(exports, 'Types', {
   get: function getTypes() {
