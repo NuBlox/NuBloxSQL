@@ -20,6 +20,7 @@ The compatibility reference for this document is mysql2 `3.24.4`, reviewed on 20
 | MySQL 8.4 / 9.x modern authentication | Supported | Live CI |
 | `execute()` prepared statements | Supported | Native `COM_STMT_PREPARE` / `COM_STMT_EXECUTE` / `COM_STMT_CLOSE`, binary rows, live mysql2 parity |
 | Prepared statement cache | Supported | Bounded per-connection LRU, `unprepare()`, stats, live reuse/eviction tests |
+| Manual `prepare()` statements | Supported | Callback + Promise statement lifecycle, acquired pool connections, live mysql2 parity |
 | TypeScript declarations | Partial | Present; broader mysql2 type parity remains open |
 | ESM consumption | Partial | CommonJS package is importable; native ESM surface remains open |
 | AbortSignal cancellation | Partial / NuBlox extension | Promise query cancellation exists; prepared-execute cancellation remains open |
@@ -57,6 +58,45 @@ const [rows] = await pool.execute(
 ```
 
 NuBloxSQL `execute()` is a real prepared-statement operation. It prepares on the server, sends parameters using the MySQL binary protocol, decodes binary result rows and reuses the prepared statement from a per-connection LRU cache.
+
+## Manual prepared statements
+
+Like mysql2, NuBloxSQL supports explicit connection-scoped prepared statements when an application wants to control the server-side statement lifecycle directly.
+
+Promise API:
+
+```js
+const connection = await mysql.createConnection(config);
+const statement = await connection.prepare(
+  'SELECT id, email FROM users WHERE id = ?'
+);
+
+const [rows] = await statement.execute([userId]);
+await statement.close();
+```
+
+Callback API:
+
+```js
+connection.prepare(
+  'SELECT id, email FROM users WHERE id = ?',
+  function (error, statement) {
+    if (error) throw error;
+
+    statement.execute([userId], function (executeError, rows) {
+      statement.close();
+      if (executeError) throw executeError;
+      console.log(rows);
+    });
+  }
+);
+```
+
+Manual statements expose `id`, `query`, parameter metadata and result-column metadata. They are intentionally separate from the automatic LRU used by `connection.execute()`, matching mysql2's lifecycle model.
+
+NuBloxSQL additionally tracks manual statement validity locally. Closing a statement, or resetting connection identity through `changeUser()`, invalidates that statement object. A later local execute fails with `PREPARED_STATEMENT_CLOSED` instead of blindly sending a stale statement identifier to MySQL.
+
+Lifecycle diagnostics are published on `nublox.mysql.statement.lifecycle` with action, connection ID, statement ID and SQL template. Bind values are not published.
 
 ## Prepared statement cache
 
@@ -100,6 +140,7 @@ The migration surface is intentionally compatible where practical, but NuBloxSQL
 - `withTransaction()` with opt-in deadlock and lock-wait retry;
 - pool `stats()` and `healthCheck()`;
 - prepared-statement cache metrics and diagnostics;
+- manual prepared-statement lifecycle diagnostics and stale-handle guards;
 - async-iterable result streaming through `iterate()`;
 - `diagnostics_channel` query, pool, transaction and prepared-cache events;
 - secure modern authentication with opt-in RSA public-key retrieval.
@@ -145,4 +186,15 @@ MYSQL_DATABASE=test \
 npm run test:compat:mysql2:cache
 ```
 
-CI executes the live parity, prepared-execute and cache suites against the supported MySQL server matrix.
+Live manual prepare lifecycle parity:
+
+```bash
+MYSQL_HOST=127.0.0.1 \
+MYSQL_PORT=3306 \
+MYSQL_USER=root \
+MYSQL_PASSWORD=secret \
+MYSQL_DATABASE=test \
+npm run test:compat:mysql2:prepare
+```
+
+CI executes the live parity, prepared-execute, cache and manual-prepare suites against the supported MySQL server matrix.
