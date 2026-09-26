@@ -67,7 +67,7 @@ test('TypedParameter', {
   },
 
   'distinguishes text from binary intent': function() {
-    var bytes = new Uint8Array([0, 127, 255]);
+    var bytes = new global.Uint8Array([0, 127, 255]);
     var binary = Mysql.param.binary(bytes);
     var text = Mysql.param.text('NuBloxSQL');
 
