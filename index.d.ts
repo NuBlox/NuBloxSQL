@@ -122,6 +122,11 @@ declare namespace mysql {
     decimal(value: number | bigint | string): TypedPreparedParameter<string>;
     text(value: string): TypedPreparedParameter<string>;
     binary(value: Buffer | Uint8Array): TypedPreparedParameter<Buffer>;
+    date(value: Date | string): TypedPreparedParameter<unknown>;
+    datetime(value: Date | string): TypedPreparedParameter<unknown>;
+    timestamp(value: Date | string): TypedPreparedParameter<unknown>;
+    time(value: string): TypedPreparedParameter<unknown>;
+    json(value: unknown): TypedPreparedParameter<string>;
   }
 
   interface FieldInfo {

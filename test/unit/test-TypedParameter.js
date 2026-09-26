@@ -25,12 +25,27 @@ function encodedHex(parameter) {
   return Buffer.concat(buffers).toString('hex');
 }
 
+function encodedNumbers(parameter) {
+  var numbers = [];
+  var writer = {
+    writeUnsignedNumber: function writeUnsignedNumber(bytes, value) {
+      numbers.push([bytes, value]);
+    }
+  };
+
+  BinaryCodec.writeParameterValue(writer, parameter, descriptor(parameter));
+  return numbers;
+}
+
 test('TypedParameter', {
   'exports explicit prepared parameter constructors': function() {
     assert.equal(typeof Mysql.param, 'object');
     assert.equal(typeof Mysql.param.int8, 'function');
     assert.equal(typeof Mysql.param.uint64, 'function');
     assert.equal(typeof Mysql.param.binary, 'function');
+    assert.equal(typeof Mysql.param.datetime, 'function');
+    assert.equal(typeof Mysql.param.time, 'function');
+    assert.equal(typeof Mysql.param.json, 'function');
   },
 
   'preserves integer width and signedness': function() {
@@ -78,6 +93,54 @@ test('TypedParameter', {
       [1, Mysql.Types.LONG], [1, 0x00],
       [1, Mysql.Types.LONGLONG], [1, 0x80]
     ]);
+  },
+
+  'encodes DATE and fractional DATETIME values in binary protocol form': function() {
+    assert.deepStrictEqual(encodedNumbers(Mysql.param.date('2026-09-27')), [
+      [1, 4], [2, 2026], [1, 9], [1, 27]
+    ]);
+
+    assert.deepStrictEqual(encodedNumbers(Mysql.param.datetime('2026-09-27 00:17:38.123456')), [
+      [1, 11], [2, 2026], [1, 9], [1, 27],
+      [1, 0], [1, 17], [1, 38], [4, 123456]
+    ]);
+  },
+
+  'encodes negative multi-day TIME with microseconds': function() {
+    assert.deepStrictEqual(encodedNumbers(Mysql.param.time('-120:19:27.000001')), [
+      [1, 12], [1, 1], [4, 5], [1, 0], [1, 19], [1, 27], [4, 1]
+    ]);
+  },
+
+  'uses dedicated temporal and JSON protocol types': function() {
+    assert.deepStrictEqual(descriptor(Mysql.param.date('2026-09-27')), {type: Mysql.Types.DATE, unsigned: false});
+    assert.deepStrictEqual(descriptor(Mysql.param.datetime('2026-09-27 00:17:38')), {type: Mysql.Types.DATETIME, unsigned: false});
+    assert.deepStrictEqual(descriptor(Mysql.param.timestamp('2026-09-27 00:17:38')), {type: Mysql.Types.TIMESTAMP, unsigned: false});
+    assert.deepStrictEqual(descriptor(Mysql.param.time('120:19:27')), {type: Mysql.Types.TIME, unsigned: false});
+
+    var json = Mysql.param.json({name: 'NuBloxSQL', count: 2});
+    assert.deepStrictEqual(descriptor(json), {type: Mysql.Types.JSON, unsigned: false});
+    assert.strictEqual(json.value, '{"name":"NuBloxSQL","count":2}');
+  },
+
+  'rejects invalid temporal values': function() {
+    assert.throws(function() {
+      Mysql.param.date('2026-02-29');
+    }, function(error) {
+      return error.code === 'PREPARED_PARAMETER_INVALID_DATE';
+    });
+
+    assert.throws(function() {
+      Mysql.param.datetime('2026-09-27 24:00:00');
+    }, function(error) {
+      return error.code === 'PREPARED_PARAMETER_INVALID_DATETIME';
+    });
+
+    assert.throws(function() {
+      Mysql.param.time('839:00:00');
+    }, function(error) {
+      return error.code === 'PREPARED_PARAMETER_TIME_RANGE';
+    });
   },
 
   'rejects out-of-range integers': function() {
