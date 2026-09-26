@@ -11,6 +11,7 @@ exports.createConnection = function createConnection(config) {
   var ConnectionConfig = loadClass('ConnectionConfig');
   var connection       = new Connection({config: new ConnectionConfig(config)});
 
+  loadClass('PreparedStatements').decorateConnection(connection);
   return decorateConnection(connection, getPromiseImplementation(config));
 };
 
@@ -25,6 +26,7 @@ exports.createPool = function createPool(config) {
   var PoolConfig = loadClass('PoolConfig');
   var pool       = new Pool({config: new PoolConfig(config)});
 
+  loadClass('PreparedStatements').decoratePool(pool);
   return decoratePool(pool, getPromiseImplementation(config));
 };
 
@@ -201,6 +203,9 @@ function loadClass(className) {
       break;
     case 'PoolConfig':
       Class = require('./lib/PoolConfig');
+      break;
+    case 'PreparedStatements':
+      Class = require('./lib/PreparedStatements');
       break;
     case 'PromiseConnection':
       Class = require('./lib/PromiseConnection');
