@@ -115,6 +115,16 @@ exports.raw = function raw(sql) {
 };
 
 /**
+ * Explicit prepared-statement parameter constructors.
+ * @public
+ */
+Object.defineProperty(exports, 'param', {
+  get: function getParam() {
+    return loadClass('TypedParameter').api;
+  }
+});
+
+/**
  * The type constants.
  * @public
  */
@@ -229,6 +239,9 @@ function loadClass(className) {
       break;
     case 'SqlString':
       Class = require('./lib/protocol/SqlString');
+      break;
+    case 'TypedParameter':
+      Class = require('./lib/TypedParameter');
       break;
     case 'Types':
       Class = require('./lib/protocol/constants/types');
