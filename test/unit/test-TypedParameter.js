@@ -25,6 +25,18 @@ function encodedHex(parameter) {
   return Buffer.concat(buffers).toString('hex');
 }
 
+function encodedLengthCodedBufferHex(parameter) {
+  var encoded;
+  var writer = {
+    writeLengthCodedBuffer: function writeLengthCodedBuffer(value) {
+      encoded = Buffer.from(value).toString('hex');
+    }
+  };
+
+  BinaryCodec.writeParameterValue(writer, parameter, descriptor(parameter));
+  return encoded;
+}
+
 function encodedNumbers(parameter) {
   var numbers = [];
   var writer = {
@@ -43,6 +55,8 @@ test('TypedParameter', {
     assert.equal(typeof Mysql.param.int8, 'function');
     assert.equal(typeof Mysql.param.uint64, 'function');
     assert.equal(typeof Mysql.param.binary, 'function');
+    assert.equal(typeof Mysql.param.bit, 'function');
+    assert.equal(typeof Mysql.param.year, 'function');
     assert.equal(typeof Mysql.param.datetime, 'function');
     assert.equal(typeof Mysql.param.time, 'function');
     assert.equal(typeof Mysql.param.json, 'function');
@@ -121,6 +135,45 @@ test('TypedParameter', {
     var json = Mysql.param.json({name: 'NuBloxSQL', count: 2});
     assert.deepStrictEqual(descriptor(json), {type: Mysql.Types.JSON, unsigned: false});
     assert.strictEqual(json.value, '{"name":"NuBloxSQL","count":2}');
+  },
+
+  'encodes BIT values as length-coded big-endian bytes': function() {
+    assert.deepStrictEqual(descriptor(Mysql.param.bit(1)), {type: Mysql.Types.BIT, unsigned: true});
+    assert.strictEqual(encodedLengthCodedBufferHex(Mysql.param.bit(1)), '01');
+    assert.strictEqual(encodedLengthCodedBufferHex(Mysql.param.bit('100000000')), '0100');
+    assert.strictEqual(encodedLengthCodedBufferHex(Mysql.param.bit('1111111111111111111111111111111111111111111111111111111111111111')), 'ffffffffffffffff');
+  },
+
+  'encodes YEAR using the binary protocol two-byte integer form': function() {
+    assert.deepStrictEqual(descriptor(Mysql.param.year(2026)), {type: Mysql.Types.YEAR, unsigned: true});
+    assert.strictEqual(encodedHex(Mysql.param.year(2026)), 'ea07');
+    assert.strictEqual(encodedHex(Mysql.param.year(0)), '0000');
+  },
+
+  'rejects invalid BIT and YEAR values': function() {
+    assert.throws(function() {
+      Mysql.param.bit(-1);
+    }, function(error) {
+      return error.code === 'PREPARED_PARAMETER_INVALID_BIT';
+    });
+
+    assert.throws(function() {
+      Mysql.param.bit(global.BigInt('18446744073709551616'));
+    }, function(error) {
+      return error.code === 'PREPARED_PARAMETER_BIT_RANGE';
+    });
+
+    assert.throws(function() {
+      Mysql.param.year(1900);
+    }, function(error) {
+      return error.code === 'PREPARED_PARAMETER_YEAR_RANGE';
+    });
+
+    assert.throws(function() {
+      Mysql.param.year('2026');
+    }, function(error) {
+      return error.code === 'PREPARED_PARAMETER_INVALID_YEAR';
+    });
   },
 
   'rejects invalid temporal values': function() {
