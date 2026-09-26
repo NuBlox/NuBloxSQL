@@ -141,8 +141,9 @@ function decorateConnection(connection, PromiseImpl) {
       enumerable   : false,
       value        : function promise(overridePromise) {
         var PromiseConnection = loadClass('PromiseConnection');
+        var wrapper = new PromiseConnection(connection, overridePromise || PromiseImpl || global.Promise);
 
-        return new PromiseConnection(connection, overridePromise || PromiseImpl || global.Promise);
+        return loadClass('PreparedStatements').decoratePromiseConnection(wrapper);
       }
     });
   }
@@ -157,8 +158,9 @@ function decoratePool(pool, PromiseImpl) {
       enumerable   : false,
       value        : function promise(overridePromise) {
         var PromisePool = loadClass('PromisePool');
+        var wrapper = new PromisePool(pool, overridePromise || PromiseImpl || global.Promise);
 
-        return new PromisePool(pool, overridePromise || PromiseImpl || global.Promise);
+        return loadClass('PreparedStatements').decoratePromisePool(wrapper);
       }
     });
   }
