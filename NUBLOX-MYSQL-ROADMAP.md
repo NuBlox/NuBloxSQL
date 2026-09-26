@@ -24,7 +24,7 @@ Current competitor capability floors include:
 | --- | --- | --- | --- | --- |
 | Promise / async-await API | No | Yes | Yes | Implemented |
 | TypeScript declarations | No | Yes | Yes | Implemented; parity programme ongoing |
-| Prepared statements / binary protocol | No | Yes | Yes | M3 |
+| Prepared statements / binary protocol | No | Yes | Yes | Native `execute()` implemented and live-tested |
 | Prepared statement cache | No | LRU | Yes | M3 adaptive bounded cache |
 | Modern auth plugins | Partial auth switch, native password only | Yes | Yes | Implemented and live-tested |
 | Compression | Explicitly disabled | Yes | Yes | M4 |
@@ -79,15 +79,26 @@ Current competitor capability floors include:
 
 Connection and query attributes remain planned separately and are not considered complete as part of M2.
 
-### M3 — Prepared statements and binary protocol
+### M3 — Prepared statements and binary protocol — in progress
 
-- `COM_STMT_PREPARE`, execute, reset and close.
-- Binary parameter/result encoding.
-- `execute()` Promise and callback APIs.
-- mysql2-compatible prepared-statement contract and live parity tests.
-- Bounded LRU statement cache with telemetry and explicit invalidation.
-- Named-placeholder compatibility strategy.
-- Typed parameters for exact integer width, signedness and binary/text intent.
+Delivered:
+
+- native `COM_STMT_PREPARE`, `COM_STMT_EXECUTE` and `COM_STMT_CLOSE` flow;
+- binary parameter encoding for common JavaScript value types;
+- binary result decoding for core MySQL type families;
+- callback and Promise `execute()` APIs on connections and pools;
+- mysql2-compatible execute surface checks;
+- live prepared-execute parity tests against MySQL 8.4 and 9.x.
+
+Remaining M3 work:
+
+- bounded LRU prepared-statement cache with telemetry and explicit invalidation;
+- explicit `prepare()` / statement object lifecycle;
+- `COM_STMT_RESET` where needed;
+- named-placeholder compatibility strategy;
+- exact typed-parameter controls for integer width, signedness and binary/text intent;
+- broader binary-protocol type and edge-case coverage;
+- prepared-statement performance benchmarks.
 
 ### M4 — Performance and transport
 
