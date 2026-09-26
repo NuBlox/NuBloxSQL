@@ -75,6 +75,7 @@
     "test:compat:mysql2:execute": "node test/compatibility/mysql2/execute-live.js",
     "test:compat:mysql2:named": "node test/compatibility/mysql2/named-placeholders-live.js",
     "test:compat:mysql2:prepare": "node test/compatibility/mysql2/prepare-live.js",
+    "test:compat:mysql2:reset": "node test/compatibility/mysql2/reset-live.js",
     "test:unit": "FILTER=unit node test/run.js",
     "test-ci": "node tool/install-nyc.js --nyc-optional --reporter=lcovonly --reporter=text -- npm test",
     "test-cov": "node tool/install-nyc.js --reporter=html --reporter=text -- npm test",
