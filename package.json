@@ -74,6 +74,7 @@
     "compatibility:check": "node tool/check-compatibility-manifest.js",
     "lint": "eslint . && node tool/lint-readme.js",
     "test": "node test/run.js",
+    "test:binary-results": "node test/integration/binary-result-matrix-smoke.js",
     "test:compat:mysql2": "node test/compatibility/mysql2/live.js",
     "test:compat:mysql2:cache": "node test/compatibility/mysql2/cache-live.js",
     "test:compat:mysql2:contract": "node test/compatibility/mysql2/contract.js",

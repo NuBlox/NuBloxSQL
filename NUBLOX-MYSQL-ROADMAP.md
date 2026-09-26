@@ -82,13 +82,10 @@ Current competitor capability floors include:
 
 Connection and query attributes remain planned separately and are not considered complete as part of M2.
 
-### M3 — Prepared statements and binary protocol — in progress
-
-Delivered:
+### M3 — Prepared statements and binary protocol — implemented
 
 - native `COM_STMT_PREPARE`, `COM_STMT_EXECUTE`, `COM_STMT_RESET` and `COM_STMT_CLOSE` flow;
 - binary parameter encoding for common JavaScript value types;
-- binary result decoding for core MySQL type families;
 - callback and Promise `execute()` APIs on connections and pools;
 - bounded per-connection LRU prepared-statement cache;
 - mysql2-compatible `maxPreparedStatements`, including `0` to disable caching;
@@ -105,24 +102,26 @@ Delivered:
 - connection-wide and per-operation named-placeholder enable/disable behaviour;
 - positional `?` fallback when arrays are supplied with named placeholders enabled;
 - explicit typed prepared-parameter constructors for signed and unsigned 8/16/32/64-bit integers, float/double, exact decimal, text and binary intent;
+- protocol-native DATE, DATETIME, TIMESTAMP and TIME parameters with microsecond precision and negative multi-day TIME support;
+- native JSON prepared parameters;
 - range validation and safe 64-bit input rules, with direct wire-byte and `COM_STMT_EXECUTE` metadata tests;
-- live typed-parameter boundary testing against MySQL 8.4 and 9.x, including signed minimum and unsigned maximum 64-bit values;
+- binary result decoding and live coverage for signed/unsigned numeric families, BIGINT boundaries, DECIMAL, FLOAT/DOUBLE, YEAR, DATE/DATETIME/TIMESTAMP/TIME with fractional seconds, BIT, BINARY/VARBINARY/BLOB, TEXT, JSON, ENUM, SET, GEOMETRY and NULL bitmap handling;
+- consistent GEOMETRY decoding between text and prepared/binary protocols;
+- selective `dateStrings` matching corrected and covered;
+- live typed-parameter and binary-result matrix testing against MySQL 8.4 and 9.x;
 - reproducible mysql2 prepared-statement benchmark with throughput, percentile latency and memory-delta evidence;
 - mysql2-compatible execute, manual-prepare and named-placeholder surface checks;
 - live prepared-execute, cache, manual-lifecycle, reset-lifecycle and named-placeholder tests against MySQL 8.4 and 9.x.
 
-Remaining M3 work:
-
-- broader binary-protocol type and edge-case coverage.
-
 ### M4 — Performance and transport
 
-- MySQL compression protocol with modern algorithms where server support permits.
+- Modern MySQL connection-compression negotiation for `zlib`, `zstd` and explicit uncompressed fallback policy.
+- Configurable zstd compression level within the server-supported range.
 - Parser allocation profiling and buffer reuse.
 - Configurable high-water marks and backpressure tests.
 - Connection warm-up and pool minimum-idle controls.
 - Query pipelining research with protocol-ordering safety constraints.
-- Expand the reproducible benchmark harness to prepared statements, pools, concurrency, streaming, bulk work and memory.
+- Expand the reproducible benchmark harness to pools, concurrency, streaming, bulk work, compression and memory.
 
 ### M5 — Enterprise resilience and security
 
