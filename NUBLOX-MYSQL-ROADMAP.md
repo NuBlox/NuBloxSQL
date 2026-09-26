@@ -86,7 +86,7 @@ Connection and query attributes remain planned separately and are not considered
 
 Delivered:
 
-- native `COM_STMT_PREPARE`, `COM_STMT_EXECUTE` and `COM_STMT_CLOSE` flow;
+- native `COM_STMT_PREPARE`, `COM_STMT_EXECUTE`, `COM_STMT_RESET` and `COM_STMT_CLOSE` flow;
 - binary parameter encoding for common JavaScript value types;
 - binary result decoding for core MySQL type families;
 - callback and Promise `execute()` APIs on connections and pools;
@@ -97,7 +97,7 @@ Delivered:
 - one-shot recovery from `ER_NEED_REPREPARE` and invalid statement handles;
 - atomic prepare/execute queue ordering under concurrent commands;
 - explicit connection-scoped `prepare()` statement objects for callback and Promise APIs;
-- reusable manual statement `execute()` and `close()` lifecycle;
+- reusable manual statement `execute()`, `reset()` and `close()` lifecycle;
 - manual statement invalidation guards across `close()` and `changeUser()`;
 - manual statement lifecycle diagnostics without bind values;
 - prepared APIs on physical connections acquired from pools;
@@ -105,11 +105,10 @@ Delivered:
 - connection-wide and per-operation named-placeholder enable/disable behaviour;
 - positional `?` fallback when arrays are supplied with named placeholders enabled;
 - mysql2-compatible execute, manual-prepare and named-placeholder surface checks;
-- live prepared-execute, cache, manual-lifecycle and named-placeholder tests against MySQL 8.4 and 9.x.
+- live prepared-execute, cache, manual-lifecycle, reset-lifecycle and named-placeholder tests against MySQL 8.4 and 9.x.
 
 Remaining M3 work:
 
-- `COM_STMT_RESET` where needed;
 - exact typed-parameter controls for integer width, signedness and binary/text intent;
 - broader binary-protocol type and edge-case coverage;
 - prepared-statement performance benchmarks.
