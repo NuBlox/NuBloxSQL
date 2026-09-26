@@ -1,6 +1,7 @@
 declare namespace mysql {
   type IsolationLevel = 'READ UNCOMMITTED' | 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
   type PreparedInt64Input = number | bigint | string;
+  type PreparedBitInput = number | bigint | string | Buffer | Uint8Array;
 
   interface AbortSignalLike {
     readonly aborted: boolean;
@@ -122,6 +123,8 @@ declare namespace mysql {
     decimal(value: number | bigint | string): TypedPreparedParameter<string>;
     text(value: string): TypedPreparedParameter<string>;
     binary(value: Buffer | Uint8Array): TypedPreparedParameter<Buffer>;
+    bit(value: PreparedBitInput): TypedPreparedParameter<Buffer>;
+    year(value: number): TypedPreparedParameter<number>;
     date(value: Date | string): TypedPreparedParameter<unknown>;
     datetime(value: Date | string): TypedPreparedParameter<unknown>;
     timestamp(value: Date | string): TypedPreparedParameter<unknown>;
