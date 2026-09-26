@@ -1,5 +1,6 @@
 declare namespace mysql {
   type IsolationLevel = 'READ UNCOMMITTED' | 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
+  type PreparedInt64Input = number | bigint | string;
 
   interface AbortSignalLike {
     readonly aborted: boolean;
@@ -101,6 +102,28 @@ declare namespace mysql {
     typeCast?: boolean | Function;
   }
 
+  interface TypedPreparedParameter<T = unknown> {
+    readonly type: number;
+    readonly unsigned: boolean;
+    readonly value: T;
+  }
+
+  interface PreparedParameterFactory {
+    int8(value: number): TypedPreparedParameter<number>;
+    uint8(value: number): TypedPreparedParameter<number>;
+    int16(value: number): TypedPreparedParameter<number>;
+    uint16(value: number): TypedPreparedParameter<number>;
+    int32(value: number): TypedPreparedParameter<number>;
+    uint32(value: number): TypedPreparedParameter<number>;
+    int64(value: PreparedInt64Input): TypedPreparedParameter<bigint>;
+    uint64(value: PreparedInt64Input): TypedPreparedParameter<bigint>;
+    float(value: number): TypedPreparedParameter<number>;
+    double(value: number): TypedPreparedParameter<number>;
+    decimal(value: number | bigint | string): TypedPreparedParameter<string>;
+    text(value: string): TypedPreparedParameter<string>;
+    binary(value: Buffer | Uint8Array): TypedPreparedParameter<Buffer>;
+  }
+
   interface FieldInfo {
     name?: string;
     table?: string;
@@ -180,7 +203,7 @@ declare namespace mysql {
     readonly numColumns: number;
     readonly numParams: number;
     execute<T = QueryResult>(values?: unknown[], callback?: (error: Error | null, rows?: T, fields?: QueryFields) => void): unknown;
-    reset(callback?: (error: Error | null, statement?: PreparedStatement) => void): this;
+    reset(callback?: (error?: Error | null) => void): this;
     close(): this;
   }
 
@@ -191,7 +214,7 @@ declare namespace mysql {
     readonly columns: FieldInfo[];
     readonly parameters: FieldInfo[];
     execute<T = QueryResult>(values?: unknown[]): Promise<QueryTuple<T>>;
-    reset(): Promise<PromisePreparedStatement>;
+    reset(): Promise<void>;
     close(): Promise<void>;
   }
 
@@ -287,6 +310,7 @@ declare namespace mysql {
   function format(sql: string, values?: unknown[], stringifyObjects?: boolean, timeZone?: string): string;
   function raw(sql: string): object;
 
+  const param: PreparedParameterFactory;
   const Types: Record<string, number>;
   const PromiseConnection: Function;
   const PromisePool: Function;

@@ -7,6 +7,7 @@ declare namespace promiseMysql {
   function escapeId(value: unknown, forbidQualified?: boolean): string;
   function format(sql: string, values?: unknown[], stringifyObjects?: boolean, timeZone?: string): string;
   function raw(sql: string): object;
+  const param: mysql.PreparedParameterFactory;
   const Types: Record<string, number>;
 }
 
