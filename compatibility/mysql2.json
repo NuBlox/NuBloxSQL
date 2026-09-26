@@ -1,0 +1,110 @@
+{
+  "reference": {
+    "package": "mysql2",
+    "version": "3.24.4",
+    "reviewedOn": "2026-09-26"
+  },
+  "statuses": [
+    "supported",
+    "partial",
+    "planned"
+  ],
+  "capabilities": [
+    {
+      "id": "callback-core-api",
+      "status": "supported",
+      "milestone": "M1",
+      "evidence": ["test/compatibility/mysql2/contract.js"]
+    },
+    {
+      "id": "promise-core-api",
+      "status": "supported",
+      "milestone": "M1",
+      "evidence": ["test/compatibility/mysql2/contract.js", "test/compatibility/mysql2/live.js"]
+    },
+    {
+      "id": "text-query-placeholders",
+      "status": "supported",
+      "milestone": "M1",
+      "evidence": ["test/compatibility/mysql2/contract.js", "test/compatibility/mysql2/live.js"]
+    },
+    {
+      "id": "connection-pool",
+      "status": "supported",
+      "milestone": "M1",
+      "evidence": ["test/compatibility/mysql2/live.js"]
+    },
+    {
+      "id": "transactions",
+      "status": "supported",
+      "milestone": "M1",
+      "evidence": ["test/compatibility/mysql2/live.js"]
+    },
+    {
+      "id": "pool-cluster",
+      "status": "supported",
+      "milestone": "M1",
+      "evidence": ["test/compatibility/mysql2/contract.js"]
+    },
+    {
+      "id": "modern-authentication",
+      "status": "supported",
+      "milestone": "M2",
+      "evidence": ["test/integration/modern-auth-smoke.js", ".github/workflows/ci.yml"]
+    },
+    {
+      "id": "typescript-declarations",
+      "status": "partial",
+      "milestone": "M1",
+      "evidence": ["index.d.ts", "promise.d.ts"]
+    },
+    {
+      "id": "esm-consumption",
+      "status": "partial",
+      "milestone": "M1",
+      "evidence": ["package.json"]
+    },
+    {
+      "id": "abort-signal",
+      "status": "partial",
+      "milestone": "M1",
+      "evidence": ["lib/PromiseConnection.js"]
+    },
+    {
+      "id": "prepared-statements-execute",
+      "status": "planned",
+      "milestone": "M3",
+      "evidence": []
+    },
+    {
+      "id": "prepared-statement-cache",
+      "status": "planned",
+      "milestone": "M3",
+      "evidence": []
+    },
+    {
+      "id": "named-placeholders",
+      "status": "planned",
+      "milestone": "M3",
+      "evidence": []
+    },
+    {
+      "id": "compression",
+      "status": "planned",
+      "milestone": "M4",
+      "evidence": []
+    },
+    {
+      "id": "query-attributes",
+      "status": "planned",
+      "milestone": "M6",
+      "evidence": []
+    },
+    {
+      "id": "binary-log-cdc",
+      "status": "planned",
+      "milestone": "M7",
+      "evidence": []
+    }
+  ]
+}
