@@ -2,9 +2,17 @@
 
 ## Objective
 
-Build `@nublox/mysql` into a production-grade MySQL integration that exceeds the practical developer, reliability, security, observability and operations capabilities of current Node.js MySQL connectors while retaining a migration path from the `mysqljs/mysql` API.
+Build `@nublox/mysql` into a production-grade MySQL integration that exceeds the practical developer, reliability, security, observability and operations capabilities of current Node.js MySQL connectors while retaining a migration path from the `mysqljs/mysql` and mysql2 APIs.
 
 This is an engineering programme, not a claim that the first NuBlox revision already leads every competitor in every dimension.
+
+## Compatibility programme
+
+mysql2 compatibility is measured continuously rather than claimed broadly. The machine-readable source of truth is `compatibility/mysql2.json`, with executable contract and live-server evidence under `test/compatibility/mysql2/`.
+
+A capability moves to `supported` only when repository evidence exists and CI validates it. `partial` means NuBlox has related capability but does not yet promise mysql2-compatible behaviour. `planned` means applications must not rely on migration compatibility for that feature yet.
+
+The first pinned mysql2 compatibility reference is `3.24.4` (reviewed 2026-09-26).
 
 ## Baseline review
 
@@ -15,11 +23,11 @@ Current competitor capability floors include:
 | Capability | mysqljs/mysql 2.18.1 baseline | MySQL2 3.x | MariaDB Connector/Node.js 3.5 | NuBlox programme |
 | --- | --- | --- | --- | --- |
 | Promise / async-await API | No | Yes | Yes | Implemented |
-| TypeScript declarations | No | Yes | Yes | Implemented |
-| Prepared statements / binary protocol | No | Yes | Yes | Next protocol milestone |
-| Prepared statement cache | No | LRU | Yes | Planned adaptive bounded cache |
-| Modern auth plugins | Partial auth switch, native password only | Yes | Yes | Next protocol milestone |
-| Compression | Explicitly disabled | Yes | Yes | Planned |
+| TypeScript declarations | No | Yes | Yes | Implemented; parity programme ongoing |
+| Prepared statements / binary protocol | No | Yes | Yes | M3 |
+| Prepared statement cache | No | LRU | Yes | M3 adaptive bounded cache |
+| Modern auth plugins | Partial auth switch, native password only | Yes | Yes | Implemented and live-tested |
+| Compression | Explicitly disabled | Yes | Yes | M4 |
 | Connection/query attributes | Explicitly disabled | Yes | Connector-specific | Planned with trace propagation |
 | AbortSignal cancellation | No first-class API | Limited connector-specific patterns | Connector-specific | Implemented for Promise connection queries |
 | Transaction callback orchestration | No | Application-managed | Application-managed helpers vary | Implemented |
@@ -28,19 +36,20 @@ Current competitor capability floors include:
 | Health-check result surface | No | Application-managed | Application-managed | Implemented |
 | diagnostics_channel telemetry | No | Tracing channels | No equivalent baseline assumption | Implemented |
 | Async iteration over row stream | Stream only | Stream support | Stream support | Implemented via Node async iteration |
-| Resource-bound hostile-server defence | Legacy limits | Evolving | `maxAllowedColumns` and related controls | Planned security milestone |
-| Binary log / CDC protocol | No | Yes | Separate ecosystem | Planned |
+| Resource-bound hostile-server defence | Legacy limits | Evolving | `maxAllowedColumns` and related controls | M5 |
+| Binary log / CDC protocol | No | Yes | Separate ecosystem | M7 |
 
 ## Engineering principles
 
 1. **Secure by default.** TLS verification remains enabled by default. Unsafe compatibility switches must be explicit.
 2. **No silent upstream overwrite.** Upstream is reference input, never authority over mastered NuBlox source.
-3. **Protocol correctness before API sugar.** Prepared statements, modern authentication and server capability negotiation are implemented at packet level and verified against supported MySQL versions.
+3. **Protocol correctness before API sugar.** Prepared statements, authentication and server capability negotiation are implemented at packet level and verified against supported MySQL versions.
 4. **Cancellation has explicit semantics.** When a protocol operation cannot be safely cancelled in-band, the connector terminates the affected connection rather than pretending cancellation succeeded.
 5. **Retries are opt-in.** Transaction retries can repeat application code, so the default is zero retries. Callers explicitly choose retry behaviour.
 6. **Observability excludes bind values by default.** Diagnostics publish statement templates, timings, connection identifiers and error codes, not parameter values.
 7. **Bound every server-controlled allocation.** Column counts, packet sizes, prepared statement metadata, queue sizes and buffers will have enforceable limits.
-8. **Compatibility is measured.** Callback compatibility is retained where practical, but obsolete Node runtime compatibility does not constrain the NuBlox design.
+8. **Compatibility is measured.** mysql/mysql2-compatible behaviour must have executable evidence; unsupported behaviour remains explicit.
+9. **Benchmarks are reproducible evidence.** Results record environment and workload and never claim a universal winner from one run.
 
 ## Delivery sequence
 
@@ -55,22 +64,29 @@ Current competitor capability floors include:
 - Pool health and saturation metrics.
 - Diagnostics channels.
 - CI on Node 22, 24 and current Node 26.
+- mysql2 API contract test foundation.
+- mysql2 live query/pool/transaction parity tests.
+- machine-readable compatibility capability manifest.
+- reproducible mysql2 benchmark foundation.
 
-### M2 — Current MySQL authentication and capability negotiation
+### M2 — Current MySQL authentication — implemented
 
-- Enable `CLIENT_PLUGIN_AUTH` and connection attributes.
 - `caching_sha2_password` fast authentication.
 - Secure full authentication over TLS.
 - RSA public-key exchange for explicitly allowed non-TLS full authentication.
-- `sha256_password` and pluggable auth-provider API.
-- Tests against currently supported MySQL server lines.
+- `sha256_password` and pluggable auth-provider support.
+- Tests against MySQL 8.4 and MySQL 9.x server lines.
+
+Connection and query attributes remain planned separately and are not considered complete as part of M2.
 
 ### M3 — Prepared statements and binary protocol
 
 - `COM_STMT_PREPARE`, execute, reset and close.
 - Binary parameter/result encoding.
 - `execute()` Promise and callback APIs.
+- mysql2-compatible prepared-statement contract and live parity tests.
 - Bounded LRU statement cache with telemetry and explicit invalidation.
+- Named-placeholder compatibility strategy.
 - Typed parameters for exact integer width, signedness and binary/text intent.
 
 ### M4 — Performance and transport
@@ -80,7 +96,7 @@ Current competitor capability floors include:
 - Configurable high-water marks and backpressure tests.
 - Connection warm-up and pool minimum-idle controls.
 - Query pipelining research with protocol-ordering safety constraints.
-- Reproducible benchmark harness against MySQL2 and MariaDB Connector/Node.js.
+- Expand the reproducible benchmark harness to prepared statements, pools, concurrency, streaming, bulk work and memory.
 
 ### M5 — Enterprise resilience and security
 
@@ -117,7 +133,7 @@ NuBlox should not describe this package as the leading Node.js MySQL connector u
 - pool recovery and failover behaviour under network faults;
 - no known high-severity dependency or SAST findings in the supported release;
 - stable TypeScript and Promise APIs;
-- documented migration tests from mysqljs/mysql and MySQL2-compatible call patterns where promised.
+- documented migration tests from mysqljs/mysql and mysql2-compatible call patterns where promised.
 
 ## External references used for the capability review
 
