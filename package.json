@@ -72,6 +72,7 @@
     "test:compat:mysql2:cache": "node test/compatibility/mysql2/cache-live.js",
     "test:compat:mysql2:contract": "node test/compatibility/mysql2/contract.js",
     "test:compat:mysql2:execute": "node test/compatibility/mysql2/execute-live.js",
+    "test:compat:mysql2:prepare": "node test/compatibility/mysql2/prepare-live.js",
     "test:unit": "FILTER=unit node test/run.js",
     "test-ci": "node tool/install-nyc.js --nyc-optional --reporter=lcovonly --reporter=text -- npm test",
     "test-cov": "node tool/install-nyc.js --reporter=html --reporter=text -- npm test",
