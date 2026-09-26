@@ -92,6 +92,16 @@
       ]
     },
     {
+      "id": "manual-prepared-statements",
+      "status": "supported",
+      "milestone": "M3",
+      "evidence": [
+        "lib/PreparedStatements.js",
+        "index.d.ts",
+        "test/compatibility/mysql2/prepare-live.js"
+      ]
+    },
+    {
       "id": "named-placeholders",
       "status": "planned",
       "milestone": "M3",
