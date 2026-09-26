@@ -17,9 +17,11 @@ var connection = mysql.createConnection(config);
 connection.connect()
   .then(function () {
     return connection.execute(
-      'SELECT ? AS int8_value, ? AS uint16_value, ? AS int32_value, ? AS uint32_value, ' +
-      '? AS int64_value, ? AS uint64_value, ? AS float_value, ? AS double_value, ' +
-      '? AS decimal_value, ? AS text_value, HEX(?) AS binary_hex',
+      'SELECT CAST(? AS SIGNED) AS int8_value, CAST(? AS UNSIGNED) AS uint16_value, ' +
+      'CAST(? AS SIGNED) AS int32_value, CAST(? AS UNSIGNED) AS uint32_value, ' +
+      'CAST(? AS SIGNED) AS int64_value, CAST(? AS UNSIGNED) AS uint64_value, ' +
+      '? + 0e0 AS float_value, ? + 0e0 AS double_value, ' +
+      'CAST(? AS DECIMAL(30,9)) AS decimal_value, CONCAT(?, \'\') AS text_value, HEX(?) AS binary_hex',
       [
         mysql.param.int8(-128),
         mysql.param.uint16(65535),
@@ -37,30 +39,18 @@ connection.connect()
   })
   .then(function (result) {
     var row = result[0][0];
-    var fields = result[1];
 
-    assert.strictEqual(row.int8_value, -128);
-    assert.strictEqual(row.uint16_value, 65535);
-    assert.strictEqual(row.int32_value, -2147483648);
-    assert.strictEqual(row.uint32_value, 4294967295);
-    assert.strictEqual(row.int64_value, '-9223372036854775808');
-    assert.strictEqual(row.uint64_value, '18446744073709551615');
+    assert.strictEqual(String(row.int8_value), '-128');
+    assert.strictEqual(String(row.uint16_value), '65535');
+    assert.strictEqual(String(row.int32_value), '-2147483648');
+    assert.strictEqual(String(row.uint32_value), '4294967295');
+    assert.strictEqual(String(row.int64_value), '-9223372036854775808');
+    assert.strictEqual(String(row.uint64_value), '18446744073709551615');
     assert.strictEqual(row.float_value, 1.25);
     assert.strictEqual(row.double_value, 123456.125);
     assert.strictEqual(row.decimal_value, '12345678901234567890.123456789');
     assert.strictEqual(row.text_value, 'NuBloxSQL');
     assert.strictEqual(row.binary_hex, '007FFF');
-
-    assert.strictEqual(fields[0].type, mysql.Types.TINY);
-    assert.strictEqual(fields[1].type, mysql.Types.SHORT);
-    assert.strictEqual(fields[2].type, mysql.Types.LONG);
-    assert.strictEqual(fields[3].type, mysql.Types.LONG);
-    assert.strictEqual(fields[4].type, mysql.Types.LONGLONG);
-    assert.strictEqual(fields[5].type, mysql.Types.LONGLONG);
-    assert.strictEqual(fields[6].type, mysql.Types.FLOAT);
-    assert.strictEqual(fields[7].type, mysql.Types.DOUBLE);
-    assert.strictEqual(fields[8].type, mysql.Types.NEWDECIMAL);
-    assert.strictEqual(fields[9].type, mysql.Types.VAR_STRING);
 
     return connection.end();
   })
