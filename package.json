@@ -20,11 +20,13 @@
   "exports": {
     ".": {
       "types": "./index.d.ts",
+      "import": "./index.mjs",
       "require": "./index.js",
       "default": "./index.js"
     },
     "./promise": {
       "types": "./promise.d.ts",
+      "import": "./promise.mjs",
       "require": "./promise.js",
       "default": "./promise.js"
     },
@@ -57,8 +59,10 @@
     "NUBLOX-MYSQL-ROADMAP.md",
     "NUBLOX-UPSTREAM.json",
     "index.js",
+    "index.mjs",
     "index.d.ts",
     "promise.js",
+    "promise.mjs",
     "promise.d.ts"
   ],
   "engines": {
@@ -75,10 +79,11 @@
     "test:compat:mysql2:execute": "node test/compatibility/mysql2/execute-live.js",
     "test:compat:mysql2:named": "node test/compatibility/mysql2/named-placeholders-live.js",
     "test:compat:mysql2:prepare": "node test/compatibility/mysql2/prepare-live.js",
+    "test:esm": "node test/compatibility/esm-contract.mjs",
     "test:unit": "FILTER=unit node test/run.js",
     "test-ci": "node tool/install-nyc.js --nyc-optional --reporter=lcovonly --reporter=text -- npm test",
     "test-cov": "node tool/install-nyc.js --reporter=html --reporter=text -- npm test",
-    "verify": "npm run lint && npm run test:unit && npm run compatibility:check && npm run test:compat:mysql2:contract && npm pack --dry-run"
+    "verify": "npm run lint && npm run test:unit && npm run compatibility:check && npm run test:compat:mysql2:contract && npm run test:esm && npm pack --dry-run"
   },
   "nublox": {
     "packageType": "NuBlox Mastered Package",
