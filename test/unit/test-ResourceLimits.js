@@ -14,25 +14,37 @@ test('Resource limits', {
     assert.strictEqual(config.maxInboundPacketSize, 64 * 1024 * 1024);
     assert.strictEqual(config.maxMetadataSize, 8 * 1024 * 1024);
     assert.strictEqual(config.maxResultSetColumns, 4096);
+    assert.strictEqual(config.maxRowSize, 64 * 1024 * 1024);
+    assert.strictEqual(config.maxBufferedRows, 100000);
+    assert.strictEqual(config.maxResultSetSize, 256 * 1024 * 1024);
   },
 
   'accepts custom resource limits': function() {
     var config = new ConnectionConfig({
       maxInboundPacketSize : 128 * 1024 * 1024,
       maxMetadataSize      : 16 * 1024 * 1024,
-      maxResultSetColumns  : 8192
+      maxResultSetColumns  : 8192,
+      maxRowSize           : 32 * 1024 * 1024,
+      maxBufferedRows      : 250000,
+      maxResultSetSize     : 512 * 1024 * 1024
     });
 
     assert.strictEqual(config.maxInboundPacketSize, 128 * 1024 * 1024);
     assert.strictEqual(config.maxMetadataSize, 16 * 1024 * 1024);
     assert.strictEqual(config.maxResultSetColumns, 8192);
+    assert.strictEqual(config.maxRowSize, 32 * 1024 * 1024);
+    assert.strictEqual(config.maxBufferedRows, 250000);
+    assert.strictEqual(config.maxResultSetSize, 512 * 1024 * 1024);
   },
 
   'rejects unsafe resource limit values': function() {
     var names = [
       'maxInboundPacketSize',
       'maxMetadataSize',
-      'maxResultSetColumns'
+      'maxResultSetColumns',
+      'maxRowSize',
+      'maxBufferedRows',
+      'maxResultSetSize'
     ];
 
     names.forEach(function(name) {
