@@ -3,6 +3,7 @@ declare namespace mysql {
   type PreparedInt64Input = number | bigint | string;
   type PreparedBitInput = number | bigint | string | Buffer | Uint8Array;
   type CompressionAlgorithm = 'zlib' | 'zstd' | 'uncompressed';
+  type TlsPolicy = 'modern' | 'strict';
 
   interface AbortSignalLike {
     readonly aborted: boolean;
@@ -72,6 +73,7 @@ declare namespace mysql {
     charset?: string;
     timezone?: string;
     ssl?: string | SslOptions | false;
+    tlsPolicy?: TlsPolicy;
     localInfile?: boolean;
     multipleStatements?: boolean;
     namedPlaceholders?: boolean;
