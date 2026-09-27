@@ -172,6 +172,21 @@ jobs:
           BENCHMARK_POOL_SIZE: 4
         run: npm run benchmark:mysql2:pool
 
+      - name: Smoke mysql2 streaming benchmark
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: nublox_ci_password
+          MYSQL_DATABASE: nublox_ci
+          BENCHMARK_WARMUP_ROWS: 32
+          BENCHMARK_ROWS: 128
+          BENCHMARK_ROUNDS: 1
+          BENCHMARK_PAYLOAD_BYTES: 64
+          BENCHMARK_HIGH_WATER_MARK: 4
+          BENCHMARK_MEMORY_SAMPLE_EVERY: 16
+        run: npm run benchmark:mysql2:streaming
+
       - name: Verify mysql2 live compatibility
         env:
           MYSQL_HOST: 127.0.0.1
