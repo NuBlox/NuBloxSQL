@@ -202,17 +202,17 @@ function benchmarkRound(name, connection, round) {
       var seconds = result.elapsedMs / 1000;
 
       return {
-        client             : name,
-        round              : round,
-        rows               : result.rows,
-        payloadBytesPerRow : payloadBytes,
-        highWaterMark      : highWaterMark,
-        elapsedMs          : result.elapsedMs,
-        firstRowMs         : result.firstRowMs,
-        rowsPerSecond      : result.rows / seconds,
-        payloadMiBPerSecond: (result.payloadReadBytes / 1048576) / seconds,
-        memoryDeltaBytes   : memoryDelta(settled, result.memoryBefore),
-        peakMemoryDeltaBytes: memoryDelta(result.memoryPeak, result.memoryBefore)
+        client               : name,
+        round                : round,
+        rows                 : result.rows,
+        payloadBytesPerRow   : payloadBytes,
+        highWaterMark        : highWaterMark,
+        elapsedMs            : result.elapsedMs,
+        firstRowMs           : result.firstRowMs,
+        rowsPerSecond        : result.rows / seconds,
+        payloadMiBPerSecond  : (result.payloadReadBytes / 1048576) / seconds,
+        memoryDeltaBytes     : memoryDelta(settled, result.memoryBefore),
+        peakMemoryDeltaBytes : memoryDelta(result.memoryPeak, result.memoryBefore)
       };
     });
 }
@@ -266,18 +266,18 @@ global.Promise.all([
   })
   .then(function (results) {
     process.stdout.write(JSON.stringify({
-      benchmark         : 'streaming-select-rows',
-      node              : process.version,
-      platform          : process.platform,
-      arch              : process.arch,
-      rows              : rows,
-      warmupRows        : warmupRows,
-      rounds            : rounds,
-      payloadBytesPerRow: payloadBytes,
-      highWaterMark     : highWaterMark,
-      memorySampleEvery : memorySampleEvery,
-      gcExposed         : typeof global.gc === 'function',
-      results           : results
+      benchmark          : 'streaming-select-rows',
+      node               : process.version,
+      platform           : process.platform,
+      arch               : process.arch,
+      rows               : rows,
+      warmupRows         : warmupRows,
+      rounds             : rounds,
+      payloadBytesPerRow : payloadBytes,
+      highWaterMark      : highWaterMark,
+      memorySampleEvery  : memorySampleEvery,
+      gcExposed          : typeof global.gc === 'function',
+      results            : results
     }, null, 2) + '\n');
 
     return cleanup();
