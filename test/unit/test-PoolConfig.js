@@ -118,10 +118,10 @@ test('PoolConfig#Constructor.minimumIdleMaintenance', {
 
   'accepts explicit maintenance policy': function() {
     var config = new PoolConfig({
-      maintainMinimumIdle         : true,
-      minimumIdleRetryDelayMs     : 100,
-      minimumIdleMaxRetryDelayMs  : 2000,
-      minimumIdleRetryJitter      : 0.5
+      maintainMinimumIdle        : true,
+      minimumIdleRetryDelayMs    : 100,
+      minimumIdleMaxRetryDelayMs : 2000,
+      minimumIdleRetryJitter     : 0.5
     });
 
     assert.strictEqual(config.maintainMinimumIdle, true);
@@ -141,8 +141,8 @@ test('PoolConfig#Constructor.minimumIdleMaintenance', {
 
     assert.throws(function() {
       return new PoolConfig({
-        minimumIdleRetryDelayMs: 1000,
-        minimumIdleMaxRetryDelayMs: 100
+        minimumIdleRetryDelayMs    : 1000,
+        minimumIdleMaxRetryDelayMs : 100
       });
     }, /cannot be less than/);
   }
