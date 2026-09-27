@@ -8,7 +8,7 @@ The existing `timeout` option is refreshed when protocol activity occurs. It pro
 
 ## `operationTimeout`: absolute operation deadline
 
-`operationTimeout` is a non-refreshing deadline measured in milliseconds from creation of the query sequence. Queueing time therefore counts toward the deadline. `0` disables the deadline.
+`operationTimeout` is a non-refreshing end-to-end budget in milliseconds. `0` disables the deadline.
 
 ```js
 connection.query({
@@ -25,6 +25,42 @@ In this example:
 
 The operation deadline is fatal to the physical connection because the MySQL classic protocol does not provide a safe in-band way to abandon the active command and then continue consuming that same connection without first re-establishing protocol synchronisation.
 
-`operationTimeout` must be a non-negative safe integer. The current M5.2 tranche applies it to text queries, including Promise queries because they use the same underlying query sequence. `AbortSignal` remains independently supported by Promise text queries; whichever cancellation condition wins first settles the operation and the connection is not reused.
+`operationTimeout` must be a non-negative safe integer.
 
-Prepared execution will adopt the same absolute-deadline primitive in the next M5.2 tranche so prepare/execute orchestration can share one deadline rather than resetting the budget between protocol phases.
+## Text queries
+
+For `query()`, the absolute deadline is created when the query sequence is created. Time spent queued behind earlier commands therefore consumes the operation budget. When the sequence becomes active, NuBloxSQL starts a timer for the remaining budget; protocol packets do not refresh it.
+
+Promise text queries use the same underlying query sequence. `AbortSignal` remains independently supported; whichever cancellation condition wins first settles the operation and the physical connection is not reused.
+
+## Prepared execution
+
+`execute()` uses one absolute deadline for the entire prepared-operation orchestration:
+
+```js
+connection.execute({
+  sql: 'SELECT ? + ?',
+  values: [20, 22],
+  operationTimeout: 30000
+}, callback);
+```
+
+For a cache miss, the same deadline timestamp is passed to both `COM_STMT_PREPARE` and `COM_STMT_EXECUTE`. A cache hit uses the existing deadline directly for execution. If MySQL requires the driver's one-shot safe reprepare path, that retry also reuses the original deadline rather than receiving a fresh timeout budget.
+
+Pool execution calculates the deadline before waiting for a connection, so pool acquisition time also consumes the same budget. Promise `execute()` uses the same prepared orchestration and therefore receives identical deadline semantics.
+
+This behavior prevents a nominal 30-second operation from expanding into separate 30-second PREPARE, EXECUTE and retry windows.
+
+## Error shape
+
+When the absolute deadline expires, NuBloxSQL raises a fatal error:
+
+```text
+PROTOCOL_OPERATION_TIMEOUT
+```
+
+The error includes `operationTimeout` with the original configured budget.
+
+## Next cancellation work
+
+M5.2 will next extend first-class `AbortSignal` cancellation from Promise text queries to prepared execution, using the same connection-discard rule so cancelled protocol state is never returned to the pool.
