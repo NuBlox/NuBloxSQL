@@ -2,7 +2,7 @@
 
 NuBloxSQL is a modern MySQL client for Node.js focused on protocol correctness, production resilience, observability and low-friction migration from established MySQL driver APIs.
 
-The package supports CommonJS and native ESM, callback and Promise APIs, modern MySQL authentication, server-side prepared statements, typed binary parameters, bounded prepared-statement caching, named placeholders, transaction orchestration, pool health metrics, async iteration and zlib/zstd connection compression.
+The package supports CommonJS and native ESM, callback and Promise APIs, modern MySQL authentication, server-side prepared statements, typed binary parameters, bounded prepared-statement caching, named placeholders, transaction orchestration, pool health metrics, deterministic pool warm-up, async iteration and zlib/zstd connection compression.
 
 ## Table of Contents
 
@@ -63,7 +63,7 @@ const mysql = require('@nublox/mysql');
 const connection = mysql.createConnection({
   host: '127.0.0.1',
   user: 'app',
-  password: process.env.DB_PASSWORD,
+  password: 'secret',
   database: 'app'
 });
 
@@ -108,6 +108,7 @@ NuBlox-specific and modernised options include:
 - `allowPublicKeyRetrieval` and `serverPublicKey` for explicit non-TLS SHA-2 authentication policy.
 - `compressionAlgorithms` for ordered connection-compression policy.
 - `zstdCompressionLevel` for MySQL zstd levels 1 through 22; the default is 3.
+- `minimumIdle` to define the idle target used by explicit pool warm-up.
 
 ### Compression
 
@@ -299,15 +300,33 @@ Deadlock and lock-wait retry is opt-in because retrying a transaction can repeat
 
 ## Pooling
 
-Create a pool using the familiar connection-limit and queue options:
+Create a pool using connection limits, queue limits and an optional minimum-idle target:
 
 ```js
 const pool = mysql.createPool({
   ...config,
   connectionLimit: 20,
+  minimumIdle: 5,
   queueLimit: 100
 });
 ```
+
+`minimumIdle` does not open network connections merely by constructing the pool. Warm the pool explicitly during application startup when you are ready to handle connection errors:
+
+```js
+const result = await pool.warmup();
+
+console.log(result);
+// { target: 5, created: 5, idle: 5, total: 5, limited: false }
+```
+
+You can override the configured target for a specific warm-up:
+
+```js
+await pool.warmup(10);
+```
+
+Warm-up respects `connectionLimit`, reuses already-idle connections, and hands newly established connections to queued application demand if requests arrive while warming. It does not emit `acquire` events for connections that remain idle. Callback pools expose the same operation as `pool.warmup([count], callback)`.
 
 Operational pool state is available without inspecting private arrays:
 
@@ -316,7 +335,7 @@ console.log(pool.stats());
 const health = await pool.healthCheck();
 ```
 
-Statistics expose total, active, idle, acquiring and queued connections, configured limits, utilisation and saturation state.
+Statistics expose total, active, idle, acquiring and queued connections, configured limits, the minimum-idle target, utilisation and saturation state. Promise warm-up also publishes `nublox.mysql.pool.warmup.start`, `.end` and `.error` diagnostics events without credentials or bind values.
 
 ## Streaming
 
@@ -334,7 +353,7 @@ The implementation preserves stream backpressure rather than buffering an entire
 
 ## Observability
 
-NuBloxSQL publishes operational events through Node.js `diagnostics_channel`, including query timing and failures, pool acquisition, transaction retry, prepared-statement cache activity and manual statement lifecycle events.
+NuBloxSQL publishes operational events through Node.js `diagnostics_channel`, including query timing and failures, pool acquisition and warm-up, transaction retry, prepared-statement cache activity and manual statement lifecycle events.
 
 Bind values are not included in diagnostics events by default.
 
@@ -388,6 +407,17 @@ MYSQL_DATABASE=test \
 npm run test:compression:zstd
 ```
 
+Run live pool warm-up verification:
+
+```bash
+MYSQL_HOST=127.0.0.1 \
+MYSQL_PORT=3306 \
+MYSQL_USER=root \
+MYSQL_PASSWORD=secret \
+MYSQL_DATABASE=test \
+npm run test:pool-warmup
+```
+
 CI validates supported Node versions and runs live compatibility suites against MySQL 8.4 and the current MySQL 9.x line.
 
 ## Security
@@ -399,6 +429,7 @@ Security-sensitive defaults are deliberate:
 - Multiple statements are disabled by default.
 - Compression fallback is explicit through `compressionAlgorithms`.
 - Prepared-statement cache size is bounded.
+- Pool warm-up is explicit rather than an implicit constructor side effect.
 - Diagnostics avoid bind values by default.
 
 Please report security issues privately through the NuBlox project security channel rather than publishing credentials or exploit details in a public issue.

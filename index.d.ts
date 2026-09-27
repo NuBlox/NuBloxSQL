@@ -79,6 +79,7 @@ declare namespace mysql {
     waitForConnections?: boolean;
     connectionLimit?: number;
     queueLimit?: number;
+    minimumIdle?: number;
   }
 
   interface QueryOptions {
@@ -181,10 +182,19 @@ declare namespace mysql {
     acquiring: number;
     queued: number;
     limit: number;
+    minimumIdle: number;
     queueLimit: number;
     closed: boolean;
     utilization: number | null;
     saturated: boolean;
+  }
+
+  interface PoolWarmupResult {
+    target: number;
+    created: number;
+    idle: number;
+    total: number;
+    limited: boolean;
   }
 
   interface HealthCheckResult {
@@ -258,6 +268,7 @@ declare namespace mysql {
 
   interface Pool {
     getConnection(callback: (error: Error | null, connection?: Connection) => void): void;
+    warmup(count?: number, callback?: (error: Error | null, result?: PoolWarmupResult) => void): void;
     query(sql: string | QueryOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): Query;
     execute(sql: string | ExecuteOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): unknown;
     end(callback?: (error?: Error) => void): void;
@@ -300,6 +311,7 @@ declare namespace mysql {
     readonly pool: Pool;
     readonly config: PoolOptions;
     getConnection(): Promise<PromiseConnection>;
+    warmup(count?: number): Promise<PoolWarmupResult>;
     query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[] | Record<string, unknown>): Promise<QueryTuple<T>>;
     execute<T = QueryResult>(sql: string | ExecuteOptions, values?: unknown[] | Record<string, unknown>): Promise<QueryTuple<T>>;
     end(): Promise<void>;
