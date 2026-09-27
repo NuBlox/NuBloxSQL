@@ -20,6 +20,11 @@ function writeUInt24(buffer, value, offset) {
   buffer[offset + 2] = (value >>> 16) & 0xff;
 }
 
+function supportsZstd() {
+  return typeof Zlib.zstdCompressSync === 'function' &&
+    typeof Zlib.zstdDecompressSync === 'function';
+}
+
 test('CompressedProtocol', {
   'compresses and restores a compressible payload': function() {
     var encoder = new CompressedProtocol();
@@ -31,6 +36,32 @@ test('CompressedProtocol', {
     decoder.activate('zlib');
 
     var frame = encoder.encode(original);
+    assert.strictEqual(frame[3], 0);
+    assert.strictEqual(readUInt24(frame, 4), original.length);
+    assert.ok(readUInt24(frame, 0) < original.length);
+
+    decoder.write(frame, function(payload) {
+      decoded = payload;
+    });
+
+    assert.deepStrictEqual(decoded, original);
+  },
+
+  'compresses and restores a zstd payload when runtime support exists': function() {
+    if (!supportsZstd()) {
+      return;
+    }
+
+    var encoder = new CompressedProtocol();
+    var decoder = new CompressedProtocol();
+    var original = Buffer.alloc(4096, 0x5a);
+    var decoded;
+
+    encoder.activate({algorithm: 'zstd', level: 7});
+    decoder.activate({algorithm: 'zstd', level: 7});
+
+    var frame = encoder.encode(original);
+    assert.strictEqual(encoder.algorithm(), 'zstd');
     assert.strictEqual(frame[3], 0);
     assert.strictEqual(readUInt24(frame, 4), original.length);
     assert.ok(readUInt24(frame, 0) < original.length);
@@ -127,6 +158,29 @@ test('CompressedProtocol', {
       decoder.write(frame, function() {});
     }, function(error) {
       return error.code === 'PROTOCOL_COMPRESSION_INFLATE_ERROR' && error.fatal === true;
+    });
+  },
+
+  'bounds zstd decompression to the declared uncompressed length': function() {
+    if (!supportsZstd()) {
+      return;
+    }
+
+    var decoder = new CompressedProtocol();
+    var original = Buffer.alloc(4096, 0x62);
+    var compressed = Zlib.zstdCompressSync(original);
+    var frame = Buffer.alloc(7 + compressed.length);
+
+    decoder.activate({algorithm: 'zstd', level: 3});
+    writeUInt24(frame, compressed.length, 0);
+    frame[3] = 0;
+    writeUInt24(frame, 32, 4);
+    compressed.copy(frame, 7);
+
+    assert.throws(function() {
+      decoder.write(frame, function() {});
+    }, function(error) {
+      return error.code === 'PROTOCOL_COMPRESSION_ZSTD_DECOMPRESS_ERROR' && error.fatal === true;
     });
   },
 
