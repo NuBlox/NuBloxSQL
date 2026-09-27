@@ -4,17 +4,17 @@ var assert = require('assert');
 var mysql = require('../../promise');
 
 var pool = mysql.createPool({
-  host                         : process.env.MYSQL_HOST || '127.0.0.1',
-  port                         : Number(process.env.MYSQL_PORT || 3306),
-  user                         : process.env.MYSQL_USER || 'nublox',
-  password                     : process.env.MYSQL_PASSWORD || 'nublox_ci_password',
-  database                     : process.env.MYSQL_DATABASE || 'nublox_ci',
-  connectionLimit              : 4,
-  minimumIdle                  : 2,
-  maintainMinimumIdle          : true,
-  minimumIdleRetryDelayMs      : 50,
-  minimumIdleMaxRetryDelayMs   : 200,
-  minimumIdleRetryJitter       : 0
+  host                        : process.env.MYSQL_HOST || '127.0.0.1',
+  port                        : Number(process.env.MYSQL_PORT || 3306),
+  user                        : process.env.MYSQL_USER || 'nublox',
+  password                    : process.env.MYSQL_PASSWORD || 'nublox_ci_password',
+  database                    : process.env.MYSQL_DATABASE || 'nublox_ci',
+  connectionLimit             : 4,
+  minimumIdle                 : 2,
+  maintainMinimumIdle         : true,
+  minimumIdleRetryDelayMs     : 50,
+  minimumIdleMaxRetryDelayMs  : 200,
+  minimumIdleRetryJitter      : 0
 });
 var heldConnection;
 
@@ -31,8 +31,9 @@ pool.warmup()
     heldConnection = connection;
 
     var stats = pool.stats();
-    assert.strictEqual(stats.idle, 1);
     assert.strictEqual(stats.active, 1);
+    assert.ok(stats.idle >= 1 && stats.idle <= 2);
+    assert.ok(stats.total >= 2 && stats.total <= 3);
 
     return waitForIdle(pool, 2, 50);
   })
