@@ -19,11 +19,15 @@ var pool = mysql.createPool(Object.assign({}, baseConfig, {
   minimumIdle     : 3
 }));
 var heldConnection;
+var firstWarmup = concurrentPool.warmup();
+var secondWarmup = concurrentPool.warmup();
 
-Promise.all([
-  concurrentPool.warmup(),
-  concurrentPool.warmup()
-])
+firstWarmup
+  .then(function (firstResult) {
+    return secondWarmup.then(function (secondResult) {
+      return [firstResult, secondResult];
+    });
+  })
   .then(function (results) {
     assert.strictEqual(results[0].created + results[1].created, 3);
 
@@ -94,12 +98,13 @@ Promise.all([
       heldConnection = null;
     }
 
-    Promise.all([
-      concurrentPool.end().catch(function () {}),
-      pool.end().catch(function () {})
-    ]).then(function () {
-      process.nextTick(function () {
-        throw error;
+    concurrentPool.end().catch(function () {})
+      .then(function () {
+        return pool.end().catch(function () {});
+      })
+      .then(function () {
+        process.nextTick(function () {
+          throw error;
+        });
       });
-    });
   });
