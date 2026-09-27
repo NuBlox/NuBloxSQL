@@ -4,9 +4,10 @@
   "nubloxPackage": "@nublox/mysql",
   "nubloxVersion": "3.1.0-rc.1",
   "repository": "NuBlox/NuBloxSQL",
+  "nubloxLicense": "Apache-2.0",
   "upstreamRepository": "mysqljs/mysql",
   "upstreamCommit": "dc9c152a87ec51a1f647447268917243d2eab1fd",
   "upstreamVersion": "2.18.1",
-  "license": "MIT",
+  "upstreamLicense": "MIT",
   "masteredPath": "."
 }

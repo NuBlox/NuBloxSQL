@@ -4,10 +4,11 @@ This repository is the NuBlox-owned evolution of the `mysqljs/mysql` Node.js MyS
 
 ## Ownership and copyright
 
-- Copyright owner of all original NuBlox modifications, enhancements, documentation, tests, benchmarks and other original contributions: **Stephen Spittal**.
-- Package author: **Stephen Spittal**.
-- Upstream `mysqljs/mysql` portions retain their original copyright notice and MIT licence attribution as required by the inherited licence.
-- No upstream copyright notice transfers ownership of Stephen Spittal's original NuBlox contributions.
+- Copyright owner of all original NuBlox modifications, enhancements, documentation, tests, benchmarks and other original contributions: **Stephen J T Spittal**.
+- Package author: **Stephen J T Spittal**.
+- NuBloxSQL is distributed under the **Apache License, Version 2.0**.
+- Upstream `mysqljs/mysql` portions retain their original copyright notice and MIT licence attribution in `THIRD_PARTY_NOTICES` as required by the inherited licence.
+- No upstream copyright notice transfers ownership of Stephen J T Spittal's original NuBlox contributions.
 
 ## Provenance
 
@@ -16,7 +17,8 @@ This repository is the NuBlox-owned evolution of the `mysqljs/mysql` Node.js MyS
 - Upstream version at initial mastering: `2.18.1`
 - Initial upstream commit: `dc9c152a87ec51a1f647447268917243d2eab1fd`
 - Initial mastering date: `2026-09-26`
-- Upstream licence: MIT (retained in `License` for inherited portions)
+- NuBlox licence: Apache-2.0 (`LICENSE` and `NOTICE`)
+- Upstream licence: MIT (`THIRD_PARTY_NOTICES`)
 - NuBlox package identity: `@nublox/mysql`
 - First NuBlox release-candidate line: `3.1.0-rc.x`
 

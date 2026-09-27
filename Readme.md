@@ -436,8 +436,10 @@ Please report security issues privately through the NuBlox project security chan
 
 ## Licence and Provenance
 
-NuBloxSQL is the authoritative source for `@nublox/mysql`. The project evolved from MIT-licensed Node.js MySQL driver lineage and retains the licence and historical attribution required for inherited code.
+NuBloxSQL (`@nublox/mysql`) is distributed under the Apache License, Version 2.0. Copyright 2026 Stephen J T Spittal.
+
+The project evolved from the MIT-licensed `mysqljs/mysql` Node.js driver. The original upstream copyright and MIT permission notice for inherited portions are preserved in `THIRD_PARTY_NOTICES`.
 
 Historical provenance does not make an upstream repository an operational dependency or authority over NuBloxSQL. Current implementation, architecture, testing, releases and roadmap are owned and maintained in this repository.
 
-See `License`, `NUBLOX-MASTERED-PACKAGE.md` and the repository provenance records for details.
+See `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES`, `NUBLOX-MASTERED-PACKAGE.md` and the repository provenance records for details.
