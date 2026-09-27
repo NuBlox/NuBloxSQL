@@ -9,8 +9,8 @@ var Protocol = require(path.resolve(common.lib, 'protocol/Protocol'));
 
 function createProtocol() {
   return new Protocol({
-    config: {},
-    connection: {state: 'authenticated'}
+    config     : {},
+    connection : {state: 'authenticated'}
   });
 }
 
@@ -89,8 +89,8 @@ test('AbortSignal protocol cancellation', {
     var second = new AbortController();
 
     protocol.query({
-      sql: 'SELECT 1',
-      signals: [first.signal, second.signal]
+      sql     : 'SELECT 1',
+      signals : [first.signal, second.signal]
     }, function(error) {
       assert.ok(error);
       assert.strictEqual(error.code, 'ABORT_ERR');
