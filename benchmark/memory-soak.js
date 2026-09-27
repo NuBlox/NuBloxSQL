@@ -34,7 +34,7 @@ process.stdout.write(JSON.stringify({
     wireBytes    : parserWire.length,
     result       : parserResult
   },
-  writer    : {
+  writer: {
     payloadBytes : WRITER_BYTES,
     chunkBytes   : WRITER_CHUNK_BYTES,
     result       : writerResult
