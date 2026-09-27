@@ -13,10 +13,10 @@ test('CredentialProvider', {
   'resolves a password string without exposing it in context': function() {
     var observed;
     var config = new ConnectionConfig({
-      host: 'db.internal',
-      user: 'app',
-      database: 'core',
-      credentialProvider: function(context) {
+      host               : 'db.internal',
+      user               : 'app',
+      database           : 'core',
+      credentialProvider : function(context) {
         observed = context;
         return 'token-1';
       }
@@ -35,13 +35,13 @@ test('CredentialProvider', {
 
   'can rotate user database and password together': function() {
     var config = new ConnectionConfig({
-      user: 'bootstrap',
-      database: 'bootstrap_db',
-      credentialProvider: function() {
+      user               : 'bootstrap',
+      database           : 'bootstrap_db',
+      credentialProvider : function() {
         return {
-          user: 'ephemeral-user',
-          password: 'ephemeral-token',
-          database: 'tenant_db'
+          user     : 'ephemeral-user',
+          password : 'ephemeral-token',
+          database : 'tenant_db'
         };
       }
     });
@@ -56,7 +56,7 @@ test('CredentialProvider', {
   'supports asynchronous credential resolution': function(done) {
     var config = new ConnectionConfig({
       credentialProvider: function() {
-        return Promise.resolve({password: 'async-token'});
+        return global.Promise.resolve({password: 'async-token'});
       }
     });
 
@@ -102,7 +102,7 @@ test('CredentialProvider', {
     var config = new ConnectionConfig({
       credentialProvider: function() {
         calls++;
-        return Promise.resolve({password: 'handshake-token'});
+        return global.Promise.resolve({password: 'handshake-token'});
       }
     });
     var handshake = new Handshake({config: config}, function() {});
