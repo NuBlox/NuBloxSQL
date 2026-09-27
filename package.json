@@ -99,6 +99,7 @@
     "compatibility:check": "node tool/check-compatibility-manifest.js",
     "lint": "eslint . && node tool/lint-readme.js",
     "release:check": "node tool/check-release-readiness.js",
+    "security:audit": "npm audit --omit=dev --audit-level=high",
     "test": "node test/run.js",
     "test:binary-results": "node test/integration/binary-result-matrix-smoke.js",
     "test:compat:mysql2": "node test/compatibility/mysql2/live.js",
@@ -111,6 +112,7 @@
     "test:compression:zlib": "node test/integration/zlib-compression-smoke.js",
     "test:compression:zstd": "node test/integration/zstd-compression-smoke.js",
     "test:esm": "node test/compatibility/esm-contract.mjs",
+    "test:fuzz:protocol": "node test/fuzz/protocol-parser.js",
     "test:pool-maintenance": "node test/integration/pool-minimum-idle-maintenance-smoke.js",
     "test:pool-warmup": "node test/integration/pool-warmup-smoke.js",
     "test:stream-backpressure": "node test/integration/stream-backpressure-smoke.js",
@@ -119,7 +121,7 @@
     "test:unit": "FILTER=unit node test/run.js",
     "test-ci": "node tool/install-nyc.js --nyc-optional --reporter=lcovonly --reporter=text -- npm test",
     "test-cov": "node tool/install-nyc.js --reporter=html --reporter=text -- npm test",
-    "verify": "npm run lint && npm run test:unit && npm run compatibility:check && npm run test:compat:mysql2:contract && npm run test:esm && npm run release:check && npm pack --dry-run"
+    "verify": "npm run lint && npm run test:unit && npm run test:fuzz:protocol && npm run compatibility:check && npm run test:compat:mysql2:contract && npm run test:esm && npm run release:check && npm pack --dry-run"
   },
   "nublox": {
     "packageType": "NuBlox Mastered Package",
