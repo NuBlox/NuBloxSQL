@@ -241,7 +241,7 @@ runProfiles()
         zlib         : ['@nublox/mysql', 'mysql2'],
         zstd         : ['@nublox/mysql']
       },
-      results             : results
+      results            : results
     }, null, 2) + '\n');
   })
   .catch(function (error) {
