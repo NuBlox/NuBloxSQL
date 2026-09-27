@@ -73,6 +73,9 @@ jobs:
       - name: Validate compatibility manifest
         run: npm run compatibility:check
 
+      - name: Validate release readiness
+        run: npm run release:check
+
       - name: Verify mysql2 API contract
         run: npm run test:compat:mysql2:contract
 
