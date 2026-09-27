@@ -2,7 +2,7 @@
 
 ## Objective
 
-Build `@nublox/mysql` into a production-grade MySQL integration that exceeds the practical developer, reliability, security, observability and operations capabilities of current Node.js MySQL connectors while retaining a migration path from the `mysqljs/mysql` and mysql2 APIs.
+Build `@nublox/mysql` into a production-grade MySQL integration that exceeds the practical developer, reliability, security, observability and operations capabilities of current Node.js MySQL connectors while retaining a migration path from established mysql/mysql2 application APIs.
 
 This is an engineering programme, not a claim that the first NuBlox revision already leads every competitor in every dimension.
 
@@ -16,11 +16,11 @@ The first pinned mysql2 compatibility reference is `3.24.4` (reviewed 2026-09-26
 
 ## Baseline review
 
-The mastered `mysqljs/mysql` 2.18.1 baseline has strong callback compatibility and a mature classic-protocol parser, but its original configuration explicitly disables compression, connection attributes and plugin authentication. It also predates modern Promise-first Node.js application patterns, current LTS runtimes and built-in TypeScript declarations.
+The historical mysqljs/mysql 2.18.1 code lineage provided strong callback compatibility and a mature classic-protocol parser, but its original configuration explicitly disabled compression, connection attributes and plugin authentication. It also predates modern Promise-first Node.js application patterns, current LTS runtimes and built-in TypeScript declarations. NuBloxSQL is now developed, tested and released independently; historical lineage is not an operational upstream dependency.
 
 Current competitor capability floors include:
 
-| Capability | mysqljs/mysql 2.18.1 baseline | MySQL2 3.x | MariaDB Connector/Node.js 3.5 | NuBlox programme |
+| Capability | Historical mysqljs/mysql 2.18.1 baseline | MySQL2 3.x | MariaDB Connector/Node.js 3.5 | NuBlox programme |
 | --- | --- | --- | --- | --- |
 | Promise / async-await API | No | Yes | Yes | Implemented |
 | Native ESM entrypoints | No | Yes | Yes | Implemented with conditional exports and CommonJS parity |
@@ -29,7 +29,7 @@ Current competitor capability floors include:
 | Prepared statement cache | No | LRU | Yes | Bounded LRU implemented with stats and diagnostics |
 | Named placeholders | No built-in parity target | Yes | Connector-specific | Implemented for query/execute with mysql2-compatible opt-in semantics |
 | Modern auth plugins | Partial auth switch, native password only | Yes | Yes | Implemented and live-tested |
-| Compression | Explicitly disabled | Yes | Yes | zlib implemented and live-tested; zstd next |
+| Compression | Explicitly disabled | Yes | Yes | zlib and zstd implemented and live-tested |
 | Connection/query attributes | Explicitly disabled | Yes | Connector-specific | Planned with trace propagation |
 | AbortSignal cancellation | No first-class API | Limited connector-specific patterns | Connector-specific | Implemented for Promise connection queries |
 | Transaction callback orchestration | No | Application-managed | Application-managed helpers vary | Implemented |
@@ -44,7 +44,7 @@ Current competitor capability floors include:
 ## Engineering principles
 
 1. **Secure by default.** TLS verification remains enabled by default. Unsafe compatibility switches must be explicit.
-2. **No silent upstream overwrite.** Upstream is reference input, never authority over mastered NuBlox source.
+2. **NuBlox is authoritative.** Historical source lineage is provenance only; external repositories are reference inputs, never release or source authority for NuBloxSQL.
 3. **Protocol correctness before API sugar.** Prepared statements, authentication and server capability negotiation are implemented at packet level and verified against supported MySQL versions.
 4. **Cancellation has explicit semantics.** When a protocol operation cannot be safely cancelled in-band, the connector terminates the affected connection rather than pretending cancellation succeeded.
 5. **Retries are opt-in.** Transaction retries can repeat application code, so the default is zero retries. Callers explicitly choose retry behaviour.
@@ -120,17 +120,22 @@ Delivered:
 - zlib connection-compression policy through `compressionAlgorithms`, with explicit uncompressed fallback;
 - mysql2-style `compress: true` compatibility mapped to `zlib` then `uncompressed`;
 - capability-gated `CLIENT_COMPRESS` negotiation rather than unsafe raw-flag forcing;
+- zstd negotiation through `CLIENT_ZSTD_COMPRESSION_ALGORITHM` with explicit Node runtime feature detection;
+- ordered `zstd`, `zlib`, `uncompressed` policy and configurable zstd levels in MySQL's supported 1–22 range;
 - MySQL seven-byte compressed-packet framing, compressed sequence validation and transparent reinjection into the classic packet parser;
-- bounded zlib inflate to the server-declared uncompressed frame size;
+- bounded zlib/zstd decompression to the server-declared uncompressed frame size;
 - uncompressed compressed-frames when compression would expand a payload;
-- strict failure when zlib is required but not mutually supported;
-- live compressed transport validation against MySQL 8.4 and 9.x with large client-to-server and server-to-client payloads.
+- strict failure when required compression cannot be mutually negotiated;
+- live zlib and zstd transport validation against MySQL 8.4 and 9.x with large client-to-server and server-to-client payloads;
+- amortized O(1) parser pending-buffer dequeue using a head-index FIFO with bounded compaction instead of `Array.shift()` reindexing;
+- reproducible parser-fragmentation benchmark with CI smoke coverage across tiny and large network chunk sizes;
+- geometric `PacketWriter` capacity growth to avoid repeated linear-growth payload copies;
+- direct payload copying during final packet framing to avoid per-packet temporary slice allocation;
+- reproducible PacketWriter allocation benchmark with CI smoke coverage.
 
 Remaining M4 work:
 
-- zstd capability negotiation and transport with explicit Node runtime feature detection;
-- configurable zstd compression level within the server-supported range;
-- parser allocation profiling and buffer reuse;
+- continue parser/output allocation profiling and buffer-reuse opportunities using benchmark evidence;
 - configurable high-water marks and backpressure tests;
 - connection warm-up and pool minimum-idle controls;
 - query pipelining research with protocol-ordering safety constraints;
@@ -171,7 +176,7 @@ NuBlox should not describe this package as the leading Node.js MySQL connector u
 - pool recovery and failover behaviour under network faults;
 - no known high-severity dependency or SAST findings in the supported release;
 - stable TypeScript and Promise APIs;
-- documented migration tests from mysqljs/mysql and mysql2-compatible call patterns where promised.
+- documented migration tests from established mysql/mysql2-compatible call patterns where promised.
 
 ## External references used for the capability review
 
