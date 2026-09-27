@@ -68,6 +68,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "benchmark:memory-soak": "node --expose-gc benchmark/memory-soak.js",
     "benchmark:mysql2": "node benchmark/competitors/mysql2-query.js",
     "benchmark:mysql2:bulk": "node --expose-gc benchmark/competitors/mysql2-bulk-insert.js",
     "benchmark:mysql2:compression": "node --expose-gc benchmark/competitors/mysql2-compression.js",
