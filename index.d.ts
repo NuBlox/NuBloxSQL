@@ -70,6 +70,8 @@ declare namespace mysql {
     onServerPublicKey?: (key: string | Buffer) => void;
     maxPreparedStatements?: number;
     maxInboundPacketSize?: number;
+    maxMetadataSize?: number;
+    maxResultSetColumns?: number;
     compressionAlgorithms?: CompressionAlgorithm | CompressionAlgorithm[];
     zstdCompressionLevel?: number;
     compress?: boolean;
