@@ -105,3 +105,45 @@ test('PoolConfig#Constructor.minimumIdle', {
     }, /minimumIdle cannot exceed connectionLimit/);
   }
 });
+
+test('PoolConfig#Constructor.minimumIdleMaintenance', {
+  'is disabled by default with bounded retry defaults': function() {
+    var config = new PoolConfig({});
+
+    assert.strictEqual(config.maintainMinimumIdle, false);
+    assert.strictEqual(config.minimumIdleRetryDelayMs, 250);
+    assert.strictEqual(config.minimumIdleMaxRetryDelayMs, 10000);
+    assert.strictEqual(config.minimumIdleRetryJitter, 0.2);
+  },
+
+  'accepts explicit maintenance policy': function() {
+    var config = new PoolConfig({
+      maintainMinimumIdle        : true,
+      minimumIdleRetryDelayMs    : 100,
+      minimumIdleMaxRetryDelayMs : 2000,
+      minimumIdleRetryJitter     : 0.5
+    });
+
+    assert.strictEqual(config.maintainMinimumIdle, true);
+    assert.strictEqual(config.minimumIdleRetryDelayMs, 100);
+    assert.strictEqual(config.minimumIdleMaxRetryDelayMs, 2000);
+    assert.strictEqual(config.minimumIdleRetryJitter, 0.5);
+  },
+
+  'rejects unsafe retry policy': function() {
+    assert.throws(function() {
+      return new PoolConfig({minimumIdleRetryDelayMs: 0});
+    }, /positive integer/);
+
+    assert.throws(function() {
+      return new PoolConfig({minimumIdleRetryJitter: 1.1});
+    }, /number from 0 to 1/);
+
+    assert.throws(function() {
+      return new PoolConfig({
+        minimumIdleRetryDelayMs    : 1000,
+        minimumIdleMaxRetryDelayMs : 100
+      });
+    }, /cannot be less than/);
+  }
+});

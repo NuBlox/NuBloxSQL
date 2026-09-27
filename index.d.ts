@@ -80,6 +80,10 @@ declare namespace mysql {
     connectionLimit?: number;
     queueLimit?: number;
     minimumIdle?: number;
+    maintainMinimumIdle?: boolean;
+    minimumIdleRetryDelayMs?: number;
+    minimumIdleMaxRetryDelayMs?: number;
+    minimumIdleRetryJitter?: number;
   }
 
   interface QueryOptions {
