@@ -140,6 +140,15 @@ jobs:
           MYSQL_DATABASE: nublox_ci
         run: npm run test:pool-warmup
 
+      - name: Verify continuous minimum-idle maintenance
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: nublox_ci_password
+          MYSQL_DATABASE: nublox_ci
+        run: npm run test:pool-maintenance
+
       - name: Verify stream backpressure
         env:
           MYSQL_HOST: 127.0.0.1
