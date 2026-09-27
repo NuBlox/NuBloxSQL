@@ -29,7 +29,7 @@ Current competitor capability floors include:
 | Prepared statement cache | No | LRU | Yes | Bounded LRU implemented with stats and diagnostics |
 | Named placeholders | No built-in parity target | Yes | Connector-specific | Implemented for query/execute with mysql2-compatible opt-in semantics |
 | Modern auth plugins | Partial auth switch, native password only | Yes | Yes | Implemented and live-tested |
-| Compression | Explicitly disabled | Yes | Yes | M4 |
+| Compression | Explicitly disabled | Yes | Yes | zlib implemented and live-tested; zstd next |
 | Connection/query attributes | Explicitly disabled | Yes | Connector-specific | Planned with trace propagation |
 | AbortSignal cancellation | No first-class API | Limited connector-specific patterns | Connector-specific | Implemented for Promise connection queries |
 | Transaction callback orchestration | No | Application-managed | Application-managed helpers vary | Implemented |
@@ -113,15 +113,28 @@ Connection and query attributes remain planned separately and are not considered
 - mysql2-compatible execute, manual-prepare and named-placeholder surface checks;
 - live prepared-execute, cache, manual-lifecycle, reset-lifecycle and named-placeholder tests against MySQL 8.4 and 9.x.
 
-### M4 — Performance and transport
+### M4 — Performance and transport — in progress
 
-- Modern MySQL connection-compression negotiation for `zlib`, `zstd` and explicit uncompressed fallback policy.
-- Configurable zstd compression level within the server-supported range.
-- Parser allocation profiling and buffer reuse.
-- Configurable high-water marks and backpressure tests.
-- Connection warm-up and pool minimum-idle controls.
-- Query pipelining research with protocol-ordering safety constraints.
-- Expand the reproducible benchmark harness to pools, concurrency, streaming, bulk work, compression and memory.
+Delivered:
+
+- zlib connection-compression policy through `compressionAlgorithms`, with explicit uncompressed fallback;
+- mysql2-style `compress: true` compatibility mapped to `zlib` then `uncompressed`;
+- capability-gated `CLIENT_COMPRESS` negotiation rather than unsafe raw-flag forcing;
+- MySQL seven-byte compressed-packet framing, compressed sequence validation and transparent reinjection into the classic packet parser;
+- bounded zlib inflate to the server-declared uncompressed frame size;
+- uncompressed compressed-frames when compression would expand a payload;
+- strict failure when zlib is required but not mutually supported;
+- live compressed transport validation against MySQL 8.4 and 9.x with large client-to-server and server-to-client payloads.
+
+Remaining M4 work:
+
+- zstd capability negotiation and transport with explicit Node runtime feature detection;
+- configurable zstd compression level within the server-supported range;
+- parser allocation profiling and buffer reuse;
+- configurable high-water marks and backpressure tests;
+- connection warm-up and pool minimum-idle controls;
+- query pipelining research with protocol-ordering safety constraints;
+- expand the reproducible benchmark harness to pools, concurrency, streaming, bulk work, compression and memory.
 
 ### M5 — Enterprise resilience and security
 
