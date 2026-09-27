@@ -62,5 +62,87 @@ test('ResultSetResourceLimits', {
     assert.strictEqual(error.fatal, true);
     assert.strictEqual(error.metadataSize, 17);
     assert.strictEqual(error.limit, 16);
+  },
+
+  'rejects individual rows above maxRowSize': function() {
+    var resultSet = {};
+    var conn = connection({maxRowSize: 16});
+    var error;
+
+    try {
+      ResourceLimits.noteRowPacket(conn, resultSet, 17, false);
+    } catch (err) {
+      error = err;
+    }
+
+    assert.ok(error);
+    assert.strictEqual(error.code, 'PROTOCOL_RESULTSET_ROW_TOO_LARGE');
+    assert.strictEqual(error.fatal, true);
+    assert.strictEqual(error.rowSize, 17);
+    assert.strictEqual(error.limit, 16);
+  },
+
+  'does not accumulate streaming rows against buffered limits': function() {
+    var resultSet = {};
+    var conn = connection({
+      maxRowSize       : 16,
+      maxBufferedRows  : 1,
+      maxResultSetSize : 1
+    });
+
+    ResourceLimits.noteRowPacket(conn, resultSet, 1, false);
+    ResourceLimits.noteRowPacket(conn, resultSet, 1, false);
+
+    assert.strictEqual(resultSet.bufferedRows, undefined);
+    assert.strictEqual(resultSet.bufferedBytes, undefined);
+  },
+
+  'rejects buffered row counts above maxBufferedRows': function() {
+    var resultSet = {};
+    var conn = connection({
+      maxRowSize       : 16,
+      maxBufferedRows  : 2,
+      maxResultSetSize : 100
+    });
+    var error;
+
+    ResourceLimits.noteRowPacket(conn, resultSet, 5, true);
+    ResourceLimits.noteRowPacket(conn, resultSet, 5, true);
+
+    try {
+      ResourceLimits.noteRowPacket(conn, resultSet, 5, true);
+    } catch (err) {
+      error = err;
+    }
+
+    assert.ok(error);
+    assert.strictEqual(error.code, 'PROTOCOL_RESULTSET_ROWS_TOO_LARGE');
+    assert.strictEqual(error.fatal, true);
+    assert.strictEqual(error.rowCount, 3);
+    assert.strictEqual(error.limit, 2);
+  },
+
+  'rejects cumulative buffered row payload above maxResultSetSize': function() {
+    var resultSet = {};
+    var conn = connection({
+      maxRowSize       : 16,
+      maxBufferedRows  : 10,
+      maxResultSetSize : 10
+    });
+    var error;
+
+    ResourceLimits.noteRowPacket(conn, resultSet, 6, true);
+
+    try {
+      ResourceLimits.noteRowPacket(conn, resultSet, 5, true);
+    } catch (err) {
+      error = err;
+    }
+
+    assert.ok(error);
+    assert.strictEqual(error.code, 'PROTOCOL_RESULTSET_SIZE_TOO_LARGE');
+    assert.strictEqual(error.fatal, true);
+    assert.strictEqual(error.resultSetSize, 11);
+    assert.strictEqual(error.limit, 10);
   }
 });
