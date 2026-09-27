@@ -21,7 +21,8 @@ connection.connect()
       'CAST(? AS SIGNED) AS int32_value, CAST(? AS UNSIGNED) AS uint32_value, ' +
       'CAST(? AS SIGNED) AS int64_value, CAST(? AS UNSIGNED) AS uint64_value, ' +
       '? + 0e0 AS float_value, ? + 0e0 AS double_value, ' +
-      'CAST(? AS DECIMAL(30,9)) AS decimal_value, CONCAT(?, \'\') AS text_value, HEX(?) AS binary_hex',
+      'CAST(? AS DECIMAL(30,9)) AS decimal_value, CONCAT(?, \'\') AS text_value, HEX(?) AS binary_hex, ' +
+      'HEX(?) AS bit_hex, CAST(? AS YEAR) AS year_value',
       [
         mysql.param.int8(-128),
         mysql.param.uint16(65535),
@@ -33,7 +34,9 @@ connection.connect()
         mysql.param.double(123456.125),
         mysql.param.decimal('12345678901234567890.123456789'),
         mysql.param.text('NuBloxSQL'),
-        mysql.param.binary(Buffer.from([0, 127, 255]))
+        mysql.param.binary(Buffer.from([0, 127, 255])),
+        mysql.param.bit('100000000'),
+        mysql.param.year(2026)
       ]
     );
   })
@@ -51,6 +54,8 @@ connection.connect()
     assert.strictEqual(row.decimal_value, '12345678901234567890.123456789');
     assert.strictEqual(row.text_value, 'NuBloxSQL');
     assert.strictEqual(row.binary_hex, '007FFF');
+    assert.strictEqual(row.bit_hex, '0100');
+    assert.strictEqual(String(row.year_value), '2026');
 
     return connection.end();
   })
