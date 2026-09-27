@@ -111,6 +111,7 @@ declare namespace mysql {
     operationTimeout?: number;
     nestTables?: boolean | string;
     typeCast?: boolean | Function;
+    signal?: AbortSignalLike;
     namedPlaceholders?: boolean;
   }
 
