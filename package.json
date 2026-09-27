@@ -71,6 +71,7 @@
   "scripts": {
     "benchmark:mysql2": "node benchmark/competitors/mysql2-query.js",
     "benchmark:mysql2:prepared": "node --expose-gc benchmark/competitors/mysql2-prepared.js",
+    "benchmark:packet-writer": "node --expose-gc benchmark/packet-writer-allocation.js",
     "benchmark:parser-fragmentation": "node --expose-gc benchmark/parser-fragmentation.js",
     "compatibility:check": "node tool/check-compatibility-manifest.js",
     "lint": "eslint . && node tool/lint-readme.js",
