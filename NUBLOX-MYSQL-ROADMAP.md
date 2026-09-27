@@ -36,6 +36,7 @@ Current competitor capability floors include:
 | Deadlock/lock-timeout transaction retry | No | Application-managed | Application-managed | Implemented, opt-in |
 | Pool utilisation/saturation metrics | Internal arrays only | Limited public operational surface | Pool metrics vary | Implemented |
 | Health-check result surface | No | Application-managed | Application-managed | Implemented |
+| Deterministic pool warm-up | No | Application-managed | Connector-specific | Implemented with explicit `minimumIdle` target and callback/Promise API |
 | diagnostics_channel telemetry | No | Tracing channels | No equivalent baseline assumption | Implemented |
 | Async iteration over row stream | Stream only | Stream support | Stream support | Implemented via Node async iteration |
 | Resource-bound hostile-server defence | Legacy limits | Evolving | `maxAllowedColumns` and related controls | M5 |
@@ -128,16 +129,21 @@ Delivered:
 - strict failure when required compression cannot be mutually negotiated;
 - live zlib and zstd transport validation against MySQL 8.4 and 9.x with large client-to-server and server-to-client payloads;
 - amortized O(1) parser pending-buffer dequeue using a head-index FIFO with bounded compaction instead of `Array.shift()` reindexing;
+- single-buffer parser completion fast path that avoids temporary array allocation while preserving retained-prefix and multi-buffer semantics;
 - reproducible parser-fragmentation benchmark with CI smoke coverage across tiny and large network chunk sizes;
 - geometric `PacketWriter` capacity growth to avoid repeated linear-growth payload copies;
 - direct payload copying during final packet framing to avoid per-packet temporary slice allocation;
-- reproducible PacketWriter allocation benchmark with CI smoke coverage.
+- reproducible PacketWriter allocation benchmark with CI smoke coverage;
+- validated `minimumIdle` pool target with explicit callback and Promise `warmup()` APIs;
+- capacity-aware warm-up that respects `connectionLimit`, reuses existing idle connections and hands new connections to queued demand;
+- warm-up result telemetry plus `diagnostics_channel` start/end/error events;
+- live pool warm-up validation against MySQL 8.4 and 9.x.
 
 Remaining M4 work:
 
 - continue parser/output allocation profiling and buffer-reuse opportunities using benchmark evidence;
 - configurable high-water marks and backpressure tests;
-- connection warm-up and pool minimum-idle controls;
+- continuous minimum-idle maintenance with bounded reconnect backoff and jitter, if enabled explicitly;
 - query pipelining research with protocol-ordering safety constraints;
 - expand the reproducible benchmark harness to pools, concurrency, streaming, bulk work, compression and memory.
 
