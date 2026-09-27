@@ -32,6 +32,17 @@ test('operationTimeout', {
     assert.strictEqual(query._operationDeadlineAt, 0);
   },
 
+  'accepts the shared disabled deadline state': function() {
+    var query = new Query({
+      sql                 : 'SELECT 1',
+      operationTimeout    : 0,
+      operationDeadlineAt : 0
+    });
+
+    assert.strictEqual(query._operationTimeout, 0);
+    assert.strictEqual(query._operationDeadlineAt, 0);
+  },
+
   'rejects invalid operation deadlines': function() {
     [-1, 1.5, Number.MAX_SAFE_INTEGER + 1].forEach(function(value) {
       assert.throws(function() {
