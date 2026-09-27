@@ -2,7 +2,7 @@
 
 NuBloxSQL is a modern MySQL client for Node.js focused on protocol correctness, production resilience, observability and low-friction migration from established MySQL driver APIs.
 
-The package supports CommonJS and native ESM, callback and Promise APIs, modern MySQL authentication, server-side prepared statements, typed binary parameters, bounded prepared-statement caching, named placeholders, transaction orchestration, pool health metrics, async iteration and zlib connection compression.
+The package supports CommonJS and native ESM, callback and Promise APIs, modern MySQL authentication, server-side prepared statements, typed binary parameters, bounded prepared-statement caching, named placeholders, transaction orchestration, pool health metrics, async iteration and zlib/zstd connection compression.
 
 ## Table of Contents
 
@@ -107,19 +107,31 @@ NuBlox-specific and modernised options include:
 - `authPlugins` for pluggable authentication handlers.
 - `allowPublicKeyRetrieval` and `serverPublicKey` for explicit non-TLS SHA-2 authentication policy.
 - `compressionAlgorithms` for ordered connection-compression policy.
+- `zstdCompressionLevel` for MySQL zstd levels 1 through 22; the default is 3.
 
 ### Compression
 
-Compression is disabled by default. Enable zlib with explicit fallback policy:
+Compression is disabled by default. Prefer zstd with explicit zlib and uncompressed fallback:
 
 ```js
 const connection = mysql.createConnection({
   ...config,
-  compressionAlgorithms: ['zlib', 'uncompressed']
+  compressionAlgorithms: ['zstd', 'zlib', 'uncompressed'],
+  zstdCompressionLevel: 7
 });
 ```
 
-Require compression and fail the handshake if zlib is unavailable:
+Require zstd and fail the handshake if it is unavailable:
+
+```js
+const connection = mysql.createConnection({
+  ...config,
+  compressionAlgorithms: ['zstd'],
+  zstdCompressionLevel: 7
+});
+```
+
+Require zlib instead:
 
 ```js
 const connection = mysql.createConnection({
@@ -128,7 +140,7 @@ const connection = mysql.createConnection({
 });
 ```
 
-For migration compatibility, this is also supported:
+For mysql2 migration compatibility, this remains supported:
 
 ```js
 const connection = mysql.createConnection({
@@ -137,11 +149,11 @@ const connection = mysql.createConnection({
 });
 ```
 
-`compress: true` maps to `['zlib', 'uncompressed']`.
+`compress: true` maps to `['zlib', 'uncompressed']`. Use `compressionAlgorithms` when you want explicit ordered zstd/zlib/uncompressed policy.
 
-NuBloxSQL negotiates `CLIENT_COMPRESS` only when both client policy and server capability permit zlib. The compressed transport validates frame sequence numbers and declared uncompressed sizes, bounds inflate output to the declared frame size, and sends an uncompressed compressed-frame when zlib would make a payload larger.
+NuBloxSQL negotiates compression only when both client policy and server capabilities permit it. The driver deliberately selects one capability rather than advertising both zlib and zstd after selection, avoiding MySQL's zlib-precedence behaviour. zstd is backed by Node's built-in runtime implementation and is feature-detected when requested; no third-party native compression dependency is required.
 
-zstd support is the next M4 transport milestone and is not silently substituted for zlib.
+The compressed transport validates frame sequence numbers and declared uncompressed sizes, bounds decompression output to the declared frame size, and sends a valid uncompressed compressed-frame when compression would make a payload larger. Both zlib and zstd are exercised against live MySQL 8.4 and 9.x servers in CI.
 
 ### Modern Authentication
 
@@ -363,6 +375,17 @@ MYSQL_USER=root \
 MYSQL_PASSWORD=secret \
 MYSQL_DATABASE=test \
 npm run test:compression:zlib
+```
+
+Run live zstd transport verification:
+
+```bash
+MYSQL_HOST=127.0.0.1 \
+MYSQL_PORT=3306 \
+MYSQL_USER=root \
+MYSQL_PASSWORD=secret \
+MYSQL_DATABASE=test \
+npm run test:compression:zstd
 ```
 
 CI validates supported Node versions and runs live compatibility suites against MySQL 8.4 and the current MySQL 9.x line.
