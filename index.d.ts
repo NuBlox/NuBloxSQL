@@ -1,6 +1,7 @@
 declare namespace mysql {
   type IsolationLevel = 'READ UNCOMMITTED' | 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
   type PreparedInt64Input = number | bigint | string;
+  type CompressionAlgorithm = 'zlib' | 'uncompressed';
 
   interface AbortSignalLike {
     readonly aborted: boolean;
@@ -67,6 +68,8 @@ declare namespace mysql {
     serverPublicKey?: string | Buffer;
     onServerPublicKey?: (key: string | Buffer) => void;
     maxPreparedStatements?: number;
+    compressionAlgorithms?: CompressionAlgorithm | CompressionAlgorithm[];
+    compress?: boolean;
   }
 
   interface PoolOptions extends ConnectionOptions {
