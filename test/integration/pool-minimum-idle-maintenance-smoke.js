@@ -4,17 +4,17 @@ var assert = require('assert');
 var mysql = require('../../promise');
 
 var pool = mysql.createPool({
-  host : process.env.MYSQL_HOST || '127.0.0.1',
-  port : Number(process.env.MYSQL_PORT || 3306),
-  user : process.env.MYSQL_USER || 'nublox',
-  password : process.env.MYSQL_PASSWORD || 'nublox_ci_password',
-  database : process.env.MYSQL_DATABASE || 'nublox_ci',
-  connectionLimit : 4,
-  minimumIdle : 2,
-  maintainMinimumIdle : true,
-  minimumIdleRetryDelayMs : 50,
+  host                       : process.env.MYSQL_HOST || '127.0.0.1',
+  port                       : Number(process.env.MYSQL_PORT || 3306),
+  user                       : process.env.MYSQL_USER || 'nublox',
+  password                   : process.env.MYSQL_PASSWORD || 'nublox_ci_password',
+  database                   : process.env.MYSQL_DATABASE || 'nublox_ci',
+  connectionLimit            : 4,
+  minimumIdle                : 2,
+  maintainMinimumIdle        : true,
+  minimumIdleRetryDelayMs    : 50,
   minimumIdleMaxRetryDelayMs : 200,
-  minimumIdleRetryJitter : 0
+  minimumIdleRetryJitter     : 0
 });
 var heldConnection;
 
