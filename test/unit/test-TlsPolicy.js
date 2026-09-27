@@ -91,7 +91,7 @@ test('TlsPolicy', {
   'preserves raw SSL behaviour without a policy': function() {
     var config = new ConnectionConfig({
       ssl: {
-        minVersion        : 'TLSv1.1',
+        minVersion         : 'TLSv1.1',
         rejectUnauthorized : false
       }
     });
