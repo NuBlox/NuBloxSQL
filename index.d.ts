@@ -72,6 +72,9 @@ declare namespace mysql {
     maxInboundPacketSize?: number;
     maxMetadataSize?: number;
     maxResultSetColumns?: number;
+    maxRowSize?: number;
+    maxBufferedRows?: number;
+    maxResultSetSize?: number;
     compressionAlgorithms?: CompressionAlgorithm | CompressionAlgorithm[];
     zstdCompressionLevel?: number;
     compress?: boolean;
