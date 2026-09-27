@@ -16,7 +16,9 @@ var requiredFiles = [
   'promise.d.ts',
   'Readme.md',
   'Changes.md',
-  'License',
+  'LICENSE',
+  'NOTICE',
+  'THIRD_PARTY_NOTICES',
   'NUBLOX-MASTERED-PACKAGE.md',
   'NUBLOX-MYSQL-ROADMAP.md',
   'NUBLOX-UPSTREAM.json',
@@ -28,6 +30,8 @@ var requiredFiles = [
 assert.strictEqual(packageJson.name, '@nublox/mysql');
 assert.match(packageJson.version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
 assert.notStrictEqual(packageJson.private, true);
+assert.strictEqual(packageJson.license, 'Apache-2.0');
+assert.strictEqual(packageJson.author, 'Stephen J T Spittal');
 assert.strictEqual(packageJson.engines.node, '>=22');
 assert.ok(packageJson.exports['.']);
 assert.ok(packageJson.exports['./promise']);
@@ -35,8 +39,13 @@ assert.strictEqual(packageJson.exports['./package.json'], './package.json');
 assert.ok(packageJson.files.indexOf('lib/') !== -1);
 assert.ok(packageJson.files.indexOf('compatibility/') !== -1);
 assert.ok(packageJson.files.indexOf('docs/') !== -1);
+assert.ok(packageJson.files.indexOf('LICENSE') !== -1);
+assert.ok(packageJson.files.indexOf('NOTICE') !== -1);
+assert.ok(packageJson.files.indexOf('THIRD_PARTY_NOTICES') !== -1);
 assert.strictEqual(upstreamMetadata.nubloxPackage, packageJson.name);
 assert.strictEqual(upstreamMetadata.nubloxVersion, packageJson.version);
+assert.strictEqual(upstreamMetadata.nubloxLicense, 'Apache-2.0');
+assert.strictEqual(upstreamMetadata.upstreamLicense, 'MIT');
 
 requiredFiles.forEach(function (file) {
   assert.ok(fs.existsSync(path.join(root, file)), 'missing release file: ' + file);
