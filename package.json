@@ -42,7 +42,7 @@
     "after": "0.8.2",
     "eslint": "7.32.0",
     "mysql2": "3.24.4",
-    "seedrandom": "3.0.5",
+    "seedrandom": "5.5.0",
     "selfsigned": "5.5.0",
     "urun": "0.0.8",
     "utest": "0.0.8"
@@ -69,6 +69,7 @@
   },
   "scripts": {
     "benchmark:mysql2": "node benchmark/competitors/mysql2-query.js",
+    "benchmark:mysql2:pool": "node --expose-gc benchmark/competitors/mysql2-pool-concurrency.js",
     "benchmark:mysql2:prepared": "node --expose-gc benchmark/competitors/mysql2-prepared.js",
     "benchmark:packet-writer": "node --expose-gc benchmark/packet-writer-allocation.js",
     "benchmark:parser-fragmentation": "node --expose-gc benchmark/parser-fragmentation.js",
