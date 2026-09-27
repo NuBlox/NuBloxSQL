@@ -86,6 +86,7 @@
     "test:compression:zlib": "node test/integration/zlib-compression-smoke.js",
     "test:compression:zstd": "node test/integration/zstd-compression-smoke.js",
     "test:esm": "node test/compatibility/esm-contract.mjs",
+    "test:pool-maintenance": "node test/integration/pool-minimum-idle-maintenance-smoke.js",
     "test:pool-warmup": "node test/integration/pool-warmup-smoke.js",
     "test:stream-backpressure": "node test/integration/stream-backpressure-smoke.js",
     "test:temporal-json-parameters": "node test/integration/temporal-json-parameters-smoke.js",
