@@ -30,6 +30,25 @@ declare namespace mysql {
   ) => Buffer | null | undefined | Promise<Buffer | null | undefined>;
   type AuthPluginFactory = (context: AuthPluginContext) => AuthPluginHandler;
 
+  interface CredentialProviderContext {
+    readonly host: string;
+    readonly port: number;
+    readonly socketPath?: string;
+    readonly user?: string;
+    readonly database?: string;
+    readonly secure: boolean;
+  }
+
+  interface ResolvedCredentials {
+    password: string;
+    user?: string;
+    database?: string;
+  }
+
+  type CredentialProvider = (
+    context: Readonly<CredentialProviderContext>
+  ) => string | ResolvedCredentials | Promise<string | ResolvedCredentials>;
+
   interface SslOptions {
     ca?: string | Buffer | Array<string | Buffer>;
     cert?: string | Buffer;
@@ -65,6 +84,7 @@ declare namespace mysql {
     Promise?: PromiseConstructor;
     authPlugins?: Record<string, AuthPluginFactory>;
     defaultAuthPlugin?: string;
+    credentialProvider?: CredentialProvider;
     allowPublicKeyRetrieval?: boolean;
     serverPublicKey?: string | Buffer;
     onServerPublicKey?: (key: string | Buffer) => void;
