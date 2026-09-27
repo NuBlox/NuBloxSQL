@@ -118,13 +118,14 @@ Delivered:
 - minimum-idle start/end/error diagnostics without credentials or bind values;
 - live pool warm-up and minimum-idle maintenance validation against MySQL 8.4 and 9.x;
 - reproducible mysql2 pool-concurrency benchmark with throughput, percentile latency and memory-delta evidence;
-- reproducible mysql2 streaming benchmark with first-row latency, rows/sec, payload throughput and sampled peak/settled memory evidence, plus live MySQL 8.4/9.x CI smoke coverage.
+- reproducible mysql2 streaming benchmark with first-row latency, rows/sec, payload throughput and sampled peak/settled memory evidence, plus live MySQL 8.4/9.x CI smoke coverage;
+- reproducible mysql2 transactional bulk-insert benchmark with configurable batching, rows/sec, batch throughput/latency and sampled peak/settled memory evidence, plus live MySQL 8.4/9.x CI smoke coverage.
 
 Remaining M4 work:
 
 - continue parser/output allocation profiling and buffer-reuse opportunities using benchmark evidence;
 - query pipelining research with protocol-ordering safety constraints;
-- expand the reproducible benchmark harness to bulk work, compression and deeper memory profiling.
+- expand the reproducible benchmark harness to compression and deeper memory profiling.
 
 ### M5 — Enterprise resilience and security
 
