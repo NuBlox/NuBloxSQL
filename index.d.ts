@@ -91,6 +91,9 @@ declare namespace mysql {
     minimumIdleRetryDelayMs?: number;
     minimumIdleMaxRetryDelayMs?: number;
     minimumIdleRetryJitter?: number;
+    circuitBreakerThreshold?: number;
+    circuitBreakerCooldownMs?: number;
+    circuitBreakerHalfOpenMaxAttempts?: number;
   }
 
   interface QueryOptions {
@@ -197,6 +200,20 @@ declare namespace mysql {
     shouldRetry?: (error: unknown, attempt: number) => boolean;
   }
 
+  interface CircuitBreakerStats {
+    enabled: boolean;
+    state: 'closed' | 'open' | 'half-open';
+    failures: number;
+    threshold: number;
+    cooldownMs: number;
+    retryAfterMs: number;
+    halfOpenInFlight: number;
+    halfOpenLimit: number;
+    totalOpened: number;
+    totalRejected: number;
+    totalRecoveries: number;
+  }
+
   interface PoolStats {
     total: number;
     active: number;
@@ -293,6 +310,7 @@ declare namespace mysql {
     warmup(count?: number, callback?: (error: Error | null, result?: PoolWarmupResult) => void): void;
     query(sql: string | QueryOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): Query;
     execute(sql: string | ExecuteOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): unknown;
+    circuitBreakerStats(): CircuitBreakerStats;
     end(callback?: (error?: Error) => void): void;
     escape(value: unknown): string;
     escapeId(value: unknown): string;
@@ -340,6 +358,7 @@ declare namespace mysql {
     withTransaction<T>(work: (connection: PromiseConnection, attempt: number) => T | Promise<T>, options?: TransactionOptions): Promise<T>;
     healthCheck(): Promise<HealthCheckResult>;
     stats(): PoolStats;
+    circuitBreakerStats(): CircuitBreakerStats;
     escape(value: unknown): string;
     escapeId(value: unknown): string;
     stream<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: StreamOptions): AsyncRowStream<T>;
