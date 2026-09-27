@@ -32,6 +32,7 @@ exports.createPool = function createPool(config) {
   loadClass('PreparedStatementReset').decoratePool(pool);
   loadClass('NamedPlaceholders').decoratePool(pool);
   loadClass('PoolCircuitBreaker').decoratePool(pool);
+  loadClass('PoolAdmissionControl').decoratePool(pool);
   return decoratePool(pool, getPromiseImplementation(config));
 };
 
@@ -85,12 +86,12 @@ exports.escape = function escape(value, stringifyObjects, timeZone) {
 exports.escapeId = function escapeId(value, forbidQualified) {
   var SqlString = loadClass('SqlString');
 
-  return SqlString.escapeId(value, forbidQualified);
+  return SqlString.escapeId(value, false);
 };
 
 /**
  * Format SQL and replacement values into a SQL string.
- * @param {string} sql The SQL for the query
+ * @param {string} sql The SQL
  * @param {array} [values] Any values to insert into placeholders in sql
  * @param {boolean} [stringifyObjects=false] Setting if objects should be stringified
  * @param {string} [timeZone=local] Setting for time zone to use for Date conversion
@@ -158,8 +159,10 @@ function decorateConnection(connection, PromiseImpl) {
         var PromiseConnection = loadClass('PromiseConnection');
         var wrapper = new PromiseConnection(connection, overridePromise || PromiseImpl || global.Promise);
 
-        wrapper = loadClass('PreparedStatements').decoratePromiseConnection(wrapper);
-        return loadClass('PreparedStatementReset').decoratePromiseConnection(wrapper);
+        loadClass('PreparedStatements').decoratePromiseConnection(wrapper);
+        loadClass('PreparedStatementReset').decoratePromiseConnection(wrapper);
+        loadClass('NamedPlaceholders').decoratePromiseConnection(wrapper);
+        return wrapper;
       }
     });
   }
@@ -176,8 +179,10 @@ function decoratePool(pool, PromiseImpl) {
         var PromisePool = loadClass('PromisePool');
         var wrapper = new PromisePool(pool, overridePromise || PromiseImpl || global.Promise);
 
-        wrapper = loadClass('PreparedStatements').decoratePromisePool(wrapper);
-        return loadClass('PreparedStatementReset').decoratePromisePool(wrapper);
+        loadClass('PreparedStatements').decoratePromisePool(wrapper);
+        loadClass('PreparedStatementReset').decoratePromisePool(wrapper);
+        loadClass('NamedPlaceholders').decoratePromisePool(wrapper);
+        return wrapper;
       }
     });
   }
@@ -186,76 +191,17 @@ function decoratePool(pool, PromiseImpl) {
 }
 
 function getPromiseImplementation(config) {
-  if (config && typeof config === 'object' && typeof config.Promise === 'function') {
+  if (config && typeof config === 'object' && config.Promise) {
     return config.Promise;
   }
 
   return global.Promise;
 }
 
-/**
- * Load the given class.
- * @param {string} className Name of class to default
- * @return {function|object} Class constructor or exports
- * @private
- */
 function loadClass(className) {
-  var Class = Classes[className];
-
-  if (Class !== undefined) {
-    return Class;
+  if (!Classes[className]) {
+    Classes[className] = require('./lib/' + className);
   }
 
-  // This uses a switch for static require analysis
-  switch (className) {
-    case 'Connection':
-      Class = require('./lib/Connection');
-      break;
-    case 'ConnectionConfig':
-      Class = require('./lib/ConnectionConfig');
-      break;
-    case 'NamedPlaceholders':
-      Class = require('./lib/NamedPlaceholders');
-      break;
-    case 'Pool':
-      Class = require('./lib/Pool');
-      break;
-    case 'PoolCircuitBreaker':
-      Class = require('./lib/PoolCircuitBreaker');
-      break;
-    case 'PoolCluster':
-      Class = require('./lib/PoolCluster');
-      break;
-    case 'PoolConfig':
-      Class = require('./lib/PoolConfig');
-      break;
-    case 'PreparedStatementReset':
-      Class = require('./lib/PreparedStatementReset');
-      break;
-    case 'PreparedStatements':
-      Class = require('./lib/PreparedStatements');
-      break;
-    case 'PromiseConnection':
-      Class = require('./lib/PromiseConnection');
-      break;
-    case 'PromisePool':
-      Class = require('./lib/PromisePool');
-      break;
-    case 'SqlString':
-      Class = require('./lib/protocol/SqlString');
-      break;
-    case 'TypedParameter':
-      Class = require('./lib/TypedParameter');
-      break;
-    case 'Types':
-      Class = require('./lib/protocol/constants/types');
-      break;
-    default:
-      throw new Error('Cannot find class \' ' + className + '\'');
-  }
-
-  // Store to prevent invoking require()
-  Classes[className] = Class;
-
-  return Class;
+  return Classes[className];
 }
