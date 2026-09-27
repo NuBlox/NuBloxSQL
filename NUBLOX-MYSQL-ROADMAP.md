@@ -13,8 +13,7 @@ Current competitor capability floors include:
 | Capability | Legacy mysql | mysql2 | Modern connectors | NuBloxSQL |
 | --- | --- | --- | --- | --- |
 | Promise API | No | Yes | Usually | Implemented |
-| Native ESM | No | Yes | Usually | Implemented |
-| TypeScript declarations | Community | Yes | Usually | Implemented, parity expanding |
+| Native ESM | No | Yes | Usually | Implemented, parity expanding |
 | Modern SHA-2 auth | Partial | Yes | Yes | Implemented and live-tested |
 | Native prepared statements | No | Yes | Usually | Implemented |
 | Prepared statement cache | No | LRU | Yes | Bounded LRU implemented with stats and diagnostics |
@@ -120,13 +119,13 @@ Delivered:
 - reproducible mysql2 pool-concurrency benchmark with throughput, percentile latency and memory-delta evidence;
 - reproducible mysql2 streaming benchmark with first-row latency, rows/sec, payload throughput and sampled peak/settled memory evidence, plus live MySQL 8.4/9.x CI smoke coverage;
 - reproducible mysql2 transactional bulk-insert benchmark with configurable batching, rows/sec, batch throughput/latency and sampled peak/settled memory evidence, plus live MySQL 8.4/9.x CI smoke coverage;
-- reproducible transport-compression benchmark covering uncompressed and zlib parity against mysql2 plus NuBlox zstd, with throughput and settled-memory evidence and live MySQL 8.4/9.x CI smoke coverage.
+- reproducible transport-compression benchmark covering uncompressed and zlib parity against mysql2 plus NuBlox zstd, with throughput and settled-memory evidence and live MySQL 8.4/9.x CI smoke coverage;
+- long-duration parser and PacketWriter memory-soak profiler with peak deltas, post-GC settled deltas and least-squares settled-memory drift per cycle, plus Node 24 CI smoke coverage.
 
 Remaining M4 work:
 
-- continue parser/output allocation profiling and buffer-reuse opportunities using benchmark evidence;
-- query pipelining research with protocol-ordering safety constraints;
-- deepen long-duration and peak-memory profiling across representative workloads.
+- use the memory-soak, parser-fragmentation and PacketWriter benchmark evidence to identify and validate concrete parser/output buffer-reuse opportunities;
+- query pipelining research with protocol-ordering safety constraints.
 
 ### M5 — Enterprise resilience and security
 
