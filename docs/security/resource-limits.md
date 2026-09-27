@@ -77,6 +77,73 @@ PROTOCOL_RESULTSET_METADATA_TOO_LARGE
 
 The error exposes `metadataSize`, `limit` and `fatal: true`.
 
+## Individual row limit
+
+`maxRowSize` limits the logical classic-protocol payload size of one row packet before row decoding begins.
+
+The default is **64 MiB**.
+
+```js
+const connection = mysql.createConnection({
+  ...config,
+  maxRowSize: 64 * 1024 * 1024
+});
+```
+
+This limit applies to callback, Promise, streaming and async-iteration result paths, including prepared-statement binary rows. Oversized rows fail with:
+
+```text
+PROTOCOL_RESULTSET_ROW_TOO_LARGE
+```
+
+The error exposes `rowSize`, `limit` and `fatal: true`.
+
+## Buffered row-count limit
+
+`maxBufferedRows` limits the number of rows retained for one result set by APIs that materialise the complete result in memory.
+
+The default is **100,000 rows**.
+
+```js
+const connection = mysql.createConnection({
+  ...config,
+  maxBufferedRows: 100000
+});
+```
+
+The limit applies to callback/Promise text queries and prepared execution. Streaming and async iteration do not accumulate this counter because they emit rows under stream backpressure rather than retaining the complete result set.
+
+Exceeding the limit fails with:
+
+```text
+PROTOCOL_RESULTSET_ROWS_TOO_LARGE
+```
+
+The error exposes `rowCount`, `limit` and `fatal: true`.
+
+## Buffered result-set size limit
+
+`maxResultSetSize` limits the cumulative logical row-packet payload retained for one buffered result set.
+
+The default is **256 MiB**.
+
+```js
+const connection = mysql.createConnection({
+  ...config,
+  maxResultSetSize: 256 * 1024 * 1024
+});
+```
+
+Like `maxBufferedRows`, this control applies only to result paths that retain all rows in memory. Streaming and async iteration remain governed by `maxRowSize`, the inbound packet limit and stream backpressure.
+
+Exceeding the buffered byte limit fails with:
+
+```text
+PROTOCOL_RESULTSET_SIZE_TOO_LARGE
+```
+
+The error exposes `resultSetSize`, `limit` and `fatal: true`.
+
 ## Configuration summary
 
 | Option | Default | Boundary |
@@ -84,9 +151,12 @@ The error exposes `metadataSize`, `limit` and `fatal: true`.
 | `maxInboundPacketSize` | 64 MiB | One inbound logical MySQL packet |
 | `maxMetadataSize` | 8 MiB | Cumulative field metadata for one result set |
 | `maxResultSetColumns` | 4096 | Declared columns in one result set |
+| `maxRowSize` | 64 MiB | One decoded row packet |
+| `maxBufferedRows` | 100,000 | Rows retained by one buffered result set |
+| `maxResultSetSize` | 256 MiB | Cumulative row-packet payload retained by one buffered result set |
 
 All resource-limit values must be positive safe integers. Applications with legitimate workloads above a default can raise the relevant limit explicitly rather than disabling the safety boundary globally.
 
 ## M5 resource-safety programme
 
-The current M5 boundaries cover inbound logical packets, result-set column counts and cumulative field metadata. Follow-on work will add independently configurable controls for individual field/column payloads, buffered rows/result sets and other cumulative allocation surfaces. Those limits will be introduced with executable tests rather than inferred from the packet-size setting.
+The current M5 boundaries cover inbound logical packets, result-set column counts, cumulative field metadata, individual row payloads and buffered result accumulation. Follow-on work will address field/column value boundaries, operation deadlines/cancellation, pool admission controls and resilience observability with executable tests.
