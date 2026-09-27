@@ -323,17 +323,17 @@ global.Promise.all([
   })
   .then(function (results) {
     process.stdout.write(JSON.stringify({
-      benchmark         : 'bulk-batched-insert',
-      node              : process.version,
-      platform          : process.platform,
-      arch              : process.arch,
-      rows              : rows,
-      warmupRows        : warmupRows,
-      batchSize         : batchSize,
-      rounds            : rounds,
-      payloadBytesPerRow: payloadBytes,
-      gcExposed         : typeof global.gc === 'function',
-      results           : results
+      benchmark          : 'bulk-batched-insert',
+      node               : process.version,
+      platform           : process.platform,
+      arch               : process.arch,
+      rows               : rows,
+      warmupRows         : warmupRows,
+      batchSize          : batchSize,
+      rounds             : rounds,
+      payloadBytesPerRow : payloadBytes,
+      gcExposed          : typeof global.gc === 'function',
+      results            : results
     }, null, 2) + '\n');
 
     return cleanup();
