@@ -72,3 +72,36 @@ test('PoolConfig#Constructor.acquireTimeout', {
     assert.equal(config.acquireTimeout, 10000);
   }
 });
+
+test('PoolConfig#Constructor.minimumIdle', {
+  'defaults to zero': function() {
+    var config = new PoolConfig({});
+    assert.strictEqual(config.minimumIdle, 0);
+  },
+
+  'accepts a target within connectionLimit': function() {
+    var config = new PoolConfig({connectionLimit: 5, minimumIdle: 3});
+    assert.strictEqual(config.minimumIdle, 3);
+  },
+
+  'accepts a target with an unlimited pool': function() {
+    var config = new PoolConfig({connectionLimit: 0, minimumIdle: 20});
+    assert.strictEqual(config.minimumIdle, 20);
+  },
+
+  'rejects negative and fractional targets': function() {
+    assert.throws(function() {
+      return new PoolConfig({minimumIdle: -1});
+    }, /minimumIdle must be a non-negative integer/);
+
+    assert.throws(function() {
+      return new PoolConfig({minimumIdle: 1.5});
+    }, /minimumIdle must be a non-negative integer/);
+  },
+
+  'rejects a target above connectionLimit': function() {
+    assert.throws(function() {
+      return new PoolConfig({connectionLimit: 2, minimumIdle: 3});
+    }, /minimumIdle cannot exceed connectionLimit/);
+  }
+});
