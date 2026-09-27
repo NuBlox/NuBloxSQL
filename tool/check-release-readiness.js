@@ -4,6 +4,7 @@ var assert = require('assert');
 var fs = require('fs');
 var path = require('path');
 var packageJson = require('../package.json');
+var upstreamMetadata = require('../NUBLOX-UPSTREAM.json');
 
 var root = path.resolve(__dirname, '..');
 var requiredFiles = [
@@ -19,8 +20,9 @@ var requiredFiles = [
   'NUBLOX-MASTERED-PACKAGE.md',
   'NUBLOX-MYSQL-ROADMAP.md',
   'NUBLOX-UPSTREAM.json',
-  'compatibility/manifest.json',
-  'docs/architecture/query-pipelining.md'
+  'compatibility/mysql2.json',
+  'docs/architecture/query-pipelining.md',
+  'docs/releases/3.1.0-rc.1.md'
 ];
 
 assert.strictEqual(packageJson.name, '@nublox/mysql');
@@ -33,6 +35,8 @@ assert.strictEqual(packageJson.exports['./package.json'], './package.json');
 assert.ok(packageJson.files.indexOf('lib/') !== -1);
 assert.ok(packageJson.files.indexOf('compatibility/') !== -1);
 assert.ok(packageJson.files.indexOf('docs/') !== -1);
+assert.strictEqual(upstreamMetadata.nubloxPackage, packageJson.name);
+assert.strictEqual(upstreamMetadata.nubloxVersion, packageJson.version);
 
 requiredFiles.forEach(function (file) {
   assert.ok(fs.existsSync(path.join(root, file)), 'missing release file: ' + file);
