@@ -6,9 +6,18 @@ var path = require('path');
 var test = require('utest');
 
 var ResourceLimits = require(path.resolve(common.lib, 'protocol/ResultSetResourceLimits'));
+var Types = require(path.resolve(common.lib, 'protocol/constants/types'));
 
 function connection(options) {
   return {config: options || {}};
+}
+
+function parser(bytes) {
+  return {
+    peak: function(offset) {
+      return bytes[offset || 0];
+    }
+  };
 }
 
 test('ResultSetResourceLimits', {
@@ -32,6 +41,75 @@ test('ResultSetResourceLimits', {
     assert.strictEqual(error.fatal, true);
     assert.strictEqual(error.columnCount, 5);
     assert.strictEqual(error.limit, 4);
+  },
+
+  'accepts text fields within maxFieldSize': function() {
+    assert.doesNotThrow(function() {
+      ResourceLimits.assertTextFieldSize(connection({maxFieldSize: 16}), parser([16]));
+    });
+  },
+
+  'rejects text fields above maxFieldSize': function() {
+    var error;
+
+    try {
+      ResourceLimits.assertTextFieldSize(connection({maxFieldSize: 16}), parser([17]));
+    } catch (err) {
+      error = err;
+    }
+
+    assert.ok(error);
+    assert.strictEqual(error.code, 'PROTOCOL_RESULTSET_FIELD_TOO_LARGE');
+    assert.strictEqual(error.fatal, true);
+    assert.strictEqual(error.fieldSize, 17);
+    assert.strictEqual(error.limit, 16);
+  },
+
+  'rejects eight-byte encoded field sizes before allocation': function() {
+    var error;
+
+    try {
+      ResourceLimits.assertTextFieldSize(
+        connection({maxFieldSize: 1024}),
+        parser([254, 0, 0, 0, 0, 0, 0, 0, 1])
+      );
+    } catch (err) {
+      error = err;
+    }
+
+    assert.ok(error);
+    assert.strictEqual(error.code, 'PROTOCOL_RESULTSET_FIELD_TOO_LARGE');
+    assert.strictEqual(error.fieldSize, '72057594037927936');
+    assert.strictEqual(error.limit, 1024);
+  },
+
+  'does not apply length-coded field checks to fixed-width binary numbers': function() {
+    assert.doesNotThrow(function() {
+      ResourceLimits.assertBinaryFieldSize(
+        connection({maxFieldSize: 1}),
+        {type: Types.LONG},
+        parser([254, 255, 255, 255, 255, 255, 255, 255, 255])
+      );
+    });
+  },
+
+  'applies maxFieldSize to binary variable-length fields': function() {
+    var error;
+
+    try {
+      ResourceLimits.assertBinaryFieldSize(
+        connection({maxFieldSize: 16}),
+        {type: Types.VAR_STRING},
+        parser([17])
+      );
+    } catch (err) {
+      error = err;
+    }
+
+    assert.ok(error);
+    assert.strictEqual(error.code, 'PROTOCOL_RESULTSET_FIELD_TOO_LARGE');
+    assert.strictEqual(error.fieldSize, 17);
+    assert.strictEqual(error.limit, 16);
   },
 
   'accumulates metadata packet sizes within the configured limit': function() {
