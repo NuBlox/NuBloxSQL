@@ -31,6 +31,7 @@ test('Parser security boundaries', {
   'rejects length-coded buffers larger than their packet': function() {
     var errors = [];
     var parser = new Parser({
+      config  : {supportBigNumbers: false},
       onError : function(error) {
         errors.push(error);
       },
@@ -49,6 +50,7 @@ test('Parser security boundaries', {
     var errors = [];
     var packets = 0;
     var parser = new Parser({
+      config  : {supportBigNumbers: false},
       onError : function(error) {
         errors.push(error);
       },
@@ -75,6 +77,7 @@ test('Parser security boundaries', {
   'rejects fixed-width reads beyond the packet boundary': function() {
     var errors = [];
     var parser = new Parser({
+      config  : {supportBigNumbers: false},
       onError : function(error) {
         errors.push(error);
       },
