@@ -118,12 +118,13 @@
     },
     {
       "id": "compression",
-      "status": "partial",
+      "status": "supported",
       "milestone": "M4",
       "evidence": [
         "lib/protocol/CompressedProtocol.js",
         "test/unit/protocol/test-CompressedProtocol.js",
-        "test/integration/zlib-compression-smoke.js"
+        "test/integration/zlib-compression-smoke.js",
+        "test/integration/zstd-compression-smoke.js"
       ]
     },
     {
