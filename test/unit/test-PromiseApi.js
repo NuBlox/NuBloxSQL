@@ -111,6 +111,7 @@ connection.query('SELECT ?', [42])
       _closed               : false,
       config                : {
         connectionLimit : 4,
+        minimumIdle     : 0,
         queueLimit      : 10
       }
     }, global.Promise);
@@ -123,6 +124,7 @@ connection.query('SELECT ?', [42])
       acquiring   : 1,
       queued      : 2,
       limit       : 4,
+      minimumIdle : 0,
       queueLimit  : 10,
       closed      : false,
       utilization : 0.5,
