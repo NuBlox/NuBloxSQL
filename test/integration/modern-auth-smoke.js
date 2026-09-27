@@ -42,7 +42,7 @@ connection.connect()
         assert.strictEqual(context.host, config.host);
         assert.strictEqual(context.user, config.user);
         assert.strictEqual(Object.prototype.hasOwnProperty.call(context, 'password'), false);
-        return Promise.resolve(config.password);
+        return global.Promise.resolve(config.password);
       }
     });
 
