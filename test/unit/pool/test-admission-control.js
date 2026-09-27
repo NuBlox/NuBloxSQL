@@ -8,17 +8,17 @@ var test = require('utest');
 var PoolAdmissionControl = require(path.resolve(common.lib, 'PoolAdmissionControl'));
 var PoolConfig = require(path.resolve(common.lib, 'PoolConfig'));
 
-function createPool(config) {
+function createPool(config, enqueueImpl) {
   var pool = {
-    config                  : config,
-    _allConnections         : [{id: 1}, {id: 2}],
-    _freeConnections        : [],
-    _acquiringConnections   : [],
-    _connectionQueue        : [],
-    circuitBreakerStats     : function circuitBreakerStats() {
+    config                : config,
+    _allConnections       : [{id: 1}, {id: 2}],
+    _freeConnections      : [],
+    _acquiringConnections : [],
+    _connectionQueue      : [],
+    circuitBreakerStats   : function circuitBreakerStats() {
       return {enabled: true, state: 'closed'};
     },
-    _enqueueCallback        : function _enqueueCallback(callback) {
+    _enqueueCallback      : enqueueImpl || function _enqueueCallback(callback) {
       this._connectionQueue.push(callback);
     }
   };
@@ -29,9 +29,8 @@ function createPool(config) {
 test('Pool admission control', {
   'is disabled by default': function() {
     var pool = createPool(new PoolConfig({connectionLimit: 2}));
-    var callback = function() {};
 
-    pool._enqueueCallback(callback);
+    pool._enqueueCallback(function() {});
 
     assert.strictEqual(pool._connectionQueue.length, 1);
     assert.strictEqual(pool.admissionStats().enabled, false);
@@ -93,37 +92,20 @@ test('Pool admission control', {
         return true;
       }
     });
-    var pool = createPool(config);
-
-    pool._connectionQueue.push(function() {});
-    pool._enqueueCallback = PoolAdmissionControl.decoratePool(pool)._enqueueCallback;
-
-    // The fake original queue implementation does not implement queueLimit itself,
-    // so replace it with the production-equivalent hard-cap behaviour for this assertion.
-    var original = function(callback) {
+    var pool = createPool(config, function originalQueueLimit(callback) {
       process.nextTick(function() {
         var error = new Error('Queue limit reached.');
         error.code = 'POOL_ENQUEUELIMIT';
         callback(error);
       });
-    };
-    pool._nubloxAdmissionState = pool._nubloxAdmissionState;
+    });
 
-    // Recreate a minimal decorated pool with an original hard-cap enqueue function.
-    var capped = {
-      config: config,
-      _allConnections: pool._allConnections,
-      _freeConnections: [],
-      _acquiringConnections: [],
-      _connectionQueue: [function() {}],
-      _enqueueCallback: original,
-      circuitBreakerStats: pool.circuitBreakerStats
-    };
-    PoolAdmissionControl.decoratePool(capped);
+    pool._connectionQueue.push(function() {});
 
-    capped._enqueueCallback(function(error) {
+    pool._enqueueCallback(function(error) {
       assert.strictEqual(error.code, 'POOL_ENQUEUELIMIT');
       assert.strictEqual(evaluations, 0);
+      assert.strictEqual(pool.admissionStats().evaluated, 0);
       done();
     });
   },
