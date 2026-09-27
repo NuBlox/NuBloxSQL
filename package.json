@@ -42,7 +42,7 @@
     "after": "0.8.2",
     "eslint": "7.32.0",
     "mysql2": "3.24.4",
-    "seedrandom": "5.5.0",
+    "seedrandom": "3.0.5",
     "selfsigned": "5.5.0",
     "urun": "0.0.8",
     "utest": "0.0.8"
