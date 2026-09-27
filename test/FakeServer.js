@@ -118,9 +118,7 @@ FakeConnection.prototype.handshake = function(options) {
 };
 
 FakeConnection.prototype.ok = function ok() {
-  this._sendPacket(new Packets.OkPacket({
-    protocol41: this._handshakeOptions.protocol41 !== false
-  }));
+  this._sendPacket(new Packets.OkPacket());
   this._parser.resetPacketNumber();
 };
 
@@ -198,7 +196,7 @@ FakeConnection.prototype._handleQueryPacket = function _handleQueryPacket(packet
 
   if ((match = /^SELECT CURRENT_USER\(\);?$/i.exec(sql))) {
     this._sendPacket(new Packets.ResultSetHeaderPacket({
-      fieldCount: 2
+      fieldCount: 1
     }));
 
     this._sendPacket(new Packets.FieldPacket({
@@ -281,7 +279,7 @@ FakeConnection.prototype._handleQueryPacket = function _handleQueryPacket(packet
 
     var writer = new PacketWriter();
     writer.writeLengthCodedString('Ssl_cipher');
-    writer.writeLengthCodedString(this._stream.getCipher ? this._stream.getCipher().name : '');
+    writer.writeLengthCodedString(this._cipher ? this._cipher.name : '');
     this._stream.write(writer.toBuffer(this._parser));
 
     this._sendPacket(new Packets.EofPacket());
@@ -289,140 +287,223 @@ FakeConnection.prototype._handleQueryPacket = function _handleQueryPacket(packet
     return;
   }
 
-  this.error('Unknown query');
+  if (/INVALID/i.test(sql)) {
+    this.error('Invalid SQL', Errors.ER_PARSE_ERROR);
+    return;
+  }
+
+  this.error('Interrupted unknown query', Errors.ER_QUERY_INTERRUPTED);
 };
 
-FakeConnection.prototype._handlePacket = function(packet) {
-  if (packet instanceof Packets.ComQueryPacket) {
-    this._handleQueryPacket(packet);
-    return;
-  }
+FakeConnection.prototype._parsePacket = function _parsePacket(packetHeader) {
+  var Packet = this._determinePacket(packetHeader);
+  var packet = new Packet({protocol41: true});
 
-  if (packet instanceof Packets.ComPingPacket) {
-    this.ok();
-    return;
-  }
+  packet.parse(this._parser);
 
-  if (packet instanceof Packets.ComQuitPacket) {
-    this.destroy();
-    return;
-  }
+  switch (Packet) {
+    case Packets.AuthSwitchResponsePacket:
+      if (!this.emit('authSwitchResponse', packet)) {
+        this.deny('No auth response handler');
+      }
+      break;
+    case Packets.ClientAuthenticationPacket:
+      this.database = (packet.database || null);
+      this.user     = (packet.user || null);
 
-  if (packet instanceof Packets.ComStatisticsPacket) {
-    this._sendPacket(new Packets.StatisticsPacket({
-      message: 'Uptime: 0'
-    }));
-    this._parser.resetPacketNumber();
-    return;
-  }
+      if (!this.emit('clientAuthentication', packet)) {
+        this.ok();
+      }
+      break;
+    case Packets.SSLRequestPacket:
+      this._startTLS();
+      break;
+    case Packets.ComQueryPacket:
+      if (!this.emit('query', packet)) {
+        this._handleQueryPacket(packet);
+      }
+      break;
+    case Packets.ComPingPacket:
+      if (!this.emit('ping', packet)) {
+        this.ok();
+      }
+      break;
+    case Packets.ComChangeUserPacket:
+      this.database = (packet.database || null);
+      this.user     = (packet.user || null);
 
-  this.error('Unknown command');
+      if (!this.emit('changeUser', packet)) {
+        if (packet.user === 'does-not-exist') {
+          this.deny('User does not exist');
+          break;
+        } else if (packet.database === 'does-not-exist') {
+          this.error('Database does not exist', Errors.ER_BAD_DB_ERROR);
+          break;
+        }
+
+        this.ok();
+      }
+      break;
+    case Packets.ComQuitPacket:
+      if (!this.emit('quit', packet)) {
+        this._socket.end();
+      }
+      break;
+    default:
+      if (!this.emit(packet.constructor.name, packet)) {
+        throw new Error('Unexpected packet: ' + Packet.name);
+      }
+  }
 };
 
-FakeConnection.prototype._handlePacketQuery = function(packet) {
-  this._handleQueryPacket(packet);
-};
+FakeConnection.prototype._determinePacket = function _determinePacket(packetHeader) {
+  if (this._expectedNextPacket) {
+    var Packet = this._expectedNextPacket;
 
-FakeConnection.prototype._parsePacket = function(packetHeader) {
-  var packet = this._expectedNextPacket;
-
-  if (!packet) {
-    switch (this._parser.peak()) {
-      case 0x01:
-        packet = Packets.ComQuitPacket;
-        break;
-      case 0x03:
-        packet = Packets.ComQueryPacket;
-        break;
-      case 0x09:
-        packet = Packets.ComStatisticsPacket;
-        break;
-      case 0x0e:
-        packet = Packets.ComPingPacket;
-        break;
-      default:
-        packet = Packets.ClientAuthenticationPacket;
-        break;
+    if (Packet === Packets.ClientAuthenticationPacket) {
+      return !this._cipher && (this._parser.peak(1) << 8) & ClientConstants.CLIENT_SSL
+        ? Packets.SSLRequestPacket
+        : Packets.ClientAuthenticationPacket;
     }
+
+    this._expectedNextPacket = null;
+
+    return Packet;
   }
 
-  var packetInstance = new packet({
-    protocol41          : true,
-    serverCapabilities1 : this._handshakeInitializationPacket
-      ? this._handshakeInitializationPacket.serverCapabilities1
-      : 0,
-    serverCapabilities2 : this._handshakeInitializationPacket
-      ? this._handshakeInitializationPacket.serverCapabilities2
-      : 0
-  });
-
-  packetInstance.parse(this._parser);
-
-  if (packetInstance instanceof Packets.ClientAuthenticationPacket) {
-    this.user = packetInstance.user;
-    this.database = packetInstance.database;
-    this.emit('auth', packetInstance);
-    if (!this._handshakeOptions.noAutoAuth) {
-      this.ok();
-    }
-    return;
+  if (packetHeader.length === 0) {
+    return Packets.EmptyPacket;
   }
 
-  this.emit('packet', packetInstance);
-  this._handlePacket(packetInstance);
-};
-
-FakeConnection.prototype._writePacketStream = function(num) {
-  this._sendPacket(new Packets.ResultSetHeaderPacket({
-    fieldCount: 1
-  }));
-
-  this._sendPacket(new Packets.FieldPacket({
-    catalog    : 'def',
-    charsetNr  : Charsets.UTF8_GENERAL_CI,
-    name       : 'value',
-    protocol41 : true,
-    type       : Types.LONG
-  }));
-
-  this._sendPacket(new Packets.EofPacket());
-
-  for (var i = 0; i < num; i++) {
-    var writer = new PacketWriter();
-    writer.writeLengthCodedNumber(i);
-    this._stream.write(writer.toBuffer(this._parser));
+  var firstByte = this._parser.peak();
+  switch (firstByte) {
+    case 0x01: return Packets.ComQuitPacket;
+    case 0x03: return Packets.ComQueryPacket;
+    case 0x0e: return Packets.ComPingPacket;
+    case 0x11: return Packets.ComChangeUserPacket;
+    default:
+      throw new Error('Unknown packet, first byte: ' + firstByte);
   }
-
-  this._sendPacket(new Packets.EofPacket());
-  this._parser.resetPacketNumber();
 };
 
 FakeConnection.prototype.destroy = function() {
   this._socket.destroy();
 };
 
-FakeConnection.prototype.end = function() {
-  this._socket.end();
+FakeConnection.prototype._writePacketStream = function _writePacketStream(count) {
+  var remaining = count;
+  var timer = setInterval(writeRow.bind(this), 20);
+
+  this._socket.on('close', cleanup);
+  this._socket.on('error', cleanup);
+
+  this._sendPacket(new Packets.ResultSetHeaderPacket({
+    fieldCount: 2
+  }));
+
+  this._sendPacket(new Packets.FieldPacket({
+    catalog    : 'def',
+    charsetNr  : Charsets.UTF8_GENERAL_CI,
+    name       : 'id',
+    protocol41 : true,
+    type       : Types.LONG
+  }));
+
+  this._sendPacket(new Packets.FieldPacket({
+    catalog    : 'def',
+    charsetNr  : Charsets.UTF8_GENERAL_CI,
+    name       : 'title',
+    protocol41 : true,
+    type       : Types.VARCHAR
+  }));
+
+  this._sendPacket(new Packets.EofPacket());
+
+  function cleanup() {
+    clearInterval(timer);
+  }
+
+  function writeRow() {
+    if (remaining === 0) {
+      cleanup();
+
+      this._socket.removeListener('close', cleanup);
+      this._socket.removeListener('error', cleanup);
+
+      this._sendPacket(new Packets.EofPacket());
+      this._parser.resetPacketNumber();
+      return;
+    }
+
+    remaining -= 1;
+
+    var num = count - remaining;
+    var writer = new PacketWriter();
+    writer.writeLengthCodedString(num);
+    writer.writeLengthCodedString('Row #' + num);
+    this._socket.write(writer.toBuffer(this._parser));
+  }
 };
 
-FakeConnection.prototype.pause = function() {
-  this._socket.pause();
-};
+if (tls.TLSSocket) {
+  // 0.11+ environment
+  FakeConnection.prototype._startTLS = function _startTLS() {
+    // halt parser
+    this._parser.pause();
+    this._socket.removeAllListeners('data');
 
-FakeConnection.prototype.resume = function() {
-  this._socket.resume();
-};
+    // socket <-> encrypted
+    var secureContext = tls.createSecureContext(common.getSSLConfig(this._server._options.ssl));
+    var secureSocket  = new tls.TLSSocket(this._socket, {
+      secureContext : secureContext,
+      isServer      : true
+    });
 
-FakeConnection.prototype.ssl = function(callback) {
-  var tlsOptions = common.extend({
-    isServer : true,
-    key      : this._handshakeOptions.key,
-    cert     : this._handshakeOptions.cert
-  }, this._handshakeOptions.tls || {});
+    // cleartext <-> protocol
+    secureSocket.on('data', this._handleData.bind(this));
+    this._stream = secureSocket;
 
-  var tlsSocket = new tls.TLSSocket(this._socket, tlsOptions);
+    var conn = this;
+    secureSocket.on('secure', function () {
+      conn._cipher = this.getCipher();
+    });
 
-  this._stream = tlsSocket;
-  tlsSocket.on('data', this._handleData.bind(this));
-  callback();
-};
+    // resume
+    var parser = this._parser;
+    process.nextTick(function() {
+      var buffer = parser._buffer.slice(parser._offset);
+      parser._offset = parser._buffer.length;
+      parser.resume();
+      secureSocket.ssl.receive(buffer);
+    });
+  };
+} else {
+  // pre-0.11 environment
+  FakeConnection.prototype._startTLS = function _startTLS() {
+    // halt parser
+    this._parser.pause();
+    this._socket.removeAllListeners('data');
+
+    // inject secure pair
+    var credentials = Crypto.createCredentials(common.getSSLConfig());
+    var securePair = tls.createSecurePair(credentials, true);
+    this._socket.pipe(securePair.encrypted);
+    this._stream = securePair.cleartext;
+    securePair.cleartext.on('data', this._handleData.bind(this));
+    securePair.encrypted.pipe(this._socket);
+
+    var conn = this;
+    securePair.on('secure', function () {
+      conn._cipher = securePair.cleartext.getCipher();
+    });
+
+    // resume
+    var parser = this._parser;
+    process.nextTick(function() {
+      var buffer = parser._buffer.slice(parser._offset);
+      parser._offset = parser._buffer.length;
+      parser.resume();
+      securePair.encrypted.write(buffer);
+    });
+  };
+}
