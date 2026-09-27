@@ -201,6 +201,20 @@ jobs:
           BENCHMARK_PAYLOAD_BYTES: 64
         run: npm run benchmark:mysql2:bulk
 
+      - name: Smoke mysql2 compression benchmark
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: nublox_ci_password
+          MYSQL_DATABASE: nublox_ci
+          BENCHMARK_WARMUP_ROWS: 16
+          BENCHMARK_ROWS: 64
+          BENCHMARK_ROUNDS: 1
+          BENCHMARK_PAYLOAD_BYTES: 1024
+          BENCHMARK_ZSTD_LEVEL: 7
+        run: npm run benchmark:mysql2:compression
+
       - name: Verify mysql2 live compatibility
         env:
           MYSQL_HOST: 127.0.0.1
