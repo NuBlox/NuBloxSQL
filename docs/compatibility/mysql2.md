@@ -25,7 +25,7 @@ The compatibility reference for this document is mysql2 `3.24.4`, reviewed on 20
 | TypeScript declarations | Partial | Present; broader mysql2 type parity remains open |
 | Native ESM consumption | Supported | Conditional exports for root and `/promise`, named/default import contract on Node 22/24/26 |
 | AbortSignal cancellation | Partial / NuBlox extension | Promise query cancellation exists; prepared-execute cancellation remains open |
-| Compression | Planned | M4 |
+| Compression | Partial | zlib transport is capability-negotiated and live-tested; zstd remains M4 |
 | Query attributes | Planned | M6 |
 | Binary log / CDC | Planned | M7 |
 
@@ -192,6 +192,30 @@ Cache events are also published through `diagnostics_channel` on `nublox.mysql.s
 
 NuBloxSQL retries a prepared operation once when MySQL reports that the statement needs to be reprepared or that its server-side statement handle is no longer valid.
 
+## Connection compression
+
+NuBloxSQL supports MySQL classic-protocol zlib compression with explicit negotiation policy.
+
+```js
+const connection = mysql.createConnection({
+  ...config,
+  compressionAlgorithms: ['zlib', 'uncompressed']
+});
+```
+
+Use strict zlib policy when an uncompressed fallback must not be accepted:
+
+```js
+const connection = mysql.createConnection({
+  ...config,
+  compressionAlgorithms: ['zlib']
+});
+```
+
+For migration compatibility, `compress: true` maps to `['zlib', 'uncompressed']`. Compression is disabled by default. NuBloxSQL advertises `CLIENT_COMPRESS` only when zlib is allowed by policy, verifies server capability before selecting it, and activates compressed framing only after the authentication handshake has completed successfully.
+
+The transport validates compressed sequence IDs and declared uncompressed lengths. Inflate output is bounded by the server-declared uncompressed frame length, and payloads that would expand when compressed are transmitted as valid uncompressed compressed-frames. zstd negotiation is a separate M4 follow-on and is not silently substituted for zlib.
+
 ## NuBlox extensions already available
 
 The migration surface is intentionally compatible where practical, but NuBloxSQL also exposes production-oriented features that do not require mysql2-compatible call shapes:
@@ -217,6 +241,17 @@ Offline mysql2 contract checks:
 
 ```bash
 npm run test:compat:mysql2:contract
+```
+
+Live zlib transport:
+
+```bash
+MYSQL_HOST=127.0.0.1 \
+MYSQL_PORT=3306 \
+MYSQL_USER=root \
+MYSQL_PASSWORD=secret \
+MYSQL_DATABASE=test \
+npm run test:compression:zlib
 ```
 
 Live text-query parity:
