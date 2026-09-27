@@ -31,6 +31,7 @@ exports.createPool = function createPool(config) {
   loadClass('PreparedStatements').decoratePool(pool);
   loadClass('PreparedStatementReset').decoratePool(pool);
   loadClass('NamedPlaceholders').decoratePool(pool);
+  loadClass('PoolCircuitBreaker').decoratePool(pool);
   return decoratePool(pool, getPromiseImplementation(config));
 };
 
@@ -218,6 +219,9 @@ function loadClass(className) {
       break;
     case 'Pool':
       Class = require('./lib/Pool');
+      break;
+    case 'PoolCircuitBreaker':
+      Class = require('./lib/PoolCircuitBreaker');
       break;
     case 'PoolCluster':
       Class = require('./lib/PoolCluster');
