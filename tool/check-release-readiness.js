@@ -14,7 +14,7 @@ var requiredFiles = [
   'promise.js',
   'promise.mjs',
   'promise.d.ts',
-  'Readme.md',
+  'README.md',
   'Changes.md',
   'LICENSE',
   'NOTICE',
@@ -33,12 +33,15 @@ assert.notStrictEqual(packageJson.private, true);
 assert.strictEqual(packageJson.license, 'Apache-2.0');
 assert.strictEqual(packageJson.author, 'Stephen J T Spittal');
 assert.strictEqual(packageJson.engines.node, '>=22');
+assert.strictEqual(packageJson.homepage, 'https://github.com/NuBlox/NuBloxSQL#readme');
+assert.strictEqual(packageJson.bugs.url, 'https://github.com/NuBlox/NuBloxSQL/issues');
 assert.ok(packageJson.exports['.']);
 assert.ok(packageJson.exports['./promise']);
 assert.strictEqual(packageJson.exports['./package.json'], './package.json');
 assert.ok(packageJson.files.indexOf('lib/') !== -1);
 assert.ok(packageJson.files.indexOf('compatibility/') !== -1);
 assert.ok(packageJson.files.indexOf('docs/') !== -1);
+assert.ok(packageJson.files.indexOf('README.md') !== -1);
 assert.ok(packageJson.files.indexOf('LICENSE') !== -1);
 assert.ok(packageJson.files.indexOf('NOTICE') !== -1);
 assert.ok(packageJson.files.indexOf('THIRD_PARTY_NOTICES') !== -1);

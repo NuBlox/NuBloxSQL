@@ -16,6 +16,22 @@
     "type": "git",
     "url": "git+https://github.com/NuBlox/NuBloxSQL.git"
   },
+  "homepage": "https://github.com/NuBlox/NuBloxSQL#readme",
+  "bugs": {
+    "url": "https://github.com/NuBlox/NuBloxSQL/issues"
+  },
+  "keywords": [
+    "mysql",
+    "database",
+    "sql",
+    "nodejs",
+    "driver",
+    "connector",
+    "promise",
+    "typescript",
+    "prepared-statements",
+    "nublox"
+  ],
   "main": "index.js",
   "types": "index.d.ts",
   "exports": {
@@ -56,7 +72,7 @@
     "LICENSE",
     "NOTICE",
     "THIRD_PARTY_NOTICES",
-    "Readme.md",
+    "README.md",
     "NUBLOX-MASTERED-PACKAGE.md",
     "NUBLOX-MYSQL-ROADMAP.md",
     "NUBLOX-UPSTREAM.json",
