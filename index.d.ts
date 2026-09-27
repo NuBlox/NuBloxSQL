@@ -94,6 +94,7 @@ declare namespace mysql {
     circuitBreakerThreshold?: number;
     circuitBreakerCooldownMs?: number;
     circuitBreakerHalfOpenMaxAttempts?: number;
+    admissionControl?: PoolAdmissionControl;
   }
 
   interface QueryOptions {
@@ -214,6 +215,38 @@ declare namespace mysql {
     totalRecoveries: number;
   }
 
+  interface PoolAdmissionSnapshot {
+    total: number;
+    active: number;
+    idle: number;
+    acquiring: number;
+    queued: number;
+    limit: number;
+    queueLimit: number;
+    minimumIdle: number;
+    utilization: number | null;
+    saturated: boolean;
+    circuitBreaker: CircuitBreakerStats | null;
+  }
+
+  interface PoolAdmissionDecision {
+    allow: boolean;
+    reason?: string;
+    retryAfterMs?: number;
+  }
+
+  type PoolAdmissionControl = (
+    snapshot: Readonly<PoolAdmissionSnapshot>
+  ) => boolean | PoolAdmissionDecision;
+
+  interface AdmissionStats {
+    enabled: boolean;
+    evaluated: number;
+    admitted: number;
+    rejected: number;
+    errors: number;
+  }
+
   interface PoolStats {
     total: number;
     active: number;
@@ -311,6 +344,7 @@ declare namespace mysql {
     query(sql: string | QueryOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): Query;
     execute(sql: string | ExecuteOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): unknown;
     circuitBreakerStats(): CircuitBreakerStats;
+    admissionStats(): AdmissionStats;
     end(callback?: (error?: Error) => void): void;
     escape(value: unknown): string;
     escapeId(value: unknown): string;
@@ -359,6 +393,7 @@ declare namespace mysql {
     healthCheck(): Promise<HealthCheckResult>;
     stats(): PoolStats;
     circuitBreakerStats(): CircuitBreakerStats;
+    admissionStats(): AdmissionStats;
     escape(value: unknown): string;
     escapeId(value: unknown): string;
     stream<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: StreamOptions): AsyncRowStream<T>;
