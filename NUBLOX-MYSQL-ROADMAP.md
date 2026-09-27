@@ -1,110 +1,84 @@
-# NuBlox MySQL Connector — Competitive Engineering Roadmap
+# NuBlox MySQL Roadmap
 
-## Objective
+## Purpose
 
-Build `@nublox/mysql` into a production-grade MySQL integration that exceeds the practical developer, reliability, security, observability and operations capabilities of current Node.js MySQL connectors while retaining a migration path from established mysql/mysql2 application APIs.
+NuBloxSQL is evolving `@nublox/mysql` into a modern, production-oriented MySQL connector for current Node.js and MySQL releases while retaining a pragmatic migration path from established callback and mysql2-style APIs.
 
-This is an engineering programme, not a claim that the first NuBlox revision already leads every competitor in every dimension.
+The roadmap is evidence-driven: capabilities are promoted only when executable tests, live-server validation or reproducible benchmarks demonstrate them.
 
-## Compatibility programme
-
-mysql2 compatibility is measured continuously rather than claimed broadly. The machine-readable source of truth is `compatibility/mysql2.json`, with executable contract and live-server evidence under `test/compatibility/mysql2/`.
-
-A capability moves to `supported` only when repository evidence exists and CI validates it. `partial` means NuBlox has related capability but does not yet promise mysql2-compatible behaviour. `planned` means applications must not rely on migration compatibility for that feature yet.
-
-The first pinned mysql2 compatibility reference is `3.24.4` (reviewed 2026-09-26).
-
-## Baseline review
-
-The historical mysqljs/mysql 2.18.1 code lineage provided strong callback compatibility and a mature classic-protocol parser, but its original configuration explicitly disabled compression, connection attributes and plugin authentication. It also predates modern Promise-first Node.js application patterns, current LTS runtimes and built-in TypeScript declarations. NuBloxSQL is now developed, tested and released independently; historical lineage is not an operational upstream dependency.
+## Competitive capability baseline
 
 Current competitor capability floors include:
 
-| Capability | Historical mysqljs/mysql 2.18.1 baseline | MySQL2 3.x | MariaDB Connector/Node.js 3.5 | NuBlox programme |
+| Capability | Legacy mysql | mysql2 | Modern connectors | NuBloxSQL |
 | --- | --- | --- | --- | --- |
-| Promise / async-await API | No | Yes | Yes | Implemented |
-| Native ESM entrypoints | No | Yes | Yes | Implemented with conditional exports and CommonJS parity |
-| TypeScript declarations | No | Yes | Yes | Implemented; parity programme ongoing |
-| Prepared statements / binary protocol | No | Yes | Yes | Native `execute()` and explicit `prepare()` implemented and live-tested |
+| Promise API | No | Yes | Usually | Implemented |
+| Native ESM | No | Yes | Usually | Implemented |
+| TypeScript declarations | Community | Yes | Usually | Implemented, parity expanding |
+| Modern SHA-2 auth | Partial | Yes | Yes | Implemented and live-tested |
+| Native prepared statements | No | Yes | Usually | Implemented |
 | Prepared statement cache | No | LRU | Yes | Bounded LRU implemented with stats and diagnostics |
 | Named placeholders | No built-in parity target | Yes | Connector-specific | Implemented for query/execute with mysql2-compatible opt-in semantics |
-| Modern auth plugins | Partial auth switch, native password only | Yes | Yes | Implemented and live-tested |
-| Compression | Explicitly disabled | Yes | Yes | zlib and zstd implemented and live-tested |
+| Compression | Explicitly disabled | Yes | Yes | zlib + zstd implemented and live-tested |
 | Connection/query attributes | Explicitly disabled | Yes | Connector-specific | Planned with trace propagation |
 | AbortSignal cancellation | No first-class API | Limited connector-specific patterns | Connector-specific | Implemented for Promise connection queries |
 | Transaction callback orchestration | No | Application-managed | Application-managed helpers vary | Implemented |
-| Deadlock/lock-timeout transaction retry | No | Application-managed | Application-managed | Implemented, opt-in |
-| Pool utilisation/saturation metrics | Internal arrays only | Limited public operational surface | Pool metrics vary | Implemented |
-| Health-check result surface | No | Application-managed | Application-managed | Implemented |
-| Deterministic pool warm-up | No | Application-managed | Connector-specific | Implemented with explicit `minimumIdle` target and callback/Promise API |
-| diagnostics_channel telemetry | No | Tracing channels | No equivalent baseline assumption | Implemented |
-| Async iteration over row stream | Stream only | Stream support | Stream support | Implemented via Node async iteration |
-| Resource-bound hostile-server defence | Legacy limits | Evolving | `maxAllowedColumns` and related controls | M5 |
-| Binary log / CDC protocol | No | Yes | Separate ecosystem | M7 |
+| Pool observability | Private state | Limited public surface | Varies | Public stats, health checks, warmup and maintenance diagnostics |
 
-## Engineering principles
-
-1. **Secure by default.** TLS verification remains enabled by default. Unsafe compatibility switches must be explicit.
-2. **NuBlox is authoritative.** Historical source lineage is provenance only; external repositories are reference inputs, never release or source authority for NuBloxSQL.
-3. **Protocol correctness before API sugar.** Prepared statements, authentication and server capability negotiation are implemented at packet level and verified against supported MySQL versions.
-4. **Cancellation has explicit semantics.** When a protocol operation cannot be safely cancelled in-band, the connector terminates the affected connection rather than pretending cancellation succeeded.
-5. **Retries are opt-in.** Transaction retries can repeat application code, so the default is zero retries. Callers explicitly choose retry behaviour.
-6. **Observability excludes bind values by default.** Diagnostics publish statement templates, timings, connection identifiers and error codes, not parameter values.
-7. **Bound every server-controlled allocation.** Column counts, packet sizes, prepared statement metadata, queue sizes and buffers will have enforceable limits.
-8. **Compatibility is measured.** mysql/mysql2-compatible behaviour must have executable evidence; unsupported behaviour remains explicit.
-9. **Benchmarks are reproducible evidence.** Results record environment and workload and never claim a universal winner from one run.
-
-## Delivery sequence
+## Milestones
 
 ### M1 — Modern application surface — implemented
 
-- Node.js >=22 baseline.
-- Promise entry point and wrapper APIs.
-- Native ESM root and `/promise` entrypoints using conditional package exports, with CommonJS parity tests.
-- AbortSignal-aware connection queries.
-- Async iteration over query streams.
-- TypeScript declarations.
-- Transaction helper with optional deadlock/lock-wait retry.
-- Pool health and saturation metrics.
-- Diagnostics channels.
-- CI on Node 22, 24 and current Node 26.
-- mysql2 API contract test foundation.
-- mysql2 live query/pool/transaction parity tests.
-- machine-readable compatibility capability manifest.
-- reproducible mysql2 benchmark foundation.
+Delivered:
+
+- Node.js >=22 baseline;
+- Promise entry point and callback-to-Promise wrappers;
+- `connection.promise()` and `pool.promise()` compatibility;
+- AbortSignal-aware Promise text queries;
+- async iterable result consumption;
+- TypeScript declarations;
+- `withTransaction()` with opt-in deadlock/lock-wait retries;
+- public pool health and saturation statistics;
+- `diagnostics_channel` query, pool and transaction events without bind values;
+- CI across Node 22, 24 and 26;
+- mysql2 API contract foundation;
+- mysql2 live query, pool and transaction parity;
+- machine-readable compatibility manifest;
+- reproducible mysql2 benchmark foundation;
+- native CommonJS and ESM entry points.
 
 ### M2 — Current MySQL authentication — implemented
 
-- `caching_sha2_password` fast authentication.
-- Secure full authentication over TLS.
-- RSA public-key exchange for explicitly allowed non-TLS full authentication.
-- `sha256_password` and pluggable auth-provider support.
-- Tests against MySQL 8.4 and MySQL 9.x server lines.
+Delivered:
 
-Connection and query attributes remain planned separately and are not considered complete as part of M2.
+- `caching_sha2_password` fast authentication;
+- secure full authentication over TLS;
+- explicit RSA non-TLS full authentication;
+- trusted server public-key pinning and opt-in key retrieval;
+- `sha256_password` and pluggable authentication support;
+- live MySQL 8.4 and 9.x authentication validation.
+
+Connection/query attributes remain planned separately and are not considered part of authentication completion.
 
 ### M3 — Prepared statements and binary protocol — implemented
 
-- native `COM_STMT_PREPARE`, `COM_STMT_EXECUTE`, `COM_STMT_RESET` and `COM_STMT_CLOSE` flow;
-- binary parameter encoding for common JavaScript value types;
-- callback and Promise `execute()` APIs on connections and pools;
+Delivered:
+
+- native `COM_STMT_PREPARE`, `COM_STMT_EXECUTE`, `COM_STMT_RESET` and `COM_STMT_CLOSE`;
+- callback and Promise `execute()` on connections and pools;
+- explicit `prepare()` / statement lifecycle with execute/reset/close;
+- binary parameter encoding for common JavaScript values;
 - bounded per-connection LRU prepared-statement cache;
 - mysql2-compatible `maxPreparedStatements`, including `0` to disable caching;
-- explicit `unprepare()` and cache-clear controls;
-- cache hit/miss/eviction/reprepare statistics and diagnostics events;
-- one-shot recovery from `ER_NEED_REPREPARE` and invalid statement handles;
-- atomic prepare/execute queue ordering under concurrent commands;
-- explicit connection-scoped `prepare()` statement objects for callback and Promise APIs;
-- reusable manual statement `execute()`, `reset()` and `close()` lifecycle;
-- manual statement invalidation guards across `close()` and `changeUser()`;
-- manual statement lifecycle diagnostics without bind values;
-- prepared APIs on physical connections acquired from pools;
-- mysql2-compatible named placeholders for text query and `execute()` paths;
-- connection-wide and per-operation named-placeholder enable/disable behaviour;
-- positional `?` fallback when arrays are supplied with named placeholders enabled;
+- explicit `unprepare()` and cache clearing;
+- cache stats and diagnostics events without bind values;
+- one-shot safe reprepare for stale server-side statement handles;
+- atomic prepare/execute command ordering;
+- named-placeholder compatibility for query and execute;
 - explicit typed prepared-parameter constructors for signed and unsigned 8/16/32/64-bit integers, float/double, exact decimal, text and binary intent;
 - protocol-native DATE, DATETIME, TIMESTAMP and TIME parameters with microsecond precision and negative multi-day TIME support;
 - native JSON prepared parameters;
+- BIT and YEAR semantic parameter constructors with legal MySQL execute wire types;
 - range validation and safe 64-bit input rules, with direct wire-byte and `COM_STMT_EXECUTE` metadata tests;
 - binary result decoding and live coverage for signed/unsigned numeric families, BIGINT boundaries, DECIMAL, FLOAT/DOUBLE, YEAR, DATE/DATETIME/TIMESTAMP/TIME with fractional seconds, BIT, BINARY/VARBINARY/BLOB, TEXT, JSON, ENUM, SET, GEOMETRY and NULL bitmap handling;
 - consistent GEOMETRY decoding between text and prepared/binary protocols;
@@ -134,16 +108,19 @@ Delivered:
 - geometric `PacketWriter` capacity growth to avoid repeated linear-growth payload copies;
 - direct payload copying during final packet framing to avoid per-packet temporary slice allocation;
 - reproducible PacketWriter allocation benchmark with CI smoke coverage;
+- native Node stream backpressure with explicit high-water-mark behaviour and live-server validation;
 - validated `minimumIdle` pool target with explicit callback and Promise `warmup()` APIs;
 - capacity-aware warm-up that respects `connectionLimit`, reuses existing idle connections and hands new connections to queued demand;
-- warm-up result telemetry plus `diagnostics_channel` start/end/error events;
-- live pool warm-up validation against MySQL 8.4 and 9.x.
+- concurrent warm-up coordination so overlapping callers share in-flight connection creation;
+- optional continuous minimum-idle maintenance after explicit configured warmup;
+- bounded exponential reconnect backoff with configurable jitter for minimum-idle maintenance;
+- unref'd maintenance timers and shutdown cleanup;
+- minimum-idle start/end/error diagnostics without credentials or bind values;
+- live pool warm-up and minimum-idle maintenance validation against MySQL 8.4 and 9.x.
 
 Remaining M4 work:
 
 - continue parser/output allocation profiling and buffer-reuse opportunities using benchmark evidence;
-- configurable high-water marks and backpressure tests;
-- continuous minimum-idle maintenance with bounded reconnect backoff and jitter, if enabled explicitly;
 - query pipelining research with protocol-ordering safety constraints;
 - expand the reproducible benchmark harness to pools, concurrency, streaming, bulk work, compression and memory.
 
@@ -178,15 +155,9 @@ NuBlox should not describe this package as the leading Node.js MySQL connector u
 - current-server authentication compatibility;
 - prepared-statement correctness and cache behaviour;
 - competitive throughput and latency under controlled benchmarks;
-- bounded memory behaviour under hostile or malformed server responses;
-- pool recovery and failover behaviour under network faults;
-- no known high-severity dependency or SAST findings in the supported release;
-- stable TypeScript and Promise APIs;
-- documented migration tests from established mysql/mysql2-compatible call patterns where promised.
+- bounded resource behaviour under malformed and adversarial inputs;
+- predictable pool behaviour under saturation, failures and recovery;
+- usable tracing and metrics without leaking SQL bind values;
+- documented migration paths from widely used Node.js MySQL connectors.
 
-## External references used for the capability review
-
-- MySQL2 project and documentation: `https://github.com/sidorares/node-mysql2` and `https://sidorares.github.io/node-mysql2/`
-- MySQL Connector/Node.js documentation: `https://dev.mysql.com/doc/dev/connector-nodejs/latest/`
-- MariaDB Connector/Node.js resources: `https://mariadb.com/docs/connectors/mariadb-connector-nodejs/`
-- Node.js release status: `https://nodejs.org/en/about/previous-releases`
+The compatibility manifest and reproducible benchmark suite are the evidence sources for these claims.
