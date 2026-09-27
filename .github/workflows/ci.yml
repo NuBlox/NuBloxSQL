@@ -43,6 +43,14 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      - name: Smoke parser fragmentation benchmark
+        if: matrix.node == 24
+        env:
+          BENCHMARK_PACKETS: 10000
+          BENCHMARK_ROUNDS: 1
+          BENCHMARK_CHUNK_SIZES: 1,16,1024,65536
+        run: npm run benchmark:parser-fragmentation
+
       - name: Validate compatibility manifest
         run: npm run compatibility:check
 
