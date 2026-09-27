@@ -18,7 +18,7 @@ function createPool(config, enqueueImpl) {
     circuitBreakerStats   : function circuitBreakerStats() {
       return {enabled: true, state: 'closed'};
     },
-    _enqueueCallback : enqueueImpl || function _enqueueCallback(callback) {
+    _enqueueCallback: enqueueImpl || function _enqueueCallback(callback) {
       this._connectionQueue.push(callback);
     }
   };
