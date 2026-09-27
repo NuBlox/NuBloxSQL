@@ -35,7 +35,6 @@
   "dependencies": {
     "bignumber.js": "9.0.2",
     "named-placeholders": "1.1.6",
-    "readable-stream": "2.3.7",
     "safe-buffer": "5.2.1",
     "sqlstring": "2.3.3"
   },
@@ -88,6 +87,7 @@
     "test:compression:zstd": "node test/integration/zstd-compression-smoke.js",
     "test:esm": "node test/compatibility/esm-contract.mjs",
     "test:pool-warmup": "node test/integration/pool-warmup-smoke.js",
+    "test:stream-backpressure": "node test/integration/stream-backpressure-smoke.js",
     "test:temporal-json-parameters": "node test/integration/temporal-json-parameters-smoke.js",
     "test:typed-parameters": "node test/integration/typed-parameters-smoke.js",
     "test:unit": "FILTER=unit node test/run.js",

@@ -108,6 +108,12 @@ declare namespace mysql {
     typeCast?: boolean | Function;
   }
 
+  interface StreamOptions {
+    highWaterMark?: number;
+    emitClose?: boolean;
+    autoDestroy?: boolean;
+  }
+
   interface TypedPreparedParameter<T = unknown> {
     readonly type: number;
     readonly unsigned: boolean;
@@ -163,6 +169,8 @@ declare namespace mysql {
   type QueryTuple<T = QueryResult> = [T, QueryFields];
 
   interface AsyncRowStream<T = Row> extends AsyncIterable<T> {
+    readonly readableHighWaterMark: number;
+    readonly readableObjectMode: boolean;
     on(event: string, listener: (...args: unknown[]) => void): this;
   }
 
@@ -241,7 +249,7 @@ declare namespace mysql {
   }
 
   interface Query {
-    stream(options?: Record<string, unknown>): AsyncRowStream;
+    stream(options?: StreamOptions): AsyncRowStream;
   }
 
   interface Connection {
@@ -301,8 +309,8 @@ declare namespace mysql {
     escape(value: unknown): string;
     escapeId(value: unknown): string;
     format(sql: string, values?: unknown[]): string;
-    stream<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: object): AsyncRowStream<T>;
-    iterate<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: object): AsyncRowStream<T>;
+    stream<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: StreamOptions): AsyncRowStream<T>;
+    iterate<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: StreamOptions): AsyncRowStream<T>;
     withTransaction<T>(work: (connection: PromiseConnection, attempt: number) => T | Promise<T>, options?: TransactionOptions): Promise<T>;
     promise(): this;
   }
@@ -320,8 +328,8 @@ declare namespace mysql {
     stats(): PoolStats;
     escape(value: unknown): string;
     escapeId(value: unknown): string;
-    stream<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: object): AsyncRowStream<T>;
-    iterate<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: object): AsyncRowStream<T>;
+    stream<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: StreamOptions): AsyncRowStream<T>;
+    iterate<T = Row>(sql: string | QueryOptions, values?: unknown[], options?: StreamOptions): AsyncRowStream<T>;
     promise(): this;
   }
 
