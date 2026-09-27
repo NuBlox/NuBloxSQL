@@ -18,7 +18,7 @@ function createPool(config, enqueueImpl) {
     circuitBreakerStats   : function circuitBreakerStats() {
       return {enabled: true, state: 'closed'};
     },
-    _enqueueCallback      : enqueueImpl || function _enqueueCallback(callback) {
+    _enqueueCallback : enqueueImpl || function _enqueueCallback(callback) {
       this._connectionQueue.push(callback);
     }
   };
@@ -40,7 +40,7 @@ test('Pool admission control', {
   'admits saturated work from a boolean decision': function() {
     var observed;
     var pool = createPool(new PoolConfig({
-      connectionLimit : 2,
+      connectionLimit  : 2,
       admissionControl : function(snapshot) {
         observed = snapshot;
         return true;
@@ -54,17 +54,17 @@ test('Pool admission control', {
     assert.strictEqual(observed.circuitBreaker.state, 'closed');
     assert.strictEqual(pool._connectionQueue.length, 1);
     assert.deepStrictEqual(pool.admissionStats(), {
-      enabled: true,
-      evaluated: 1,
-      admitted: 1,
-      rejected: 0,
-      errors: 0
+      enabled   : true,
+      evaluated : 1,
+      admitted  : 1,
+      rejected  : 0,
+      errors    : 0
     });
   },
 
   'rejects saturated work with retry metadata': function(done) {
     var pool = createPool(new PoolConfig({
-      connectionLimit : 2,
+      connectionLimit  : 2,
       admissionControl : function() {
         return {allow: false, reason: 'load-shed', retryAfterMs: 25.1};
       }
@@ -85,8 +85,8 @@ test('Pool admission control', {
   'preserves queueLimit as the hard cap before the adaptive hook': function(done) {
     var evaluations = 0;
     var config = new PoolConfig({
-      connectionLimit : 2,
-      queueLimit      : 1,
+      connectionLimit  : 2,
+      queueLimit       : 1,
       admissionControl : function() {
         evaluations++;
         return true;
@@ -112,7 +112,7 @@ test('Pool admission control', {
 
   'converts hook failures to non-fatal pool errors': function(done) {
     var pool = createPool(new PoolConfig({
-      connectionLimit : 2,
+      connectionLimit  : 2,
       admissionControl : function() {
         var error = new Error('policy failed');
         error.code = 'POLICY_FAILURE';
@@ -131,7 +131,7 @@ test('Pool admission control', {
 
   'rejects invalid decisions': function(done) {
     var pool = createPool(new PoolConfig({
-      connectionLimit : 2,
+      connectionLimit  : 2,
       admissionControl : function() {
         return {reason: 'missing allow'};
       }
