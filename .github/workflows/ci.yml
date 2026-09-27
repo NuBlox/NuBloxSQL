@@ -158,6 +158,20 @@ jobs:
           MYSQL_DATABASE: nublox_ci
         run: npm run test:stream-backpressure
 
+      - name: Smoke mysql2 pool concurrency benchmark
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: nublox_ci_password
+          MYSQL_DATABASE: nublox_ci
+          BENCHMARK_WARMUP: 32
+          BENCHMARK_ITERATIONS: 128
+          BENCHMARK_ROUNDS: 1
+          BENCHMARK_CONCURRENCY: 8
+          BENCHMARK_POOL_SIZE: 4
+        run: npm run benchmark:mysql2:pool
+
       - name: Verify mysql2 live compatibility
         env:
           MYSQL_HOST: 127.0.0.1
