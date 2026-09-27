@@ -80,9 +80,14 @@ function fuzzClassicProtocolParser() {
       var chunk = wire.slice(offset, offset + chunkLength);
       offset += chunkLength;
 
-      assert.doesNotThrow(function writeParserChunk() {
+      try {
         parser.write(chunk);
-      }, unexpectedErrorMessage('parser', iteration, seed, parserErrors));
+      } catch (error) {
+        var observed = parserErrors.map(function mapError(item) { return item.code; }).join(',');
+        error.message = 'parser fuzz case ' + iteration + ' failed with seed ' + seed +
+          ' after controlled errors [' + observed + ']: ' + error.message;
+        throw error;
+      }
     }
   }
 }
@@ -133,14 +138,6 @@ function assertControlledParserError(error) {
     error.code.indexOf('PARSER_') === 0 || error.code === 'PROTOCOL_PACKETS_OUT_OF_ORDER',
     'unexpected parser error code: ' + error.code
   );
-}
-
-function unexpectedErrorMessage(surface, iteration, fuzzSeed, parserErrors) {
-  return function formatUnexpected(error) {
-    var observed = parserErrors.map(function mapError(item) { return item.code; }).join(',');
-    return surface + ' fuzz case ' + iteration + ' failed with seed ' + fuzzSeed +
-      ' after controlled errors [' + observed + ']: ' + (error && error.stack || error);
-  };
 }
 
 function fillRandom(buffer, start, rng) {
