@@ -69,6 +69,7 @@
   },
   "scripts": {
     "benchmark:mysql2": "node benchmark/competitors/mysql2-query.js",
+    "benchmark:mysql2:bulk": "node --expose-gc benchmark/competitors/mysql2-bulk-insert.js",
     "benchmark:mysql2:pool": "node --expose-gc benchmark/competitors/mysql2-pool-concurrency.js",
     "benchmark:mysql2:prepared": "node --expose-gc benchmark/competitors/mysql2-prepared.js",
     "benchmark:mysql2:streaming": "node --expose-gc benchmark/competitors/mysql2-streaming.js",
