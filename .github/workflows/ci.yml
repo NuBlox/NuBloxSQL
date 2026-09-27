@@ -43,6 +43,17 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      - name: Deterministic protocol parser fuzz
+        if: matrix.node == 24
+        env:
+          FUZZ_CASES: 5000
+          FUZZ_SEED: nubloxsql-ci-v1
+        run: npm run test:fuzz:protocol
+
+      - name: Audit production dependencies
+        if: matrix.node == 24
+        run: npm run security:audit
+
       - name: Smoke parser fragmentation benchmark
         if: matrix.node == 24
         env:
