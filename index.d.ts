@@ -97,6 +97,7 @@ declare namespace mysql {
     sql: string;
     values?: unknown[] | Record<string, unknown>;
     timeout?: number;
+    operationTimeout?: number;
     nestTables?: boolean | string;
     typeCast?: boolean | Function;
     signal?: AbortSignalLike;
