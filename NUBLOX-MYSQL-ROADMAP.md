@@ -106,6 +106,8 @@ Delivered:
 - reproducible parser-fragmentation benchmark with CI smoke coverage across tiny and large network chunk sizes;
 - geometric `PacketWriter` capacity growth to avoid repeated linear-growth payload copies;
 - direct payload copying during final packet framing to avoid per-packet temporary slice allocation;
+- single-packet `PacketWriter` framing that reserves and reuses four-byte classic-protocol header headroom, eliminating the final payload-sized allocation and copy for the common case;
+- Node 24 memory-soak evidence confirming the expected approximately payload-sized reduction in peak external/ArrayBuffer allocation for the 128 KiB CI smoke workload;
 - reproducible PacketWriter allocation benchmark with CI smoke coverage;
 - native Node stream backpressure with explicit high-water-mark behaviour and live-server validation;
 - validated `minimumIdle` pool target with explicit callback and Promise `warmup()` APIs;
@@ -124,7 +126,6 @@ Delivered:
 
 Remaining M4 work:
 
-- use the memory-soak, parser-fragmentation and PacketWriter benchmark evidence to identify and validate concrete parser/output buffer-reuse opportunities;
 - query pipelining research with protocol-ordering safety constraints.
 
 ### M5 — Enterprise resilience and security
