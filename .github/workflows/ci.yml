@@ -106,6 +106,15 @@ jobs:
           MYSQL_DATABASE: nublox_ci
         run: npm run test:compression:zlib
 
+      - name: Verify zstd compressed transport
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: nublox_ci_password
+          MYSQL_DATABASE: nublox_ci
+        run: npm run test:compression:zstd
+
       - name: Verify mysql2 live compatibility
         env:
           MYSQL_HOST: 127.0.0.1

@@ -2,7 +2,7 @@ declare namespace mysql {
   type IsolationLevel = 'READ UNCOMMITTED' | 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
   type PreparedInt64Input = number | bigint | string;
   type PreparedBitInput = number | bigint | string | Buffer | Uint8Array;
-  type CompressionAlgorithm = 'zlib' | 'uncompressed';
+  type CompressionAlgorithm = 'zlib' | 'zstd' | 'uncompressed';
 
   interface AbortSignalLike {
     readonly aborted: boolean;
@@ -70,6 +70,7 @@ declare namespace mysql {
     onServerPublicKey?: (key: string | Buffer) => void;
     maxPreparedStatements?: number;
     compressionAlgorithms?: CompressionAlgorithm | CompressionAlgorithm[];
+    zstdCompressionLevel?: number;
     compress?: boolean;
   }
 
