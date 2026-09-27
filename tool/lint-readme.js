@@ -4,7 +4,7 @@ var util = require('util');
 
 var MARKDOWN_SECTION_REGEXP = /^(#+) (.+)$/;
 var NEWLINE_REGEXP          = /\r?\n/;
-var README_PATH             = path.join(__dirname, '..', 'Readme.md');
+var README_PATH             = path.join(__dirname, '..', 'README.md');
 var README_CONTENTS         = fs.readFileSync(README_PATH, 'utf-8');
 var TOC_SECTION_NAME        = 'Table of Contents';
 
