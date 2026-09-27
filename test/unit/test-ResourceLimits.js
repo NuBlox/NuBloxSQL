@@ -12,6 +12,7 @@ test('Resource limits', {
     var config = new ConnectionConfig();
 
     assert.strictEqual(config.maxInboundPacketSize, 64 * 1024 * 1024);
+    assert.strictEqual(config.maxFieldSize, 64 * 1024 * 1024);
     assert.strictEqual(config.maxMetadataSize, 8 * 1024 * 1024);
     assert.strictEqual(config.maxResultSetColumns, 4096);
     assert.strictEqual(config.maxRowSize, 64 * 1024 * 1024);
@@ -22,6 +23,7 @@ test('Resource limits', {
   'accepts custom resource limits': function() {
     var config = new ConnectionConfig({
       maxInboundPacketSize : 128 * 1024 * 1024,
+      maxFieldSize         : 32 * 1024 * 1024,
       maxMetadataSize      : 16 * 1024 * 1024,
       maxResultSetColumns  : 8192,
       maxRowSize           : 32 * 1024 * 1024,
@@ -30,6 +32,7 @@ test('Resource limits', {
     });
 
     assert.strictEqual(config.maxInboundPacketSize, 128 * 1024 * 1024);
+    assert.strictEqual(config.maxFieldSize, 32 * 1024 * 1024);
     assert.strictEqual(config.maxMetadataSize, 16 * 1024 * 1024);
     assert.strictEqual(config.maxResultSetColumns, 8192);
     assert.strictEqual(config.maxRowSize, 32 * 1024 * 1024);
@@ -40,6 +43,7 @@ test('Resource limits', {
   'rejects unsafe resource limit values': function() {
     var names = [
       'maxInboundPacketSize',
+      'maxFieldSize',
       'maxMetadataSize',
       'maxResultSetColumns',
       'maxRowSize',

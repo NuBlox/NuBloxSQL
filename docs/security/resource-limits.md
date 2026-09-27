@@ -4,154 +4,60 @@ NuBloxSQL applies explicit resource limits at protocol boundaries so a server re
 
 ## Inbound logical packet limit
 
-`maxInboundPacketSize` limits the total payload size of one logical inbound MySQL classic-protocol packet.
+`maxInboundPacketSize` limits the total payload size of one logical inbound MySQL classic-protocol packet. The default is **64 MiB**. It is evaluated after decompression and across protocol fragments before payload parsing. Oversized packets fail with `PROTOCOL_INBOUND_PACKET_TOO_LARGE`.
 
-```js
-const mysql = require('@nublox/mysql');
+## Individual field-value limit
 
-const connection = mysql.createConnection({
-  host: '127.0.0.1',
-  user: 'app',
-  database: 'app',
-  maxInboundPacketSize: 64 * 1024 * 1024
-});
-```
+`maxFieldSize` limits one length-coded result value before its string, Buffer, JSON, geometry or other variable-length representation is allocated.
 
 The default is **64 MiB**.
 
-The limit is evaluated from packet headers before the packet payload is handed to the existing packet parser. It applies after connection decompression, so zlib and zstd transport compression cannot bypass the logical packet boundary.
-
-MySQL classic-protocol payloads can span multiple 16,777,215-byte fragments. NuBloxSQL tracks the cumulative logical packet size across those fragments rather than treating each fragment as an independent allocation boundary.
-
-When the declared logical packet size exceeds the configured limit, the connection fails with a fatal error:
-
-```text
-PROTOCOL_INBOUND_PACKET_TOO_LARGE
+```js
+const connection = mysql.createConnection({
+  ...config,
+  maxFieldSize: 64 * 1024 * 1024
+});
 ```
 
-The error exposes `limit`, `packetLength` and `fatal: true`.
+For text-protocol rows, NuBloxSQL inspects the length-coded prefix before normal decoding and before invoking a custom `typeCast`, so application type-casting cannot bypass the allocation boundary. Prepared binary rows enforce the same limit for variable-length protocol types; fixed-width numeric and temporal values are unaffected.
 
-Applications that legitimately exchange larger BLOBs or other large payloads can raise `maxInboundPacketSize` explicitly. The value must be a positive safe integer.
+Oversized fields fail with:
+
+```text
+PROTOCOL_RESULTSET_FIELD_TOO_LARGE
+```
+
+The error exposes `fieldSize`, `limit` and `fatal: true`.
 
 ## Result-set column limit
 
-`maxResultSetColumns` bounds the number of columns the client will accept in a result set before allocating the complete field-metadata collection.
-
-The default is **4096 columns**.
-
-```js
-const connection = mysql.createConnection({
-  ...config,
-  maxResultSetColumns: 4096
-});
-```
-
-The limit applies to both text queries and prepared-statement execution. A result-set header that declares more columns than permitted terminates the connection with:
-
-```text
-PROTOCOL_RESULTSET_COLUMNS_TOO_LARGE
-```
-
-The error exposes `columnCount`, `limit` and `fatal: true`.
+`maxResultSetColumns` bounds the number of columns accepted in a result set before the complete field-metadata collection is built. The default is **4096 columns**. Oversized declarations fail with `PROTOCOL_RESULTSET_COLUMNS_TOO_LARGE`.
 
 ## Result-set metadata limit
 
-`maxMetadataSize` bounds the cumulative classic-protocol payload bytes used by field metadata packets for one result set.
-
-The default is **8 MiB**.
-
-```js
-const connection = mysql.createConnection({
-  ...config,
-  maxMetadataSize: 8 * 1024 * 1024
-});
-```
-
-NuBloxSQL accumulates the logical packet lengths of the field-definition packets before adding their parsed objects to the result-set metadata collection. The check therefore protects against a large number of individually valid metadata packets. It applies to text-query and prepared-execute result sets.
-
-When cumulative field metadata exceeds the configured limit, the connection fails with:
-
-```text
-PROTOCOL_RESULTSET_METADATA_TOO_LARGE
-```
-
-The error exposes `metadataSize`, `limit` and `fatal: true`.
+`maxMetadataSize` bounds cumulative field-definition packet payload for one result set. The default is **8 MiB**. The limit applies to text queries and prepared execution. Oversized metadata fails with `PROTOCOL_RESULTSET_METADATA_TOO_LARGE`.
 
 ## Individual row limit
 
-`maxRowSize` limits the logical classic-protocol payload size of one row packet before row decoding begins.
-
-The default is **64 MiB**.
-
-```js
-const connection = mysql.createConnection({
-  ...config,
-  maxRowSize: 64 * 1024 * 1024
-});
-```
-
-This limit applies to callback, Promise, streaming and async-iteration result paths, including prepared-statement binary rows. Oversized rows fail with:
-
-```text
-PROTOCOL_RESULTSET_ROW_TOO_LARGE
-```
-
-The error exposes `rowSize`, `limit` and `fatal: true`.
+`maxRowSize` limits one logical row packet before row decoding begins. The default is **64 MiB**. It applies to callback, Promise, streaming and async-iteration paths, including prepared binary rows. Oversized rows fail with `PROTOCOL_RESULTSET_ROW_TOO_LARGE`.
 
 ## Buffered row-count limit
 
-`maxBufferedRows` limits the number of rows retained for one result set by APIs that materialise the complete result in memory.
-
-The default is **100,000 rows**.
-
-```js
-const connection = mysql.createConnection({
-  ...config,
-  maxBufferedRows: 100000
-});
-```
-
-The limit applies to callback/Promise text queries and prepared execution. Streaming and async iteration do not accumulate this counter because they emit rows under stream backpressure rather than retaining the complete result set.
-
-Exceeding the limit fails with:
-
-```text
-PROTOCOL_RESULTSET_ROWS_TOO_LARGE
-```
-
-The error exposes `rowCount`, `limit` and `fatal: true`.
+`maxBufferedRows` limits rows retained by APIs that materialise a complete result in memory. The default is **100,000 rows**. Callback/Promise text queries and prepared execution are covered. Streaming and async iteration are not charged against this aggregate counter because they emit under backpressure. Exceeding the limit fails with `PROTOCOL_RESULTSET_ROWS_TOO_LARGE`.
 
 ## Buffered result-set size limit
 
-`maxResultSetSize` limits the cumulative logical row-packet payload retained for one buffered result set.
-
-The default is **256 MiB**.
-
-```js
-const connection = mysql.createConnection({
-  ...config,
-  maxResultSetSize: 256 * 1024 * 1024
-});
-```
-
-Like `maxBufferedRows`, this control applies only to result paths that retain all rows in memory. Streaming and async iteration remain governed by `maxRowSize`, the inbound packet limit and stream backpressure.
-
-Exceeding the buffered byte limit fails with:
-
-```text
-PROTOCOL_RESULTSET_SIZE_TOO_LARGE
-```
-
-The error exposes `resultSetSize`, `limit` and `fatal: true`.
+`maxResultSetSize` limits cumulative row-packet payload retained for one buffered result set. The default is **256 MiB**. Streaming and async iteration are not charged against this aggregate limit. Exceeding it fails with `PROTOCOL_RESULTSET_SIZE_TOO_LARGE`.
 
 ## Configuration summary
 
 | Option | Default | Boundary |
 | --- | ---: | --- |
 | `maxInboundPacketSize` | 64 MiB | One inbound logical MySQL packet |
+| `maxFieldSize` | 64 MiB | One length-coded result field value |
 | `maxMetadataSize` | 8 MiB | Cumulative field metadata for one result set |
 | `maxResultSetColumns` | 4096 | Declared columns in one result set |
-| `maxRowSize` | 64 MiB | One decoded row packet |
+| `maxRowSize` | 64 MiB | One row packet |
 | `maxBufferedRows` | 100,000 | Rows retained by one buffered result set |
 | `maxResultSetSize` | 256 MiB | Cumulative row-packet payload retained by one buffered result set |
 
@@ -159,4 +65,4 @@ All resource-limit values must be positive safe integers. Applications with legi
 
 ## M5 resource-safety programme
 
-The current M5 boundaries cover inbound logical packets, result-set column counts, cumulative field metadata, individual row payloads and buffered result accumulation. Follow-on work will address field/column value boundaries, operation deadlines/cancellation, pool admission controls and resilience observability with executable tests.
+The M5.1 allocation-safety boundaries now cover inbound logical packets, individual variable-length field values, result-set column counts, cumulative metadata, individual row payloads, buffered row counts and buffered result payload. The next resilience tranche addresses operation deadlines/cancellation, followed by pool admission controls and resilience observability.

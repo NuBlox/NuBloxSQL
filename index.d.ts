@@ -70,6 +70,7 @@ declare namespace mysql {
     onServerPublicKey?: (key: string | Buffer) => void;
     maxPreparedStatements?: number;
     maxInboundPacketSize?: number;
+    maxFieldSize?: number;
     maxMetadataSize?: number;
     maxResultSetColumns?: number;
     maxRowSize?: number;
