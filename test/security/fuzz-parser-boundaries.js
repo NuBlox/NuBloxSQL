@@ -57,12 +57,12 @@ function fuzzClassicProtocolParser() {
 
     var parserErrors = [];
     var parser = new Parser({
-      config   : {supportBigNumbers: true},
-      onError  : function onError(error) {
+      config  : {supportBigNumbers: true},
+      onError : function onError(error) {
         assertControlledParserError(error);
         parserErrors.push(error);
       },
-      onPacket : function onPacket() {
+      onPacket: function onPacket() {
         // Consume the full payload using both buffer and string paths. The
         // generated payload is deliberately bounded, making any unexpected
         // large allocation a regression in parser state handling.
