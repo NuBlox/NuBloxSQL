@@ -3,8 +3,9 @@
   "description": "NuBlox mastered high-resilience MySQL client for modern Node.js applications.",
   "version": "3.1.0-rc.1",
   "license": "MIT",
-  "author": "Felix Geisendörfer <felix@debuggable.com> (http://debuggable.com/)",
+  "author": "Stephen Spittal",
   "contributors": [
+    "Felix Geisendörfer <felix@debuggable.com> (http://debuggable.com/)",
     "Andrey Sidorov <sidorares@yandex.ru>",
     "Bradley Grainger <bgrainger@gmail.com>",
     "Douglas Christopher Wilson <doug@somethingdoug.com>",

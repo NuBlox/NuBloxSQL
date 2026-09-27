@@ -2,6 +2,13 @@
 
 This repository is the NuBlox-owned evolution of the `mysqljs/mysql` Node.js MySQL driver and is the authoritative source for `@nublox/mysql`.
 
+## Ownership and copyright
+
+- Copyright owner of all original NuBlox modifications, enhancements, documentation, tests, benchmarks and other original contributions: **Stephen Spittal**.
+- Package author: **Stephen Spittal**.
+- Upstream `mysqljs/mysql` portions retain their original copyright notice and MIT licence attribution as required by the inherited licence.
+- No upstream copyright notice transfers ownership of Stephen Spittal's original NuBlox contributions.
+
 ## Provenance
 
 - NuBlox repository: `https://github.com/NuBlox/NuBloxSQL`
@@ -9,7 +16,7 @@ This repository is the NuBlox-owned evolution of the `mysqljs/mysql` Node.js MyS
 - Upstream version at initial mastering: `2.18.1`
 - Initial upstream commit: `dc9c152a87ec51a1f647447268917243d2eab1fd`
 - Initial mastering date: `2026-09-26`
-- Upstream licence: MIT (retained as `License`)
+- Upstream licence: MIT (retained in `License` for inherited portions)
 - NuBlox package identity: `@nublox/mysql`
 - First NuBlox release-candidate line: `3.1.0-rc.x`
 
@@ -17,7 +24,7 @@ This repository is the NuBlox-owned evolution of the `mysqljs/mysql` Node.js MyS
 
 `NuBlox/NuBloxSQL` is authoritative NuBlox source. It is not a mirror and it must never be automatically replaced from upstream.
 
-NuBlox changes are normal first-class source changes reviewed and tested through NuBlox pull requests. The upstream licence and attribution remain intact.
+NuBlox changes are normal first-class source changes reviewed and tested through NuBlox pull requests. The upstream licence and attribution remain intact for inherited upstream portions.
 
 Upstream changes must be reviewed as immutable candidate commits and applied selectively through normal NuBlox pull requests rather than replacing the mastered codebase wholesale.
 
