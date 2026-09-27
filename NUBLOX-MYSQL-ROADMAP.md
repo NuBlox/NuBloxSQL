@@ -87,7 +87,7 @@ Delivered:
 - mysql2-compatible execute, manual-prepare and named-placeholder surface checks;
 - live prepared-execute, cache, manual-lifecycle, reset-lifecycle and named-placeholder tests against MySQL 8.4 and 9.x.
 
-### M4 — Performance and transport — in progress
+### M4 — Performance and transport — implemented
 
 Delivered:
 
@@ -122,11 +122,10 @@ Delivered:
 - reproducible mysql2 streaming benchmark with first-row latency, rows/sec, payload throughput and sampled peak/settled memory evidence, plus live MySQL 8.4/9.x CI smoke coverage;
 - reproducible mysql2 transactional bulk-insert benchmark with configurable batching, rows/sec, batch throughput/latency and sampled peak/settled memory evidence, plus live MySQL 8.4/9.x CI smoke coverage;
 - reproducible transport-compression benchmark covering uncompressed and zlib parity against mysql2 plus NuBlox zstd, with throughput and settled-memory evidence and live MySQL 8.4/9.x CI smoke coverage;
-- long-duration parser and PacketWriter memory-soak profiler with peak deltas, post-GC settled deltas and least-squares settled-memory drift per cycle, plus Node 24 CI smoke coverage.
-
-Remaining M4 work:
-
-- query pipelining research with protocol-ordering safety constraints.
+- long-duration parser and PacketWriter memory-soak profiler with peak deltas, post-GC settled deltas and least-squares settled-memory drift per cycle, plus Node 24 CI smoke coverage;
+- query-pipelining research against MySQL's stateful classic protocol and packet sequence rules;
+- explicit decision to preserve one active command per classic-protocol connection and use pooled connections as the safe concurrency boundary;
+- documented command-ordering architecture and unit coverage proving queued commands are emitted serially and each command resets packet sequence ID to zero.
 
 ### M5 — Enterprise resilience and security
 
