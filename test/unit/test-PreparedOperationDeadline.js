@@ -11,13 +11,13 @@ test('Prepared operation deadline', {
   'shares one absolute deadline across prepare and execute': function() {
     var sequences = [];
     var connection = {
-      config: {maxPreparedStatements: 0},
-      threadId: 7,
-      changeUser: function() {},
-      _implyConnect: function() {},
-      _protocol: {
-        _queue: [],
-        _enqueue: function(sequence) {
+      config        : {maxPreparedStatements: 0},
+      threadId      : 7,
+      changeUser    : function() {},
+      _implyConnect : function() {},
+      _protocol     : {
+        _queue   : [],
+        _enqueue : function(sequence) {
           sequences.push(sequence);
           this._queue.push(sequence);
           return sequence;
@@ -29,9 +29,9 @@ test('Prepared operation deadline', {
 
     var before = Date.now();
     connection.execute({
-      sql: 'SELECT ?',
-      values: [1],
-      operationTimeout: 1000
+      sql              : 'SELECT ?',
+      values           : [1],
+      operationTimeout : 1000
     }, function() {});
 
     assert.strictEqual(sequences.length, 1);
@@ -40,12 +40,12 @@ test('Prepared operation deadline', {
     assert.ok(prepare._operationDeadlineAt >= before + 1000);
 
     prepare.end(null, {
-      id: 11,
-      sql: 'SELECT ?',
-      numParams: 1,
-      numColumns: 0,
-      parameters: [],
-      columns: []
+      id         : 11,
+      sql        : 'SELECT ?',
+      numParams  : 1,
+      numColumns : 0,
+      parameters : [],
+      columns    : []
     });
 
     assert.strictEqual(sequences.length, 2);
@@ -57,13 +57,13 @@ test('Prepared operation deadline', {
   'preserves an existing absolute deadline across pool-style renormalization': function() {
     var sequences = [];
     var connection = {
-      config: {maxPreparedStatements: 0},
-      threadId: 8,
-      changeUser: function() {},
-      _implyConnect: function() {},
-      _protocol: {
-        _queue: [],
-        _enqueue: function(sequence) {
+      config        : {maxPreparedStatements: 0},
+      threadId      : 8,
+      changeUser    : function() {},
+      _implyConnect : function() {},
+      _protocol     : {
+        _queue   : [],
+        _enqueue : function(sequence) {
           sequences.push(sequence);
           this._queue.push(sequence);
           return sequence;
@@ -75,10 +75,10 @@ test('Prepared operation deadline', {
 
     var deadline = Date.now() + 5000;
     connection.execute({
-      sql: 'SELECT 1',
-      values: [],
-      operationTimeout: 5000,
-      _nubloxOperationDeadlineAt: deadline
+      sql                        : 'SELECT 1',
+      values                     : [],
+      operationTimeout           : 5000,
+      _nubloxOperationDeadlineAt : deadline
     }, function() {});
 
     assert.strictEqual(sequences[0]._operationDeadlineAt, deadline);
@@ -86,12 +86,12 @@ test('Prepared operation deadline', {
 
   'rejects invalid prepared operationTimeout values before enqueue': function() {
     var connection = {
-      config: {maxPreparedStatements: 0},
-      changeUser: function() {},
-      _implyConnect: function() {},
-      _protocol: {
-        _queue: [],
-        _enqueue: function() {
+      config        : {maxPreparedStatements: 0},
+      changeUser    : function() {},
+      _implyConnect : function() {},
+      _protocol     : {
+        _queue   : [],
+        _enqueue : function() {
           throw new Error('should not enqueue');
         }
       }
