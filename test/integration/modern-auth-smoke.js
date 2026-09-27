@@ -12,6 +12,8 @@ var config = {
   allowPublicKeyRetrieval : true
 };
 var connection = mysql.createConnection(config);
+var credentialConnection;
+var credentialProviderCalls = 0;
 var pool;
 
 connection.connect()
@@ -27,6 +29,32 @@ connection.connect()
     assert.ok(rows[0].version);
 
     return connection.end();
+  })
+  .then(function () {
+    credentialConnection = mysql.createConnection({
+      host                    : config.host,
+      port                    : config.port,
+      user                    : config.user,
+      database                : config.database,
+      allowPublicKeyRetrieval : true,
+      credentialProvider      : function(context) {
+        credentialProviderCalls++;
+        assert.strictEqual(context.host, config.host);
+        assert.strictEqual(context.user, config.user);
+        assert.strictEqual(Object.prototype.hasOwnProperty.call(context, 'password'), false);
+        return global.Promise.resolve(config.password);
+      }
+    });
+
+    return credentialConnection.connect();
+  })
+  .then(function () {
+    assert.strictEqual(credentialProviderCalls, 1);
+    return credentialConnection.query('SELECT 3 AS value');
+  })
+  .then(function (queryResult) {
+    assert.strictEqual(queryResult[0][0].value, 3);
+    return credentialConnection.end();
   })
   .then(function () {
     pool = mysql.createPool(Object.assign({}, config, {
