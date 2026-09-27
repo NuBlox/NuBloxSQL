@@ -59,6 +59,17 @@ jobs:
           BENCHMARK_ROUNDS: 3
         run: npm run benchmark:packet-writer
 
+      - name: Smoke long-duration memory profile
+        if: matrix.node == 24
+        env:
+          BENCHMARK_MEMORY_CYCLES: 5
+          BENCHMARK_MEMORY_PARSER_PACKETS: 1000
+          BENCHMARK_MEMORY_PARSER_PAYLOAD_BYTES: 32
+          BENCHMARK_MEMORY_PARSER_CHUNK_BYTES: 16
+          BENCHMARK_MEMORY_WRITER_BYTES: 131072
+          BENCHMARK_MEMORY_WRITER_CHUNK_BYTES: 64
+        run: npm run benchmark:memory-soak
+
       - name: Validate compatibility manifest
         run: npm run compatibility:check
 
