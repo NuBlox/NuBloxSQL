@@ -31,9 +31,12 @@ pool.warmup()
     heldConnection = connection;
 
     var stats = pool.stats();
-    assert.strictEqual(stats.active, 1);
+    // Maintenance may already have registered its replacement connection in
+    // total/active while that connection is still completing acquisition.
+    assert.ok(stats.active >= 1 && stats.active <= 2);
     assert.ok(stats.idle >= 1 && stats.idle <= 2);
     assert.ok(stats.total >= 2 && stats.total <= 3);
+    assert.strictEqual(stats.total, stats.active + stats.idle);
 
     return waitForIdle(pool, 2, 50);
   })
