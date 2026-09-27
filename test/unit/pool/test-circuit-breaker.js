@@ -12,11 +12,11 @@ function createPool(config, outcomes) {
   var calls = 0;
   var pending = [];
   var pool = {
-    config                 : config,
-    _allConnections        : [],
-    _freeConnections       : [],
-    _connectionQueue       : [],
-    getConnection          : function getConnection(callback) {
+    config           : config,
+    _allConnections  : [],
+    _freeConnections : [],
+    _connectionQueue : [],
+    getConnection    : function getConnection(callback) {
       calls++;
       var outcome = outcomes.shift();
 
