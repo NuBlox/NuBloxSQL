@@ -6,6 +6,13 @@ export type SqlDialectFamily =
   | 'oracle'
   | (string & {});
 
+export interface SqlAbortSignal {
+  readonly aborted: boolean;
+  readonly reason?: unknown;
+  addEventListener(type: 'abort', listener: () => void, options?: { once?: boolean }): void;
+  removeEventListener(type: 'abort', listener: () => void): void;
+}
+
 export interface SqlDialectIdentity {
   family: SqlDialectFamily;
   name: string;
@@ -34,13 +41,21 @@ export interface SqlObjectName {
 }
 
 export interface SqlOperationOptions {
-  signal?: AbortSignal;
-  deadline?: number | Date;
+  timeout?: number;
+  signal?: SqlAbortSignal;
 }
 
-export interface SqlExecutionRequest extends SqlOperationOptions {
+export interface SqlResourceLimitOptions {
+  maxRows?: number;
+  maxResultBytes?: number;
+  maxRowBytes?: number;
+}
+
+export interface SqlQueryOptions extends SqlOperationOptions, SqlResourceLimitOptions {}
+
+export interface SqlExecutionRequest extends SqlQueryOptions {
   sql: string;
-  parameters?: readonly unknown[] | Readonly<Record<string, unknown>>;
+  parameters?: readonly unknown[];
 }
 
 export interface SqlFieldMetadata {
@@ -63,22 +78,15 @@ export interface SqlRowsResult<Row = Record<string, unknown>> {
 
 export interface SqlCommandResult {
   kind: 'command';
-  affectedRows?: number;
+  affectedRows?: number | bigint;
   rowCount?: number;
   insertId?: string | number | bigint;
   extension?: unknown;
 }
 
-export interface SqlMultiResult<Row = Record<string, unknown>> {
-  kind: 'multi';
-  results: readonly SqlExecutionResult<Row>[];
-  extension?: unknown;
-}
-
 export type SqlExecutionResult<Row = Record<string, unknown>> =
   | SqlRowsResult<Row>
-  | SqlCommandResult
-  | SqlMultiResult<Row>;
+  | SqlCommandResult;
 
 export type SqlIsolationLevel =
   | 'read-uncommitted'
@@ -103,6 +111,7 @@ export type SqlErrorCategory =
   | 'syntax'
   | 'resource-limit'
   | 'protocol'
+  | 'state'
   | 'unknown';
 
 export interface SqlErrorDetails {
@@ -110,12 +119,17 @@ export interface SqlErrorDetails {
   code?: string | number;
   sqlState?: string;
   retryable?: boolean;
+  limit?: number;
+  observed?: number;
+  cause?: unknown;
   extension?: unknown;
 }
 
 export interface SqlAdapterExtension<T = unknown> {
   readonly native: T;
 }
+
+export const CONTRACT_VERSION: '1.0';
 
 export const DIALECT_FAMILIES: Readonly<{
   MYSQL: 'mysql';
@@ -133,9 +147,29 @@ export const CAPABILITIES: Readonly<{
   SCHEMAS: 'schemas';
   TRANSACTIONAL_DDL: 'transactionalDdl';
   QUERY_CANCELLATION: 'queryCancellation';
-  CHANGE_DATA_CAPTURE: 'changeDataCapture';
   NATIVE_JSON: 'nativeJson';
-  MULTIPLE_ACTIVE_RESULTS: 'multipleActiveResults';
+}>;
+
+export const ISOLATION_LEVELS: Readonly<{
+  READ_UNCOMMITTED: 'read-uncommitted';
+  READ_COMMITTED: 'read-committed';
+  REPEATABLE_READ: 'repeatable-read';
+  SERIALIZABLE: 'serializable';
+}>;
+
+export const ERROR_CATEGORIES: Readonly<{
+  CONNECTION: 'connection';
+  AUTHENTICATION: 'authentication';
+  TIMEOUT: 'timeout';
+  CANCELLED: 'cancelled';
+  CONSTRAINT: 'constraint';
+  DEADLOCK: 'deadlock';
+  SERIALIZATION: 'serialization';
+  SYNTAX: 'syntax';
+  RESOURCE_LIMIT: 'resource-limit';
+  PROTOCOL: 'protocol';
+  STATE: 'state';
+  UNKNOWN: 'unknown';
 }>;
 
 export function createDialectDescriptor(options: {
