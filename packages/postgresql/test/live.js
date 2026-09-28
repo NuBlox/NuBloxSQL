@@ -11,7 +11,9 @@ async function main() {
     password: process.env.PGPASSWORD || 'postgres',
     database: process.env.PGDATABASE || 'postgres',
     ssl: false,
-    connectTimeout: 10000
+    connectTimeout: 10000,
+    cancelTimeout: 3000,
+    cancelGraceTimeout: 3000
   });
 
   await connection.connect();
@@ -58,6 +60,36 @@ async function main() {
   assert.strictEqual(convenience.rows[0].id, 3);
   assert.strictEqual(convenience.rows[0].name, 'gamma');
   assert.strictEqual(convenience.rows[0].active, true);
+
+  await assert.rejects(connection.query('SELECT pg_sleep(5)', { timeout: 100 }), function (error) {
+    return error instanceof postgres.PostgreSqlCancellationError && error.code === 'NUBLOX_POSTGRESQL_TIMEOUT';
+  });
+  assert.strictEqual(connection.connected, true);
+  assert.strictEqual(connection.ended, false);
+  var afterTimeout = await connection.query('SELECT 11::int4 AS value');
+  assert.strictEqual(afterTimeout.rows[0].value, 11);
+
+  var explicitPending = connection.query('SELECT pg_sleep(5)');
+  var explicitCancel = new Promise(function (resolve, reject) {
+    setTimeout(function () { connection.cancel().then(resolve, reject); }, 100);
+  });
+  await assert.rejects(explicitPending, function (error) {
+    return error instanceof postgres.PostgreSqlCancellationError && error.code === 'NUBLOX_POSTGRESQL_CANCELLED';
+  });
+  await explicitCancel;
+  assert.strictEqual(connection.connected, true);
+  assert.strictEqual(connection.ended, false);
+  var afterExplicitCancel = await connection.query('SELECT 13::int4 AS value');
+  assert.strictEqual(afterExplicitCancel.rows[0].value, 13);
+
+  var controller = new AbortController();
+  var pending = connection.query('SELECT pg_sleep(5)', { signal: controller.signal });
+  setTimeout(function () { controller.abort(new Error('live PostgreSQL abort')); }, 100);
+  await assert.rejects(pending, /live PostgreSQL abort/);
+  assert.strictEqual(connection.connected, true);
+  assert.strictEqual(connection.ended, false);
+  var afterAbort = await connection.query('SELECT 12::int4 AS value');
+  assert.strictEqual(afterAbort.rows[0].value, 12);
 
   var rows = await connection.query('SELECT id, name, active FROM nublox_rc_test ORDER BY id');
   assert.deepStrictEqual(rows.rows.map(function (row) { return [row.id, row.name, row.active]; }), [[1, 'alpha', true], [2, 'beta', false]]);

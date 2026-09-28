@@ -1,7 +1,7 @@
 'use strict';
 
 var protocol = require('./lib/protocol');
-var connectionModule = require('./lib/Connection');
+var connectionModule = require('./lib/CancellableConnection');
 
 var capabilities = Object.freeze({
   preparedStatements    : true,
@@ -10,7 +10,7 @@ var capabilities = Object.freeze({
   catalogs              : true,
   schemas               : true,
   transactionalDdl      : true,
-  queryCancellation     : false,
+  queryCancellation     : true,
   changeDataCapture     : false,
   nativeJson            : true,
   multipleActiveResults : false
@@ -52,4 +52,5 @@ exports.protocol = protocol;
 exports.Connection = connectionModule.Connection;
 exports.PreparedStatement = connectionModule.PreparedStatement;
 exports.PostgreSqlError = connectionModule.PostgreSqlError;
+exports.PostgreSqlCancellationError = connectionModule.PostgreSqlCancellationError;
 exports.createConnection = createConnection;

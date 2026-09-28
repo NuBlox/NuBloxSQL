@@ -37,9 +37,10 @@ assert.deepStrictEqual(connection.encodeTextParameter({ a: 1 }), '{"a":1}');
 assert.throws(function () { connection.encodeTextParameter(Infinity); }, /finite/);
 
 assert.strictEqual(typeof postgres.PreparedStatement, 'function');
+assert.strictEqual(typeof postgres.PostgreSqlCancellationError, 'function');
 assert.strictEqual(postgres.capabilities.preparedStatements, true);
 assert.strictEqual(postgres.capabilities.serverSideCursors, false);
-assert.strictEqual(postgres.capabilities.queryCancellation, false);
+assert.strictEqual(postgres.capabilities.queryCancellation, true);
 assert.strictEqual(postgres.capabilities.changeDataCapture, false);
 assert.strictEqual(postgres.capabilities.savepoints, false);
 
@@ -48,5 +49,6 @@ assert.ok(instance instanceof postgres.Connection);
 assert.strictEqual(instance.connected, false);
 assert.strictEqual(typeof instance.prepare, 'function');
 assert.strictEqual(typeof instance.execute, 'function');
+assert.strictEqual(typeof instance.cancel, 'function');
 
 console.log('ok - PostgreSQL runtime contracts');

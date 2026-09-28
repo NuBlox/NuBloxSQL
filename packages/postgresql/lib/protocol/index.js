@@ -9,6 +9,7 @@ var BackendMessageParser = require('./BackendMessageParser');
 exports.constants = constants;
 exports.encodeStartupMessage = startup.encodeStartupMessage;
 exports.encodeSSLRequest = startup.encodeSSLRequest;
+exports.encodeCancelRequest = startup.encodeCancelRequest;
 exports.decodeBackendMessage = backend.decodeBackendMessage;
 exports.BackendMessageParser = BackendMessageParser;
 exports.frontend = frontend;

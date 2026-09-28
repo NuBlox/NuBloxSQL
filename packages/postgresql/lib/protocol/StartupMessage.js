@@ -54,5 +54,25 @@ function encodeSSLRequest() {
   return message;
 }
 
+function encodeCancelRequest(processId, secretKey) {
+  if (!Number.isInteger(processId) || processId < 0 || processId > 0xffffffff) {
+    throw new RangeError('PostgreSQL CancelRequest processId must be an unsigned 32-bit integer');
+  }
+  if (!Buffer.isBuffer(secretKey) && !(secretKey instanceof Uint8Array)) {
+    throw new TypeError('PostgreSQL CancelRequest secretKey must be Buffer or Uint8Array');
+  }
+  var key = Buffer.isBuffer(secretKey) ? secretKey : Buffer.from(secretKey.buffer, secretKey.byteOffset, secretKey.byteLength);
+  if (key.length < 4 || key.length > 256) {
+    throw new RangeError('PostgreSQL CancelRequest secretKey must contain 4 to 256 bytes');
+  }
+  var message = Buffer.allocUnsafe(12 + key.length);
+  message.writeUInt32BE(message.length, 0);
+  message.writeUInt32BE(constants.CANCEL_REQUEST_CODE, 4);
+  message.writeUInt32BE(processId >>> 0, 8);
+  key.copy(message, 12);
+  return message;
+}
+
 exports.encodeStartupMessage = encodeStartupMessage;
 exports.encodeSSLRequest = encodeSSLRequest;
+exports.encodeCancelRequest = encodeCancelRequest;
