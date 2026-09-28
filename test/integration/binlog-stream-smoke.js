@@ -4,18 +4,20 @@ var Binlog = require('../../binlog');
 var Mysql  = require('../..');
 
 var config = {
-  host     : process.env.MYSQL_HOST || '127.0.0.1',
-  port     : Number(process.env.MYSQL_PORT || 3306),
-  user     : process.env.MYSQL_USER || 'nublox',
-  password : process.env.MYSQL_PASSWORD || 'nublox_ci_password',
-  database : process.env.MYSQL_DATABASE || 'nublox_ci'
+  host                    : process.env.MYSQL_HOST || '127.0.0.1',
+  port                    : Number(process.env.MYSQL_PORT || 3306),
+  user                    : process.env.MYSQL_USER || 'nublox',
+  password                : process.env.MYSQL_PASSWORD || 'nublox_ci_password',
+  database                : process.env.MYSQL_DATABASE || 'nublox_ci',
+  allowPublicKeyRetrieval : true
 };
 var rootConfig = {
-  host     : config.host,
-  port     : config.port,
-  user     : 'root',
-  password : process.env.MYSQL_ROOT_PASSWORD || 'nublox_root_password',
-  database : config.database
+  host                    : config.host,
+  port                    : config.port,
+  user                    : 'root',
+  password                : process.env.MYSQL_ROOT_PASSWORD || 'nublox_root_password',
+  database                : config.database,
+  allowPublicKeyRetrieval : true
 };
 
 main().catch(function(error) {
