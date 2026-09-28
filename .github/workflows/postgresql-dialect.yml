@@ -71,3 +71,5 @@ jobs:
         run: npm run test:live:failures --workspace @nublox/postgresql
       - name: Result-limit connection and pool safety
         run: npm run test:live:limits --workspace @nublox/postgresql
+      - name: Deterministic lossless type policy
+        run: npm run test:live:types --workspace @nublox/postgresql
