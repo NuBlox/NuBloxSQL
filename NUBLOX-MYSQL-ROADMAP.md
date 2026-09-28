@@ -19,10 +19,11 @@ Current competitor capability floors include:
 | Prepared statement cache | No | LRU | Yes | Bounded LRU implemented with stats and diagnostics |
 | Named placeholders | No built-in parity target | Yes | Connector-specific | Implemented for query/execute with mysql2-compatible opt-in semantics |
 | Compression | Explicitly disabled | Yes | Yes | zlib + zstd implemented and live-tested |
-| Connection/query attributes | Explicitly disabled | Yes | Connector-specific | Planned with trace propagation |
-| AbortSignal cancellation | No first-class API | Limited connector-specific patterns | Connector-specific | Implemented for Promise connection queries |
+| Connection/query attributes | Explicitly disabled | Yes | Connector-specific | Implemented for text/prepared execution with W3C trace-context propagation |
+| AbortSignal cancellation | No first-class API | Limited connector-specific patterns | Connector-specific | Implemented with queue-safe cancellation and prepared execution support |
 | Transaction callback orchestration | No | Application-managed | Application-managed helpers vary | Implemented |
-| Pool observability | Private state | Limited public surface | Varies | Public stats, health checks, warmup and maintenance diagnostics |
+| Pool observability | Private state | Limited public surface | Varies | Public stats, health, wait/use/state telemetry, warmup and maintenance diagnostics |
+| OpenTelemetry integration | No | External/instrumentation-specific | Commonly available | Opt-in zero-core-dependency adapter with spans, metrics and trace propagation |
 
 ## Milestones
 
@@ -127,21 +128,49 @@ Delivered:
 - explicit decision to preserve one active command per classic-protocol connection and use pooled connections as the safe concurrency boundary;
 - documented command-ordering architecture and unit coverage proving queued commands are emitted serially and each command resets packet sequence ID to zero.
 
-### M5 — Enterprise resilience and security
+### M5 — Enterprise resilience and security — implemented
 
-- Hard maximum packet, column, metadata and row-allocation controls.
-- Per-operation deadlines composed with AbortSignal.
-- Circuit-breaker and adaptive pool admission hooks at the NuBlox integration layer.
-- Credential-provider interface for short-lived secrets.
-- TLS profile policy with minimum-version enforcement.
-- SAST, dependency audit and fuzzing of packet/parser boundaries.
+Delivered:
 
-### M6 — Observability and distributed tracing
+- bounded inbound logical MySQL packet handling with configurable `maxInboundPacketSize` enforcement after decompression;
+- bounded result field, row, column, metadata, buffered-row and cumulative buffered-result allocation controls;
+- controlled fatal protocol errors for resource-limit violations rather than uncontrolled allocation or uncaught parser failure;
+- absolute per-operation deadlines distinct from inactivity timeouts;
+- shared operation deadline budgets across pool acquisition, prepare, execute and safe reprepare paths;
+- queue-safe AbortSignal cancellation, including prepared execution;
+- circuit-breaker state and recovery behaviour at the pool boundary;
+- adaptive pool admission hooks using live pool and circuit-breaker pressure;
+- vendor-neutral short-lived credential-provider interface resolved per physical handshake;
+- enforceable `modern` and `strict` TLS policy profiles with minimum-version and certificate-verification rules;
+- parser read-boundary hardening for malformed/truncated data;
+- deterministic classic-protocol and inbound-packet fuzzing with reproducible seeds;
+- production dependency audit gate;
+- CodeQL JavaScript/TypeScript SAST using the security-extended query suite;
+- security workflow coverage on pull requests, `main`, scheduled runs and manual dispatch;
+- validation across Node 22/24/26 and live MySQL 8.4/9.7.
 
-- OpenTelemetry adapter built on the zero-dependency diagnostics channels.
-- W3C trace-context to MySQL query attributes where supported.
-- Pool wait histograms, query duration, error classification and retry metrics.
-- Slow-query event policy without leaking bind values.
+### M6 — Observability and distributed tracing — implemented
+
+Delivered:
+
+- zero-core-dependency `diagnostics_channel` lifecycle surface for database operations;
+- opt-in public OpenTelemetry adapter through `@nublox/mysql/otel` rather than introducing OpenTelemetry into protocol hot paths;
+- spans for physical connection establishment, text queries, prepared execution and complete transaction operations;
+- pool acquisition wait telemetry, connection-use duration and pool state instruments;
+- query duration metrics and consistent database error classification;
+- transaction retry metrics;
+- configurable slow-query event policy without bind-value leakage, with SQL text exposure remaining explicit/opt-in;
+- negotiated MySQL `CLIENT_QUERY_ATTRIBUTES` support with automatic legacy fallback when the physical server does not advertise the capability;
+- explicit per-statement query attributes for both `COM_QUERY` and `COM_STMT_EXECUTE`;
+- synchronous capture of query attributes at the public query/execute boundary so queued and pooled work retains the submitting caller's context;
+- propagation through pools, prepared execution, manual statements and safe reprepare;
+- W3C `traceparent` and `tracestate` injection from the active OpenTelemetry propagator;
+- deliberate exclusion of OpenTelemetry baggage from MySQL query attributes;
+- explicit caller-supplied trace attributes take precedence over automatic propagation;
+- command-time revalidation of the physically negotiated query-attribute capability so config recreation after `changeUser()` cannot select an unsupported wire format;
+- TypeScript `QueryOptions.attributes` and `ExecuteOptions.attributes` surface;
+- packet, capability, propagation and validation unit coverage plus live MySQL 8.4/9.7 validation;
+- OpenTelemetry integration remains optional: applications supply `@opentelemetry/api` when they enable the adapter.
 
 ### M7 — Advanced MySQL platform features
 
