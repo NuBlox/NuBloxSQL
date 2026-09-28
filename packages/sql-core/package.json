@@ -1,8 +1,8 @@
 {
   "name": "@nublox/sql-core",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0",
   "description": "Vendor-neutral SQL contracts and dialect primitives for NuBloxSQL adapters.",
-  "license": "UNLICENSED",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "Stephen J T Spittal",
   "repository": {
     "type": "git",
