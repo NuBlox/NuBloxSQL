@@ -1,22 +1,27 @@
-export interface OpenTelemetryAdapterOptions {
-  api?: any;
-  tracer?: any;
-  meter?: any;
-  instrumentationName?: string;
-  instrumentationVersion?: string;
-  database?: string;
-  host?: string;
-  port?: number;
-  captureQueryText?: boolean;
+declare function createOpenTelemetryAdapter(
+  options?: createOpenTelemetryAdapter.OpenTelemetryAdapterOptions
+): createOpenTelemetryAdapter.OpenTelemetryAdapter;
+
+declare namespace createOpenTelemetryAdapter {
+  interface OpenTelemetryAdapterOptions {
+    api?: any;
+    tracer?: any;
+    meter?: any;
+    instrumentationName?: string;
+    instrumentationVersion?: string;
+    database?: string;
+    host?: string;
+    port?: number;
+    captureQueryText?: boolean;
+  }
+
+  interface OpenTelemetryAdapter {
+    enable(): OpenTelemetryAdapter;
+    disable(): OpenTelemetryAdapter;
+    isEnabled(): boolean;
+  }
+
+  const createOpenTelemetryAdapter: typeof createOpenTelemetryAdapter;
 }
 
-export interface OpenTelemetryAdapter {
-  enable(): OpenTelemetryAdapter;
-  disable(): OpenTelemetryAdapter;
-  isEnabled(): boolean;
-}
-
-export declare function createOpenTelemetryAdapter(options?: OpenTelemetryAdapterOptions): OpenTelemetryAdapter;
-
-declare const createAdapter: typeof createOpenTelemetryAdapter;
-export = createAdapter;
+export = createOpenTelemetryAdapter;
