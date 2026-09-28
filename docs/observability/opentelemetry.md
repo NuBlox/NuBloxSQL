@@ -34,9 +34,9 @@ telemetry.disable();
 
 The adapter is idempotent: repeated `enable()` or `disable()` calls do not create duplicate subscriptions.
 
-## Semantic conventions
+## Semantic conventions and NuBlox extensions
 
-The adapter follows the stable OpenTelemetry database semantic-convention names available to NuBloxSQL without parsing SQL text:
+The adapter follows stable OpenTelemetry database semantic-convention names available without parsing SQL text:
 
 - `db.system.name = mysql`
 - `db.operation.name`
@@ -47,6 +47,12 @@ The adapter follows the stable OpenTelemetry database semantic-convention names 
 - `error.type` for failed operations
 - span kind `CLIENT`
 - `db.client.operation.duration` histogram in seconds
+- `db.client.operation.errors` counter
+- `db.client.operation.retries` counter for transaction retries
+
+NuBlox-specific low-cardinality attributes use the `nublox.mysql.*` namespace. Failed operations expose `nublox.mysql.error.category` as one of `cancelled`, `timeout`, `deadlock`, `lock_timeout`, `authentication`, `syntax`, `constraint`, `connection`, `protocol`, `database`, or `unknown`. The original driver/MySQL code remains available as `error.type`.
+
+Transaction retry metrics also include `nublox.mysql.retry.attempt` and `nublox.mysql.retry.delay_ms`.
 
 Span names use `<operation> <database>` when a database is configured, otherwise `<operation> <host>` or the operation alone.
 
@@ -64,36 +70,37 @@ const pool = mysql.createPool({
 telemetry.instrumentPool(pool);
 ```
 
-Instrumented pools record the following OpenTelemetry database-pool metrics:
+Instrumented pools record:
 
 - `db.client.connection.wait_time` — histogram in seconds from requesting a connection until it is obtained;
-- `db.client.connection.use_time` — histogram in seconds from borrowing a connection until release. Destruction also closes the observed lease;
-- `db.client.connection.count` — UpDownCounter of currently open connections with `db.client.connection.state` set to `idle` or `used`;
-- `db.client.connection.pending_requests` — UpDownCounter of requests currently queued or establishing a physical connection.
+- `db.client.connection.use_time` — histogram in seconds from borrowing a connection until release or destruction;
+- `db.client.connection.count` — UpDownCounter of open `idle` and `used` connections;
+- `db.client.connection.pending_requests` — UpDownCounter of queued or establishing requests.
 
-Connections that are still being established are counted as pending requests and are not counted as open `idle`/`used` connections until acquisition completes.
-
-All pool metrics include `db.client.connection.pool.name`. By default NuBloxSQL derives the name as:
-
-```text
-host:port/database
-```
-
-or `host:port` when no database is known. A stable deployment-specific name can be supplied explicitly:
+All pool metrics include `db.client.connection.pool.name`. By default NuBloxSQL derives `host:port/database`, or `host:port` when no database is known. A stable deployment-specific name can be supplied explicitly:
 
 ```js
 telemetry.instrumentPool(pool, {name: 'orders-primary'});
 ```
 
-Instrumentation is idempotent. Remove it explicitly with:
+Instrumentation is idempotent. `telemetry.uninstrumentPool(pool)` removes it. `telemetry.disable()` also restores instrumented pools and removes the adapter's current UpDownCounter contributions.
+
+## Slow-query policy
+
+Slow-query detection is disabled by default. Enable it with a threshold in milliseconds:
 
 ```js
-telemetry.uninstrumentPool(pool);
+const telemetry = createOpenTelemetryAdapter({
+  slowQueryThresholdMs: 250
+});
 ```
 
-Calling `telemetry.disable()` restores instrumented pools and outstanding connection methods, and removes the adapter's current UpDownCounter contributions so stale pool state is not left exported.
+Operations at or above the threshold emit:
 
-OpenTelemetry currently classifies connection-pool metrics as development-stability conventions, so NuBloxSQL keeps this surface isolated in the adapter and does not make it part of the core pool API.
+- a `db.client.slow_query` span event when the span implementation supports `addEvent()`;
+- a `nublox.mysql.query.slow` diagnostics event containing operation, thread ID, duration and threshold.
+
+The diagnostics payload does **not** include SQL text by default. Bind values are never included. Set the threshold to `0`, `false`, `null`, or omit it to disable slow-query detection.
 
 ## SQL text privacy
 
@@ -107,13 +114,13 @@ const telemetry = createOpenTelemetryAdapter({
 });
 ```
 
-When enabled, SQL is emitted as `db.query.text`. Bind values are never emitted by this adapter.
+When enabled, SQL is emitted as `db.query.text`, and slow-query diagnostics may include the SQL statement as `sql`. Bind values are never emitted.
 
 ## Current coverage
 
-The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, and `nublox.mysql.query.error` for query tracing, plus pool wait/use timing and pool state metrics through `instrumentPool()`.
+The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, `nublox.mysql.query.error`, and `nublox.mysql.transaction.retry`, plus pool wait/use/state telemetry through `instrumentPool()`.
 
-Prepared execution, transaction spans, connection creation/timeouts and richer error classification remain separate M6 tranches. They will continue to build on the adapter rather than adding OpenTelemetry dependencies to protocol hot paths.
+Prepared execution and transaction spans, connection creation/timeouts, and W3C trace-context propagation through MySQL query attributes remain separate M6 tranches. They will continue to build on the adapter rather than adding OpenTelemetry dependencies to protocol hot paths.
 
 ## Custom tracer and meter
 
