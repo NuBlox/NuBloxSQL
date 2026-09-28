@@ -1,7 +1,11 @@
 import mysql = require('./index');
 
+export type BinlogChecksumBytes = number | 'auto';
+export type BinlogChecksumAlgorithm = 'unknown' | 'undefined' | 'off' | 'crc32' | 'manual';
+
 export interface BinlogDecoderOptions {
-  checksumBytes?: number;
+  checksumBytes?: BinlogChecksumBytes;
+  verifyChecksum?: boolean;
   maxEventSize?: number;
 }
 
@@ -15,6 +19,11 @@ export interface BinlogEvent {
   flags: number;
   payload: Buffer;
   checksum: Buffer | null;
+  checksumAlgorithm: BinlogChecksumAlgorithm;
+  checksumVerified: boolean;
+  checksumValue?: number;
+  computedChecksum?: number;
+  checksumAlgorithmCode?: number;
   position?: bigint;
   nextBinlog?: string;
   threadId?: number;
@@ -71,7 +80,10 @@ export interface ReplicationConnection extends mysql.Connection {
 }
 
 export class BinlogEventDecoder {
+  readonly checksumMode: 'auto' | 'manual';
   readonly checksumBytes: number;
+  readonly checksumAlgorithm: BinlogChecksumAlgorithm;
+  readonly verifyChecksum: boolean;
   readonly maxEventSize: number;
   constructor(options?: BinlogDecoderOptions);
   decode(input: Buffer): BinlogEvent;
