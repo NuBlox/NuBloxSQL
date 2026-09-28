@@ -25,9 +25,9 @@ function event(type, payload, options) {
 }
 
 function writeUInt64LE(buffer, value, offset) {
-  value = BigInt(value);
+  value = global.BigInt(value);
   for (var index = 0; index < 8; index++) {
-    buffer[offset + index] = Number((value >> BigInt(index * 8)) & BigInt(0xff));
+    buffer[offset + index] = Number((value >> global.BigInt(index * 8)) & global.BigInt(0xff));
   }
 }
 
@@ -45,12 +45,12 @@ test('BinlogEventDecoder', {
 
   'decodes rotate event with bigint position': function() {
     var payload = Buffer.alloc(8 + Buffer.byteLength('mysql-bin.000123'));
-    writeUInt64LE(payload, BigInt('4294967297'), 0);
+    writeUInt64LE(payload, global.BigInt('4294967297'), 0);
     payload.write('mysql-bin.000123', 8, 'utf8');
 
     var decoded = Binlog.createDecoder().decode(event(Binlog.EventTypes.ROTATE_EVENT, payload));
 
-    assert.equal(decoded.position, BigInt('4294967297'));
+    assert.equal(decoded.position, global.BigInt('4294967297'));
     assert.equal(decoded.nextBinlog, 'mysql-bin.000123');
   },
 
@@ -99,10 +99,10 @@ test('BinlogEventDecoder', {
 
   'decodes xid event as bigint': function() {
     var payload = Buffer.alloc(8);
-    writeUInt64LE(payload, BigInt('9007199254740993'), 0);
+    writeUInt64LE(payload, global.BigInt('9007199254740993'), 0);
 
     var decoded = Binlog.createDecoder().decode(event(Binlog.EventTypes.XID_EVENT, payload));
-    assert.equal(decoded.xid, BigInt('9007199254740993'));
+    assert.equal(decoded.xid, global.BigInt('9007199254740993'));
   },
 
   'decodes table map event boundaries': function() {
