@@ -42,7 +42,7 @@ exports.createPool = function createPool(config) {
 
 /**
  * Create a new PoolCluster instance.
- * @param {object} [config]
+ * @param {object} [config] Configuration for pool cluster
  * @return {PoolCluster} New MySQL pool cluster
  * @public
  */
@@ -120,20 +120,36 @@ exports.raw = function raw(sql) {
   return SqlString.raw(sql);
 };
 
+/**
+ * Explicit prepared-statement parameter constructors.
+ * @public
+ */
 Object.defineProperty(exports, 'param', {
   get: function getParam() {
     return loadClass('TypedParameter').api;
   }
 });
 
+/**
+ * The type constants.
+ * @public
+ */
 Object.defineProperty(exports, 'Types', {
   get: loadClass.bind(null, 'Types')
 });
 
+/**
+ * Promise connection wrapper constructor.
+ * @public
+ */
 Object.defineProperty(exports, 'PromiseConnection', {
   get: loadClass.bind(null, 'PromiseConnection')
 });
 
+/**
+ * Promise pool wrapper constructor.
+ * @public
+ */
 Object.defineProperty(exports, 'PromisePool', {
   get: loadClass.bind(null, 'PromisePool')
 });
@@ -186,6 +202,12 @@ function getPromiseImplementation(config) {
   return global.Promise;
 }
 
+/**
+ * Load the given class.
+ * @param {string} className Name of class to default
+ * @return {function|object} Class constructor or exports
+ * @private
+ */
 function loadClass(className) {
   var Class = Classes[className];
 
@@ -193,6 +215,7 @@ function loadClass(className) {
     return Class;
   }
 
+  // This uses a switch for static require analysis
   switch (className) {
     case 'Connection':
       Class = require('./lib/Connection');
@@ -249,6 +272,7 @@ function loadClass(className) {
       throw new Error('Cannot find class \' ' + className + '\'');
   }
 
+  // Store to prevent invoking require()
   Classes[className] = Class;
 
   return Class;
