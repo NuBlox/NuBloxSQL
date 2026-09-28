@@ -39,15 +39,15 @@ assert.deepStrictEqual(sqlCore.createObjectName({
 
 assert.throws(function invalidCapability() {
   sqlCore.createDialectDescriptor({
-    identity : {family: 'test', name: 'Test'},
-    capabilities : {preparedStatements: 'yes'},
+    identity : {family : 'test', name : 'Test'},
+    capabilities : {preparedStatements : 'yes'},
     services : descriptor.services
   });
 }, /boolean/);
 
 assert.throws(function missingServices() {
   sqlCore.createDialectDescriptor({
-    identity : {family: 'test', name: 'Test'},
+    identity : {family : 'test', name : 'Test'},
     capabilities : {}
   });
 }, /services/);
