@@ -6,6 +6,9 @@ var base = require('./Connection');
 
 var PreparedStatement = transaction.PreparedStatement;
 var originalStatementClose = PreparedStatement.prototype.close;
+var baseCommit = transaction.Connection.prototype.commit;
+var baseRollback = transaction.Connection.prototype.rollback;
+var baseResetSession = transaction.Connection.prototype.resetSession;
 
 function positiveInteger(value, fallback, name) {
   if (value === undefined) return fallback;
@@ -31,7 +34,16 @@ function PortalCursor(connection, statement, parameters, options) {
   this.done = false;
   this._bound = false;
   statement._activeCursors = (statement._activeCursors || 0) + 1;
+  connection._activePortals.add(this);
 }
+
+PortalCursor.prototype._invalidate = function _invalidate() {
+  if (this.closed) return;
+  this.closed = true;
+  this.done = true;
+  this.connection._activePortals.delete(this);
+  if (this.statement._activeCursors > 0) this.statement._activeCursors -= 1;
+};
 
 PortalCursor.prototype.fetch = function fetch(options) {
   if (this.done) return Promise.resolve({ rows: [], fields: this.fields, done: true, command: '', rowCount: 0 });
@@ -42,11 +54,7 @@ PortalCursor.prototype.fetch = function fetch(options) {
 PortalCursor.prototype.close = function close(options) {
   if (this.closed) return Promise.resolve();
   var self = this;
-  return this.connection._closePortal(this, options || {}).then(function () {
-    self.closed = true;
-    self.done = true;
-    if (self.statement._activeCursors > 0) self.statement._activeCursors -= 1;
-  });
+  return this.connection._closePortal(this, options || {}).then(function () { self._invalidate(); });
 };
 
 PortalCursor.prototype[Symbol.asyncIterator] = function iterator() {
@@ -88,11 +96,36 @@ PreparedStatement.prototype.close = function close(options) {
 function Connection(config) {
   transaction.Connection.call(this, config);
   this._portalCounter = 0;
+  this._activePortals = new Set();
 }
 Connection.prototype = Object.create(transaction.Connection.prototype);
 Connection.prototype.constructor = Connection;
 
+Connection.prototype._invalidatePortals = function _invalidatePortals() {
+  Array.from(this._activePortals).forEach(function (cursor) { cursor._invalidate(); });
+  this._activePortals.clear();
+};
+
+Connection.prototype.commit = async function commit(options) {
+  var result = await baseCommit.call(this, options || {});
+  this._invalidatePortals();
+  return result;
+};
+
+Connection.prototype.rollback = async function rollback(options) {
+  var result = await baseRollback.call(this, options || {});
+  this._invalidatePortals();
+  return result;
+};
+
+Connection.prototype.resetSession = async function resetSession(options) {
+  var result = await baseResetSession.call(this, options || {});
+  this._invalidatePortals();
+  return result;
+};
+
 Connection.prototype._fetchPortal = function _fetchPortal(cursor, options) {
+  if (!this._activePortals.has(cursor) || cursor.closed) return Promise.reject(new Error('PostgreSQL portal cursor is no longer active'));
   if (this.transactionStatus !== 'T') return Promise.reject(new Error('PostgreSQL server-side portals require an active transaction'));
   var encoded = cursor.parameters.map(base.encodeTextParameter);
   var state = {
