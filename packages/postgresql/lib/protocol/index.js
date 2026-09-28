@@ -20,5 +20,6 @@ exports.encodeParse = frontend.encodeParse;
 exports.encodeBind = frontend.encodeBind;
 exports.encodeDescribe = frontend.encodeDescribe;
 exports.encodeExecute = frontend.encodeExecute;
+exports.encodeClose = frontend.encodeClose;
 exports.encodeSync = frontend.encodeSync;
 exports.encodeTerminate = frontend.encodeTerminate;
