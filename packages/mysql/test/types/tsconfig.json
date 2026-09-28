@@ -8,7 +8,6 @@
     "skipLibCheck": true
   },
   "files": [
-    "sql-core.ts",
-    "postgresql-dialect.ts"
+    "prepared-cursor.ts"
   ]
 }

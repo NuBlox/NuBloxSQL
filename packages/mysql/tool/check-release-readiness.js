@@ -39,8 +39,12 @@ assert.notStrictEqual(packageJson.private, true);
 assert.strictEqual(packageJson.license, 'Apache-2.0');
 assert.strictEqual(packageJson.author, 'Stephen J T Spittal');
 assert.strictEqual(packageJson.engines.node, '>=22');
-assert.strictEqual(packageJson.homepage, 'https://github.com/NuBlox/NuBloxSQL#readme');
+assert.strictEqual(
+  packageJson.homepage,
+  'https://github.com/NuBlox/NuBloxSQL/tree/main/packages/mysql#readme'
+);
 assert.strictEqual(packageJson.bugs.url, 'https://github.com/NuBlox/NuBloxSQL/issues');
+assert.strictEqual(packageJson.repository.directory, 'packages/mysql');
 assert.ok(packageJson.exports['.']);
 assert.ok(packageJson.exports['./promise']);
 assert.ok(packageJson.exports['./otel']);

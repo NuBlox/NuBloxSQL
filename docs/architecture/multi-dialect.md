@@ -2,9 +2,9 @@
 
 ## Decision
 
-NuBloxSQL is an independent repository for SQL connectivity and runtime behaviour across multiple SQL database families.
+NuBloxSQL is an independent multi-package repository for SQL connectivity and runtime behaviour across multiple SQL database families.
 
-The repository currently contains the MySQL implementation and publishes it as `@nublox/mysql`. That remains a valid and supported product boundary while the multi-dialect architecture is introduced incrementally.
+The repository root is private workspace orchestration. Public runtime packages are independently versioned under `packages/`.
 
 ## Boundary model
 
@@ -15,14 +15,15 @@ The architecture separates three concerns:
 3. **adapter runtime** — connection, protocol, authentication, execution and vendor-specific behaviour.
 
 ```text
-          shared NuBlox SQL contracts
-                    │
-          ┌─────────┼─────────┐
-          ▼         ▼         ▼
-        MySQL   PostgreSQL   SQLite   ...
-          │         │         │
-          ▼         ▼         ▼
-       server     server    runtime
+          @nublox/sql-core
+                  │
+        ┌─────────┼─────────┐
+        ▼         ▼         ▼
+      MySQL   PostgreSQL   future dialects
+        │         │
+        ▼         ▼
+     protocol   protocol
+     runtime    runtime
 ```
 
 NuBloxSQL exposes public package APIs for consumers, but consumer applications are outside the NuBloxSQL architecture and release boundary.
@@ -38,33 +39,9 @@ The shared layer must not:
 - introduce a universal SQL parser as a prerequisite for connectivity;
 - require all dialect adapters to share the same wire-protocol implementation.
 
-## Repository evolution
+## Repository structure
 
-### Current state
-
-The repository root is the `@nublox/mysql` package. Its current protocol implementation, test suite, release process and API surface are MySQL-specific.
-
-### Transitional state
-
-The repository may temporarily remain a single published package while shared contracts are designed alongside the existing MySQL implementation.
-
-No package split should be performed solely for directory aesthetics. Extraction should happen when the second dialect proves a contract is genuinely reusable.
-
-### Target state
-
-A package family with independent adapter versioning:
-
-```text
-packages/
-  sql-core/
-  mysql/
-  postgresql/
-  sqlite/
-  sqlserver/
-  oracle/
-```
-
-Possible future workspace layout:
+The workspace is structured as:
 
 ```text
 NuBloxSQL/
@@ -72,22 +49,27 @@ NuBloxSQL/
 │   ├── sql-core/
 │   ├── mysql/
 │   ├── postgresql/
-│   ├── sqlite/
-│   ├── sqlserver/
-│   └── oracle/
-├── compatibility/
-├── benchmark/
+│   └── future-dialects/
 ├── docs/
-└── test/
+├── test/
+└── package.json
 ```
 
-The package split should be a separately planned migration because the current MySQL package already has consumers and release-candidate history.
+Current public package boundaries are:
+
+- `@nublox/sql-core` — vendor-neutral contracts and dialect primitives;
+- `@nublox/mysql` — the existing MySQL driver, including its protocol implementation and release history;
+- `@nublox/postgresql` — the PostgreSQL dialect foundation, with protocol runtime development following this architecture.
+
+Future adapters such as SQLite, SQL Server and Oracle belong beside these packages rather than at repository root.
+
+The workspace root is private and must never become a substitute runtime package for an individual adapter.
 
 ## Core contract model
 
 ### Dialect identity
 
-Every adapter should expose immutable identity and capability information comparable to:
+Every adapter exposes immutable identity and capability information comparable to:
 
 ```ts
 interface SqlDialectIdentity {
@@ -121,9 +103,7 @@ Capabilities can be version-dependent and connection-dependent.
 
 ### Execution result
 
-The portable execution contract should distinguish result categories rather than forcing all outcomes into a row-array shape.
-
-Conceptually:
+The portable execution contract distinguishes result categories rather than forcing all outcomes into a row-array shape.
 
 ```ts
 type SqlExecutionResult<Row = Record<string, unknown>> =
@@ -138,8 +118,6 @@ Adapters may expose additional vendor result metadata.
 
 Portable metadata requires explicit hierarchy. A catalog, database and schema are not interchangeable across vendors.
 
-A neutral object identity should retain all available qualifiers:
-
 ```ts
 interface SqlObjectName {
   catalog?: string;
@@ -152,29 +130,15 @@ Adapters decide how those qualifiers map to their database family.
 
 ### Native extensions
 
-Every portable contract should allow adapter-specific extensions without weakening typing or requiring unsafe casts throughout consumers.
-
-The shared layer should define extension points rather than trying to predict every vendor feature centrally.
+Portable contracts allow adapter-specific extensions without weakening typing or forcing vendor features into shared core.
 
 ## Dialect services
 
-SQL text concerns are separate from connectivity.
-
-Each dialect should eventually provide services such as:
-
-```ts
-interface SqlDialectServices {
-  quoteIdentifier(identifier: string): string;
-  placeholder(index: number, name?: string): string;
-  supports(feature: SqlFeature): boolean;
-}
-```
-
-Rendering full migrations, DDL and query ASTs can build on these primitives later. They should not block the initial adapter architecture.
+SQL text concerns remain separate from connectivity. Dialects provide primitives such as identifier quoting, parameter placeholders and capability discovery. Full DDL/query rendering can build on those primitives without becoming a prerequisite for driver connectivity.
 
 ## MySQL boundary
 
-The following existing concerns are inherently MySQL-specific and should remain inside the MySQL adapter:
+The following concerns remain MySQL-specific inside `packages/mysql`:
 
 - classic protocol framing;
 - MySQL capability flags;
@@ -187,34 +151,15 @@ The following existing concerns are inherently MySQL-specific and should remain 
 - MySQL compression negotiation;
 - MySQL session-state tracking.
 
-Potentially reusable policy includes:
+Potentially reusable policy includes operation deadlines, AbortSignal contracts, observability vocabulary, transaction orchestration, diagnostics conventions, resource-limit policy, credential-provider shape and topology/routing interfaces. These move to shared core only when another adapter validates the abstraction.
 
-- operation deadline semantics;
-- AbortSignal integration contracts;
-- pool observability vocabulary;
-- transaction orchestration contracts;
-- diagnostics event conventions;
-- generic resource-limit policy;
-- credential-provider shape;
-- topology/routing policy interfaces.
+## PostgreSQL as the second reference dialect
 
-These should only move to shared core when a second adapter validates the design.
+PostgreSQL is the second reference dialect because it differs materially from MySQL in parameter syntax, catalog/schema semantics, type OIDs, prepared-statement lifecycle, cancellation, cursors, authentication, TLS and replication.
 
-## PostgreSQL as the abstraction test
+The PostgreSQL dialect foundation already validates shared identity, capability, quoting, placeholder and object-name contracts. Protocol development must continue to pressure-test the shared contracts rather than copy MySQL implementation patterns.
 
-PostgreSQL should be the second adapter because it differs from MySQL in enough important areas to expose weak abstractions early:
-
-- `$1`-style parameters instead of `?` placeholders;
-- catalogs and schemas with different semantics;
-- PostgreSQL-native type OIDs;
-- different prepared-statement lifecycle;
-- different cancellation protocol;
-- different streaming/cursor mechanisms;
-- different authentication and TLS details;
-- `RETURNING`, arrays, ranges, enums and extension types;
-- different replication/CDC facilities.
-
-If a proposed `sql-core` contract cannot support both MySQL and PostgreSQL without awkward exceptions, the contract should be redesigned before additional adapters are added.
+If a proposed `sql-core` contract cannot support both MySQL and PostgreSQL without awkward exceptions, redesign the contract before adding further adapters.
 
 ## Independence boundary
 
@@ -226,15 +171,16 @@ Its architecture, source tree, runtime contracts, CI, release criteria and roadm
 
 Existing ecosystem libraries may be used for behavioural comparison, migration testing and transitional integrations.
 
-NuBloxSQL adapters should ultimately own their public runtime surface. Any decision to wrap rather than implement a protocol directly should be explicit per adapter and based on maintenance, licensing, security, performance and platform constraints.
+NuBloxSQL adapters should ultimately own their public runtime surface. Any decision to wrap rather than implement a protocol directly must be explicit per adapter and based on maintenance, licensing, security, performance and platform constraints.
 
-## Migration rules
+## Architecture rules
 
-1. Do not break `@nublox/mysql` to create the abstraction.
-2. Do not rename MySQL-specific concepts that remain MySQL-specific.
-3. Introduce portable contracts before moving implementation code.
-4. Validate contracts against PostgreSQL before declaring them stable shared core.
-5. Keep adapter-specific escape hatches first-class.
-6. Keep live-server tests per adapter.
-7. Keep adapter releases independently versionable once the package split occurs.
-8. Keep NuBloxSQL architecture and release decisions independent of external consumer projects.
+1. Keep the repository root private and platform-focused.
+2. Keep every public adapter independently versionable and publishable.
+3. Do not break `@nublox/mysql` to create shared abstractions.
+4. Do not rename vendor-specific concepts merely to make them appear portable.
+5. Validate shared contracts against more than one dialect before stabilising them.
+6. Keep adapter-specific escape hatches first-class.
+7. Keep live-server tests per networked adapter.
+8. Keep protocol implementations isolated by dialect.
+9. Keep NuBloxSQL architecture and release decisions independent of external consumer projects.
