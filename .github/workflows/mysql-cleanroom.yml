@@ -1,0 +1,48 @@
+name: NuBloxSQL MySQL Cleanroom
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/mysql-cleanroom/**'
+      - '.github/workflows/mysql-cleanroom.yml'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    paths:
+      - 'packages/mysql-cleanroom/**'
+      - '.github/workflows/mysql-cleanroom.yml'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+jobs:
+  protocol:
+    name: cleanroom (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install workspace
+        run: npm install --ignore-scripts
+      - name: Verify clean-room protocol
+        run: npm run test --workspace @nublox/mysql-cleanroom
+      - name: Assert zero package dependencies
+        run: |
+          node - <<'NODE'
+          const p = require('./packages/mysql-cleanroom/package.json');
+          for (const key of ['dependencies','optionalDependencies','peerDependencies','devDependencies']) {
+            if (p[key] && Object.keys(p[key]).length) throw new Error(key + ' must remain empty for clean-room MySQL');
+          }
+          console.log('clean-room MySQL has zero package dependencies');
+          NODE
