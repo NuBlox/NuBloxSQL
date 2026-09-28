@@ -1,3 +1,5 @@
+import mysql = require('./index');
+
 export interface BinlogDecoderOptions {
   checksumBytes?: number;
   maxEventSize?: number;
@@ -43,6 +45,31 @@ export interface BinlogEventTypeMap {
   readonly [value: number]: string;
 }
 
+export interface BinlogDumpOptions {
+  filename: string;
+  position?: number;
+  flags?: number;
+  serverId?: number;
+  timeout?: number;
+  signal?: mysql.AbortSignalLike;
+  decoder?: BinlogEventDecoder;
+  decoderOptions?: BinlogDecoderOptions;
+}
+
+export interface BinlogEventStream extends NodeJS.ReadableStream, AsyncIterable<BinlogEvent> {}
+
+export interface BinlogDumpSequence {
+  stream(options?: {highWaterMark?: number}): BinlogEventStream;
+  stop(): void;
+  on(event: 'event', listener: (event: BinlogEvent) => void): this;
+  on(event: 'error', listener: (error: Error) => void): this;
+  on(event: 'end', listener: () => void): this;
+}
+
+export interface ReplicationConnection extends mysql.Connection {
+  binlogDump(options: BinlogDumpOptions, callback?: (error?: Error | null) => void): BinlogDumpSequence;
+}
+
 export class BinlogEventDecoder {
   readonly checksumBytes: number;
   readonly maxEventSize: number;
@@ -52,4 +79,5 @@ export class BinlogEventDecoder {
 
 export const EventTypes: BinlogEventTypeMap;
 export function createDecoder(options?: BinlogDecoderOptions): BinlogEventDecoder;
+export function createReplicationConnection(config: mysql.ConnectionConfig): ReplicationConnection;
 export default createDecoder;
