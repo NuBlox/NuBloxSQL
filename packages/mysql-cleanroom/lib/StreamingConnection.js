@@ -2,6 +2,7 @@
 
 var base = require('./Connection');
 var session = require('./SessionConnection');
+var control = require('./OperationControl');
 var PacketReader = require('./protocol/PacketReader').PacketReader;
 var client = require('./protocol/ClientPackets');
 var server = require('./protocol/ServerPackets');
@@ -102,8 +103,9 @@ var baseQuery = session.Connection.prototype.query;
 Connection.prototype.query = function query(sql, options) {
   var result;
   try {
-    var limits = limitsFor(this, options || {});
-    result = baseQuery.call(this, sql, options || {});
+    options = control.normalize(options || {}, 'MySQL query');
+    var limits = limitsFor(this, options);
+    result = baseQuery.call(this, sql, options);
     if (this._queryState && !this._queryState.kind) initializeLimits(this._queryState, limits);
   } catch (error) {
     return Promise.reject(error);
@@ -127,10 +129,9 @@ Connection.prototype._finishStream = function _finishStream(state, error, result
 };
 
 Connection.prototype.queryStream = function queryStream(sql, options) {
-  options = options || {};
+  options = control.normalize(options || {}, 'MySQL query');
   if (!this.connected || !this.socket || this.ended) throw new Error('MySQL connection is not ready');
   if (this._queryState) throw new Error('MySQL connection already has an active operation');
-  if (options.timeout !== undefined && (!Number.isFinite(options.timeout) || options.timeout <= 0)) throw new RangeError('MySQL query timeout must be a positive number');
   if (options.signal && options.signal.aborted) throw (options.signal.reason || new Error('MySQL query aborted'));
 
   var limits = limitsFor(this, options);
