@@ -54,7 +54,7 @@ function createApi() {
               name    : name,
               options : options,
               record  : function record(value, attributes) {
-                records.push({value: value, attributes: attributes});
+                records.push({name: name, value: value, attributes: attributes});
               }
             };
           }
@@ -64,6 +64,32 @@ function createApi() {
   };
 
   return {api: api, spans: spans, records: records};
+}
+
+function createPool() {
+  var pool = {
+    config: {
+      connectionConfig: {
+        host     : 'mysql.internal',
+        port     : 3307,
+        database : 'orders'
+      }
+    }
+  };
+
+  pool.getConnection = function getConnection(callback) {
+    process.nextTick(function () {
+      callback(null, {threadId: 11});
+    });
+  };
+
+  return pool;
+}
+
+function findRecord(records, name) {
+  return records.filter(function (record) {
+    return record.name === name;
+  })[0];
 }
 
 function publish(channelName, message) {
@@ -104,6 +130,7 @@ test('OpenTelemetry adapter', {
     assert.strictEqual(telemetry.spans[0].options.attributes['db.query.text'], undefined);
     assert.strictEqual(telemetry.spans[0].ended, true);
     assert.strictEqual(telemetry.records.length, 1);
+    assert.strictEqual(telemetry.records[0].name, 'db.client.operation.duration');
     assert.strictEqual(telemetry.records[0].value, 0.0125);
   },
 
@@ -163,5 +190,69 @@ test('OpenTelemetry adapter', {
     assert.strictEqual(adapter.isEnabled(), true);
     adapter.disable().disable();
     assert.strictEqual(adapter.isEnabled(), false);
+  },
+
+  'records connection wait time with an inferred pool name': function(done) {
+    var telemetry = createApi();
+    var pool = createPool();
+    var adapter = createOpenTelemetryAdapter({api: telemetry.api});
+
+    adapter.instrumentPool(pool);
+    pool.getConnection(function(error, connection) {
+      assert.ifError(error);
+      assert.strictEqual(connection.threadId, 11);
+
+      var record = findRecord(telemetry.records, 'db.client.connection.wait_time');
+      assert.ok(record);
+      assert.ok(record.value >= 0);
+      assert.strictEqual(
+        record.attributes['db.client.connection.pool.name'],
+        'mysql.internal:3307/orders'
+      );
+      adapter.disable();
+      done();
+    });
+  },
+
+  'supports explicit pool names and idempotent instrumentation': function(done) {
+    var telemetry = createApi();
+    var pool = createPool();
+    var original = pool.getConnection;
+    var adapter = createOpenTelemetryAdapter({api: telemetry.api});
+
+    adapter.instrumentPool(pool, {name: 'orders-primary'});
+    var wrapped = pool.getConnection;
+    adapter.instrumentPool(pool, {name: 'ignored-second-name'});
+    assert.strictEqual(pool.getConnection, wrapped);
+
+    pool.getConnection(function(error) {
+      assert.ifError(error);
+      var record = findRecord(telemetry.records, 'db.client.connection.wait_time');
+      assert.strictEqual(record.attributes['db.client.connection.pool.name'], 'orders-primary');
+      adapter.uninstrumentPool(pool);
+      assert.strictEqual(pool.getConnection, original);
+      done();
+    });
+  },
+
+  'disable restores instrumented pools without tracing being enabled': function() {
+    var telemetry = createApi();
+    var pool = createPool();
+    var original = pool.getConnection;
+    var adapter = createOpenTelemetryAdapter({api: telemetry.api});
+
+    adapter.instrumentPool(pool);
+    assert.notStrictEqual(pool.getConnection, original);
+    adapter.disable();
+    assert.strictEqual(pool.getConnection, original);
+  },
+
+  'rejects invalid pool instrumentation targets': function() {
+    var telemetry = createApi();
+    var adapter = createOpenTelemetryAdapter({api: telemetry.api});
+
+    assert.throws(function() {
+      adapter.instrumentPool({});
+    }, /instrumentPool requires a NuBloxSQL pool/);
   }
 });
