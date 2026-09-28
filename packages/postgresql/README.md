@@ -79,6 +79,26 @@ await pool.withTransaction(async (connection) => {
 await pool.end();
 ```
 
+## Lossless text type policy
+
+NuBloxSQL does not silently coerce values where JavaScript cannot preserve PostgreSQL semantics exactly.
+
+| PostgreSQL type | JavaScript value |
+| --- | --- |
+| `bool` | `boolean` |
+| `int2`, `int4`, `oid` | `number` |
+| `int8` | `bigint` |
+| `float4`, `float8` | `number` including `NaN` and infinities |
+| `numeric` / `decimal` | `string` to preserve arbitrary precision |
+| `bytea` | `Buffer` |
+| `json`, `jsonb` | parsed JavaScript value |
+| `timestamptz` | `Date` when finite |
+| `date`, `time`, `timetz`, `timestamp`, `interval` | `string` |
+| `uuid` | `string` |
+| unknown/custom text OIDs | `string` |
+
+`timestamp without time zone` deliberately remains a string so the driver never invents a timezone. PostgreSQL `numeric` deliberately remains a string because converting arbitrary precision values to IEEE-754 `Number` can silently lose data. Applications that need decimal arithmetic can choose their own numeric representation without the driver imposing a third-party decimal dependency.
+
 ## Current production surface
 
 - native TCP connection lifecycle
@@ -97,8 +117,8 @@ await pool.end();
 - bounded connection pooling and reset-on-release hygiene
 - transactions and savepoints
 - server-side portals/cursors with bounded batch fetching and async iteration
-- RowDescription, DataRow, CommandComplete and EmptyQueryResponse decoding
-- typed text decoding for booleans, common integer/float/numeric OIDs and JSON/JSONB
+- bounded rows/result bytes/row bytes with fail-closed connection handling
+- deterministic lossless text type decoding
 - structured PostgreSQL errors/notices
 - configurable backend message-size limits
 - connection and operation timeout/AbortSignal hooks
@@ -135,14 +155,14 @@ const parser = new protocol.BackendMessageParser();
 
 ## Supported v1 server majors
 
-The v1 target matrix is PostgreSQL 15, 16, 17 and 18. Every supported major is exercised with the native runtime integration suite and explicit authentication/TLS failure-path tests.
+The v1 target matrix is PostgreSQL 15, 16, 17 and 18. Every supported major is exercised with the native runtime integration suite, authentication/TLS failure-path tests, resource-limit recovery tests and deterministic type-policy tests.
 
 ## Remaining Gate 3 work
 
 NuBloxSQL does not claim complete PostgreSQL v1 coverage yet. Before Gate 3 closes, the remaining focus is:
 
-- broader production type decoding and explicit precision policy
-- bounded result/resource limits beyond per-message framing
-- additional TLS/authentication edge-case hardening where live evidence identifies gaps
 - performance, memory and resource-soak evidence
 - final support-matrix and failure-path evidence capture
+- any further TLS/authentication edge cases exposed by that evidence
+
+Custom extensions, arrays, ranges and enums remain first-class PostgreSQL semantics; unsupported/custom text OIDs are returned losslessly as strings rather than guessed into JavaScript types.
