@@ -14,11 +14,11 @@ External database servers, published protocol specifications, operating systems,
 
 ### SQL Core
 
-`@nublox/sql-core` is the shared cross-dialect contract layer. Gate 4 is now active and will freeze only concepts that MySQL and PostgreSQL have both proved in production-oriented implementations.
+Gate 4 is complete. `@nublox/sql-core@1.0.0-rc.1` defines contract family `1.0`, proven against both canonical MySQL and PostgreSQL adapters. The compatibility contract is `docs/v1/SQL-CORE-V1-CONTRACT.md` and the evidence record is `docs/v1/GATE-4-EVIDENCE.md`.
 
 ### MySQL
 
-Gates 1 and 2 are complete. `packages/mysql` is now the canonical NuBlox-authored, zero-package-dependency `@nublox/mysql` implementation. The historical mysqljs-derived package and the transitional `packages/mysql-cleanroom` tree no longer exist in the current v1 source tree.
+Gates 1 and 2 are complete. `packages/mysql` is the canonical NuBlox-authored, zero-package-dependency `@nublox/mysql` implementation. The historical mysqljs-derived package and the transitional `packages/mysql-cleanroom` tree no longer exist in the current v1 source tree.
 
 The canonical package is currently `@nublox/mysql@1.0.0-rc.1`. Stable `1.0.0` and final proprietary licence text remain Gate 5 decisions.
 
@@ -103,22 +103,31 @@ The completed PostgreSQL v1 surface includes:
 
 PostgreSQL-specific semantics remain first class rather than being forced into a MySQL-shaped API.
 
-### Gate 4 — Stabilise SQL Core — ACTIVE
+### Gate 4 — Stabilise SQL Core — COMPLETE
 
-Now that MySQL and PostgreSQL both implement production-oriented adapters, Gate 4 freezes only portable concepts proven by both:
+Gate 4 is complete. See `docs/v1/GATE-4-EVIDENCE.md` and `docs/v1/SQL-CORE-V1-CONTRACT.md`.
 
-- freeze v1 execution/result contracts;
-- freeze transaction/cancellation semantics;
-- freeze error categorisation rules;
-- freeze metadata/type extension points;
-- reconcile deadline, resource-limit and observability vocabulary where genuinely portable;
-- keep vendor-only capabilities in adapters;
-- reject lowest-common-denominator abstractions;
-- publish a v1 compatibility contract for adapter implementers and consumers.
+The frozen contract family is identified by `CONTRACT_VERSION === '1.0'` and stages `@nublox/sql-core@1.0.0-rc.1`.
 
-SQL Core must not grow by theoretical abstraction. Every frozen contract requires evidence from both canonical adapters or a clear cross-dialect policy role.
+The v1 portable surface includes:
 
-### Gate 5 — Proprietary and release audit
+- dialect identity, capability discovery, identifier quoting and positional placeholders;
+- catalog/schema/name object identity;
+- structural cancellation signals and relative operation timeout policy;
+- bounded result controls (`maxRows`, `maxResultBytes`, `maxRowBytes`);
+- positional execution parameters;
+- portable row-result and command-result vocabulary;
+- transaction isolation and read-only policy;
+- portable error categories, native code/SQLSTATE preservation, retryability and resource-limit evidence;
+- explicit vendor extension points.
+
+Gate 4 deliberately rejected unproven generic named parameters, generic multi-result containers and universal absolute deadlines. Vendor-specific cursor/portal semantics, CDC/replication, authentication and type codecs remain in adapters.
+
+Breaking changes to the frozen SQL Core v1 contract after stable `1.0.0` require a new major version.
+
+### Gate 5 — Proprietary and release audit — ACTIVE
+
+Gate 5 is now the sole v1 critical path.
 
 `npm run v1:proprietary-audit` is mandatory and must pass with zero findings at the final release commit.
 
@@ -167,4 +176,4 @@ The authoritative state is always `main` plus at most one active v1 task branch.
 
 ## Release decision
 
-NuBloxSQL v1.0.0 is not declared stable until all five gates above are complete. Version numbers, marketing language or licence text do not override failed technical or provenance gates.
+NuBloxSQL v1.0.0 is not declared stable until Gate 5 is complete. Version numbers, marketing language or licence text do not override failed technical or provenance gates.

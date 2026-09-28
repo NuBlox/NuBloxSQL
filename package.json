@@ -10,7 +10,7 @@
   "engines": {"node": ">=22"},
   "scripts": {
     "test:mysql": "npm run test --workspace @nublox/mysql",
-    "test:sql-core": "npm run test --workspace @nublox/sql-core && node test/dialect-contracts.js",
+    "test:sql-core": "npm run test --workspace @nublox/sql-core && node test/dialect-contracts.js && node test/sql-core-v1-contract.js",
     "test:postgresql": "npm run test --workspace @nublox/postgresql",
     "v1:proprietary-audit": "node tool/check-proprietary-v1.js",
     "verify": "npm run test:mysql && npm run test:sql-core && npm run test:postgresql",
