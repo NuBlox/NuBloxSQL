@@ -12,6 +12,7 @@ exports.createConnection = function createConnection(config) {
   var connection       = new Connection({config: new ConnectionConfig(config)});
 
   loadClass('PreparedStatements').decorateConnection(connection);
+  loadClass('PreparedCursors').decorateConnection(connection);
   loadClass('PreparedStatementReset').decorateConnection(connection);
   loadClass('SessionReset').decorateConnection(connection);
   loadClass('SessionStateLedger').decorateConnection(connection);
@@ -164,6 +165,7 @@ function decorateConnection(connection, PromiseImpl) {
         var wrapper = new PromiseConnection(connection, overridePromise || PromiseImpl || global.Promise);
 
         wrapper = loadClass('PreparedStatements').decoratePromiseConnection(wrapper);
+        wrapper = loadClass('PreparedCursors').decoratePromiseConnection(wrapper);
         wrapper = loadClass('PreparedStatementReset').decoratePromiseConnection(wrapper);
         wrapper = loadClass('SessionReset').decoratePromiseConnection(wrapper);
         return loadClass('SessionStateLedger').decoratePromiseConnection(wrapper);
@@ -240,6 +242,9 @@ function loadClass(className) {
       break;
     case 'PoolConfig':
       Class = require('./lib/PoolConfig');
+      break;
+    case 'PreparedCursors':
+      Class = require('./lib/PreparedCursors');
       break;
     case 'PreparedStatementReset':
       Class = require('./lib/PreparedStatementReset');
