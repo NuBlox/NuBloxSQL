@@ -73,3 +73,6 @@ jobs:
         run: npm run test:live:limits --workspace @nublox/postgresql
       - name: Deterministic lossless type policy
         run: npm run test:live:types --workspace @nublox/postgresql
+      - name: Production performance and memory evidence
+        if: matrix.postgresql == '15' || matrix.postgresql == '18'
+        run: npm run test:live:evidence --workspace @nublox/postgresql
