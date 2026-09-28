@@ -53,6 +53,13 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: nublox
+      PGPASSWORD: nublox_ci_password
+      PGDATABASE: nublox
+      PG_EXPECTED_MAJOR: ${{ matrix.postgresql }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -60,16 +67,7 @@ jobs:
           node-version: 24
       - name: Native runtime, extended protocol, cancellation, pooling and portals
         run: npm run test:live --workspace @nublox/postgresql
-        env: &pg_env
-          PGHOST: 127.0.0.1
-          PGPORT: 5432
-          PGUSER: nublox
-          PGPASSWORD: nublox_ci_password
-          PGDATABASE: nublox
-          PG_EXPECTED_MAJOR: ${{ matrix.postgresql }}
       - name: Authentication and TLS failure paths
         run: npm run test:live:failures --workspace @nublox/postgresql
-        env: *pg_env
       - name: Result-limit connection and pool safety
         run: npm run test:live:limits --workspace @nublox/postgresql
-        env: *pg_env
