@@ -162,12 +162,21 @@ declare namespace mysql {
     context: Readonly<PoolTopologyPolicyContext>
   ) => string | PoolClusterNodeSnapshot | null | undefined;
 
+  interface PoolTopologyUpdate extends PoolClusterNodeMetadata {
+    id: string;
+  }
+
+  type PoolTopologyProvider = (
+    current: ReadonlyArray<Readonly<PoolClusterNodeSnapshot>>
+  ) => PoolTopologyUpdate[] | Promise<PoolTopologyUpdate[]>;
+
   interface PoolClusterOptions {
     canRetry?: boolean;
     defaultSelector?: string;
     removeNodeErrorCount?: number;
     restoreNodeTimeout?: number;
     topologyPolicy?: PoolTopologyPolicy;
+    topologyProvider?: PoolTopologyProvider;
   }
 
   interface PoolNamespace {
@@ -185,8 +194,10 @@ declare namespace mysql {
     getConnection(pattern: string | RegExp, selector: string, callback: (error: Error | null, connection?: Connection) => void): void;
     setNodeMetadata(id: string, metadata: PoolClusterNodeMetadata): this;
     topology(): PoolClusterNodeSnapshot[];
+    refreshTopology(callback?: (error: Error | null, topology?: PoolClusterNodeSnapshot[]) => void): Promise<PoolClusterNodeSnapshot[]>;
     end(callback?: (error?: Error) => void): void;
-    on(event: 'topology', listener: (topology: PoolClusterNodeSnapshot[]) => void): this;
+    on(event: 'topology' | 'topologyRefresh', listener: (topology: PoolClusterNodeSnapshot[]) => void): this;
+    on(event: 'topologyRefreshError', listener: (error: Error) => void): this;
     on(event: 'online' | 'offline' | 'remove', listener: (nodeId: string) => void): this;
     on(event: string, listener: (...args: unknown[]) => void): this;
   }
