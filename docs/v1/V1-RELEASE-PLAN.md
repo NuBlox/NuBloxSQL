@@ -18,12 +18,12 @@ External database servers, published protocol specifications, operating systems,
 
 ### MySQL
 
-There are currently two MySQL implementations:
+Gate 1 clean-room MySQL feature parity is complete. The evidence record is `docs/v1/GATE-1-EVIDENCE.md`.
+
+There are currently two MySQL implementations during the Gate 2 replacement:
 
 1. `packages/mysql` — legacy mastered implementation derived from mysqljs/mysql. It remains only as a behavioural and compatibility baseline during migration and is not eligible for proprietary v1.
-2. `packages/mysql-cleanroom` — NuBlox-authored zero-package-dependency replacement. This is the only MySQL implementation that may become the v1 `@nublox/mysql` package.
-
-The clean-room implementation already contains native protocol framing, modern authentication, query execution, prepared statements, transaction support and connection pooling with live MySQL validation.
+2. `packages/mysql-cleanroom` — NuBlox-authored zero-package-dependency replacement. Gate 1 has validated this implementation as the production replacement candidate and Gate 2 now promotes it to the v1 `@nublox/mysql` package.
 
 ### PostgreSQL
 
@@ -37,9 +37,11 @@ SQLite, SQL Server, Oracle and additional dialects are deferred until the v1 fou
 
 Development proceeds in this order only.
 
-### Gate 1 — Clean-room MySQL feature parity
+### Gate 1 — Clean-room MySQL feature parity — COMPLETE
 
-Complete the minimum production surface required to replace the legacy MySQL package:
+Gate 1 is complete. See `docs/v1/GATE-1-EVIDENCE.md` for the implementation and validation record.
+
+The production surface validated before closure includes:
 
 - connection lifecycle and TLS
 - caching_sha2_password and supported authentication paths
@@ -58,7 +60,7 @@ Complete the minimum production surface required to replace the legacy MySQL pac
 
 Features from the legacy driver that are not required for v1 stability are explicitly deferred rather than keeping legacy source alive indefinitely.
 
-### Gate 2 — Replace legacy `@nublox/mysql`
+### Gate 2 — Replace legacy `@nublox/mysql` — ACTIVE
 
 When clean-room parity gates pass:
 
