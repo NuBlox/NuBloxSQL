@@ -56,6 +56,14 @@ Transaction retry metrics also include `nublox.mysql.retry.attempt` and `nublox.
 
 Span names use `<operation> <database>` when a database is configured, otherwise `<operation> <host>` or the operation alone.
 
+## Transaction spans
+
+`withTransaction()` publishes one operation lifecycle around the complete transaction orchestration, including any configured deadlock or lock-wait retries. The OpenTelemetry adapter therefore creates one `transaction` client span rather than one span per retry attempt.
+
+The transaction start diagnostic includes the physical connection thread ID together with bounded policy metadata (`readOnly`, isolation level and configured maximum retries). Completion diagnostics include the final attempt count. Final failures expose the original MySQL/driver error code and are classified by the same error policy used for query failures.
+
+Transaction lifecycle messages intentionally do not provide `durationMs` to the slow-query policy. The OpenTelemetry span still measures wall-clock transaction duration naturally from start to end, while long transactions are not misreported as slow SQL statements.
+
 ## Pool connection telemetry
 
 Pool telemetry is opt-in because it wraps the pool's public `getConnection()` boundary rather than adding OpenTelemetry to the core pool implementation:
@@ -118,9 +126,9 @@ When enabled, SQL is emitted as `db.query.text`, and slow-query diagnostics may 
 
 ## Current coverage
 
-The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, `nublox.mysql.query.error`, and `nublox.mysql.transaction.retry`, plus pool wait/use/state telemetry through `instrumentPool()`.
+The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, `nublox.mysql.query.error`, and `nublox.mysql.transaction.retry`, plus pool wait/use/state telemetry through `instrumentPool()`. Text queries and complete `withTransaction()` operations now use the common lifecycle surface.
 
-Prepared execution and transaction spans, connection creation/timeouts, and W3C trace-context propagation through MySQL query attributes remain separate M6 tranches. They will continue to build on the adapter rather than adding OpenTelemetry dependencies to protocol hot paths.
+Prepared execution, connection creation/timeouts, and W3C trace-context propagation through MySQL query attributes remain separate M6 tranches. They will continue to build on the adapter rather than adding OpenTelemetry dependencies to protocol hot paths.
 
 ## Custom tracer and meter
 
