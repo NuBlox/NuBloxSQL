@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: Verify clean-room protocol and public API contracts
-        run: node packages/mysql-cleanroom/test/protocol.js && node packages/mysql-cleanroom/test/auth.js && node packages/mysql-cleanroom/test/prepared.js && node packages/mysql-cleanroom/test/api.js
+        run: node packages/mysql-cleanroom/test/protocol.js && node packages/mysql-cleanroom/test/auth.js && node packages/mysql-cleanroom/test/prepared.js && node packages/mysql-cleanroom/test/api.js && node packages/mysql-cleanroom/test/session-reset.js && node packages/mysql-cleanroom/test/streaming.js
       - name: Assert zero package dependencies
         run: |
           node - <<'NODE'
@@ -70,7 +70,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Native clean-room caching_sha2_password, COM_QUERY and prepared statement smoke
+      - name: Native clean-room query, streaming, prepared and pool smoke
         env:
           MYSQL_HOST: 127.0.0.1
           MYSQL_PORT: 3306
