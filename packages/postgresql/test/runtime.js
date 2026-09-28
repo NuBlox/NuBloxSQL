@@ -38,9 +38,10 @@ assert.throws(function () { connection.encodeTextParameter(Infinity); }, /finite
 
 assert.strictEqual(typeof postgres.PreparedStatement, 'function');
 assert.strictEqual(typeof postgres.PostgreSqlCancellationError, 'function');
+assert.strictEqual(typeof postgres.PortalCursor, 'function');
 assert.strictEqual(typeof postgres.Pool, 'function');
 assert.strictEqual(postgres.capabilities.preparedStatements, true);
-assert.strictEqual(postgres.capabilities.serverSideCursors, false);
+assert.strictEqual(postgres.capabilities.serverSideCursors, true);
 assert.strictEqual(postgres.capabilities.queryCancellation, true);
 assert.strictEqual(postgres.capabilities.changeDataCapture, false);
 assert.strictEqual(postgres.capabilities.savepoints, true);

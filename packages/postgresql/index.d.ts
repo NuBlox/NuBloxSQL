@@ -39,6 +39,7 @@ export interface PostgreSqlConnectionOptions { host?: string; port?: number; use
 export interface PostgreSqlQueryOptions { timeout?: number; signal?: AbortSignal; }
 export interface PostgreSqlCancelOptions { reason?: Error; }
 export interface PostgreSqlPrepareOptions extends PostgreSqlQueryOptions { name?: string; parameterTypeOids?: number[]; }
+export interface PostgreSqlCursorOptions extends PostgreSqlQueryOptions { name?: string; batchSize?: number; }
 export type PostgreSqlIsolationLevel = 'read-uncommitted' | 'read-committed' | 'repeatable-read' | 'serializable';
 export interface PostgreSqlTransactionOptions extends PostgreSqlQueryOptions { isolationLevel?: PostgreSqlIsolationLevel; readOnly?: boolean; deferrable?: boolean; acquire?: PostgreSqlPoolAcquireOptions; }
 export interface PostgreSqlPoolAcquireOptions { timeout?: number; signal?: AbortSignal; }
@@ -46,8 +47,22 @@ export interface PostgreSqlPoolQueryOptions extends PostgreSqlQueryOptions { acq
 export interface PostgreSqlPoolConfig extends PostgreSqlConnectionOptions { connectionLimit?: number; maxIdle?: number; idleTimeout?: number; acquireTimeout?: number; queueLimit?: number; resetOnRelease?: boolean; }
 export type PostgreSqlParameter = string | number | bigint | boolean | Date | Buffer | Uint8Array | Record<string, unknown> | unknown[] | null | undefined;
 export interface PostgreSqlQueryResult<Row = Record<string, unknown>> { rows: Row[]; fields: PostgreSqlFieldDescription[]; command: string; rowCount: number | null; }
+export interface PostgreSqlCursorBatch<Row = Record<string, unknown>> { rows: Row[]; fields: PostgreSqlFieldDescription[]; done: boolean; command: string; rowCount: number | null; }
 export class PostgreSqlError extends Error { code?: string; severity?: string; fields: Record<string, string>; }
 export class PostgreSqlCancellationError extends Error { readonly code: string; readonly cause?: unknown; }
+export class PortalCursor<Row = Record<string, unknown>> implements AsyncIterable<Row> {
+  readonly connection: Connection;
+  readonly statement: PreparedStatement;
+  readonly name: string;
+  readonly batchSize: number;
+  readonly parameters: PostgreSqlParameter[];
+  fields: PostgreSqlFieldDescription[];
+  closed: boolean;
+  done: boolean;
+  fetch(options?: PostgreSqlQueryOptions): Promise<PostgreSqlCursorBatch<Row>>;
+  close(options?: PostgreSqlQueryOptions): Promise<void>;
+  [Symbol.asyncIterator](): AsyncIterator<Row>;
+}
 export class PreparedStatement {
   readonly connection: Connection;
   readonly name: string;
@@ -56,6 +71,7 @@ export class PreparedStatement {
   readonly fields: PostgreSqlFieldDescription[];
   closed: boolean;
   execute<Row = Record<string, unknown>>(parameters?: PostgreSqlParameter[], options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult<Row>>;
+  openCursor<Row = Record<string, unknown>>(parameters?: PostgreSqlParameter[], options?: PostgreSqlCursorOptions): PortalCursor<Row>;
   close(options?: PostgreSqlQueryOptions): Promise<void>;
 }
 export class Connection extends EventEmitter {

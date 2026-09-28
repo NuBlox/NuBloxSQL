@@ -1,12 +1,12 @@
 'use strict';
 
 var protocol = require('./lib/protocol');
-var connectionModule = require('./lib/TransactionConnection');
+var connectionModule = require('./lib/PortalConnection');
 var poolModule = require('./lib/Pool');
 
 var capabilities = Object.freeze({
   preparedStatements    : true,
-  serverSideCursors     : false,
+  serverSideCursors     : true,
   savepoints            : true,
   catalogs              : true,
   schemas               : true,
@@ -56,6 +56,7 @@ exports.createObjectName = createObjectName;
 exports.protocol = protocol;
 exports.Connection = connectionModule.Connection;
 exports.PreparedStatement = connectionModule.PreparedStatement;
+exports.PortalCursor = connectionModule.PortalCursor;
 exports.Pool = poolModule.Pool;
 exports.PostgreSqlError = connectionModule.PostgreSqlError;
 exports.PostgreSqlCancellationError = connectionModule.PostgreSqlCancellationError;

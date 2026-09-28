@@ -98,6 +98,35 @@ async function main() {
   var rows = await connection.query('SELECT id, name, active FROM nublox_rc_test ORDER BY id');
   assert.deepStrictEqual(rows.rows.map(function (row) { return [row.id, row.name, row.active]; }), [[1, 'alpha', true], [2, 'beta', false]]);
 
+  await connection.beginTransaction();
+  var cursorStatement = await connection.prepare('SELECT generate_series(1, 7)::int4 AS value');
+  var cursor = cursorStatement.openCursor([], { batchSize: 3 });
+  var batch1 = await cursor.fetch();
+  assert.deepStrictEqual(batch1.rows.map(function (row) { return row.value; }), [1, 2, 3]);
+  assert.strictEqual(batch1.done, false);
+  var batch2 = await cursor.fetch();
+  assert.deepStrictEqual(batch2.rows.map(function (row) { return row.value; }), [4, 5, 6]);
+  assert.strictEqual(batch2.done, false);
+  var batch3 = await cursor.fetch();
+  assert.deepStrictEqual(batch3.rows.map(function (row) { return row.value; }), [7]);
+  assert.strictEqual(batch3.done, true);
+  await cursor.close();
+  await cursorStatement.close();
+  await connection.commit();
+
+  await connection.beginTransaction();
+  var iteratorStatement = await connection.prepare('SELECT generate_series(1, 10)::int4 AS value');
+  var iteratorCursor = iteratorStatement.openCursor([], { batchSize: 2 });
+  var seen = [];
+  for await (var cursorRow of iteratorCursor) {
+    seen.push(cursorRow.value);
+    if (seen.length === 3) break;
+  }
+  assert.deepStrictEqual(seen, [1, 2, 3]);
+  assert.strictEqual(iteratorCursor.closed, true);
+  await iteratorStatement.close();
+  await connection.commit();
+
   await connection.query('DROP TABLE IF EXISTS nublox_pool_tx_test');
   await connection.query('CREATE TABLE nublox_pool_tx_test(id int primary key)');
 
@@ -139,6 +168,18 @@ async function main() {
   }), /force transaction rollback/);
   var rolledBack = await connection.query('SELECT id FROM nublox_pool_tx_test ORDER BY id');
   assert.deepStrictEqual(rolledBack.rows.map(function (row) { return row.id; }), [1]);
+
+  var portalBorrower = await pool.getConnection();
+  await portalBorrower.beginTransaction();
+  var pooledCursorStatement = await portalBorrower.prepare('SELECT generate_series(1, 4)::int4 AS value');
+  var pooledCursor = pooledCursorStatement.openCursor([], { batchSize: 2 });
+  var pooledFirstBatch = await pooledCursor.fetch();
+  assert.deepStrictEqual(pooledFirstBatch.rows.map(function (row) { return row.value; }), [1, 2]);
+  await assert.rejects(pool.releaseConnection(portalBorrower), /active portal cursors/);
+  await pooledCursor.close();
+  await pooledCursorStatement.close();
+  await portalBorrower.rollback();
+  await pool.releaseConnection(portalBorrower);
 
   await pool.end();
   await connection.query('DROP TABLE nublox_pool_tx_test');
