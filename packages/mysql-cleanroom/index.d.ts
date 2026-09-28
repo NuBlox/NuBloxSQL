@@ -41,6 +41,7 @@ export interface ConnectionConfig {
 
 export interface OperationOptions {
   timeout?: number;
+  deadline?: number | Date;
   signal?: AbortSignalLike;
 }
 
@@ -56,6 +57,7 @@ export interface StreamQueryOptions extends QueryOptions {
 
 export interface PoolAcquireOptions {
   timeout?: number;
+  deadline?: number | Date;
   signal?: AbortSignalLike;
 }
 
@@ -178,7 +180,7 @@ export class PreparedStatement {
     params?: readonly unknown[],
     options?: OperationOptions
   ): Promise<QueryResult<Row>>;
-  reset(): Promise<ResetResult>;
+  reset(options?: OperationOptions): Promise<ResetResult>;
   close(): Promise<void>;
 }
 
