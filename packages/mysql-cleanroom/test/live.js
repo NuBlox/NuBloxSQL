@@ -16,6 +16,12 @@ function config() {
   };
 }
 
+async function collect(stream) {
+  var rows = [];
+  for await (var row of stream) rows.push(row);
+  return rows;
+}
+
 async function main() {
   var connection = mysql.createConnection(config());
 
@@ -35,6 +41,20 @@ async function main() {
 
   var selected = await connection.query('SELECT id, name FROM nublox_cleanroom_live ORDER BY id');
   assert.deepStrictEqual(selected.rows.map(function (row) { return [row.id, row.name]; }), [['1', 'alpha'], ['2', 'beta']]);
+
+  var fieldCount = 0;
+  var streamed = connection.queryStream('SELECT id, name FROM nublox_cleanroom_live ORDER BY id', {
+    highWaterMark: 1,
+    maxRows: 10,
+    maxResultBytes: 1024 * 1024,
+    maxRowBytes: 1024
+  });
+  streamed.on('fields', function (fields) { fieldCount = fields.length; });
+  var streamedRows = await collect(streamed);
+  assert.deepStrictEqual(streamedRows.map(function (row) { return [row.id, row.name]; }), [['1', 'alpha'], ['2', 'beta']]);
+  assert.strictEqual(fieldCount, 2);
+  assert.strictEqual(streamed.rowCount, 2);
+  assert.ok(streamed.byteCount > 0);
 
   var selectStatement = await connection.prepare('SELECT ? AS n, ? AS label, ? AS nullable_value');
   assert.strictEqual(selectStatement.parameterCount, 3);
@@ -105,6 +125,14 @@ async function main() {
   await pool.end();
   assert.strictEqual(pool.totalCount, 0);
 
+  var streamPool = mysql.createPool(Object.assign(config(), { connectionLimit: 1, maxIdle: 1, idleTimeout: 30000, acquireTimeout: 5000 }));
+  var pooledStream = await streamPool.queryStream('SELECT 101 AS streamed_value UNION ALL SELECT 102 AS streamed_value ORDER BY streamed_value', { highWaterMark: 1 });
+  var pooledRows = await collect(pooledStream);
+  assert.deepStrictEqual(pooledRows.map(function (row) { return row.streamed_value; }), ['101', '102']);
+  var afterStream = await streamPool.query('SELECT 103 AS after_stream');
+  assert.strictEqual(afterStream.rows[0].after_stream, '103');
+  await streamPool.end();
+
   var isolationPool = mysql.createPool(Object.assign(config(), { connectionLimit: 1, maxIdle: 1, idleTimeout: 30000, acquireTimeout: 5000 }));
   var resetEvents = 0;
   isolationPool.on('reset', function () { resetEvents++; });
@@ -118,7 +146,15 @@ async function main() {
   isolationPool.releaseConnection(clean);
   await isolationPool.end();
 
-  process.stdout.write('clean-room MySQL live connection/query/prepared/transaction/pool/reset smoke passed\n');
+  var limited = mysql.createConnection(config());
+  await limited.connect();
+  var limitStream = limited.queryStream('SELECT 1 AS n UNION ALL SELECT 2 AS n', { maxRows: 1 });
+  await assert.rejects(async function () { await collect(limitStream); }, function (error) {
+    return error instanceof mysql.MySqlResultLimitError && error.code === 'NUBLOX_MYSQL_MAX_ROWS';
+  });
+  assert.strictEqual(limited.ended, true);
+
+  process.stdout.write('clean-room MySQL live connection/query/streaming/prepared/transaction/pool/reset smoke passed\n');
 }
 
 main().catch(function (error) {
