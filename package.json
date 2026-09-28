@@ -76,6 +76,7 @@
     "mysql2": "3.24.4",
     "seedrandom": "3.0.5",
     "selfsigned": "5.5.0",
+    "typescript": "5.9.2",
     "urun": "0.0.8",
     "utest": "0.0.8"
   },
@@ -140,10 +141,11 @@
     "test:stream-backpressure": "node test/integration/stream-backpressure-smoke.js",
     "test:temporal-json-parameters": "node test/integration/temporal-json-parameters-smoke.js",
     "test:typed-parameters": "node test/integration/typed-parameters-smoke.js",
+    "test:types": "tsc -p test/types/tsconfig.json --noEmit",
     "test:unit": "FILTER=unit node test/run.js",
     "test-ci": "node tool/install-nyc.js --nyc-optional --reporter=lcovonly --reporter=text -- npm test",
     "test-cov": "node tool/install-nyc.js --reporter=html --reporter=text -- npm test",
-    "verify": "npm run lint && npm run test:unit && npm run compatibility:check && npm run test:compat:mysql2:contract && npm run test:esm && npm run release:check && npm pack --dry-run"
+    "verify": "npm run lint && npm run test:unit && npm run test:types && npm run compatibility:check && npm run test:compat:mysql2:contract && npm run test:esm && npm run release:check && npm pack --dry-run"
   },
   "nublox": {
     "packageType": "NuBlox Mastered Package",
