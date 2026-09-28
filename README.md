@@ -2,55 +2,75 @@
 
 NuBloxSQL is an independent multi-dialect SQL driver platform for Node.js.
 
-## Current v1 direction
+## NuBloxSQL v1.0.0
 
-NuBloxSQL is converging on a stable proprietary `v1.0.0` release built from NuBlox-authored implementation code and Node.js built-ins, with no third-party npm implementation/build/test dependency in the v1 release boundary.
+The v1 release baseline contains three stable packages:
 
-The single authoritative release path is [`docs/v1/V1-RELEASE-PLAN.md`](docs/v1/V1-RELEASE-PLAN.md). The provenance/licensing gate is documented in [`docs/v1/PROPRIETARY-IP-RELEASE-GATE.md`](docs/v1/PROPRIETARY-IP-RELEASE-GATE.md).
+- `@nublox/mysql@1.0.0` — NuBlox-authored native MySQL driver.
+- `@nublox/postgresql@1.0.0` — NuBlox-authored native PostgreSQL driver.
+- `@nublox/sql-core@1.0.0` — stable cross-dialect contract family `1.0`.
 
-Until v1 ships, development follows one critical path and one active implementation PR at a time.
+The v1 implementation boundary uses Node.js built-ins and NuBlox-authored source. The stable packages declare no third-party npm runtime, development, optional or peer dependencies.
 
-## Package family
-
-- `@nublox/sql-core` — vendor-neutral SQL contracts and dialect primitives.
-- `packages/mysql-cleanroom` — NuBlox-authored zero-package-dependency MySQL replacement under active v1 development.
-- `@nublox/mysql` — legacy mysqljs-derived package retained temporarily as a behavioural/compatibility baseline only; it is not eligible for proprietary v1 and will be replaced by the clean-room implementation.
-- `@nublox/postgresql` — NuBlox-authored native PostgreSQL driver with no npm dependencies; currently at its pre-v1 release-candidate stage.
-
-SQLite, SQL Server, Oracle and additional dialects are deferred until the MySQL replacement, PostgreSQL hardening, SQL Core stabilisation and proprietary release gates are complete.
+SQLite, SQL Server, Oracle and additional dialects are intentionally deferred until after the v1 three-package baseline.
 
 ## Architecture
 
 NuBloxSQL keeps portable contracts, dialect syntax/services and vendor protocol runtimes separate. Database-specific behaviour remains inside each adapter rather than being forced into a lowest-common-denominator API.
 
-See `docs/architecture/multi-dialect.md` for architecture and `docs/v1/V1-RELEASE-PLAN.md` for current delivery priority.
+```text
+@nublox/sql-core
+      ▲
+      │
+ ┌────┴─────────┐
+ │              │
+@nublox/mysql   @nublox/postgresql
+```
+
+See `docs/architecture/multi-dialect.md` and `docs/v1/SQL-CORE-V1-CONTRACT.md`.
 
 ## Repository layout
 
 ```text
 packages/
   sql-core/
-  mysql/             # legacy migration baseline; not v1-eligible
-  mysql-cleanroom/   # proprietary replacement
+  mysql/
   postgresql/
 ```
 
-The repository root is workspace orchestration and is not an npm runtime package.
+The repository root orchestrates the workspace and release gates; applications consume the individual packages.
 
-## Development
+## Supported matrix
+
+- Node.js 22, 24 and 26
+- MySQL 8.4 and 9.7
+- PostgreSQL 15, 16, 17 and 18
+
+See `docs/v1/V1-SUPPORT-MATRIX.md` for the qualified release matrix.
+
+## Verification
 
 ```bash
-npm install
 npm run verify
-```
-
-The proprietary v1 audit is intentionally separate while migration remains incomplete:
-
-```bash
 npm run v1:proprietary-audit
+npm run v1:release-audit
 ```
 
-That command must be a mandatory green release gate before `v1.0.0` is declared stable.
+The CI release gates additionally validate package dry-runs, supported database integration matrices, protocol/resource failure paths, fuzzing and CodeQL.
+
+## Migration and release documentation
+
+- `docs/v1/V1-MIGRATION.md`
+- `docs/v1/V1-RELEASE-NOTES.md`
+- `docs/v1/V1-SUPPORT-MATRIX.md`
+- `docs/v1/V1-RELEASE-PLAN.md`
+- `docs/v1/PROPRIETARY-IP-RELEASE-GATE.md`
+
+## Licence
+
+NuBloxSQL v1 is proprietary software. Copyright (c) 2026 Stephen J T Spittal. All rights reserved. See `LICENSE`.
+
+Public availability of this repository does not grant an open-source licence. Historical copies previously distributed under earlier licence terms retain the rights validly granted for those copies.
 
 ## Independence
 
