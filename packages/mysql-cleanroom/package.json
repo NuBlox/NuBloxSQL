@@ -10,6 +10,6 @@
   "files": ["index.js", "index.d.ts", "lib/"],
   "engines": { "node": ">=22" },
   "scripts": {
-    "test": "node test/protocol.js && node test/auth.js && node test/prepared.js && node test/api.js && node test/session-reset.js && node test/streaming.js && node test/observability.js"
+    "test": "node test/protocol.js && node test/auth.js && node test/prepared.js && node test/api.js && node test/session-reset.js && node test/streaming.js && node test/observability.js && node test/error-model.js"
   }
 }
