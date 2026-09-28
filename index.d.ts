@@ -220,6 +220,23 @@ declare namespace mysql {
     encoding?: number;
   }
 
+  interface SessionStateUnknownChange {
+    type: number;
+    data: Buffer;
+  }
+
+  interface SessionStateSnapshot {
+    version: number;
+    schema: string | null;
+    systemVariables: Record<string, string | null>;
+    stateChanged: string | null;
+    gtids: string | null;
+    gtidEncoding: number | null;
+    transactionCharacteristics: string | null;
+    transactionState: string | null;
+    unknown: SessionStateUnknownChange[];
+  }
+
   interface OkPacket {
     fieldCount?: number;
     affectedRows?: number;
@@ -377,6 +394,7 @@ declare namespace mysql {
     unprepare(sql: string): this;
     clearPreparedStatementCache(): this;
     preparedStatementCacheStats(): PreparedStatementCacheStats;
+    sessionStateSnapshot(): SessionStateSnapshot;
     resetConnection(options?: ResetConnectionOptions, callback?: (error: Error | null, packet?: OkPacket) => void): unknown;
     beginTransaction(options?: object, callback?: Function): Query;
     commit(options?: object, callback?: Function): Query;
@@ -414,6 +432,7 @@ declare namespace mysql {
     unprepare(sql: string): this;
     clearPreparedStatementCache(): this;
     preparedStatementCacheStats(): PreparedStatementCacheStats;
+    sessionStateSnapshot(): SessionStateSnapshot;
     resetConnection(options?: ResetConnectionOptions): Promise<this>;
     beginTransaction(options?: object): Promise<this>;
     commit(options?: object): Promise<this>;

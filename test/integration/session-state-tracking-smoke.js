@@ -29,6 +29,10 @@ connection.connect()
     assert.strictEqual(change.value, 'OFF');
     assert.deepStrictEqual(change.values, ['autocommit', 'OFF']);
 
+    var snapshot = connection.sessionStateSnapshot();
+    assert.strictEqual(snapshot.systemVariables.autocommit, 'OFF');
+    assert.ok(snapshot.version > 0);
+
     return connection.query('SET autocommit = 1');
   })
   .then(function switchSchema() {
@@ -40,6 +44,7 @@ connection.connect()
 
     assert.ok(change, 'USE must expose a schema session-state change');
     assert.strictEqual(change.value, 'information_schema');
+    assert.strictEqual(connection.sessionStateSnapshot().schema, 'information_schema');
 
     return connection.query('USE ' + connection.escapeId(config.database));
   })
@@ -49,6 +54,20 @@ connection.connect()
 
     assert.ok(change, 'returning to the configured schema must be tracked');
     assert.strictEqual(change.value, config.database);
+
+    var snapshot = connection.sessionStateSnapshot();
+    assert.strictEqual(snapshot.schema, config.database);
+    assert.strictEqual(snapshot.systemVariables.autocommit, 'ON');
+
+    return connection.resetConnection({operationTimeout: 5000});
+  })
+  .then(function verifyResetLedgerBaseline() {
+    var snapshot = connection.sessionStateSnapshot();
+
+    assert.strictEqual(snapshot.version, 0);
+    assert.strictEqual(snapshot.schema, config.database);
+    assert.deepStrictEqual(Object.keys(snapshot.systemVariables), []);
+    assert.strictEqual(snapshot.transactionState, null);
     return connection.end();
   })
   .catch(function fail(error) {
