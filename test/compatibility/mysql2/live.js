@@ -65,9 +65,18 @@ nubloxConnection.connect()
   .then(function (connection) {
     mysql2Connection = connection;
 
+    var attributedQuery = {
+      sql        : 'SELECT ? AS label, ? + 1 AS answer',
+      values     : ['shared', 41],
+      attributes : {
+        request_id : 'compat-query',
+        priority   : 7
+      }
+    };
+
     return global.Promise.all([
-      nubloxConnection.query('SELECT ? AS label, ? + 1 AS answer', ['shared', 41]),
-      mysql2Connection.query('SELECT ? AS label, ? + 1 AS answer', ['shared', 41])
+      nubloxConnection.query(attributedQuery),
+      mysql2Connection.query(attributedQuery)
     ]);
   })
   .then(function (results) {
