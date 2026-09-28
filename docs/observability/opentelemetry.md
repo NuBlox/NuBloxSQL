@@ -50,9 +50,9 @@ The adapter follows the stable OpenTelemetry database semantic-convention names 
 
 Span names use `<operation> <database>` when a database is configured, otherwise `<operation> <host>` or the operation alone.
 
-## Pool connection timing
+## Pool connection telemetry
 
-Pool timing is opt-in because it wraps the pool's public `getConnection()` boundary rather than adding instrumentation to the core pool implementation:
+Pool telemetry is opt-in because it wraps the pool's public `getConnection()` boundary rather than adding OpenTelemetry to the core pool implementation:
 
 ```js
 const pool = mysql.createPool({
@@ -64,12 +64,16 @@ const pool = mysql.createPool({
 telemetry.instrumentPool(pool);
 ```
 
-Instrumented pools record two OpenTelemetry histograms in seconds:
+Instrumented pools record the following OpenTelemetry database-pool metrics:
 
-- `db.client.connection.wait_time` — time from requesting a connection until it is obtained;
-- `db.client.connection.use_time` — time from borrowing that connection until `release()` returns it to the pool. Destruction of a borrowed connection also closes the observed lease.
+- `db.client.connection.wait_time` — histogram in seconds from requesting a connection until it is obtained;
+- `db.client.connection.use_time` — histogram in seconds from borrowing a connection until release. Destruction also closes the observed lease;
+- `db.client.connection.count` — UpDownCounter of currently open connections with `db.client.connection.state` set to `idle` or `used`;
+- `db.client.connection.pending_requests` — UpDownCounter of requests currently queued or establishing a physical connection.
 
-Both metrics include `db.client.connection.pool.name`. By default NuBloxSQL derives the name as:
+Connections that are still being established are counted as pending requests and are not counted as open `idle`/`used` connections until acquisition completes.
+
+All pool metrics include `db.client.connection.pool.name`. By default NuBloxSQL derives the name as:
 
 ```text
 host:port/database
@@ -87,7 +91,7 @@ Instrumentation is idempotent. Remove it explicitly with:
 telemetry.uninstrumentPool(pool);
 ```
 
-Calling `telemetry.disable()` also restores all instrumented pools and any currently borrowed connection methods without recording a partial use-time sample.
+Calling `telemetry.disable()` restores instrumented pools and outstanding connection methods, and removes the adapter's current UpDownCounter contributions so stale pool state is not left exported.
 
 OpenTelemetry currently classifies connection-pool metrics as development-stability conventions, so NuBloxSQL keeps this surface isolated in the adapter and does not make it part of the core pool API.
 
@@ -107,9 +111,9 @@ When enabled, SQL is emitted as `db.query.text`. Bind values are never emitted b
 
 ## Current coverage
 
-The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, and `nublox.mysql.query.error` for query tracing, plus pool wait/use timing through `instrumentPool()`.
+The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, and `nublox.mysql.query.error` for query tracing, plus pool wait/use timing and pool state metrics through `instrumentPool()`.
 
-Prepared execution, transaction spans, pool state gauges and richer error classification are separate M6 tranches and will build on the same adapter rather than adding instrumentation to the protocol hot path.
+Prepared execution, transaction spans, connection creation/timeouts and richer error classification remain separate M6 tranches. They will continue to build on the adapter rather than adding OpenTelemetry dependencies to protocol hot paths.
 
 ## Custom tracer and meter
 
