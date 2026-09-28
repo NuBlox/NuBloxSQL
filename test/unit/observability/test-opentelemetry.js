@@ -74,20 +74,19 @@ function createPool() {
         port     : 3307,
         database : 'orders'
       }
-    },
-    releaseCount: 0,
-    destroyCount: 0
+    }
   };
+  pool.releaseCount = 0;
+  pool.destroyCount = 0;
 
   pool.getConnection = function getConnection(callback) {
-    var connection = {
-      threadId: 11,
-      release: function release() {
-        pool.releaseCount++;
-      },
-      destroy: function destroy() {
-        pool.destroyCount++;
-      }
+    var connection = {};
+    connection.threadId = 11;
+    connection.release = function release() {
+      pool.releaseCount++;
+    };
+    connection.destroy = function destroy() {
+      pool.destroyCount++;
     };
 
     process.nextTick(function () {
