@@ -1,5 +1,6 @@
 'use strict';
 
+var auth = require('./lib/protocol/Auth');
 var client = require('./lib/protocol/ClientPackets');
 var server = require('./lib/protocol/ServerPackets');
 
@@ -17,5 +18,10 @@ exports.protocol = {
   decodeOkPacket: server.decodeOkPacket,
   decodeAuthSwitchRequest: server.decodeAuthSwitchRequest,
   decodeColumnDefinition41: server.decodeColumnDefinition41,
-  decodeTextRow: server.decodeTextRow
+  decodeTextRow: server.decodeTextRow,
+  mysqlNativePassword: auth.mysqlNativePassword,
+  cachingSha2Password: auth.cachingSha2Password,
+  cleartextPassword: auth.cleartextPassword,
+  scramblePasswordForRsa: auth.scramblePasswordForRsa,
+  encryptCachingSha2Password: auth.encryptCachingSha2Password
 };
