@@ -1,7 +1,9 @@
 import {
   descriptor,
   services,
+  protocol,
   createObjectName,
+  type PostgreSqlBackendMessage,
   type PostgreSqlDialectDescriptor
 } from '../../packages/postgresql';
 
@@ -14,7 +16,16 @@ const objectName = createObjectName({
   name: 'users'
 });
 
+const startup: Buffer = protocol.encodeStartupMessage({ user: 'stephen', database: 'nublox' });
+const sslRequest: Buffer = protocol.encodeSSLRequest();
+const parser = new protocol.BackendMessageParser({ maxMessageSize: 1024 * 1024 });
+const messages: PostgreSqlBackendMessage[] = parser.push(Buffer.alloc(0));
+parser.reset();
+
 void typedDescriptor;
 void quoted;
 void placeholder;
 void objectName;
+void startup;
+void sslRequest;
+void messages;

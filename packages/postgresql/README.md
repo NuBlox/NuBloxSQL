@@ -1,10 +1,10 @@
 # @nublox/postgresql
 
-PostgreSQL dialect foundation for NuBloxSQL.
+Native PostgreSQL dialect and wire-protocol implementation for NuBloxSQL.
 
-This package currently defines PostgreSQL identity, capabilities, identifier quoting, positional placeholders, and catalog/schema/object naming semantics. It deliberately does **not** implement PostgreSQL wire-protocol connectivity yet.
+The package currently provides the PostgreSQL dialect descriptor plus the first native protocol layer. It has no dependency on `pg` or another PostgreSQL client library.
 
-## Current surface
+## Dialect surface
 
 ```js
 const postgresql = require('@nublox/postgresql');
@@ -14,8 +14,33 @@ postgresql.services.placeholder(1);            // $1
 postgresql.descriptor.supports('schemas');     // true
 ```
 
-The descriptor is validated against the vendor-neutral contracts in `@nublox/sql-core` by repository contract tests while remaining runtime-independent during this foundation phase.
+## Wire-protocol foundation
 
-## Scope boundary
+```js
+const { protocol } = require('@nublox/postgresql');
 
-Protocol framing, authentication, connections, pooling, query execution and replication are future implementation waves. They will be added only after the shared contracts have been pressure-tested against both MySQL and PostgreSQL semantics.
+const sslRequest = protocol.encodeSSLRequest();
+const startup = protocol.encodeStartupMessage({
+  user: 'app',
+  database: 'appdb',
+  application_name: 'NuBloxSQL'
+});
+
+const parser = new protocol.BackendMessageParser();
+const messages = parser.push(networkChunk);
+```
+
+Implemented protocol primitives:
+
+- PostgreSQL protocol 3.0 and 3.2 constants
+- `SSLRequest` encoding
+- `StartupMessage` encoding with required-user validation
+- chunk-safe backend frame parsing with configurable message-size limits
+- authentication request decoding, including MD5 and SASL negotiation messages
+- `ParameterStatus`
+- `BackendKeyData`
+- `ReadyForQuery`
+- structured `ErrorResponse` and `NoticeResponse` fields
+- forward-compatible preservation of unknown backend messages
+
+This is intentionally not yet a complete connection implementation. TCP/TLS state management, SCRAM proof generation, password messages, connection lifecycle, query execution, pooling and replication remain subsequent implementation waves.

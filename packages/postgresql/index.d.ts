@@ -71,10 +71,13 @@ export interface PostgreSqlBackendMessageParserOptions {
   maxMessageSize?: number;
 }
 
-export class PostgreSqlBackendMessageParser {
-  constructor(options?: PostgreSqlBackendMessageParserOptions);
+export interface PostgreSqlBackendMessageParser {
   push(chunk: Buffer | Uint8Array): PostgreSqlBackendMessage[];
   reset(): void;
+}
+
+export interface PostgreSqlBackendMessageParserConstructor {
+  new(options?: PostgreSqlBackendMessageParserOptions): PostgreSqlBackendMessageParser;
 }
 
 export interface PostgreSqlProtocol {
@@ -89,7 +92,7 @@ export interface PostgreSqlProtocol {
   encodeStartupMessage(parameters: Record<string, string | number | boolean | null | undefined> & { user: string }, protocolVersion?: number): Buffer;
   encodeSSLRequest(): Buffer;
   decodeBackendMessage(messageType: string, payload: Buffer): PostgreSqlBackendMessage;
-  BackendMessageParser: typeof PostgreSqlBackendMessageParser;
+  BackendMessageParser: PostgreSqlBackendMessageParserConstructor;
 }
 
 export const descriptor: PostgreSqlDialectDescriptor;
