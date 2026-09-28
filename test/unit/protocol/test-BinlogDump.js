@@ -54,34 +54,40 @@ test('BinlogDump', {
     }, /flags must be an unsigned 16-bit integer/);
   },
 
-  'decodes network event packets through the bounded decoder': function(done) {
+  'decodes network event packets through the bounded decoder': function() {
     var sequence = new BinlogDump({
       filename : 'mysql-bin.000123',
       serverId : 42
     });
+    var observed = null;
 
     sequence.once('event', function(event) {
-      assert.equal(event.type, Binlog.EventTypes.XID_EVENT);
-      assert.equal(event.xid, global.BigInt(9));
-      done();
+      observed = event;
     });
 
     var payload = Buffer.alloc(8);
     payload.writeUInt32LE(9, 0);
     payload.writeUInt32LE(0, 4);
     sequence.BinlogNetworkPacket({event: eventBuffer(Binlog.EventTypes.XID_EVENT, payload)});
+
+    assert.ok(observed);
+    assert.equal(observed.type, Binlog.EventTypes.XID_EVENT);
+    assert.equal(observed.xid, global.BigInt(9));
   },
 
-  'marks malformed binlog events fatal and ends the sequence': function(done) {
+  'marks malformed binlog events fatal and ends the sequence': function() {
     var sequence = new BinlogDump({filename: 'mysql-bin.000123'});
+    var observed = null;
 
     sequence.once('error', function(error) {
-      assert.equal(error.code, 'BINLOG_EVENT_TRUNCATED');
-      assert.equal(error.fatal, true);
-      done();
+      observed = error;
     });
 
     sequence.BinlogNetworkPacket({event: Buffer.alloc(2)});
+
+    assert.ok(observed);
+    assert.equal(observed.code, 'BINLOG_EVENT_TRUNCATED');
+    assert.equal(observed.fatal, true);
   },
 
   'creates a dedicated replication connection surface': function() {
