@@ -151,6 +151,12 @@ declare namespace mysql {
     typeCast?: boolean | Function;
   }
 
+  interface ResetConnectionOptions {
+    timeout?: number;
+    operationTimeout?: number;
+    signal?: AbortSignalLike;
+  }
+
   interface StreamOptions {
     highWaterMark?: number;
     emitClose?: boolean;
@@ -352,6 +358,7 @@ declare namespace mysql {
     unprepare(sql: string): this;
     clearPreparedStatementCache(): this;
     preparedStatementCacheStats(): PreparedStatementCacheStats;
+    resetConnection(options?: ResetConnectionOptions, callback?: (error: Error | null, packet?: OkPacket) => void): unknown;
     beginTransaction(options?: object, callback?: Function): Query;
     commit(options?: object, callback?: Function): Query;
     rollback(options?: object, callback?: Function): Query;
@@ -388,6 +395,7 @@ declare namespace mysql {
     unprepare(sql: string): this;
     clearPreparedStatementCache(): this;
     preparedStatementCacheStats(): PreparedStatementCacheStats;
+    resetConnection(options?: ResetConnectionOptions): Promise<this>;
     beginTransaction(options?: object): Promise<this>;
     commit(options?: object): Promise<this>;
     rollback(options?: object): Promise<this>;

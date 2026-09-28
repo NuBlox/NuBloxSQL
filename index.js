@@ -13,6 +13,7 @@ exports.createConnection = function createConnection(config) {
 
   loadClass('PreparedStatements').decorateConnection(connection);
   loadClass('PreparedStatementReset').decorateConnection(connection);
+  loadClass('SessionReset').decorateConnection(connection);
   loadClass('NamedPlaceholders').decorateConnection(connection);
   return decorateConnection(connection, getPromiseImplementation(config));
 };
@@ -30,6 +31,7 @@ exports.createPool = function createPool(config) {
 
   loadClass('PreparedStatements').decoratePool(pool);
   loadClass('PreparedStatementReset').decoratePool(pool);
+  loadClass('SessionReset').decoratePool(pool);
   loadClass('NamedPlaceholders').decoratePool(pool);
   loadClass('PoolCircuitBreaker').decoratePool(pool);
   loadClass('PoolAdmissionControl').decoratePool(pool);
@@ -160,7 +162,8 @@ function decorateConnection(connection, PromiseImpl) {
         var wrapper = new PromiseConnection(connection, overridePromise || PromiseImpl || global.Promise);
 
         wrapper = loadClass('PreparedStatements').decoratePromiseConnection(wrapper);
-        return loadClass('PreparedStatementReset').decoratePromiseConnection(wrapper);
+        wrapper = loadClass('PreparedStatementReset').decoratePromiseConnection(wrapper);
+        return loadClass('SessionReset').decoratePromiseConnection(wrapper);
       }
     });
   }
@@ -178,7 +181,8 @@ function decoratePool(pool, PromiseImpl) {
         var wrapper = new PromisePool(pool, overridePromise || PromiseImpl || global.Promise);
 
         wrapper = loadClass('PreparedStatements').decoratePromisePool(wrapper);
-        return loadClass('PreparedStatementReset').decoratePromisePool(wrapper);
+        wrapper = loadClass('PreparedStatementReset').decoratePromisePool(wrapper);
+        return loadClass('SessionReset').decoratePromisePool(wrapper);
       }
     });
   }
@@ -244,6 +248,9 @@ function loadClass(className) {
       break;
     case 'PromisePool':
       Class = require('./lib/PromisePool');
+      break;
+    case 'SessionReset':
+      Class = require('./lib/SessionReset');
       break;
     case 'SqlString':
       Class = require('./lib/protocol/SqlString');
