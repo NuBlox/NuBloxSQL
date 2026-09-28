@@ -79,5 +79,5 @@ export class BinlogEventDecoder {
 
 export const EventTypes: BinlogEventTypeMap;
 export function createDecoder(options?: BinlogDecoderOptions): BinlogEventDecoder;
-export function createReplicationConnection(config: mysql.ConnectionConfig): ReplicationConnection;
+export function createReplicationConnection(config: string | mysql.ConnectionOptions): ReplicationConnection;
 export default createDecoder;
