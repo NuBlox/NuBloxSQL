@@ -9,11 +9,11 @@ var protocol41 = common.ClientConstants.CLIENT_PROTOCOL_41;
 
 assert.strictEqual(
   NegotiatedClientFlags.forCommand({
-    config: {clientFlags: protocol41 | queryAttributes},
-    _protocol: {
+    config    : {clientFlags: protocol41 | queryAttributes},
+    _protocol : {
       _handshakeInitializationPacket: {
-        serverCapabilities1: protocol41,
-        serverCapabilities2: 0
+        serverCapabilities1 : protocol41,
+        serverCapabilities2 : 0
       }
     }
   }) & queryAttributes,
@@ -23,11 +23,11 @@ assert.strictEqual(
 
 assert.strictEqual(
   NegotiatedClientFlags.forCommand({
-    config: {clientFlags: protocol41 | queryAttributes},
-    _protocol: {
+    config    : {clientFlags: protocol41 | queryAttributes},
+    _protocol : {
       _handshakeInitializationPacket: {
-        serverCapabilities1: protocol41,
-        serverCapabilities2: queryAttributes >>> 16
+        serverCapabilities1 : protocol41,
+        serverCapabilities2 : queryAttributes >>> 16
       }
     }
   }) & queryAttributes,
@@ -37,8 +37,8 @@ assert.strictEqual(
 
 assert.strictEqual(
   NegotiatedClientFlags.forCommand({
-    config: {clientFlags: protocol41 | queryAttributes},
-    _protocol: {_handshakeInitializationPacket: true}
+    config    : {clientFlags: protocol41 | queryAttributes},
+    _protocol : {_handshakeInitializationPacket: true}
   }) & queryAttributes,
   queryAttributes,
   'synthetic protocol users without a handshake packet retain configured flags'
