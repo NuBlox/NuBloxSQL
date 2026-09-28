@@ -99,19 +99,35 @@ function run() {
         throw new Error('COM_BINLOG_DUMP returned no binlog events');
       }
 
-      if (!events.some(function(event) {
-        return event.type === Binlog.EventTypes.QUERY_EVENT ||
-          event.type === Binlog.EventTypes.TABLE_MAP_EVENT ||
-          event.type === Binlog.EventTypes.XID_EVENT;
-      })) {
-        throw new Error('COM_BINLOG_DUMP did not return an expected change event');
+      var rowEvent = events.find(function(event) {
+        return event.type === Binlog.EventTypes.WRITE_ROWS_EVENT ||
+          event.type === Binlog.EventTypes.WRITE_ROWS_EVENT_V1;
+      });
+
+      if (!rowEvent) {
+        throw new Error('COM_BINLOG_DUMP did not return a WRITE_ROWS event');
+      }
+
+      if (rowEvent.table !== 'nublox_binlog_stream_smoke' ||
+          rowEvent.database !== config.database ||
+          rowEvent.tableMapMatched !== true) {
+        throw new Error('WRITE_ROWS event was not correlated with its TABLE_MAP_EVENT');
+      }
+
+      if (!Buffer.isBuffer(rowEvent.columnsPresentAfter) ||
+          !Buffer.isBuffer(rowEvent.rowsPayload) ||
+          rowEvent.rowsPayload.length === 0) {
+        throw new Error('WRITE_ROWS event framing did not expose bitmap and raw row payload');
       }
 
       console.log(
-        'live binlog stream: %d events from %s:%d (checksum=%s)',
+        'live binlog stream: %d events from %s:%d, framed %s.%s tableId=%d (checksum=%s)',
         events.length,
         filename,
         position,
+        rowEvent.database,
+        rowEvent.table,
+        rowEvent.tableId,
         checksumName || 'NONE'
       );
     });
