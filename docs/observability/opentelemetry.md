@@ -56,6 +56,16 @@ Transaction retry metrics also include `nublox.mysql.retry.attempt` and `nublox.
 
 Span names use `<operation> <database>` when a database is configured, otherwise `<operation> <host>` or the operation alone.
 
+## Physical connection spans
+
+Physical connection establishment publishes the common operation lifecycle with `db.operation.name = connect`. The duration begins immediately before the TCP or Unix-domain socket is opened and completes only after the MySQL handshake/authentication sequence succeeds.
+
+A connection does not have a MySQL thread ID when the operation starts. NuBloxSQL therefore emits an opaque in-process `correlationId` on the start and completion diagnostics. The OpenTelemetry adapter uses that identifier only to pair lifecycle messages; it is not exported as a span attribute. Once the server assigns a thread ID, the completed span and duration metric are enriched with `db.mysql.thread_id`.
+
+Connection failures before authentication, including network, protocol, TLS/authentication and `connectTimeout` failures, complete the same span as an error. `ETIMEDOUT` is classified as the existing `timeout` error category. Completion is idempotent so overlapping socket/protocol error paths cannot double-record one physical connection attempt.
+
+Connection durations are recorded in `db.client.operation.duration`. They are intentionally excluded from the slow-query policy even when a connection takes longer than `slowQueryThresholdMs`; that policy is scoped to SQL `query` and `execute` operations.
+
 ## Prepared execute spans
 
 Native prepared-statement execution publishes the same lifecycle surface with `db.operation.name = execute`. Instrumentation lives at the protocol `Execute` sequence boundary, so it automatically covers:
@@ -118,10 +128,12 @@ const telemetry = createOpenTelemetryAdapter({
 });
 ```
 
-Operations at or above the threshold emit:
+SQL query or execute operations at or above the threshold emit:
 
 - a `db.client.slow_query` span event when the span implementation supports `addEvent()`;
 - a `nublox.mysql.query.slow` diagnostics event containing operation, thread ID, duration and threshold.
+
+Connection and transaction spans do not participate in slow-query detection.
 
 The diagnostics payload does **not** include SQL text by default. Bind values are never included. Set the threshold to `0`, `false`, `null`, or omit it to disable slow-query detection.
 
@@ -141,9 +153,9 @@ When enabled, SQL is emitted as `db.query.text`, and slow-query diagnostics may 
 
 ## Current coverage
 
-The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, `nublox.mysql.query.error`, and `nublox.mysql.transaction.retry`, plus pool wait/use/state telemetry through `instrumentPool()`. Text queries, prepared execution and complete `withTransaction()` operations now use the common lifecycle surface.
+The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, `nublox.mysql.query.error`, and `nublox.mysql.transaction.retry`, plus pool wait/use/state telemetry through `instrumentPool()`. Physical connection establishment, text queries, prepared execution and complete `withTransaction()` operations now use the common lifecycle surface.
 
-Connection creation/timeouts and W3C trace-context propagation through MySQL query attributes remain separate M6 tranches. They will continue to build on the adapter rather than adding OpenTelemetry dependencies to protocol hot paths.
+W3C trace-context propagation through MySQL query attributes remains the major separate M6 tranche. It will continue to build on the adapter rather than adding OpenTelemetry dependencies to protocol hot paths.
 
 ## Custom tracer and meter
 
