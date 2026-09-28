@@ -149,7 +149,7 @@ function enableGtidMode() {
         if (enforce !== 'ON') {
           throw new Error('gtid_mode=ON without enforce_gtid_consistency=ON');
         }
-        return;
+        return global.Promise.resolve();
       }
 
       return enableGtidConsistency(enforce)
@@ -215,7 +215,7 @@ function waitForAnonymousTransactions(attemptsRemaining) {
       var count = rows && rows[0] ? Number(rows[0].Value) : NaN;
 
       if (count === 0) {
-        return;
+        return global.Promise.resolve();
       }
 
       if (!Number.isFinite(count) || attemptsRemaining <= 1) {
