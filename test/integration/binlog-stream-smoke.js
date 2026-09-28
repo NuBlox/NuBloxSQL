@@ -115,7 +115,7 @@ function run() {
 }
 
 function collect(stream) {
-  return new Promise(function(resolve, reject) {
+  return new global.Promise(function(resolve, reject) {
     var events = [];
 
     stream.on('data', function(event) {
@@ -150,8 +150,8 @@ function cleanup() {
 
 function ignoreFailure(work) {
   try {
-    return Promise.resolve(work()).catch(function() {});
+    return global.Promise.resolve(work()).catch(function() {});
   } catch (error) {
-    return Promise.resolve();
+    return global.Promise.resolve();
   }
 }
