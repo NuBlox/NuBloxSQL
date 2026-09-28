@@ -1,6 +1,6 @@
 'use strict';
 
-var BinlogEventDecoder = require('./lib/binlog/BinlogEventDecoder');
+var BinlogEventDecoder = require('./lib/binlog/BinlogDecoder');
 var BinlogReplication  = require('./lib/BinlogReplication');
 var EventTypes         = require('./lib/binlog/EventTypes');
 var Mysql              = require('./index');
