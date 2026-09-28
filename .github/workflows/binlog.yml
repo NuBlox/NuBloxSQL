@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   binlog-stream:
-    name: MySQL ${{ matrix.mysql }} COM_BINLOG_DUMP
+    name: MySQL ${{ matrix.mysql }} binlog CDC
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -55,3 +55,13 @@ jobs:
           MYSQL_ROOT_PASSWORD: nublox_root_password
           MYSQL_DATABASE: nublox_ci
         run: node test/integration/binlog-stream-smoke.js
+
+      - name: Verify live COM_BINLOG_DUMP_GTID resume
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: nublox_ci_password
+          MYSQL_ROOT_PASSWORD: nublox_root_password
+          MYSQL_DATABASE: nublox_ci
+        run: node test/integration/binlog-gtid-stream-smoke.js
