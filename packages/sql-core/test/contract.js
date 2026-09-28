@@ -4,7 +4,7 @@ var assert = require('assert');
 var sqlCore = require('..');
 
 var descriptor = sqlCore.createDialectDescriptor({
-  identity : {
+  identity     : {
     family : sqlCore.DIALECT_FAMILIES.POSTGRESQL,
     name   : 'PostgreSQL'
   },
@@ -12,7 +12,7 @@ var descriptor = sqlCore.createDialectDescriptor({
     preparedStatements : true,
     schemas            : true
   },
-  services : {
+  services     : {
     quoteIdentifier : function quoteIdentifier(identifier) {
       return '"' + identifier.replace(/"/g, '""') + '"';
     },
