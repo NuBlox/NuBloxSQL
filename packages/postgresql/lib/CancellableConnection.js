@@ -3,16 +3,24 @@
 var base = require('./Connection');
 var cancel = require('./CancelRequest');
 
+function PostgreSqlCancellationError(message, code) {
+  Error.call(this, message);
+  this.name = 'PostgreSqlCancellationError';
+  this.message = message;
+  this.code = code || 'NUBLOX_POSTGRESQL_CANCELLED';
+  if (Error.captureStackTrace) Error.captureStackTrace(this, PostgreSqlCancellationError);
+}
+PostgreSqlCancellationError.prototype = Object.create(Error.prototype);
+PostgreSqlCancellationError.prototype.constructor = PostgreSqlCancellationError;
+
 function cancellationError(message, code) {
-  var error = new Error(message);
-  error.name = 'PostgreSqlCancellationError';
-  error.code = code;
-  return error;
+  return new PostgreSqlCancellationError(message, code);
 }
 
 function Connection(config) {
   base.Connection.call(this, config);
-  this.cancelGraceTimeout = config && config.cancelGraceTimeout === undefined ? 5000 : Number(config && config.cancelGraceTimeout);
+  var grace = config && config.cancelGraceTimeout;
+  this.cancelGraceTimeout = grace === undefined ? 5000 : Number(grace);
   if (!Number.isFinite(this.cancelGraceTimeout) || this.cancelGraceTimeout <= 0) throw new RangeError('PostgreSQL cancelGraceTimeout must be a positive number');
 }
 Connection.prototype = Object.create(base.Connection.prototype);
@@ -102,5 +110,5 @@ Connection.prototype._finishOperation = function _finishOperation(state) {
 exports.Connection = Connection;
 exports.PreparedStatement = base.PreparedStatement;
 exports.PostgreSqlError = base.PostgreSqlError;
-exports.PostgreSqlCancellationError = Error;
+exports.PostgreSqlCancellationError = PostgreSqlCancellationError;
 exports.cancellationError = cancellationError;
