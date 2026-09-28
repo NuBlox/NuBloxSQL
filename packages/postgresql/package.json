@@ -25,6 +25,7 @@
     "test:live": "node test/live.js",
     "test:live:failures": "node test/live-failure-paths.js",
     "test:live:limits": "node test/live-result-limits.js",
-    "test:live:types": "node test/live-type-decoding.js"
+    "test:live:types": "node test/live-type-decoding.js",
+    "test:live:evidence": "node --expose-gc test/live-production-evidence.js"
   }
 }
