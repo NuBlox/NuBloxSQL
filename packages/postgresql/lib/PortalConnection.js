@@ -13,6 +13,12 @@ function positiveInteger(value, fallback, name) {
   return value;
 }
 
+function applyCancelReason(state) {
+  if (!state || !state.cancelReason) return;
+  if (state.error && state.cancelReason.cause === undefined) state.cancelReason.cause = state.error;
+  state.error = state.cancelReason;
+}
+
 function PortalCursor(connection, statement, parameters, options) {
   options = options || {};
   this.connection = connection;
@@ -28,8 +34,8 @@ function PortalCursor(connection, statement, parameters, options) {
 }
 
 PortalCursor.prototype.fetch = function fetch(options) {
-  if (this.closed) return Promise.reject(new Error('PostgreSQL portal cursor is closed'));
   if (this.done) return Promise.resolve({ rows: [], fields: this.fields, done: true, command: '', rowCount: 0 });
+  if (this.closed) return Promise.reject(new Error('PostgreSQL portal cursor is closed'));
   return this.connection._fetchPortal(this, options || {});
 };
 
@@ -122,6 +128,7 @@ Connection.prototype._finishOperation = function _finishOperation(state) {
     if (this._currentQuery !== state) return;
     this._currentQuery = null;
     if (state.cleanup) state.cleanup();
+    applyCancelReason(state);
     if (state.error) { state.reject(state.error); return; }
     state.cursor._bound = true;
     state.cursor.fields = state.fields || [];
@@ -139,6 +146,7 @@ Connection.prototype._finishOperation = function _finishOperation(state) {
     if (this._currentQuery !== state) return;
     this._currentQuery = null;
     if (state.cleanup) state.cleanup();
+    applyCancelReason(state);
     if (state.error) state.reject(state.error);
     else state.resolve();
     return;
