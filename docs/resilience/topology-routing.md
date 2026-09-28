@@ -131,7 +131,46 @@ Refresh has deliberate transactional semantics:
 
 The provider intentionally manages metadata rather than cluster membership. Adding and removing physical endpoints remains explicit so discovery failures cannot silently create pools, delete pools, or introduce credentials/configuration that the application did not supply.
 
-Possible provider sources include DNS/service discovery, Kubernetes, cloud database APIs, a control plane, or a later NuBloxSQL server-role probe adapter.
+Possible provider sources include DNS/service discovery, Kubernetes, cloud database APIs, a control plane, or the built-in MySQL writability probe described below.
+
+## Built-in MySQL writability probe
+
+`probePoolClusterRoles(cluster)` interrogates every configured cluster node with:
+
+```sql
+SELECT @@GLOBAL.read_only, @@GLOBAL.super_read_only
+```
+
+and records the observed write policy in topology metadata:
+
+```js
+var topology = await mysql.probePoolClusterRoles(cluster);
+```
+
+The probe assigns one of two evidence-based roles:
+
+- `writable` when both `read_only` and `super_read_only` are disabled;
+- `read-only` when either variable is enabled.
+
+It also preserves existing tags and adds:
+
+```js
+{
+  mysqlReadOnly: false,
+  mysqlSuperReadOnly: false,
+  mysqlWritable: true
+}
+```
+
+The probe collects results from every node before applying any metadata updates. If any connection or probe query fails, no role metadata is changed. Promise and callback use are both supported.
+
+### What the probe deliberately does not claim
+
+MySQL documents `read_only` as a global server write-policy control. `super_read_only` is stricter and, when enabled, also forces `read_only` on. These settings are commonly useful on replicas, but they do not by themselves prove that a server is a replication source or replica, nor do they prove replication health or lag.
+
+For that reason the built-in probe does **not** assign `primary` or `replica`, and it does not change `replicationState`. It records only what the server variables support: whether ordinary client writes are currently permitted by the server's global read-only policy.
+
+Applications can combine this evidence with an external `topologyProvider` that has authoritative replication-state knowledge.
 
 ## Topology policy hook
 
@@ -162,4 +201,4 @@ This means topology policies are failover-aware without duplicating connection h
 
 The topology hook is deliberately a selection interface, not automatic SQL classification. Applications that route reads and writes differently should use policy logic appropriate to their transaction model. In particular, a statement beginning with `SELECT` is not automatically safe to send to a replica when session consistency, locking reads, transactions, or replica lag matter.
 
-The refresh-provider contract gives later M7 server-role probes and environment-specific discovery adapters a stable integration boundary without changing routing-policy semantics.
+The refresh-provider and MySQL writability-probe contracts give later M7 discovery and routing capabilities stable integration boundaries without turning partial evidence into unsafe replication assumptions.
