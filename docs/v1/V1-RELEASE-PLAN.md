@@ -1,153 +1,16 @@
 # NuBloxSQL v1.0.0 Release Plan
 
-This document is the single authoritative development path from the current repository state to NuBloxSQL v1.0.0.
+This document records the completed delivery path to NuBloxSQL v1.0.0.
 
-## Release objective
+## Release objective — COMPLETE
 
 NuBloxSQL v1.0.0 is a stable, production-grade, independently releasable SQL driver platform whose shipped implementation is NuBlox-authored proprietary intellectual property.
 
-The v1 release boundary uses Node.js built-ins and NuBlox-authored source only. No copied or forked third-party implementation source and no third-party npm runtime/build/test dependency may be required to produce or validate the v1 release artifacts.
+The v1 release boundary uses Node.js built-ins and NuBlox-authored source only. No copied or forked third-party implementation source and no third-party npm runtime/build/test dependency is required to produce or validate the v1 release artifacts.
 
 External database servers, published protocol specifications, operating systems, Node.js and hosting/CI infrastructure are interoperability targets or infrastructure; they are not bundled NuBloxSQL implementation dependencies.
 
-## Current authoritative state
-
-### SQL Core
-
-Gate 4 is complete. `@nublox/sql-core@1.0.0-rc.1` defines contract family `1.0`, proven against both canonical MySQL and PostgreSQL adapters. The compatibility contract is `docs/v1/SQL-CORE-V1-CONTRACT.md` and the evidence record is `docs/v1/GATE-4-EVIDENCE.md`.
-
-### MySQL
-
-Gates 1 and 2 are complete. `packages/mysql` is the canonical NuBlox-authored, zero-package-dependency `@nublox/mysql` implementation. The historical mysqljs-derived package and the transitional `packages/mysql-cleanroom` tree no longer exist in the current v1 source tree.
-
-The canonical package is currently `@nublox/mysql@1.0.0-rc.1`. Stable `1.0.0` and final proprietary licence text remain Gate 5 decisions.
-
-Gate 2 evidence includes:
-
-- legacy MySQL implementation removed from the current package tree;
-- runtime and development package dependencies removed from the v1 validation boundary;
-- canonical MySQL live validation on MySQL 8.4 and 9.7;
-- Node 22/24/26 package-contract validation;
-- proprietary source/dependency audit passing with zero blockers;
-- native protocol fuzzing and CodeQL green;
-- MySQL, SQL Core and PostgreSQL package dry-runs green.
-
-### PostgreSQL
-
-Gate 3 is complete. `@nublox/postgresql` is a NuBlox-authored native driver with no npm package dependencies and a v1 production baseline across PostgreSQL 15, 16, 17 and 18.
-
-The Gate 3 evidence record is `docs/v1/GATE-3-EVIDENCE.md`.
-
-### Future dialects
-
-SQLite, SQL Server, Oracle and additional dialects are deferred until the v1 foundation below is complete. They must not create parallel implementation streams before the release baseline is clean.
-
-## Single critical path
-
-Development proceeds in this order only.
-
-### Gate 1 — Clean-room MySQL feature parity — COMPLETE
-
-Gate 1 is complete. See `docs/v1/GATE-1-EVIDENCE.md` for the implementation and validation record.
-
-The production surface validated before closure includes:
-
-- connection lifecycle and TLS
-- caching_sha2_password and supported authentication paths
-- simple query execution
-- prepared statements and typed parameters/results
-- transactions and savepoints
-- bounded connection pooling
-- timeout, deadline and AbortSignal semantics
-- deterministic resource cleanup
-- TypeScript declaration surface without requiring TypeScript as a release dependency
-- error model and SQLSTATE/native-code preservation
-- streaming/backpressure where required for production workloads
-- session reset/state behaviour required by pooling
-- observability implemented with Node/NuBlox primitives only
-- live MySQL version matrix
-
-Features from the historical driver that are not required for v1 stability are deferred rather than retaining legacy source.
-
-### Gate 2 — Replace legacy `@nublox/mysql` — COMPLETE
-
-Gate 2 completed the clean-room cut-over:
-
-1. `packages/mysql-cleanroom` was promoted to canonical `packages/mysql` / `@nublox/mysql`;
-2. the mysqljs-derived implementation was removed from the current v1 source tree;
-3. inherited package lineage/provenance files no longer exist in the canonical package;
-4. historical runtime dependencies including `bignumber.js`, `named-placeholders`, `safe-buffer` and `sqlstring` were eliminated;
-5. mysql2, legacy test runners, ESLint/TypeScript-driven release gates and their package dependency graph were removed from the v1 validation boundary;
-6. repository verification now runs using Node.js, NuBlox packages and CI infrastructure without installing third-party npm implementation/test tooling;
-7. `npm run v1:proprietary-audit` passed with zero blockers at the Gate 2 merge boundary.
-
-Historical Git history remains historical evidence and is not rewritten or represented as original NuBlox authorship.
-
-### Gate 3 — PostgreSQL v1 hardening — COMPLETE
-
-Gate 3 is complete. See `docs/v1/GATE-3-EVIDENCE.md` for the implementation, supported-version and production-soak evidence.
-
-The completed PostgreSQL v1 surface includes:
-
-- native simple and extended query protocols;
-- prepared statements and typed parameters;
-- PostgreSQL CancelRequest cancellation with recovery semantics;
-- bounded pooling, transactions and savepoints;
-- native server-side portals/cursors with bounded batches;
-- bounded result rows, result bytes and row bytes with fail-closed connection handling;
-- deterministic lossless type/precision semantics;
-- TLS/authentication negative-path hardening;
-- live PostgreSQL 15/16/17/18 matrix;
-- production performance, pool-contention, portal, cancellation and forced-GC memory-soak evidence;
-- zero third-party PostgreSQL driver/protocol/type dependencies.
-
-PostgreSQL-specific semantics remain first class rather than being forced into a MySQL-shaped API.
-
-### Gate 4 — Stabilise SQL Core — COMPLETE
-
-Gate 4 is complete. See `docs/v1/GATE-4-EVIDENCE.md` and `docs/v1/SQL-CORE-V1-CONTRACT.md`.
-
-The frozen contract family is identified by `CONTRACT_VERSION === '1.0'` and stages `@nublox/sql-core@1.0.0-rc.1`.
-
-The v1 portable surface includes:
-
-- dialect identity, capability discovery, identifier quoting and positional placeholders;
-- catalog/schema/name object identity;
-- structural cancellation signals and relative operation timeout policy;
-- bounded result controls (`maxRows`, `maxResultBytes`, `maxRowBytes`);
-- positional execution parameters;
-- portable row-result and command-result vocabulary;
-- transaction isolation and read-only policy;
-- portable error categories, native code/SQLSTATE preservation, retryability and resource-limit evidence;
-- explicit vendor extension points.
-
-Gate 4 deliberately rejected unproven generic named parameters, generic multi-result containers and universal absolute deadlines. Vendor-specific cursor/portal semantics, CDC/replication, authentication and type codecs remain in adapters.
-
-Breaking changes to the frozen SQL Core v1 contract after stable `1.0.0` require a new major version.
-
-### Gate 5 — Proprietary and release audit — ACTIVE
-
-Gate 5 is now the sole v1 critical path.
-
-`npm run v1:proprietary-audit` is mandatory and must pass with zero findings at the final release commit.
-
-Required release evidence:
-
-- no third-party implementation source in shipped packages;
-- no third-party npm dependencies required by shipped/runtime/build/test/release boundary;
-- no legacy lineage markers in current v1 package manifests;
-- proprietary NuBlox licence applied consistently to v1 source and packages;
-- package manifests at `1.0.0`;
-- clean pack manifests for every publishable package;
-- deterministic Node-supported test matrix;
-- live MySQL and PostgreSQL integration matrices green;
-- security/resource-limit/fuzz regression gates green;
-- compatibility/migration notes for pre-v1 users;
-- release notes and support matrix complete.
-
-## v1 package scope
-
-The stable v1 release initially contains only packages that meet the full quality and proprietary gates:
+## Stable v1 package set
 
 ```text
 @nublox/sql-core@1.0.0
@@ -155,25 +18,99 @@ The stable v1 release initially contains only packages that meet the full qualit
 @nublox/postgresql@1.0.0
 ```
 
-SQLite, SQL Server and Oracle enter subsequent releases unless they independently meet every v1 gate before the release freeze without delaying or destabilising the three-package baseline.
+SQLite, SQL Server, Oracle and additional dialects are deferred to later releases and must independently satisfy NuBloxSQL quality and proprietary gates.
 
-## Work-in-progress policy
+## Completed gates
 
-Until v1.0.0:
+### Gate 1 — Clean-room MySQL feature parity — COMPLETE
 
-- one active implementation PR at a time;
-- every PR must advance a named gate in this document;
-- no speculative dialect expansion;
-- merge only after the relevant full regression matrix is green;
-- delete the task branch after merge;
-- keep `main` releasable and documented after every merge.
+See `GATE-1-EVIDENCE.md`.
 
-## Repository cleanup policy
+The production baseline includes native connection/TLS/authentication, simple queries, prepared statements, typed parameters/results, transactions/savepoints, bounded pooling, timeouts/deadlines/AbortSignal, deterministic cleanup, stable errors, streaming/backpressure, session reset, resource limits, observability and live MySQL validation.
 
-Old branches and superseded PRs are not development queues. Close superseded PRs and remove stale branches after confirming their useful work is already merged or intentionally deferred.
+### Gate 2 — Replace legacy `@nublox/mysql` — COMPLETE
 
-The authoritative state is always `main` plus at most one active v1 task branch.
+The NuBlox-authored implementation was promoted to canonical `packages/mysql` / `@nublox/mysql`. The historical mysqljs-derived source tree, transitional package, inherited lineage files and historical third-party package dependency graph were removed from the current v1 source/package boundary.
+
+Historical Git history remains historical evidence and is not represented as original NuBlox authorship.
+
+### Gate 3 — PostgreSQL v1 hardening — COMPLETE
+
+See `GATE-3-EVIDENCE.md`.
+
+The PostgreSQL v1 baseline includes native simple/extended protocols, prepared execution, CancelRequest cancellation, pooling, transactions/savepoints, native portal cursors, result/resource limits, deterministic lossless type policy, TLS/authentication negative paths, live PostgreSQL 15–18 validation and production performance/resource evidence.
+
+### Gate 4 — Stabilise SQL Core — COMPLETE
+
+See `GATE-4-EVIDENCE.md` and `SQL-CORE-V1-CONTRACT.md`.
+
+SQL Core contract family `1.0` freezes only portable concepts proven by both canonical adapters: dialect identity/capabilities, identifier/placeholder services, structural cancellation, relative timeout policy, bounded results, positional execution, row/command result vocabulary, transaction policy, portable error categorisation and adapter extension points.
+
+Unproven generic named parameters, generic multi-result containers and universal absolute deadlines were deliberately excluded.
+
+Breaking changes to the frozen SQL Core v1 contract require a new major version.
+
+### Gate 5 — Proprietary and stable release audit — COMPLETE
+
+See `GATE-5-EVIDENCE.md`, `V1-RELEASE-NOTES.md`, `V1-MIGRATION.md` and `V1-SUPPORT-MATRIX.md`.
+
+Gate 5 establishes:
+
+- NuBloxSQL Proprietary Software Licence for the current v1 release line;
+- copyright 2026 Stephen J T Spittal, all rights reserved;
+- explicit preservation of valid historical licence grants for historical copies;
+- stable `1.0.0` package manifests;
+- zero declared third-party npm runtime/development/optional/peer dependencies;
+- no dependency lockfile in the v1 release boundary;
+- proprietary audit passing with zero blockers;
+- stable-release audit passing;
+- clean package dry-runs for all three publishable packages;
+- Node.js 22/24/26 verification;
+- live MySQL 8.4/9.7 validation;
+- live PostgreSQL 15/16/17/18 validation;
+- protocol/resource regression gates, fuzzing and CodeQL green;
+- release notes, migration guidance and support matrix complete.
+
+## Stable support baseline
+
+### Node.js
+
+- 22
+- 24
+- 26
+
+### MySQL
+
+- 8.4
+- 9.7
+
+### PostgreSQL
+
+- 15
+- 16
+- 17
+- 18
+
+See `V1-SUPPORT-MATRIX.md` for details.
+
+## Proprietary release boundary
+
+The current v1 line is governed by the repository/package `LICENSE` files. Public availability does not grant an open-source licence.
+
+Historical versions or commits that were validly distributed under earlier licence terms retain the rights validly granted for those historical copies. The v1 proprietary licence governs copies expressly distributed under the v1 terms.
+
+## Post-v1 development policy
+
+After the stable v1 baseline:
+
+- preserve SQL Core contract-family compatibility within major version 1;
+- keep vendor-specific semantics first class in adapters;
+- require new dialects to satisfy the same proprietary, testing, security and support-evidence standard before stable release;
+- do not reintroduce third-party implementation dependencies into the v1 package boundary without an explicit product/licensing decision;
+- use focused feature branches/PRs and keep `main` releasable.
 
 ## Release decision
 
-NuBloxSQL v1.0.0 is not declared stable until Gate 5 is complete. Version numbers, marketing language or licence text do not override failed technical or provenance gates.
+All five NuBloxSQL v1 technical/provenance gates are complete on the final-release branch. The branch is eligible to merge only after the final documentation-inclusive CI matrix remains green.
+
+After merge, `main` is the stable NuBloxSQL v1.0.0 source baseline. npm publication and other distribution-channel publication are separate authenticated release actions.
