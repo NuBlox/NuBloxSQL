@@ -22,6 +22,7 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "test": "node test/contract.js && node test/protocol.js && node test/runtime.js && node test/lifecycle.js && node test/cancel.js && node test/pool-transaction.js && node test/portal.js",
-    "test:live": "node test/live.js"
+    "test:live": "node test/live.js",
+    "test:live:failures": "node test/live-failure-paths.js"
   }
 }
