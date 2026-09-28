@@ -31,7 +31,7 @@ function MySqlClientError(message, details) {
 MySqlClientError.prototype = Object.create(Error.prototype);
 MySqlClientError.prototype.constructor = MySqlClientError;
 
-function classify(error, operation) {
+function classify(error, operation, aborted) {
   if (!error || error.name === 'MySqlError' || error.name === 'MySqlResultLimitError' || error.name === 'MySqlClientError') return error;
   if (error instanceof TypeError || error instanceof RangeError) return error;
 
@@ -39,7 +39,7 @@ function classify(error, operation) {
   var lower = message.toLowerCase();
   var details = { cause: error, code: CODES.OPERATION_STATE, category: 'state', retryable: false };
 
-  if (lower.indexOf('aborted') !== -1 || error.name === 'AbortError') {
+  if (aborted || lower.indexOf('aborted') !== -1 || error.name === 'AbortError') {
     details.code = operation === 'getConnection' ? CODES.POOL_ACQUIRE_ABORTED : CODES.ABORTED;
     details.category = 'cancelled';
   } else if (lower.indexOf('timed out') !== -1 || lower.indexOf('timeout') !== -1) {
@@ -77,20 +77,33 @@ function isPromise(value) {
   return value && typeof value.then === 'function';
 }
 
+function operationSignal(name, args) {
+  var options = null;
+  if (name === 'connect') options = this && this.config;
+  else if (name === 'query' || name === 'queryStream' || name === 'prepare' || name === 'savepoint' || name === 'rollbackToSavepoint' || name === 'releaseSavepoint') options = args[1];
+  else if (name === 'execute') options = args[2] || args[1];
+  else if (name === 'withTransaction') options = args[1];
+  else options = args[0];
+  return options && options.signal ? options.signal : null;
+}
+
 function wrapMethod(prototype, name) {
   if (!prototype || typeof prototype[name] !== 'function') return;
   var original = prototype[name];
   if (original._nubloxErrorModel) return;
 
   function errorModelMethod() {
+    var signal = operationSignal.call(this, name, arguments);
     var result;
     try {
       result = original.apply(this, arguments);
     } catch (error) {
-      throw classify(error, name);
+      throw classify(error, name, Boolean(signal && signal.aborted));
     }
     if (isPromise(result)) {
-      return result.then(function (value) { return value; }, function (error) { throw classify(error, name); });
+      return result.then(function (value) { return value; }, function (error) {
+        throw classify(error, name, Boolean(signal && signal.aborted));
+      });
     }
     return result;
   }
@@ -104,7 +117,7 @@ function wrapStreamDestroy(ResultStream) {
   if (original._nubloxErrorModel) return;
 
   function errorModelDestroy(error) {
-    return original.call(this, error ? classify(error, 'queryStream') : error);
+    return original.call(this, error ? classify(error, 'queryStream', false) : error);
   }
   Object.defineProperty(errorModelDestroy, '_nubloxErrorModel', { value: true });
   ResultStream.prototype.destroy = errorModelDestroy;
