@@ -2,6 +2,7 @@
 
 var portal = require('./PortalConnection');
 var limits = require('./ResultLimits');
+var types = require('./TypeDecoder');
 
 function Connection(config) {
   portal.Connection.call(this, config);
@@ -24,10 +25,15 @@ Connection.prototype._startOperation = function _startOperation(state, messages,
   return baseStartOperation.call(this, state, messages, options || {});
 };
 
-var baseDecodeRow = portal.Connection.prototype._decodeRow;
 Connection.prototype._decodeRow = function _decodeRow(message, state) {
   limits.observeRow(state, message);
-  return baseDecodeRow.call(this, message, state);
+  var row = Object.create(null);
+  var fields = state.fields || [];
+  for (var i = 0; i < message.values.length; i++) {
+    var field = fields[i] || { name: String(i) };
+    row[field.name] = types.decodeText(field, message.values[i]);
+  }
+  state.rows.push(row);
 };
 
 exports.Connection = Connection;
@@ -37,3 +43,4 @@ exports.PostgreSqlError = portal.PostgreSqlError;
 exports.PostgreSqlCancellationError = portal.PostgreSqlCancellationError;
 exports.PostgreSqlResultLimitError = limits.PostgreSqlResultLimitError;
 exports.DEFAULT_RESULT_LIMITS = limits.DEFAULTS;
+exports.TYPE_OIDS = types.OID;
