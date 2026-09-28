@@ -2,6 +2,7 @@
 
 var EventEmitter = require('events').EventEmitter;
 var runtime = require('./StreamingConnection');
+var control = require('./OperationControl');
 
 function positiveInteger(value, fallback, name) {
   if (value === undefined) return fallback;
@@ -176,7 +177,8 @@ Pool.prototype._drain = function _drain() {
 };
 
 Pool.prototype.getConnection = function getConnection(options) {
-  options = options || {};
+  try { options = control.normalize(options || {}, 'MySQL pool acquisition', this.acquireTimeout); }
+  catch (error) { return Promise.reject(error); }
   if (this._ended) return Promise.reject(new Error('MySQL pool has ended'));
   if (options.signal && options.signal.aborted) return Promise.reject(options.signal.reason || new Error('MySQL pool acquisition aborted'));
 
@@ -191,8 +193,7 @@ Pool.prototype.getConnection = function getConnection(options) {
   }
   if (this.queueLimit && this._waiters.length >= this.queueLimit) return Promise.reject(new Error('MySQL pool acquisition queue limit reached'));
 
-  var timeout = options.timeout === undefined ? this.acquireTimeout : options.timeout;
-  if (!Number.isFinite(timeout) || timeout <= 0) return Promise.reject(new RangeError('MySQL pool acquisition timeout must be a positive number'));
+  var timeout = options.timeout;
   var waiter = { settled: false, signal: options.signal || null, abortHandler: null, timer: null };
   waiter.promise = new Promise(function (resolve, reject) { waiter.resolve = resolve; waiter.reject = reject; });
   self = this;
@@ -243,17 +244,19 @@ Pool.prototype._evictIdle = function _evictIdle() {
 };
 
 Pool.prototype.query = async function query(sql, options) {
-  var connection = await this.getConnection(options && options.acquire);
-  try { return await connection.query(sql, options || {}); }
+  options = control.deriveTotalDeadline(options || {}, 'MySQL pool query');
+  var connection = await this.getConnection(control.acquisitionOptions(options));
+  try { return await connection.query(sql, options); }
   finally { if (this._all.has(connection)) this.releaseConnection(connection); }
 };
 
 Pool.prototype.queryStream = async function queryStream(sql, options) {
   var self = this;
-  var connection = await this.getConnection(options && options.acquire);
+  options = control.deriveTotalDeadline(options || {}, 'MySQL pool query');
+  var connection = await this.getConnection(control.acquisitionOptions(options));
   var stream;
   try {
-    stream = connection.queryStream(sql, options || {});
+    stream = connection.queryStream(sql, options);
   } catch (error) {
     if (this._all.has(connection) && !connection.ended && !connection.inTransaction && !connection._queryState) this.releaseConnection(connection);
     throw error;
@@ -272,11 +275,12 @@ Pool.prototype.queryStream = async function queryStream(sql, options) {
 };
 
 Pool.prototype.execute = async function execute(sql, params, options) {
-  var connection = await this.getConnection(options && options.acquire);
+  options = control.deriveTotalDeadline(options || {}, 'MySQL pool execute');
+  var connection = await this.getConnection(control.acquisitionOptions(options));
   var statement = null;
   try {
-    statement = await connection.prepare(sql, options || {});
-    return await statement.execute(params || [], options || {});
+    statement = await connection.prepare(sql, options);
+    return await statement.execute(params || [], options);
   } finally {
     if (statement && !statement.closed && connection.connected && !connection.ended) {
       try { await statement.close(); } catch (error) { connection.destroy(error); }
@@ -286,8 +290,9 @@ Pool.prototype.execute = async function execute(sql, params, options) {
 };
 
 Pool.prototype.withTransaction = async function withTransaction(fn, options) {
-  var connection = await this.getConnection(options && options.acquire);
-  try { return await connection.withTransaction(fn, options || {}); }
+  options = control.deriveTotalDeadline(options || {}, 'MySQL pool transaction');
+  var connection = await this.getConnection(control.acquisitionOptions(options));
+  try { return await connection.withTransaction(fn, options); }
   finally {
     if (connection.inTransaction) {
       try { await connection.rollback(); } catch (error) { connection.destroy(error); }
