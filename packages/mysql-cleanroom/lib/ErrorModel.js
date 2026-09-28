@@ -42,7 +42,7 @@ function classify(error, operation, aborted) {
   if (aborted || lower.indexOf('aborted') !== -1 || error.name === 'AbortError') {
     details.code = operation === 'getConnection' ? CODES.POOL_ACQUIRE_ABORTED : CODES.ABORTED;
     details.category = 'cancelled';
-  } else if (lower.indexOf('timed out') !== -1 || lower.indexOf('timeout') !== -1) {
+  } else if (lower.indexOf('timed out') !== -1 || lower.indexOf('timeout') !== -1 || lower.indexOf('deadline exceeded') !== -1) {
     details.code = operation === 'getConnection' ? CODES.POOL_ACQUIRE_TIMEOUT : CODES.TIMEOUT;
     details.category = 'timeout';
     details.retryable = true;
