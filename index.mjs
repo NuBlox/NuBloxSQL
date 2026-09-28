@@ -5,6 +5,7 @@ export default mysql;
 export const createConnection = mysql.createConnection;
 export const createPool = mysql.createPool;
 export const createPoolCluster = mysql.createPoolCluster;
+export const probePoolClusterRoles = mysql.probePoolClusterRoles;
 export const createQuery = mysql.createQuery;
 export const escape = mysql.escape;
 export const escapeId = mysql.escapeId;
