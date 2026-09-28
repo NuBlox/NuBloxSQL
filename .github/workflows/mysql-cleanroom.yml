@@ -1,0 +1,80 @@
+name: NuBloxSQL MySQL Cleanroom
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/mysql-cleanroom/**'
+      - '.github/workflows/mysql-cleanroom.yml'
+  pull_request:
+    paths:
+      - 'packages/mysql-cleanroom/**'
+      - '.github/workflows/mysql-cleanroom.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  protocol:
+    name: cleanroom (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Verify clean-room protocol and authentication
+        run: node packages/mysql-cleanroom/test/protocol.js && node packages/mysql-cleanroom/test/auth.js
+      - name: Assert zero package dependencies
+        run: |
+          node - <<'NODE'
+          const p = require('./packages/mysql-cleanroom/package.json');
+          for (const key of ['dependencies','optionalDependencies','peerDependencies','devDependencies']) {
+            if (p[key] && Object.keys(p[key]).length) throw new Error(key + ' must remain empty for clean-room MySQL');
+          }
+          console.log('clean-room MySQL has zero package dependencies');
+          NODE
+
+  live:
+    name: live MySQL ${{ matrix.mysql }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ['8.4', '9.7']
+    services:
+      mysql:
+        image: mysql:${{ matrix.mysql }}
+        env:
+          MYSQL_ROOT_PASSWORD: nublox_root_password
+          MYSQL_DATABASE: nublox_ci
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: nublox_ci_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -pnublox_root_password --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Native clean-room caching_sha2_password and COM_QUERY smoke
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: nublox_ci_password
+          MYSQL_DATABASE: nublox_ci
+        run: node packages/mysql-cleanroom/test/live.js
