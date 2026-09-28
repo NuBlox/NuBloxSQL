@@ -22,7 +22,7 @@ async function firstConnection(pool) {
 }
 
 async function assertReplacement(pool, poisoned) {
-  assert.strictEqual(pool.totalCount, 0, 'poisoned connection must be removed from the pool');
+  assert.strictEqual(poisoned.ended, true, 'failed operation must poison the physical connection');
   var replacement = await pool.getConnection();
   assert.notStrictEqual(replacement, poisoned, 'pool must create a new physical connection');
   var result = await replacement.query('SELECT 1 AS ok');
