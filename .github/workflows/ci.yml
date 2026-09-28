@@ -28,6 +28,8 @@ jobs:
         run: npm run verify
       - name: Assert proprietary dependency boundary
         run: npm run v1:proprietary-audit
+      - name: Assert stable release boundary
+        run: npm run v1:release-audit
       - name: Verify MySQL publish surface
         run: npm pack --dry-run --workspace @nublox/mysql
       - name: Verify SQL Core publish surface
