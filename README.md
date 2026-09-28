@@ -58,6 +58,18 @@ npm run v1:release-audit
 
 The CI release gates additionally validate package dry-runs, supported database integration matrices, protocol/resource failure paths, fuzzing and CodeQL.
 
+## Local workspace setup
+
+NuBloxSQL's proprietary release boundary intentionally contains no dependency lockfile. The repository `.npmrc` disables `package-lock.json` generation so a normal `npm install` does not invalidate the local proprietary/release audits.
+
+If a lockfile was created by an older checkout, remove it once before running the release gates:
+
+```bash
+rm -f package-lock.json
+npm install
+npm run verify:proprietary
+```
+
 ## Migration and release documentation
 
 - `docs/v1/V1-MIGRATION.md`
