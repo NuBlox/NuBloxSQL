@@ -54,7 +54,16 @@ function createApi() {
               name    : name,
               options : options,
               record  : function record(value, attributes) {
-                records.push({name: name, value: value, attributes: attributes});
+                records.push({name: name, value: value, attributes: attributes, method: 'record'});
+              }
+            };
+          },
+          createUpDownCounter: function createUpDownCounter(name, options) {
+            return {
+              name    : name,
+              options : options,
+              add     : function add(value, attributes) {
+                records.push({name: name, value: value, attributes: attributes, method: 'add'});
               }
             };
           }
@@ -74,22 +83,44 @@ function createPool() {
         port     : 3307,
         database : 'orders'
       }
-    }
+    },
+    _allConnections       : [],
+    _freeConnections      : [],
+    _acquiringConnections : [],
+    _connectionQueue      : []
   };
   pool.releaseCount = 0;
   pool.destroyCount = 0;
 
   pool.getConnection = function getConnection(callback) {
-    var connection = {};
+    var connection = pool._freeConnections.shift();
+
+    if (connection) {
+      process.nextTick(function () {
+        callback(null, connection);
+      });
+      return;
+    }
+
+    connection = {};
     connection.threadId = 11;
     connection.release = function release() {
       pool.releaseCount++;
+      if (pool._freeConnections.indexOf(connection) === -1) {
+        pool._freeConnections.push(connection);
+      }
     };
     connection.destroy = function destroy() {
       pool.destroyCount++;
+      remove(pool._freeConnections, connection);
+      remove(pool._allConnections, connection);
     };
 
+    pool._acquiringConnections.push(connection);
+    pool._allConnections.push(connection);
+
     process.nextTick(function () {
+      remove(pool._acquiringConnections, connection);
       callback(null, connection);
     });
   };
@@ -97,10 +128,33 @@ function createPool() {
   return pool;
 }
 
+function remove(array, value) {
+  var index = array.indexOf(value);
+  if (index !== -1) {
+    array.splice(index, 1);
+  }
+}
+
 function findRecord(records, name) {
   return records.filter(function (record) {
     return record.name === name;
   })[0];
+}
+
+function counterTotal(records, name, state) {
+  return records.filter(function (record) {
+    if (record.name !== name || record.method !== 'add') {
+      return false;
+    }
+
+    if (state === undefined) {
+      return true;
+    }
+
+    return record.attributes['db.client.connection.state'] === state;
+  }).reduce(function (total, record) {
+    return total + record.value;
+  }, 0);
 }
 
 function publish(channelName, message) {
@@ -203,7 +257,7 @@ test('OpenTelemetry adapter', {
     assert.strictEqual(adapter.isEnabled(), false);
   },
 
-  'records connection wait time with an inferred pool name': function(done) {
+  'records connection wait and live pool state': function(done) {
     var telemetry = createApi();
     var pool = createPool();
     var adapter = createOpenTelemetryAdapter({api: telemetry.api});
@@ -220,12 +274,15 @@ test('OpenTelemetry adapter', {
         record.attributes['db.client.connection.pool.name'],
         'mysql.internal:3307/orders'
       );
+      assert.strictEqual(counterTotal(telemetry.records, 'db.client.connection.count', 'used'), 1);
+      assert.strictEqual(counterTotal(telemetry.records, 'db.client.connection.count', 'idle'), 0);
+      assert.strictEqual(counterTotal(telemetry.records, 'db.client.connection.pending_requests'), 0);
       adapter.disable();
       done();
     });
   },
 
-  'records connection use time when a borrowed connection is released': function(done) {
+  'tracks used to idle transition when a borrowed connection is released': function(done) {
     var telemetry = createApi();
     var pool = createPool();
     var adapter = createOpenTelemetryAdapter({api: telemetry.api});
@@ -233,6 +290,8 @@ test('OpenTelemetry adapter', {
     adapter.instrumentPool(pool, {name: 'orders-primary'});
     pool.getConnection(function(error, connection) {
       assert.ifError(error);
+      assert.strictEqual(counterTotal(telemetry.records, 'db.client.connection.count', 'used'), 1);
+
       connection.release();
 
       var record = findRecord(telemetry.records, 'db.client.connection.use_time');
@@ -240,12 +299,15 @@ test('OpenTelemetry adapter', {
       assert.ok(record.value >= 0);
       assert.strictEqual(record.attributes['db.client.connection.pool.name'], 'orders-primary');
       assert.strictEqual(pool.releaseCount, 1);
+      assert.strictEqual(counterTotal(telemetry.records, 'db.client.connection.count', 'used'), 0);
+      assert.strictEqual(counterTotal(telemetry.records, 'db.client.connection.count', 'idle'), 1);
       adapter.disable();
+      assert.strictEqual(counterTotal(telemetry.records, 'db.client.connection.count', 'idle'), 0);
       done();
     });
   },
 
-  'records connection use time when a borrowed connection is destroyed': function(done) {
+  'tracks connection removal when a borrowed connection is destroyed': function(done) {
     var telemetry = createApi();
     var pool = createPool();
     var adapter = createOpenTelemetryAdapter({api: telemetry.api});
@@ -257,6 +319,8 @@ test('OpenTelemetry adapter', {
 
       assert.ok(findRecord(telemetry.records, 'db.client.connection.use_time'));
       assert.strictEqual(pool.destroyCount, 1);
+      assert.strictEqual(counterTotal(telemetry.records, 'db.client.connection.count', 'used'), 0);
+      assert.strictEqual(counterTotal(telemetry.records, 'db.client.connection.count', 'idle'), 0);
       adapter.disable();
       done();
     });
@@ -279,6 +343,7 @@ test('OpenTelemetry adapter', {
       assert.strictEqual(record.attributes['db.client.connection.pool.name'], 'orders-primary');
       adapter.uninstrumentPool(pool);
       assert.strictEqual(pool.getConnection, original);
+      assert.strictEqual(counterTotal(telemetry.records, 'db.client.connection.count', 'used'), 0);
       done();
     });
   },
@@ -298,6 +363,7 @@ test('OpenTelemetry adapter', {
       assert.strictEqual(pool.getConnection, originalGetConnection);
       assert.notStrictEqual(connection.release, wrappedRelease);
       assert.strictEqual(findRecord(telemetry.records, 'db.client.connection.use_time'), undefined);
+      assert.strictEqual(counterTotal(telemetry.records, 'db.client.connection.count', 'used'), 0);
       done();
     });
   },
