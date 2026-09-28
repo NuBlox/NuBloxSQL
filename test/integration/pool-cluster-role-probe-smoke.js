@@ -4,11 +4,12 @@ var assert = require('assert');
 var mysql = require('../..');
 
 var baseConfig = {
-  host     : process.env.MYSQL_HOST || '127.0.0.1',
-  port     : Number(process.env.MYSQL_PORT || 3306),
-  user     : process.env.MYSQL_USER || 'nublox',
-  password : process.env.MYSQL_PASSWORD || 'nublox_ci_password',
-  database : process.env.MYSQL_DATABASE || 'nublox_ci'
+  host                    : process.env.MYSQL_HOST || '127.0.0.1',
+  port                    : Number(process.env.MYSQL_PORT || 3306),
+  user                    : process.env.MYSQL_USER || 'nublox',
+  password                : process.env.MYSQL_PASSWORD || 'nublox_ci_password',
+  database                : process.env.MYSQL_DATABASE || 'nublox_ci',
+  allowPublicKeyRetrieval : true
 };
 
 var cluster = mysql.createPoolCluster();
