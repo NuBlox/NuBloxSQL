@@ -46,9 +46,40 @@ const result = await connection.execute(
 );
 ```
 
-Current extended execution uses PostgreSQL text parameter/result formats. Portal-based partial execution and binary formats are separate Gate 3 milestones.
+## Server-side portal cursors
 
-## Current surface
+Portal cursors use PostgreSQL's native Bind/Execute portal lifecycle and support bounded batches and async iteration.
+
+```js
+const statement = await connection.prepare('SELECT generate_series(1, 1000) AS id');
+const cursor = statement.openCursor([], { batchSize: 100 });
+
+for await (const row of cursor) {
+  // consume rows without buffering the full result set
+}
+
+await cursor.close();
+await statement.close();
+```
+
+## Pooling and transactions
+
+```js
+const pool = require('@nublox/postgresql').createPool({
+  user: 'app',
+  password: process.env.PGPASSWORD,
+  database: 'appdb',
+  connectionLimit: 10
+});
+
+await pool.withTransaction(async (connection) => {
+  await connection.execute('INSERT INTO audit_log(message) VALUES ($1)', ['created']);
+});
+
+await pool.end();
+```
+
+## Current production surface
 
 - native TCP connection lifecycle
 - PostgreSQL SSLRequest negotiation with `disable`, `prefer` and `require` policies
@@ -62,13 +93,17 @@ Current extended execution uses PostgreSQL text parameter/result formats. Portal
 - extended-query Parse/Bind/Describe/Execute/Close/Sync protocol
 - named prepared statements with repeated execution and deterministic close
 - convenience parameterized execution
+- PostgreSQL CancelRequest cancellation
+- bounded connection pooling and reset-on-release hygiene
+- transactions and savepoints
+- server-side portals/cursors with bounded batch fetching and async iteration
 - RowDescription, DataRow, CommandComplete and EmptyQueryResponse decoding
 - typed text decoding for booleans, common integer/float/numeric OIDs and JSON/JSONB
 - structured PostgreSQL errors/notices
 - configurable backend message-size limits
 - connection and operation timeout/AbortSignal hooks
 - TypeScript declarations
-- live PostgreSQL 18 CI
+- live PostgreSQL 15, 16, 17 and 18 CI target matrix
 
 ## Dialect services
 
@@ -80,7 +115,7 @@ postgresql.services.placeholder(1);            // $1
 postgresql.descriptor.supports('schemas');     // true
 ```
 
-Capability flags describe implemented driver behavior, not merely PostgreSQL server features. For example, server-side cursors and CancelRequest remain `false` until their dedicated Gate 3 implementations land.
+Capability flags describe implemented driver behavior, not merely PostgreSQL server features.
 
 ## Protocol layer
 
@@ -98,6 +133,16 @@ const sync = protocol.encodeSync();
 const parser = new protocol.BackendMessageParser();
 ```
 
-## Gate 3 boundaries
+## Supported v1 server majors
 
-NuBloxSQL does not claim complete PostgreSQL v1 coverage yet. CancelRequest cancellation, bounded pooling, transaction helpers, portal streaming/server-side cursors, broader type decoding, TLS/authentication failure-path hardening, and performance/resource-limit evidence remain Gate 3 work.
+The v1 target matrix is PostgreSQL 15, 16, 17 and 18. Every supported major is exercised with the native runtime integration suite and explicit authentication/TLS failure-path tests.
+
+## Remaining Gate 3 work
+
+NuBloxSQL does not claim complete PostgreSQL v1 coverage yet. Before Gate 3 closes, the remaining focus is:
+
+- broader production type decoding and explicit precision policy
+- bounded result/resource limits beyond per-message framing
+- additional TLS/authentication edge-case hardening where live evidence identifies gaps
+- performance, memory and resource-soak evidence
+- final support-matrix and failure-path evidence capture

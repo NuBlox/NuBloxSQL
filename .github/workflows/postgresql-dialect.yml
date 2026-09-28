@@ -32,11 +32,16 @@ jobs:
       - run: npm run test --workspace @nublox/postgresql
       - run: npm pack --dry-run --workspace @nublox/postgresql
 
-  live-postgresql-18:
+  live-postgresql:
+    name: live PostgreSQL ${{ matrix.postgresql }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        postgresql: ['15', '16', '17', '18']
     services:
       postgres:
-        image: postgres:18
+        image: postgres:${{ matrix.postgresql }}
         env:
           POSTGRES_USER: nublox
           POSTGRES_PASSWORD: nublox_ci_password
@@ -53,7 +58,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Native SCRAM connection and simple query smoke
+      - name: Native runtime, extended protocol, cancellation, pooling and portals
         run: npm run test:live --workspace @nublox/postgresql
         env:
           PGHOST: 127.0.0.1
@@ -61,3 +66,13 @@ jobs:
           PGUSER: nublox
           PGPASSWORD: nublox_ci_password
           PGDATABASE: nublox
+          PG_EXPECTED_MAJOR: ${{ matrix.postgresql }}
+      - name: Authentication and TLS failure paths
+        run: npm run test:live:failures --workspace @nublox/postgresql
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: nublox
+          PGPASSWORD: nublox_ci_password
+          PGDATABASE: nublox
+          PG_EXPECTED_MAJOR: ${{ matrix.postgresql }}
