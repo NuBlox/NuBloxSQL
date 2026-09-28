@@ -4,10 +4,16 @@ var assert = require('assert');
 var fs = require('fs');
 var path = require('path');
 
-var root = path.resolve(__dirname, '..');
-var manifest = JSON.parse(fs.readFileSync(path.join(root, 'compatibility/mysql2.json'), 'utf8'));
-var packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+var packageRoot = path.resolve(__dirname, '..');
+var repositoryRoot = path.resolve(packageRoot, '../..');
+var manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'compatibility/mysql2.json'), 'utf8'));
+var packageJson = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 var seen = Object.create(null);
+
+function evidenceExists(relativePath) {
+  return fs.existsSync(path.join(packageRoot, relativePath))
+    || fs.existsSync(path.join(repositoryRoot, relativePath));
+}
 
 assert.strictEqual(manifest.reference.package, 'mysql2');
 assert.ok(manifest.reference.version);
@@ -36,7 +42,7 @@ manifest.capabilities.forEach(function (capability) {
 
   capability.evidence.forEach(function (relativePath) {
     assert.ok(
-      fs.existsSync(path.join(root, relativePath)),
+      evidenceExists(relativePath),
       'missing compatibility evidence for ' + capability.id + ': ' + relativePath
     );
   });
