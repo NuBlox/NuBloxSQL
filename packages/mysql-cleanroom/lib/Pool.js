@@ -1,7 +1,7 @@
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
-var runtime = require('./SessionConnection');
+var runtime = require('./StreamingConnection');
 
 function positiveInteger(value, fallback, name) {
   if (value === undefined) return fallback;
@@ -246,6 +246,29 @@ Pool.prototype.query = async function query(sql, options) {
   var connection = await this.getConnection(options && options.acquire);
   try { return await connection.query(sql, options || {}); }
   finally { if (this._all.has(connection)) this.releaseConnection(connection); }
+};
+
+Pool.prototype.queryStream = async function queryStream(sql, options) {
+  var self = this;
+  var connection = await this.getConnection(options && options.acquire);
+  var stream;
+  try {
+    stream = connection.queryStream(sql, options || {});
+  } catch (error) {
+    if (this._all.has(connection) && !connection.ended && !connection.inTransaction && !connection._queryState) this.releaseConnection(connection);
+    throw error;
+  }
+
+  var settled = false;
+  function releaseWhenSafe() {
+    if (settled) return;
+    if (connection._queryState) return;
+    settled = true;
+    if (self._all.has(connection) && !connection.ended && !connection.inTransaction) self.releaseConnection(connection);
+  }
+  stream.once('end', releaseWhenSafe);
+  stream.once('close', releaseWhenSafe);
+  return stream;
 };
 
 Pool.prototype.execute = async function execute(sql, params, options) {
