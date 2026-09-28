@@ -66,6 +66,7 @@ jobs:
           PGUSER: nublox
           PGPASSWORD: nublox_ci_password
           PGDATABASE: nublox
+          PG_EXPECTED_MAJOR: ${{ matrix.postgresql }}
       - name: Authentication and TLS failure paths
         run: npm run test:live:failures --workspace @nublox/postgresql
         env:
@@ -74,3 +75,4 @@ jobs:
           PGUSER: nublox
           PGPASSWORD: nublox_ci_password
           PGDATABASE: nublox
+          PG_EXPECTED_MAJOR: ${{ matrix.postgresql }}
