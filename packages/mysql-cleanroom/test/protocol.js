@@ -43,7 +43,7 @@ function buildHandshake() {
   var auth1 = Buffer.from('12345678');
   var auth2 = Buffer.from('ABCDEFGHIJKL\0', 'ascii');
   var plugin = Buffer.from('caching_sha2_password\0', 'ascii');
-  var fixed = Buffer.alloc(1 + 6 + 1 + 4 + 8 + 1 + 2 + 1 + 2 + 2 + 1 + 10);
+  var fixed = Buffer.alloc(1 + 6 + 4 + 8 + 1 + 2 + 1 + 2 + 2 + 1 + 10);
   var offset = 0;
   fixed[offset++] = 10;
   Buffer.from('8.4.0\0', 'ascii').copy(fixed, offset); offset += 6;
