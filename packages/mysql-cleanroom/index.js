@@ -40,14 +40,19 @@ exports.protocol = {
 
 var runtime = require('./lib/StreamingConnection');
 var pool = require('./lib/Pool');
+var ResultStream = require('./lib/ResultStream').ResultStream;
+var errorModel = require('./lib/ErrorModel');
 var observability = require('./lib/Observability');
+errorModel.install(runtime, pool, ResultStream);
 observability.install(runtime, pool);
 exports.Connection = runtime.Connection;
 exports.PreparedStatement = runtime.PreparedStatement;
-exports.ResultStream = require('./lib/ResultStream').ResultStream;
+exports.ResultStream = ResultStream;
 exports.Pool = pool.Pool;
 exports.MySqlError = require('./lib/Connection').MySqlError;
+exports.MySqlClientError = errorModel.MySqlClientError;
 exports.MySqlResultLimitError = runtime.MySqlResultLimitError;
+exports.ERROR_CODES = errorModel.CODES;
 exports.DEFAULT_LIMITS = runtime.DEFAULT_LIMITS;
 exports.OBSERVABILITY_CHANNELS = observability.CHANNEL_NAMES;
 exports.createConnection = function createConnection(config) { return new runtime.Connection(config); };
