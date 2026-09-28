@@ -11,6 +11,7 @@ exports.protocol = {
   encodePacket: require('./lib/protocol/PacketFramer').encodePacket,
   parseHandshakeV10: require('./lib/protocol/HandshakeV10').parseHandshakeV10,
   writeLengthEncodedInteger: client.writeLengthEncodedInteger,
+  encodeSslRequest: client.encodeSslRequest,
   encodeHandshakeResponse41: client.encodeHandshakeResponse41,
   encodeQuery: client.encodeQuery,
   encodeQuit: client.encodeQuit,
