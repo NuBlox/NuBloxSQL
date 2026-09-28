@@ -6,9 +6,10 @@ var limits = require('./ResultLimits');
 function Connection(config) {
   portal.Connection.call(this, config);
   config = config || {};
-  this.maxRows = limits.create(config, {}).maxRows;
-  this.maxResultBytes = limits.create(config, {}).maxResultBytes;
-  this.maxRowBytes = limits.create(config, {}).maxRowBytes;
+  var defaults = limits.create(config, {});
+  this.maxRows = defaults.maxRows;
+  this.maxResultBytes = defaults.maxResultBytes;
+  this.maxRowBytes = defaults.maxRowBytes;
 }
 Connection.prototype = Object.create(portal.Connection.prototype);
 Connection.prototype.constructor = Connection;
