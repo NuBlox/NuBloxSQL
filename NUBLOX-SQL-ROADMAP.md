@@ -2,16 +2,16 @@
 
 ## Purpose
 
-NuBloxSQL is an independent database connectivity and SQL runtime platform supporting multiple SQL database families through a shared set of contracts with independently evolvable dialect adapters.
+NuBloxSQL is an independent database connectivity and SQL runtime platform supporting multiple SQL database families through shared contracts and independently evolvable dialect adapters.
 
-The existing `@nublox/mysql` package remains the first production adapter and must retain its current release-candidate compatibility while the common platform is extracted incrementally.
+`@nublox/mysql` remains the first production adapter and retains its release-candidate compatibility. The repository itself is now a private multi-package workspace rather than the MySQL package root.
 
 ## Architectural direction
 
-NuBloxSQL is not intended to become one lowest-common-denominator driver. The target model is:
+NuBloxSQL is not a lowest-common-denominator driver. The platform model is:
 
 ```text
-NuBloxSQL
+NuBloxSQL workspace
 ├── shared SQL contracts
 ├── execution/session abstractions
 ├── transactions and cancellation
@@ -31,20 +31,20 @@ Dialect-specific protocols, authentication, wire formats, server features and op
 
 ## Package model
 
-The preferred long-term package family is:
+The package family is:
 
 ```text
 @nublox/sql-core
 @nublox/mysql
 @nublox/postgresql
-@nublox/sqlite
-@nublox/sqlserver
-@nublox/oracle
+@nublox/sqlite       # planned
+@nublox/sqlserver    # planned
+@nublox/oracle       # planned
 ```
 
-`@nublox/sql-core` must contain contracts and reusable policy only. It must not become a transport implementation and must not require every adapter to emulate features that the target database does not support.
+`@nublox/sql-core` contains contracts and reusable policy only. It must not become a transport implementation and must not require every adapter to emulate features that the target database does not support.
 
-The current `@nublox/mysql` package remains unchanged until the shared contracts are mature enough to extract without breaking its public API.
+The repository root is private workspace orchestration. Public runtime packages live under `packages/` and are independently versioned and publishable.
 
 ## Platform contracts
 
@@ -112,7 +112,7 @@ The shared layer should converge on the following capability groups.
 
 ### SQL dialect services
 
-NuBloxSQL should expose dialect services separately from transport:
+NuBloxSQL exposes dialect services separately from transport:
 
 - identifier quoting;
 - placeholder rendering;
@@ -127,39 +127,42 @@ NuBloxSQL should expose dialect services separately from transport:
 
 Each adapter must:
 
-1. expose the common contracts where semantics genuinely align;
+1. expose common contracts only where semantics genuinely align;
 2. expose first-class adapter extensions for vendor-specific capabilities;
 3. never silently emulate unsupported server behaviour when that changes semantics;
 4. identify the connected database family and version explicitly;
 5. expose capability metadata so callers can branch intentionally;
-6. maintain its own live-server CI matrix;
-7. maintain migration/compatibility documentation for established ecosystem drivers where useful.
+6. maintain its own live-server CI matrix where a server runtime applies;
+7. maintain migration/compatibility documentation for established ecosystem drivers where useful;
+8. own its protocol and security boundary independently of other adapters.
 
-## Initial adapter sequence
+## Adapter sequence
 
 ### A1 — MySQL
 
-Status: production foundation already exists as `@nublox/mysql`.
+Status: production foundation and release candidate exist as `@nublox/mysql` under `packages/mysql`.
 
 Priorities:
 
-- finish advanced MySQL capabilities;
-- identify reusable contracts without prematurely moving protocol code;
-- publish common contract tests that MySQL can implement first.
+- continue advanced MySQL capabilities;
+- preserve compatibility and performance;
+- extract reusable policy only when another dialect validates it;
+- keep MySQL protocol implementation isolated inside the adapter.
 
 ### A2 — PostgreSQL
 
-Priorities:
+Status: dialect foundation exists as `@nublox/postgresql` under `packages/postgresql`.
 
-- native PostgreSQL connection and execution surface;
+Next priorities:
+
+- native PostgreSQL startup/TLS/authentication protocol;
+- native connection and execution surface;
 - PostgreSQL type mapping;
 - cancellation and transaction semantics;
 - catalog/schema introspection;
 - prepared statements and cursor/streaming semantics;
-- TLS/authentication coverage;
-- live CI against supported PostgreSQL releases.
-
-Direct `pg` usage in consuming applications should be treated as transitional once this adapter reaches production readiness.
+- live CI against supported PostgreSQL releases;
+- replication/change-data-capture capabilities after core query runtime matures.
 
 ### A3 — SQLite
 
@@ -192,50 +195,82 @@ Priorities:
 - schema/security introspection;
 - operational constraints around native client/runtime dependencies if required.
 
-## Migration phases
+## Delivery phases
 
-### Phase 0 — Preserve MySQL RC
+### Phase 0 — Preserve MySQL RC — complete
 
-- keep `@nublox/mysql` package name and current public API stable;
-- do not rename MySQL-specific files merely for symmetry;
-- introduce architecture and capability vocabulary first.
+- `@nublox/mysql` package name and public API preserved;
+- MySQL-specific protocol concepts remain MySQL-specific;
+- regression, compatibility and live-server CI remain mandatory.
 
-### Phase 1 — Define shared contracts
+### Phase 1 — Establish shared contracts — foundation complete
 
-Create `@nublox/sql-core` only after contracts are backed by at least MySQL plus one second dialect design.
+`@nublox/sql-core` now provides the first portable dialect identity, capability, execution/result, transaction, error, metadata, quoting and placeholder contracts.
 
-The first contract set should cover:
+Further contracts graduate only after multi-dialect validation.
 
-- database/dialect identity;
-- capabilities;
-- connection/session lifecycle;
-- execution results;
-- transactions;
-- cancellation/timeouts;
-- quoting/placeholders;
-- metadata/introspection.
+### Phase 2 — Establish second dialect — foundation complete
 
-### Phase 2 — PostgreSQL adapter
+`@nublox/postgresql` now provides the second dialect model and validates SQL Core against PostgreSQL semantics.
 
-Implement PostgreSQL against the shared contracts and use the differences discovered there to harden the abstractions.
+### Phase 3 — Multi-package workspace — complete
 
-### Phase 3 — Extract reusable MySQL policy
+The repository root is private platform orchestration and the public packages are siblings under `packages/`.
 
-Move only genuinely portable policy from `@nublox/mysql` into `@nublox/sql-core`.
+This phase must preserve `@nublox/mysql` behaviour and release identity while removing the historical assumption that the repository itself is a MySQL package.
 
-Protocol packets, MySQL authentication, MySQL binary encodings, binlog logic and MySQL-specific server-state handling stay in `@nublox/mysql`.
+### Phase 4 — PostgreSQL native runtime — next
 
-### Phase 4 — Additional dialects
+Implement PostgreSQL protocol connectivity in vertical slices:
 
-Add SQLite, SQL Server and Oracle once the common contracts have survived both MySQL and PostgreSQL production requirements.
+1. framing and backend message parser;
+2. startup and SSL negotiation;
+3. authentication, including SCRAM-SHA-256;
+4. session parameters and ReadyForQuery state;
+5. simple query execution;
+6. extended query protocol and prepared statements;
+7. cancellation, deadlines and error classification;
+8. pooling, streaming/cursors and observability;
+9. metadata/introspection and type system;
+10. live compatibility/performance hardening.
+
+### Phase 5 — Harden shared policy
+
+Move only genuinely portable policy from adapters into `@nublox/sql-core` after both MySQL and PostgreSQL implementations prove the abstraction.
+
+Protocol packets, vendor authentication, binary encodings, replication logic and vendor-specific server state always remain in their adapters.
+
+### Phase 6 — Additional dialects
+
+Add SQLite, SQL Server and Oracle after the shared contracts have survived real MySQL and PostgreSQL runtime requirements.
+
+## World-leading quality bar
+
+Every production adapter should target:
+
+- protocol correctness against supported server versions;
+- secure modern authentication and TLS;
+- callback and Promise ergonomics where appropriate;
+- strong TypeScript contracts;
+- prepared execution and streaming/cursor support where the database supports them;
+- cancellation and deadline semantics;
+- robust pooling and lifecycle management;
+- resource limits and defensive parsing;
+- portable observability and adapter-native diagnostics;
+- deterministic error classification;
+- comprehensive compatibility tests against established ecosystem drivers;
+- live multi-version CI;
+- performance and memory regression benchmarks;
+- zero silent semantic emulation across dialects;
+- independent package release and provenance controls.
 
 ## Independence principle
 
-NuBloxSQL must remain independently usable, testable, versionable and releasable. Its architecture and roadmap must not depend on any other NuBlox product or application.
+NuBloxSQL remains independently usable, testable, versionable and releasable. Its architecture and roadmap do not depend on any other NuBlox product or application.
 
-Consumers may integrate NuBloxSQL through its public package APIs, but no external project is part of NuBloxSQL's internal architecture, release criteria or product definition.
+Consumers integrate through published package APIs; no external project is part of NuBloxSQL's internal architecture, release criteria or product definition.
 
-## Acceptance criteria for the shared core
+## Acceptance criteria for shared core
 
 A capability belongs in `@nublox/sql-core` only when:
 
@@ -245,8 +280,8 @@ A capability belongs in `@nublox/sql-core` only when:
 - tests define the portable behaviour;
 - adapters can opt out through explicit capability metadata when the database does not support it.
 
-## Relationship to the MySQL roadmap
+## Relationship to adapter roadmaps
 
-`NUBLOX-MYSQL-ROADMAP.md` remains the implementation roadmap for the MySQL adapter.
+Adapter-specific roadmaps belong with their packages. `packages/mysql/NUBLOX-MYSQL-ROADMAP.md` remains the implementation roadmap for the MySQL adapter.
 
-This document governs the repository-level direction and the eventual family of NuBlox SQL packages.
+This document governs repository-level architecture, quality standards and the NuBloxSQL package family.
