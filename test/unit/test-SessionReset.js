@@ -10,28 +10,28 @@ test('SessionReset', {
     var events = [];
     var captured;
     var callbackPacket;
-    var connection = {
-      config: {},
-      threadId: 17,
-      _implyConnect: function implyConnect() {
-        events.push('connect');
-      },
-      clearPreparedStatementCache: function clearPreparedStatementCache() {
-        events.push('clear-cache');
-      },
-      _nubloxPreparedStatementState: {
-        manualStatements: [{
-          close: function close() {
-            events.push('close-manual');
-          }
-        }]
-      },
-      _protocol: {
-        _enqueue: function enqueue(sequence) {
-          events.push('enqueue-reset');
-          captured = sequence;
-          return sequence;
+    var connection = {};
+
+    connection.config = {};
+    connection.threadId = 17;
+    connection._implyConnect = function implyConnect() {
+      events.push('connect');
+    };
+    connection.clearPreparedStatementCache = function clearPreparedStatementCache() {
+      events.push('clear-cache');
+    };
+    connection._nubloxPreparedStatementState = {
+      manualStatements: [{
+        close: function close() {
+          events.push('close-manual');
         }
+      }]
+    };
+    connection._protocol = {
+      _enqueue: function enqueue(sequence) {
+        events.push('enqueue-reset');
+        captured = sequence;
+        return sequence;
       }
     };
 
@@ -62,29 +62,29 @@ test('SessionReset', {
     var captured;
     var statements = [];
     var callbackCalled = false;
-    var connection = {
-      config: {
-        database      : 'nublox_ci',
-        charsetNumber : 46
-      },
-      threadId: 18,
-      _implyConnect: function implyConnect() {},
-      clearPreparedStatementCache: function clearPreparedStatementCache() {},
-      escapeId: function escapeId(value) {
-        return '`' + value + '`';
-      },
-      escape: function escape(value) {
-        return "'" + value + "'";
-      },
-      query: function query(options, callback) {
-        statements.push(options.sql);
-        callback(null);
-      },
-      _protocol: {
-        _enqueue: function enqueue(sequence) {
-          captured = sequence;
-          return sequence;
-        }
+    var connection = {};
+
+    connection.config = {
+      database      : 'nublox_ci',
+      charsetNumber : 46
+    };
+    connection.threadId = 18;
+    connection._implyConnect = function implyConnect() {};
+    connection.clearPreparedStatementCache = function clearPreparedStatementCache() {};
+    connection.escapeId = function escapeId(value) {
+      return '`' + value + '`';
+    };
+    connection.escape = function escape(value) {
+      return "'" + value + "'";
+    };
+    connection.query = function query(options, callback) {
+      statements.push(options.sql);
+      callback(null);
+    };
+    connection._protocol = {
+      _enqueue: function enqueue(sequence) {
+        captured = sequence;
+        return sequence;
       }
     };
 
