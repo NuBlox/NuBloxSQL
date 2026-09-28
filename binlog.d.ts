@@ -8,6 +8,7 @@ export interface BinlogDecoderOptions {
   verifyChecksum?: boolean;
   maxEventSize?: number;
   maxTableMaps?: number;
+  maxTableMapBytes?: number;
 }
 
 export interface BinlogGtidInterval {
@@ -137,6 +138,7 @@ export class BinlogEventDecoder {
   readonly verifyChecksum: boolean;
   readonly maxEventSize: number;
   readonly maxTableMaps: number;
+  readonly maxTableMapBytes: number;
   constructor(options?: BinlogDecoderOptions);
   decode(input: Buffer): BinlogEvent;
 }
