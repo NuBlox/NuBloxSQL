@@ -42,7 +42,10 @@ function testAcquireInheritance() {
 async function testPoolRejectsExpiredDeadline() {
   var pool = mysql.createPool({ user: 'test' });
   await assert.rejects(pool.getConnection({ deadline: Date.now() - 1 }), function (error) {
-    return error && error.code === 'NUBLOX_MYSQL_DEADLINE_EXCEEDED';
+    return error instanceof mysql.MySqlClientError &&
+      error.code === mysql.ERROR_CODES.POOL_ACQUIRE_TIMEOUT &&
+      error.category === 'timeout' &&
+      error.cause && error.cause.code === 'NUBLOX_MYSQL_DEADLINE_EXCEEDED';
   });
   await pool.end();
 }
