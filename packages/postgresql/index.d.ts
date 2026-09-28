@@ -39,6 +39,11 @@ export interface PostgreSqlConnectionOptions { host?: string; port?: number; use
 export interface PostgreSqlQueryOptions { timeout?: number; signal?: AbortSignal; }
 export interface PostgreSqlCancelOptions { reason?: Error; }
 export interface PostgreSqlPrepareOptions extends PostgreSqlQueryOptions { name?: string; parameterTypeOids?: number[]; }
+export type PostgreSqlIsolationLevel = 'read-uncommitted' | 'read-committed' | 'repeatable-read' | 'serializable';
+export interface PostgreSqlTransactionOptions extends PostgreSqlQueryOptions { isolationLevel?: PostgreSqlIsolationLevel; readOnly?: boolean; deferrable?: boolean; acquire?: PostgreSqlPoolAcquireOptions; }
+export interface PostgreSqlPoolAcquireOptions { timeout?: number; signal?: AbortSignal; }
+export interface PostgreSqlPoolQueryOptions extends PostgreSqlQueryOptions { acquire?: PostgreSqlPoolAcquireOptions; }
+export interface PostgreSqlPoolConfig extends PostgreSqlConnectionOptions { connectionLimit?: number; maxIdle?: number; idleTimeout?: number; acquireTimeout?: number; queueLimit?: number; resetOnRelease?: boolean; }
 export type PostgreSqlParameter = string | number | bigint | boolean | Date | Buffer | Uint8Array | Record<string, unknown> | unknown[] | null | undefined;
 export interface PostgreSqlQueryResult<Row = Record<string, unknown>> { rows: Row[]; fields: PostgreSqlFieldDescription[]; command: string; rowCount: number | null; }
 export class PostgreSqlError extends Error { code?: string; severity?: string; fields: Record<string, string>; }
@@ -67,8 +72,37 @@ export class Connection extends EventEmitter {
   prepare(sql: string, options?: PostgreSqlPrepareOptions): Promise<PreparedStatement>;
   execute<Row = Record<string, unknown>>(sql: string, parameters?: PostgreSqlParameter[], options?: PostgreSqlPrepareOptions): Promise<PostgreSqlQueryResult<Row>>;
   cancel(options?: PostgreSqlCancelOptions): Promise<void>;
+  beginTransaction(options?: PostgreSqlTransactionOptions): Promise<PostgreSqlQueryResult>;
+  commit(options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
+  rollback(options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
+  withTransaction<T>(fn: (connection: this) => T | Promise<T>, options?: PostgreSqlTransactionOptions): Promise<T>;
+  savepoint(name: string, options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
+  rollbackToSavepoint(name: string, options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
+  releaseSavepoint(name: string, options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
+  resetSession(options?: PostgreSqlQueryOptions): Promise<this>;
   end(): Promise<void>;
   destroy(error?: Error): void;
+}
+export class Pool extends EventEmitter {
+  readonly config: PostgreSqlPoolConfig;
+  readonly connectionLimit: number;
+  readonly maxIdle: number;
+  readonly idleTimeout: number;
+  readonly acquireTimeout: number;
+  readonly queueLimit: number;
+  readonly resetOnRelease: boolean;
+  readonly totalCount: number;
+  readonly idleCount: number;
+  readonly borrowedCount: number;
+  readonly waitingCount: number;
+  readonly resettingCount: number;
+  constructor(config: PostgreSqlPoolConfig);
+  getConnection(options?: PostgreSqlPoolAcquireOptions): Promise<Connection>;
+  releaseConnection(connection: Connection): Promise<void>;
+  query<Row = Record<string, unknown>>(sql: string, options?: PostgreSqlPoolQueryOptions): Promise<PostgreSqlQueryResult<Row>>;
+  execute<Row = Record<string, unknown>>(sql: string, parameters?: PostgreSqlParameter[], options?: PostgreSqlPoolQueryOptions): Promise<PostgreSqlQueryResult<Row>>;
+  withTransaction<T>(fn: (connection: Connection) => T | Promise<T>, options?: PostgreSqlTransactionOptions): Promise<T>;
+  end(): Promise<void>;
 }
 
 export const descriptor: PostgreSqlDialectDescriptor;
@@ -77,3 +111,4 @@ export const services: PostgreSqlDialectServices;
 export const protocol: PostgreSqlProtocol;
 export function createObjectName(name: PostgreSqlObjectName): Readonly<PostgreSqlObjectName>;
 export function createConnection(config: PostgreSqlConnectionOptions): Connection;
+export function createPool(config: PostgreSqlPoolConfig): Pool;
