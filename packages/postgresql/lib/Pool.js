@@ -75,7 +75,8 @@ Pool.prototype._takeIdle = function _takeIdle() {
   while (this._idle.length) {
     var entry = this._idle.shift();
     var connection = entry.connection;
-    if (connection.connected && !connection.ended && !connection._currentQuery && !this._resetting.has(connection)) return connection;
+    var noPortals = !connection._activePortals || connection._activePortals.size === 0;
+    if (connection.connected && !connection.ended && !connection._currentQuery && noPortals && !this._resetting.has(connection)) return connection;
     this._remove(connection);
     if (!connection.ended) connection.destroy();
   }
@@ -189,6 +190,7 @@ Pool.prototype.releaseConnection = async function releaseConnection(connection) 
   if (!this._all.has(connection)) throw new Error('Cannot release a connection that does not belong to this PostgreSQL pool');
   if (!this._borrowed.has(connection)) throw new Error('Cannot release a PostgreSQL connection that is not currently borrowed');
   if (connection._currentQuery) throw new Error('Cannot release a PostgreSQL connection with an active operation');
+  if (connection._activePortals && connection._activePortals.size) throw new Error('Cannot release a PostgreSQL connection with active portal cursors');
   this._borrowed.delete(connection);
   if (this._ended || connection.ended || !connection.connected) {
     this._remove(connection);
