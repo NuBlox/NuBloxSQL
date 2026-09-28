@@ -29,8 +29,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - name: Verify clean-room protocol and authentication
-        run: node packages/mysql-cleanroom/test/protocol.js && node packages/mysql-cleanroom/test/auth.js
+      - name: Verify clean-room protocol, authentication and prepared statements
+        run: node packages/mysql-cleanroom/test/protocol.js && node packages/mysql-cleanroom/test/auth.js && node packages/mysql-cleanroom/test/prepared.js
       - name: Assert zero package dependencies
         run: |
           node - <<'NODE'
@@ -70,7 +70,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Native clean-room caching_sha2_password and COM_QUERY smoke
+      - name: Native clean-room caching_sha2_password, COM_QUERY and prepared statement smoke
         env:
           MYSQL_HOST: 127.0.0.1
           MYSQL_PORT: 3306
