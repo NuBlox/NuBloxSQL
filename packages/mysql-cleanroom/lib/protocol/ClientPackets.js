@@ -15,15 +15,20 @@ function writeLengthEncodedInteger(value) {
   return writeLengthEncodedInteger(BigInt(value));
 }
 
+function encodeSslRequest(options) {
+  options = options || {};
+  var fixed = Buffer.alloc(32);
+  fixed.writeUInt32LE(options.capabilities >>> 0, 0);
+  fixed.writeUInt32LE(options.maxPacketSize === undefined ? 0x01000000 : options.maxPacketSize >>> 0, 4);
+  fixed[8] = options.characterSet === undefined ? 45 : options.characterSet & 0xff;
+  return fixed;
+}
+
 function encodeHandshakeResponse41(options) {
   options = options || {};
   var flags = options.capabilities >>> 0;
   var parts = [];
-  var fixed = Buffer.alloc(32);
-  fixed.writeUInt32LE(flags, 0);
-  fixed.writeUInt32LE(options.maxPacketSize === undefined ? 0x01000000 : options.maxPacketSize >>> 0, 4);
-  fixed[8] = options.characterSet === undefined ? 45 : options.characterSet & 0xff;
-  parts.push(fixed);
+  parts.push(encodeSslRequest(options));
   parts.push(Buffer.from(String(options.user || ''), 'utf8'), Buffer.from([0]));
 
   var auth = Buffer.isBuffer(options.authResponse) ? options.authResponse : Buffer.from(options.authResponse || '');
@@ -43,6 +48,7 @@ function encodeQuery(sql) {
 function encodeQuit() { return Buffer.from([0x01]); }
 
 exports.writeLengthEncodedInteger = writeLengthEncodedInteger;
+exports.encodeSslRequest = encodeSslRequest;
 exports.encodeHandshakeResponse41 = encodeHandshakeResponse41;
 exports.encodeQuery = encodeQuery;
 exports.encodeQuit = encodeQuit;
