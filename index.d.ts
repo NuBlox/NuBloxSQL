@@ -4,6 +4,7 @@ declare namespace mysql {
   type PreparedBitInput = number | bigint | string | Buffer | Uint8Array;
   type CompressionAlgorithm = 'zlib' | 'zstd' | 'uncompressed';
   type TlsPolicy = 'modern' | 'strict';
+  type QueryAttributeValue = string | number | bigint | boolean | Date | Buffer | null;
 
   interface AbortSignalLike {
     readonly aborted: boolean;
@@ -122,6 +123,7 @@ declare namespace mysql {
   interface QueryOptions {
     sql: string;
     values?: unknown[] | Record<string, unknown>;
+    attributes?: Record<string, QueryAttributeValue>;
     timeout?: number;
     operationTimeout?: number;
     nestTables?: boolean | string;
@@ -133,6 +135,7 @@ declare namespace mysql {
   interface ExecuteOptions {
     sql: string;
     values?: unknown[] | Record<string, unknown>;
+    attributes?: Record<string, QueryAttributeValue>;
     timeout?: number;
     operationTimeout?: number;
     nestTables?: boolean | string;
