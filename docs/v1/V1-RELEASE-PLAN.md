@@ -18,16 +18,23 @@ External database servers, published protocol specifications, operating systems,
 
 ### MySQL
 
-Gate 1 clean-room MySQL feature parity is complete. The evidence record is `docs/v1/GATE-1-EVIDENCE.md`.
+Gates 1 and 2 are complete. `packages/mysql` is now the canonical NuBlox-authored, zero-package-dependency `@nublox/mysql` implementation. The historical mysqljs-derived package and the transitional `packages/mysql-cleanroom` tree no longer exist in the current v1 source tree.
 
-There are currently two MySQL implementations during the Gate 2 replacement:
+The canonical package is currently `@nublox/mysql@1.0.0-rc.1`. Stable `1.0.0` and final proprietary licence text remain Gate 5 decisions.
 
-1. `packages/mysql` — legacy mastered implementation derived from mysqljs/mysql. It remains only as a behavioural and compatibility baseline during migration and is not eligible for proprietary v1.
-2. `packages/mysql-cleanroom` — NuBlox-authored zero-package-dependency replacement. Gate 1 has validated this implementation as the production replacement candidate and Gate 2 now promotes it to the v1 `@nublox/mysql` package.
+Gate 2 evidence includes:
+
+- legacy MySQL implementation removed from the current package tree;
+- runtime and development package dependencies removed from the v1 validation boundary;
+- canonical MySQL live validation on MySQL 8.4 and 9.7;
+- Node 22/24/26 package-contract validation;
+- proprietary source/dependency audit passing with zero blockers;
+- native protocol fuzzing and CodeQL green;
+- MySQL, SQL Core and PostgreSQL package dry-runs green.
 
 ### PostgreSQL
 
-`@nublox/postgresql` is a NuBlox-authored native driver with no npm package dependencies. It currently provides native TCP/TLS connectivity, SCRAM authentication and simple-query execution. Treat it as stable-in-development while the MySQL replacement and repository-wide proprietary gates are completed.
+`@nublox/postgresql` is a NuBlox-authored native driver with no npm package dependencies. It provides native TCP/TLS connectivity, SCRAM authentication and simple-query execution. Gate 3 is actively hardening it to the v1 production surface, beginning with PostgreSQL's native extended-query protocol.
 
 ### Future dialects
 
@@ -49,7 +56,7 @@ The production surface validated before closure includes:
 - prepared statements and typed parameters/results
 - transactions and savepoints
 - bounded connection pooling
-- timeout and AbortSignal semantics
+- timeout, deadline and AbortSignal semantics
 - deterministic resource cleanup
 - TypeScript declaration surface without requiring TypeScript as a release dependency
 - error model and SQLSTATE/native-code preservation
@@ -58,24 +65,25 @@ The production surface validated before closure includes:
 - observability implemented with Node/NuBlox primitives only
 - live MySQL version matrix
 
-Features from the legacy driver that are not required for v1 stability are explicitly deferred rather than keeping legacy source alive indefinitely.
+Features from the historical driver that are not required for v1 stability are deferred rather than retaining legacy source.
 
-### Gate 2 — Replace legacy `@nublox/mysql` — ACTIVE
+### Gate 2 — Replace legacy `@nublox/mysql` — COMPLETE
 
-When clean-room parity gates pass:
+Gate 2 completed the clean-room cut-over:
 
-1. promote `packages/mysql-cleanroom` to `packages/mysql` and package name `@nublox/mysql`;
-2. remove the mysqljs-derived implementation from the v1 source tree;
-3. remove `NUBLOX-UPSTREAM.json`, mastered-package lineage metadata and third-party notices that are no longer applicable to the shipped implementation;
-4. remove runtime dependencies such as `bignumber.js`, `named-placeholders`, `safe-buffer` and `sqlstring`;
-5. remove development dependencies used solely by the legacy package (`mysql2`, legacy test runners, ESLint/TypeScript tooling and related transitive packages) or replace their release-gating purpose with NuBlox/Node-built-in checks;
-6. regenerate the workspace lockfile so the v1 release boundary contains no package dependency graph.
+1. `packages/mysql-cleanroom` was promoted to canonical `packages/mysql` / `@nublox/mysql`;
+2. the mysqljs-derived implementation was removed from the current v1 source tree;
+3. inherited package lineage/provenance files no longer exist in the canonical package;
+4. historical runtime dependencies including `bignumber.js`, `named-placeholders`, `safe-buffer` and `sqlstring` were eliminated;
+5. mysql2, legacy test runners, ESLint/TypeScript-driven release gates and their package dependency graph were removed from the v1 validation boundary;
+6. repository verification now runs using Node.js, NuBlox packages and CI infrastructure without installing third-party npm implementation/test tooling;
+7. `npm run v1:proprietary-audit` passed with zero blockers at the Gate 2 merge boundary.
 
-Historical Git history is historical evidence and is not rewritten or represented as original NuBlox authorship. The v1 shipped source must itself satisfy the proprietary gate.
+Historical Git history remains historical evidence and is not rewritten or represented as original NuBlox authorship.
 
-### Gate 3 — PostgreSQL v1 hardening
+### Gate 3 — PostgreSQL v1 hardening — ACTIVE
 
-After MySQL replacement:
+Gate 3 must complete PostgreSQL's first-class native production surface:
 
 - extended query protocol (Parse/Bind/Describe/Execute/Sync)
 - prepared statements and typed parameters
@@ -102,7 +110,7 @@ Only after MySQL and PostgreSQL both implement the concept:
 
 ### Gate 5 — Proprietary and release audit
 
-`npm run v1:proprietary-audit` becomes mandatory and must pass with zero findings.
+`npm run v1:proprietary-audit` is mandatory and must pass with zero findings at the final release commit.
 
 Required release evidence:
 
@@ -137,7 +145,6 @@ Until v1.0.0:
 - one active implementation PR at a time;
 - every PR must advance a named gate in this document;
 - no speculative dialect expansion;
-- no new feature work on the legacy mysqljs-derived package except a critical security fix needed during migration;
 - merge only after the relevant full regression matrix is green;
 - delete the task branch after merge;
 - keep `main` releasable and documented after every merge.
