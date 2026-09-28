@@ -1,0 +1,56 @@
+name: NuBloxSQL Topology Role Probe
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mysql-role-probe:
+    name: MySQL ${{ matrix.mysql }} topology role probe
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ['8.4', '9.7']
+    services:
+      mysql:
+        image: mysql:${{ matrix.mysql }}
+        env:
+          MYSQL_ROOT_PASSWORD: root-${{ github.run_id }}
+          MYSQL_DATABASE: nublox_ci
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: ci-${{ github.run_id }}
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot-${{ github.run_id }} --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package.json
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Verify MySQL writability role probe
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: ci-${{ github.run_id }}
+          MYSQL_DATABASE: nublox_ci
+        run: node test/integration/pool-cluster-role-probe-smoke.js
