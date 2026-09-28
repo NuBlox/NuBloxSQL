@@ -41,6 +41,7 @@ assert.strictEqual(topology[0].priority, 100);
 assert.strictEqual(topology[1].weight, 2);
 assert.strictEqual(topology[0].tags.region, 'uk');
 assert.ok(Object.isFrozen(topology[0]));
+assert.ok(Object.isFrozen(topology[0].tags));
 
 var namespace = cluster.of('*', 'ORDER');
 var readNode = namespace._getClusterNode({operation: 'query', sql: 'SELECT 1'});
