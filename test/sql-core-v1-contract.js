@@ -70,7 +70,7 @@ var declaration = fs.readFileSync(path.join(__dirname, '..', 'packages', 'sql-co
   'maxRowBytes?: number;',
   'parameters?: readonly unknown[];',
   'affectedRows?: number | bigint;',
-  "| 'state';",
+  "| 'state'",
   "export const CONTRACT_VERSION: '1.0';"
 ].forEach(function (token) {
   assert.ok(declaration.indexOf(token) !== -1, 'SQL Core v1 declaration missing: ' + token);
