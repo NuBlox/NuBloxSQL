@@ -1,7 +1,7 @@
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
-var runtime = require('./TransactionConnection');
+var runtime = require('./SessionConnection');
 
 function positiveInteger(value, fallback, name) {
   if (value === undefined) return fallback;
@@ -25,9 +25,11 @@ function Pool(config) {
   this.idleTimeout = nonNegativeInteger(config.idleTimeout, 60000, 'idleTimeout');
   this.acquireTimeout = positiveInteger(config.acquireTimeout, 10000, 'acquireTimeout');
   this.queueLimit = nonNegativeInteger(config.queueLimit, 0, 'queueLimit');
+  this.resetOnRelease = config.resetOnRelease !== false;
   this._all = new Set();
   this._idle = [];
   this._waiters = [];
+  this._resetting = new Set();
   this._ended = false;
   this._maintenance = null;
   if (this.idleTimeout > 0) {
@@ -46,11 +48,13 @@ Pool.prototype._connectionConfig = function _connectionConfig() {
   delete config.idleTimeout;
   delete config.acquireTimeout;
   delete config.queueLimit;
+  delete config.resetOnRelease;
   return config;
 };
 
 Pool.prototype._remove = function _remove(connection) {
   this._all.delete(connection);
+  this._resetting.delete(connection);
   for (var i = this._idle.length - 1; i >= 0; i--) if (this._idle[i].connection === connection) this._idle.splice(i, 1);
 };
 
@@ -76,7 +80,7 @@ Pool.prototype._takeIdle = function _takeIdle() {
   while (this._idle.length) {
     var entry = this._idle.shift();
     var connection = entry.connection;
-    if (connection.connected && !connection.ended && !connection._queryState && !connection.inTransaction) return connection;
+    if (connection.connected && !connection.ended && !connection._queryState && !connection.inTransaction && !this._resetting.has(connection)) return connection;
     this._remove(connection);
     if (!connection.ended) connection.destroy();
   }
@@ -92,30 +96,80 @@ Pool.prototype._settleWaiter = function _settleWaiter(waiter, connection, error)
   else waiter.resolve(connection);
 };
 
-Pool.prototype._drain = function _drain() {
-  if (this._ended) return;
+Pool.prototype._makeAvailable = function _makeAvailable(connection) {
+  if (this._ended || connection.ended || !connection.connected) {
+    this._remove(connection);
+    if (!connection.ended) connection.destroy();
+    this._drain();
+    return;
+  }
+
   while (this._waiters.length) {
     var waiter = this._waiters.shift();
     if (waiter.settled) continue;
+    this.emit('acquire', connection);
+    this._settleWaiter(waiter, connection);
+    return;
+  }
+
+  this._idle.push({ connection: connection, since: Date.now() });
+  this.emit('release', connection);
+  while (this._idle.length > this.maxIdle) {
+    var excess = this._idle.shift().connection;
+    this._remove(excess);
+    excess.end();
+  }
+};
+
+Pool.prototype._sanitizeAndMakeAvailable = function _sanitizeAndMakeAvailable(connection) {
+  var self = this;
+  if (!this.resetOnRelease) {
+    this._makeAvailable(connection);
+    return;
+  }
+  this._resetting.add(connection);
+  connection.resetSession().then(function () {
+    self._resetting.delete(connection);
+    self.emit('reset', connection);
+    self._makeAvailable(connection);
+    self._drain();
+  }, function (error) {
+    self._resetting.delete(connection);
+    self._remove(connection);
+    connection.destroy(error);
+    if (self.listenerCount('resetError') > 0) self.emit('resetError', error, connection);
+    self._drain();
+  });
+};
+
+Pool.prototype._drain = function _drain() {
+  if (this._ended) return;
+  while (this._waiters.length) {
+    var waiter = this._waiters[0];
+    if (waiter.settled) {
+      this._waiters.shift();
+      continue;
+    }
     var idle = this._takeIdle();
     if (idle) {
+      this._waiters.shift();
       this.emit('acquire', idle);
       this._settleWaiter(waiter, idle);
       continue;
     }
     if (this._all.size < this.connectionLimit) {
+      this._waiters.shift();
       var self = this;
-      this._create().then(function (connection) {
-        var next = waiter;
-        self.emit('acquire', connection);
-        self._settleWaiter(next, connection);
-        self._drain();
-      }, function (error) {
-        self._settleWaiter(waiter, null, error);
-        self._drain();
-      });
-    } else {
-      this._waiters.unshift(waiter);
+      (function (pending) {
+        self._create().then(function (connection) {
+          self.emit('acquire', connection);
+          self._settleWaiter(pending, connection);
+          self._drain();
+        }, function (error) {
+          self._settleWaiter(pending, null, error);
+          self._drain();
+        });
+      })(waiter);
     }
     break;
   }
@@ -141,7 +195,7 @@ Pool.prototype.getConnection = function getConnection(options) {
   if (!Number.isFinite(timeout) || timeout <= 0) return Promise.reject(new RangeError('MySQL pool acquisition timeout must be a positive number'));
   var waiter = { settled: false, signal: options.signal || null, abortHandler: null, timer: null };
   waiter.promise = new Promise(function (resolve, reject) { waiter.resolve = resolve; waiter.reject = reject; });
-  var self = this;
+  self = this;
   waiter.timer = setTimeout(function () {
     var index = self._waiters.indexOf(waiter);
     if (index !== -1) self._waiters.splice(index, 1);
@@ -162,6 +216,7 @@ Pool.prototype.getConnection = function getConnection(options) {
 
 Pool.prototype.releaseConnection = function releaseConnection(connection) {
   if (!this._all.has(connection)) throw new Error('Cannot release a connection that does not belong to this pool');
+  if (this._resetting.has(connection)) throw new Error('Cannot release a MySQL connection while it is being reset');
   if (connection._queryState) throw new Error('Cannot release a MySQL connection with an active operation');
   if (connection.inTransaction) throw new Error('Cannot release a MySQL connection with an active transaction');
   if (connection.ended || !connection.connected || this._ended) {
@@ -170,22 +225,7 @@ Pool.prototype.releaseConnection = function releaseConnection(connection) {
     this._drain();
     return;
   }
-
-  while (this._waiters.length) {
-    var waiter = this._waiters.shift();
-    if (waiter.settled) continue;
-    this.emit('acquire', connection);
-    this._settleWaiter(waiter, connection);
-    return;
-  }
-
-  this._idle.push({ connection: connection, since: Date.now() });
-  this.emit('release', connection);
-  while (this._idle.length > this.maxIdle) {
-    var excess = this._idle.shift().connection;
-    this._remove(excess);
-    excess.end();
-  }
+  this._sanitizeAndMakeAvailable(connection);
 };
 
 Pool.prototype._evictIdle = function _evictIdle() {
@@ -239,16 +279,25 @@ Pool.prototype.end = async function end() {
   if (this._maintenance) clearInterval(this._maintenance);
   var error = new Error('MySQL pool has ended');
   while (this._waiters.length) this._settleWaiter(this._waiters.shift(), null, error);
+  var resetting = this._resetting;
   var connections = Array.from(this._all);
   this._idle.length = 0;
   this._all.clear();
-  await Promise.all(connections.map(function (connection) { return connection.end(); }));
+  this._resetting = new Set();
+  await Promise.all(connections.map(function (connection) {
+    if (resetting.has(connection)) {
+      connection.destroy();
+      return Promise.resolve();
+    }
+    return connection.end();
+  }));
 };
 
 Object.defineProperties(Pool.prototype, {
   totalCount: { get: function () { return this._all.size; } },
   idleCount: { get: function () { return this._idle.length; } },
-  waitingCount: { get: function () { return this._waiters.filter(function (waiter) { return !waiter.settled; }).length; } }
+  waitingCount: { get: function () { return this._waiters.filter(function (waiter) { return !waiter.settled; }).length; } },
+  resettingCount: { get: function () { return this._resetting.size; } }
 });
 
 exports.Pool = Pool;
