@@ -62,5 +62,6 @@ exports.PostgreSqlError = connectionModule.PostgreSqlError;
 exports.PostgreSqlCancellationError = connectionModule.PostgreSqlCancellationError;
 exports.PostgreSqlResultLimitError = connectionModule.PostgreSqlResultLimitError;
 exports.DEFAULT_RESULT_LIMITS = connectionModule.DEFAULT_RESULT_LIMITS;
+exports.TYPE_OIDS = connectionModule.TYPE_OIDS;
 exports.createConnection = createConnection;
 exports.createPool = createPool;
