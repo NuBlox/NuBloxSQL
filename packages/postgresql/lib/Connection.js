@@ -60,12 +60,55 @@ function decodeTextValue(field, value) {
   }
 }
 
+function encodeTextParameter(value) {
+  if (value === null || value === undefined) return null;
+  if (Buffer.isBuffer(value) || value instanceof Uint8Array) return value;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) throw new RangeError('PostgreSQL parameter Date must be valid');
+    return value.toISOString();
+  }
+  if (typeof value === 'string') return value;
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new RangeError('PostgreSQL numeric parameter must be finite');
+    return String(value);
+  }
+  if (typeof value === 'bigint') return String(value);
+  if (typeof value === 'object') return JSON.stringify(value);
+  throw new TypeError('Unsupported PostgreSQL parameter type: ' + typeof value);
+}
+
 function normalizeSsl(ssl) {
   if (ssl === false || ssl === 'disable') return { mode: 'disable', options: null };
   if (ssl === true || ssl === 'require') return { mode: 'require', options: {} };
   if (ssl && typeof ssl === 'object') return { mode: ssl.mode || 'require', options: ssl };
   return { mode: 'prefer', options: null };
 }
+
+function PreparedStatement(connection, details) {
+  this.connection = connection;
+  this.name = details.name;
+  this.sql = details.sql;
+  this.parameterTypeOids = details.parameterTypeOids || [];
+  this.fields = details.fields || [];
+  this.closed = false;
+}
+
+PreparedStatement.prototype.execute = function execute(parameters, options) {
+  if (this.closed) return Promise.reject(new Error('PostgreSQL prepared statement is closed'));
+  parameters = parameters || [];
+  if (!Array.isArray(parameters)) return Promise.reject(new TypeError('PostgreSQL prepared statement parameters must be an array'));
+  if (parameters.length !== this.parameterTypeOids.length) {
+    return Promise.reject(new RangeError('PostgreSQL prepared statement expects ' + this.parameterTypeOids.length + ' parameter(s), received ' + parameters.length));
+  }
+  return this.connection._executePrepared(this, parameters, options || {});
+};
+
+PreparedStatement.prototype.close = function close(options) {
+  if (this.closed) return Promise.resolve();
+  var self = this;
+  return this.connection._closePrepared(this, options || {}).then(function () { self.closed = true; });
+};
 
 function Connection(config) {
   EventEmitter.call(this);
@@ -82,6 +125,7 @@ function Connection(config) {
   this._connectState = null;
   this._currentQuery = null;
   this._scram = null;
+  this._statementCounter = 0;
 }
 Connection.prototype = Object.create(EventEmitter.prototype);
 Connection.prototype.constructor = Connection;
@@ -96,6 +140,7 @@ Connection.prototype._fail = function _fail(error) {
   if (this._currentQuery) {
     var query = this._currentQuery;
     this._currentQuery = null;
+    if (query.cleanup) query.cleanup();
     query.reject(error);
   }
   if (this.listenerCount('error') > 0) this.emit('error', error);
@@ -164,6 +209,40 @@ Connection.prototype._handleAuthentication = function _handleAuthentication(mess
   throw new Error('Unsupported PostgreSQL authentication method: ' + code);
 };
 
+Connection.prototype._decodeRow = function _decodeRow(message, state) {
+  var row = Object.create(null);
+  var fields = state.fields || [];
+  for (var i = 0; i < message.values.length; i++) {
+    var field = fields[i] || { name: String(i) };
+    row[field.name] = decodeTextValue(field, message.values[i]);
+  }
+  state.rows.push(row);
+};
+
+Connection.prototype._finishOperation = function _finishOperation(state) {
+  if (this._currentQuery !== state) return;
+  this._currentQuery = null;
+  if (state.cleanup) state.cleanup();
+  if (state.error) {
+    state.reject(state.error);
+    return;
+  }
+  if (state.kind === 'prepare') {
+    state.resolve(new PreparedStatement(this, {
+      name: state.name,
+      sql: state.sql,
+      parameterTypeOids: state.parameterTypeOids || [],
+      fields: state.fields || []
+    }));
+    return;
+  }
+  if (state.kind === 'close') {
+    state.resolve();
+    return;
+  }
+  state.resolve({ rows: state.rows, fields: state.fields || [], command: state.command || '', rowCount: state.rowCount });
+};
+
 Connection.prototype._handleMessage = function _handleMessage(message) {
   if (message.type === 'authentication') return this._handleAuthentication(message);
   if (message.type === 'parameterStatus') {
@@ -185,30 +264,53 @@ Connection.prototype._handleMessage = function _handleMessage(message) {
     else this._fail(error);
     return;
   }
-  if (message.type === 'rowDescription' && this._currentQuery) {
-    this._currentQuery.fields = message.fields;
-    return;
-  }
-  if (message.type === 'dataRow' && this._currentQuery) {
-    var row = Object.create(null);
-    var fields = this._currentQuery.fields || [];
-    for (var i = 0; i < message.values.length; i++) {
-      var field = fields[i] || { name: String(i) };
-      row[field.name] = decodeTextValue(field, message.values[i]);
+
+  var operation = this._currentQuery;
+  if (operation) {
+    if (message.type === 'parseComplete' && operation.kind === 'prepare') {
+      operation.parseComplete = true;
+      return;
     }
-    this._currentQuery.rows.push(row);
-    return;
+    if (message.type === 'parameterDescription' && operation.kind === 'prepare') {
+      operation.parameterTypeOids = message.parameterTypeOids;
+      return;
+    }
+    if (message.type === 'bindComplete' && operation.kind === 'execute') {
+      operation.bindComplete = true;
+      return;
+    }
+    if (message.type === 'closeComplete' && operation.kind === 'close') {
+      operation.closeComplete = true;
+      return;
+    }
+    if (message.type === 'noData' && (operation.kind === 'prepare' || operation.kind === 'execute')) {
+      operation.fields = [];
+      return;
+    }
+    if (message.type === 'rowDescription') {
+      operation.fields = message.fields;
+      return;
+    }
+    if (message.type === 'dataRow' && (operation.kind === 'simple' || operation.kind === 'execute')) {
+      this._decodeRow(message, operation);
+      return;
+    }
+    if (message.type === 'commandComplete' && (operation.kind === 'simple' || operation.kind === 'execute')) {
+      operation.command = message.tag;
+      operation.rowCount = commandRowCount(message.tag);
+      return;
+    }
+    if (message.type === 'emptyQueryResponse' && operation.kind === 'simple') {
+      operation.command = '';
+      operation.rowCount = 0;
+      return;
+    }
+    if (message.type === 'portalSuspended' && operation.kind === 'execute') {
+      operation.error = new Error('PostgreSQL prepared execution was unexpectedly suspended');
+      return;
+    }
   }
-  if (message.type === 'commandComplete' && this._currentQuery) {
-    this._currentQuery.command = message.tag;
-    this._currentQuery.rowCount = commandRowCount(message.tag);
-    return;
-  }
-  if (message.type === 'emptyQueryResponse' && this._currentQuery) {
-    this._currentQuery.command = '';
-    this._currentQuery.rowCount = 0;
-    return;
-  }
+
   if (message.type === 'readyForQuery') {
     this.transactionStatus = message.transactionStatus;
     if (this._connectState) {
@@ -219,13 +321,43 @@ Connection.prototype._handleMessage = function _handleMessage(message) {
       this.emit('connect');
       return;
     }
-    if (this._currentQuery) {
-      var query = this._currentQuery;
-      this._currentQuery = null;
-      if (query.error) query.reject(query.error);
-      else query.resolve({ rows: query.rows, fields: query.fields || [], command: query.command || '', rowCount: query.rowCount });
-    }
+    if (this._currentQuery) this._finishOperation(this._currentQuery);
   }
+};
+
+Connection.prototype._startOperation = function _startOperation(state, messages, options) {
+  options = options || {};
+  if (!this.connected || !this.socket || this.ended) return Promise.reject(new Error('PostgreSQL connection is not ready'));
+  if (this._currentQuery) return Promise.reject(new Error('PostgreSQL connection already has an active operation'));
+  if (options.timeout !== undefined && (!Number.isFinite(options.timeout) || options.timeout <= 0)) return Promise.reject(new RangeError('PostgreSQL operation timeout must be a positive number'));
+  if (options.signal && options.signal.aborted) return Promise.reject(options.signal.reason || new Error('PostgreSQL operation aborted'));
+
+  var self = this;
+  state.promise = new Promise(function (resolve, reject) { state.resolve = resolve; state.reject = reject; });
+  this._currentQuery = state;
+
+  var timer = null;
+  var abortHandler = null;
+  if (options.timeout !== undefined) {
+    timer = setTimeout(function () { self.destroy(new Error('PostgreSQL operation timed out')); }, options.timeout);
+    if (timer.unref) timer.unref();
+  }
+  if (options.signal) {
+    abortHandler = function () { self.destroy(options.signal.reason || new Error('PostgreSQL operation aborted')); };
+    options.signal.addEventListener('abort', abortHandler, { once: true });
+  }
+  state.cleanup = function () {
+    if (timer) clearTimeout(timer);
+    if (abortHandler) options.signal.removeEventListener('abort', abortHandler);
+  };
+
+  try { this.socket.write(Buffer.concat(messages)); }
+  catch (error) {
+    this._currentQuery = null;
+    state.cleanup();
+    return Promise.reject(error);
+  }
+  return state.promise;
 };
 
 Connection.prototype.connect = function connect() {
@@ -293,38 +425,63 @@ Connection.prototype.connect = function connect() {
 };
 
 Connection.prototype.query = function query(sql, options) {
+  if (typeof sql !== 'string') return Promise.reject(new TypeError('PostgreSQL query must be a string'));
+  var state = { kind: 'simple', rows: [], fields: null, command: '', rowCount: null, error: null };
+  return this._startOperation(state, [frontend.encodeQuery(sql)], options || {});
+};
+
+Connection.prototype.prepare = function prepare(sql, options) {
   options = options || {};
-  if (!this.connected || !this.socket || this.ended) return Promise.reject(new Error('PostgreSQL connection is not ready'));
-  if (this._currentQuery) return Promise.reject(new Error('PostgreSQL connection already has an active query'));
-  if (options.timeout !== undefined && (!Number.isFinite(options.timeout) || options.timeout <= 0)) {
-    return Promise.reject(new RangeError('PostgreSQL query timeout must be a positive number'));
-  }
-  if (options.signal && options.signal.aborted) {
-    return Promise.reject(options.signal.reason || new Error('PostgreSQL query aborted'));
-  }
+  if (typeof sql !== 'string') return Promise.reject(new TypeError('PostgreSQL prepared query must be a string'));
+  var name = options.name === undefined ? 'nublox_' + (++this._statementCounter) : options.name;
+  var parameterTypeOids = options.parameterTypeOids || [];
+  var state = { kind: 'prepare', name: name, sql: sql, parameterTypeOids: [], fields: null, error: null };
+  var messages;
+  try {
+    messages = [
+      frontend.encodeParse(name, sql, parameterTypeOids),
+      frontend.encodeDescribe('S', name),
+      frontend.encodeSync()
+    ];
+  } catch (error) { return Promise.reject(error); }
+  return this._startOperation(state, messages, options);
+};
 
+Connection.prototype._executePrepared = function _executePrepared(statement, parameters, options) {
+  var encoded = parameters.map(encodeTextParameter);
+  var state = { kind: 'execute', rows: [], fields: null, command: '', rowCount: null, error: null };
+  var messages;
+  try {
+    messages = [
+      frontend.encodeBind({ statement: statement.name, parameters: encoded }),
+      frontend.encodeDescribe('P', ''),
+      frontend.encodeExecute('', 0),
+      frontend.encodeSync()
+    ];
+  } catch (error) { return Promise.reject(error); }
+  return this._startOperation(state, messages, options || {});
+};
+
+Connection.prototype._closePrepared = function _closePrepared(statement, options) {
+  var state = { kind: 'close', error: null };
+  var messages;
+  try { messages = [frontend.encodeClose('S', statement.name), frontend.encodeSync()]; }
+  catch (error) { return Promise.reject(error); }
+  return this._startOperation(state, messages, options || {});
+};
+
+Connection.prototype.execute = function execute(sql, parameters, options) {
   var self = this;
-  var state = { rows: [], fields: null, command: '', rowCount: null, error: null };
-  state.promise = new Promise(function (resolve, reject) { state.resolve = resolve; state.reject = reject; });
-  this._currentQuery = state;
-
-  var timer = null;
-  if (options.timeout !== undefined) {
-    timer = setTimeout(function () {
-      self.destroy(new Error('PostgreSQL query timed out'));
-    }, options.timeout);
-    if (timer.unref) timer.unref();
-  }
-  state.promise.then(function () { if (timer) clearTimeout(timer); }, function () { if (timer) clearTimeout(timer); });
-
-  if (options.signal) {
-    options.signal.addEventListener('abort', function () {
-      self.destroy(options.signal.reason || new Error('PostgreSQL query aborted'));
-    }, { once: true });
-  }
-
-  this.socket.write(frontend.encodeQuery(sql));
-  return state.promise;
+  var statement = null;
+  return this.prepare(sql, options || {}).then(function (prepared) {
+    statement = prepared;
+    return prepared.execute(parameters || [], options || {});
+  }).then(function (result) {
+    return statement.close(options || {}).then(function () { return result; });
+  }, function (error) {
+    if (!statement || statement.closed || self.ended || !self.connected || self._currentQuery) throw error;
+    return statement.close(options || {}).then(function () { throw error; }, function () { throw error; });
+  });
 };
 
 Connection.prototype.end = function end() {
@@ -341,6 +498,8 @@ Connection.prototype.destroy = function destroy(error) {
 };
 
 exports.Connection = Connection;
+exports.PreparedStatement = PreparedStatement;
 exports.PostgreSqlError = PostgreSqlError;
 exports.md5Password = md5Password;
 exports.decodeTextValue = decodeTextValue;
+exports.encodeTextParameter = encodeTextParameter;

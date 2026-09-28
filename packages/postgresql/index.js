@@ -5,13 +5,13 @@ var connectionModule = require('./lib/Connection');
 
 var capabilities = Object.freeze({
   preparedStatements    : true,
-  serverSideCursors     : true,
-  savepoints            : true,
+  serverSideCursors     : false,
+  savepoints            : false,
   catalogs              : true,
   schemas               : true,
   transactionalDdl      : true,
-  queryCancellation     : true,
-  changeDataCapture     : true,
+  queryCancellation     : false,
+  changeDataCapture     : false,
   nativeJson            : true,
   multipleActiveResults : false
 });
@@ -50,5 +50,6 @@ exports.services = services;
 exports.createObjectName = createObjectName;
 exports.protocol = protocol;
 exports.Connection = connectionModule.Connection;
+exports.PreparedStatement = connectionModule.PreparedStatement;
 exports.PostgreSqlError = connectionModule.PostgreSqlError;
 exports.createConnection = createConnection;

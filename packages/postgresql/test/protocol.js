@@ -72,6 +72,11 @@ assert.strictEqual(body(execute).subarray(0, 8).toString('utf8'), 'portal1\0');
 assert.strictEqual(body(execute).readUInt32BE(8), 25);
 assert.throws(function () { protocol.encodeExecute('', -1); }, /unsigned 32-bit/);
 
+var close = protocol.encodeClose('S', 'stmt1');
+assert.strictEqual(String.fromCharCode(close[0]), 'C');
+assert.deepStrictEqual(body(close), Buffer.concat([Buffer.from('S'), Buffer.from('stmt1\0')]));
+assert.throws(function () { protocol.encodeClose('X', 'stmt1'); }, /target/);
+
 var sync = protocol.encodeSync();
 assert.strictEqual(String.fromCharCode(sync[0]), 'S');
 assert.strictEqual(sync.length, 5);

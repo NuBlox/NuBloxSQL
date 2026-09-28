@@ -32,14 +32,40 @@ export interface PostgreSqlBackendMessageParserConstructor { new(options?: Postg
 export type PostgreSqlFormatCode = 0 | 1;
 export type PostgreSqlBindParameter = string | Buffer | Uint8Array | null | undefined;
 export interface PostgreSqlBindOptions { portal?: string; statement?: string; parameterFormats?: PostgreSqlFormatCode[]; parameters?: PostgreSqlBindParameter[]; resultFormats?: PostgreSqlFormatCode[]; }
-export interface PostgreSqlProtocol { readonly constants: { readonly PROTOCOL_VERSION_3_0: number; readonly PROTOCOL_VERSION_3_2: number; readonly SSL_REQUEST_CODE: number; readonly CANCEL_REQUEST_CODE: number; readonly AUTHENTICATION: Readonly<Record<string, number>>; readonly BACKEND_MESSAGE_TYPES: Readonly<Record<string, string>>; }; encodeStartupMessage(parameters: Record<string, string | number | boolean | null | undefined> & { user: string }, protocolVersion?: number): Buffer; encodeSSLRequest(): Buffer; encodePasswordMessage(password: string): Buffer; encodeSaslInitialResponse(mechanism: string, response: string): Buffer; encodeSaslResponse(response: string): Buffer; encodeQuery(sql: string): Buffer; encodeParse(statement: string, sql: string, parameterTypeOids?: number[]): Buffer; encodeBind(options?: PostgreSqlBindOptions): Buffer; encodeDescribe(target: 'S' | 'P', name?: string): Buffer; encodeExecute(portal?: string, maxRows?: number): Buffer; encodeSync(): Buffer; encodeTerminate(): Buffer; decodeBackendMessage(messageType: string, payload: Buffer): PostgreSqlBackendMessage; BackendMessageParser: PostgreSqlBackendMessageParserConstructor; }
+export interface PostgreSqlProtocol { readonly constants: { readonly PROTOCOL_VERSION_3_0: number; readonly PROTOCOL_VERSION_3_2: number; readonly SSL_REQUEST_CODE: number; readonly CANCEL_REQUEST_CODE: number; readonly AUTHENTICATION: Readonly<Record<string, number>>; readonly BACKEND_MESSAGE_TYPES: Readonly<Record<string, string>>; }; encodeStartupMessage(parameters: Record<string, string | number | boolean | null | undefined> & { user: string }, protocolVersion?: number): Buffer; encodeSSLRequest(): Buffer; encodePasswordMessage(password: string): Buffer; encodeSaslInitialResponse(mechanism: string, response: string): Buffer; encodeSaslResponse(response: string): Buffer; encodeQuery(sql: string): Buffer; encodeParse(statement: string, sql: string, parameterTypeOids?: number[]): Buffer; encodeBind(options?: PostgreSqlBindOptions): Buffer; encodeDescribe(target: 'S' | 'P', name?: string): Buffer; encodeExecute(portal?: string, maxRows?: number): Buffer; encodeClose(target: 'S' | 'P', name?: string): Buffer; encodeSync(): Buffer; encodeTerminate(): Buffer; decodeBackendMessage(messageType: string, payload: Buffer): PostgreSqlBackendMessage; BackendMessageParser: PostgreSqlBackendMessageParserConstructor; }
 
 export interface PostgreSqlSslOptions { mode?: 'prefer' | 'require'; rejectUnauthorized?: boolean; ca?: string | Buffer | Array<string | Buffer>; cert?: string | Buffer; key?: string | Buffer; servername?: string; minVersion?: string; maxVersion?: string; }
 export interface PostgreSqlConnectionOptions { host?: string; port?: number; user: string; password?: string; database?: string; applicationName?: string; parameters?: Record<string, string | number | boolean | null | undefined>; ssl?: boolean | 'disable' | 'prefer' | 'require' | PostgreSqlSslOptions; connectTimeout?: number; maxMessageSize?: number; protocolVersion?: number; signal?: AbortSignal; }
 export interface PostgreSqlQueryOptions { timeout?: number; signal?: AbortSignal; }
+export interface PostgreSqlPrepareOptions extends PostgreSqlQueryOptions { name?: string; parameterTypeOids?: number[]; }
+export type PostgreSqlParameter = string | number | bigint | boolean | Date | Buffer | Uint8Array | Record<string, unknown> | unknown[] | null | undefined;
 export interface PostgreSqlQueryResult<Row = Record<string, unknown>> { rows: Row[]; fields: PostgreSqlFieldDescription[]; command: string; rowCount: number | null; }
 export class PostgreSqlError extends Error { code?: string; severity?: string; fields: Record<string, string>; }
-export class Connection extends EventEmitter { readonly config: PostgreSqlConnectionOptions; readonly parameters: Record<string, string>; readonly backendKeyData: PostgreSqlBackendKeyDataMessage | null; readonly transactionStatus: PostgreSqlTransactionStatus | null; readonly connected: boolean; readonly ended: boolean; constructor(config: PostgreSqlConnectionOptions); connect(): Promise<this>; query<Row = Record<string, unknown>>(sql: string, options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult<Row>>; end(): Promise<void>; destroy(error?: Error): void; }
+export class PreparedStatement {
+  readonly connection: Connection;
+  readonly name: string;
+  readonly sql: string;
+  readonly parameterTypeOids: number[];
+  readonly fields: PostgreSqlFieldDescription[];
+  closed: boolean;
+  execute<Row = Record<string, unknown>>(parameters?: PostgreSqlParameter[], options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult<Row>>;
+  close(options?: PostgreSqlQueryOptions): Promise<void>;
+}
+export class Connection extends EventEmitter {
+  readonly config: PostgreSqlConnectionOptions;
+  readonly parameters: Record<string, string>;
+  readonly backendKeyData: PostgreSqlBackendKeyDataMessage | null;
+  readonly transactionStatus: PostgreSqlTransactionStatus | null;
+  readonly connected: boolean;
+  readonly ended: boolean;
+  constructor(config: PostgreSqlConnectionOptions);
+  connect(): Promise<this>;
+  query<Row = Record<string, unknown>>(sql: string, options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult<Row>>;
+  prepare(sql: string, options?: PostgreSqlPrepareOptions): Promise<PreparedStatement>;
+  execute<Row = Record<string, unknown>>(sql: string, parameters?: PostgreSqlParameter[], options?: PostgreSqlPrepareOptions): Promise<PostgreSqlQueryResult<Row>>;
+  end(): Promise<void>;
+  destroy(error?: Error): void;
+}
 
 export const descriptor: PostgreSqlDialectDescriptor;
 export const capabilities: PostgreSqlCapabilityMap;

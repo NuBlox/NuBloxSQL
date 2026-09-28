@@ -56,6 +56,11 @@ function parameterValue(value) {
   return result;
 }
 
+function targetMessage(type, target, name, label) {
+  if (target !== 'S' && target !== 'P') throw new TypeError("PostgreSQL " + label + " target must be 'S' (statement) or 'P' (portal)");
+  return frame(type, Buffer.concat([Buffer.from(target, 'ascii'), cstring(name || '')]));
+}
+
 function encodePasswordMessage(password) {
   return frame('p', cstring(String(password)));
 }
@@ -109,8 +114,7 @@ function encodeBind(options) {
 }
 
 function encodeDescribe(target, name) {
-  if (target !== 'S' && target !== 'P') throw new TypeError("PostgreSQL Describe target must be 'S' (statement) or 'P' (portal)");
-  return frame('D', Buffer.concat([Buffer.from(target, 'ascii'), cstring(name || '')]));
+  return targetMessage('D', target, name, 'Describe');
 }
 
 function encodeExecute(portal, maxRows) {
@@ -119,6 +123,10 @@ function encodeExecute(portal, maxRows) {
   var rows = Buffer.alloc(4);
   rows.writeUInt32BE(maxRows, 0);
   return frame('E', Buffer.concat([cstring(portal || ''), rows]));
+}
+
+function encodeClose(target, name) {
+  return targetMessage('C', target, name, 'Close');
 }
 
 function encodeSync() {
@@ -138,5 +146,6 @@ exports.encodeParse = encodeParse;
 exports.encodeBind = encodeBind;
 exports.encodeDescribe = encodeDescribe;
 exports.encodeExecute = encodeExecute;
+exports.encodeClose = encodeClose;
 exports.encodeSync = encodeSync;
 exports.encodeTerminate = encodeTerminate;
