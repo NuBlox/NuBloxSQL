@@ -74,12 +74,24 @@ function createPool() {
         port     : 3307,
         database : 'orders'
       }
-    }
+    },
+    releaseCount: 0,
+    destroyCount: 0
   };
 
   pool.getConnection = function getConnection(callback) {
+    var connection = {
+      threadId: 11,
+      release: function release() {
+        pool.releaseCount++;
+      },
+      destroy: function destroy() {
+        pool.destroyCount++;
+      }
+    };
+
     process.nextTick(function () {
-      callback(null, {threadId: 11});
+      callback(null, connection);
     });
   };
 
@@ -214,6 +226,43 @@ test('OpenTelemetry adapter', {
     });
   },
 
+  'records connection use time when a borrowed connection is released': function(done) {
+    var telemetry = createApi();
+    var pool = createPool();
+    var adapter = createOpenTelemetryAdapter({api: telemetry.api});
+
+    adapter.instrumentPool(pool, {name: 'orders-primary'});
+    pool.getConnection(function(error, connection) {
+      assert.ifError(error);
+      connection.release();
+
+      var record = findRecord(telemetry.records, 'db.client.connection.use_time');
+      assert.ok(record);
+      assert.ok(record.value >= 0);
+      assert.strictEqual(record.attributes['db.client.connection.pool.name'], 'orders-primary');
+      assert.strictEqual(pool.releaseCount, 1);
+      adapter.disable();
+      done();
+    });
+  },
+
+  'records connection use time when a borrowed connection is destroyed': function(done) {
+    var telemetry = createApi();
+    var pool = createPool();
+    var adapter = createOpenTelemetryAdapter({api: telemetry.api});
+
+    adapter.instrumentPool(pool);
+    pool.getConnection(function(error, connection) {
+      assert.ifError(error);
+      connection.destroy();
+
+      assert.ok(findRecord(telemetry.records, 'db.client.connection.use_time'));
+      assert.strictEqual(pool.destroyCount, 1);
+      adapter.disable();
+      done();
+    });
+  },
+
   'supports explicit pool names and idempotent instrumentation': function(done) {
     var telemetry = createApi();
     var pool = createPool();
@@ -235,16 +284,23 @@ test('OpenTelemetry adapter', {
     });
   },
 
-  'disable restores instrumented pools without tracing being enabled': function() {
+  'disable restores instrumented pools and outstanding lease methods': function(done) {
     var telemetry = createApi();
     var pool = createPool();
-    var original = pool.getConnection;
+    var originalGetConnection = pool.getConnection;
     var adapter = createOpenTelemetryAdapter({api: telemetry.api});
 
     adapter.instrumentPool(pool);
-    assert.notStrictEqual(pool.getConnection, original);
-    adapter.disable();
-    assert.strictEqual(pool.getConnection, original);
+    pool.getConnection(function(error, connection) {
+      assert.ifError(error);
+      var wrappedRelease = connection.release;
+      adapter.disable();
+
+      assert.strictEqual(pool.getConnection, originalGetConnection);
+      assert.notStrictEqual(connection.release, wrappedRelease);
+      assert.strictEqual(findRecord(telemetry.records, 'db.client.connection.use_time'), undefined);
+      done();
+    });
   },
 
   'rejects invalid pool instrumentation targets': function() {
