@@ -35,8 +35,8 @@ export interface PostgreSqlBindOptions { portal?: string; statement?: string; pa
 export interface PostgreSqlProtocol { readonly constants: { readonly PROTOCOL_VERSION_3_0: number; readonly PROTOCOL_VERSION_3_2: number; readonly SSL_REQUEST_CODE: number; readonly CANCEL_REQUEST_CODE: number; readonly AUTHENTICATION: Readonly<Record<string, number>>; readonly BACKEND_MESSAGE_TYPES: Readonly<Record<string, string>>; }; encodeStartupMessage(parameters: Record<string, string | number | boolean | null | undefined> & { user: string }, protocolVersion?: number): Buffer; encodeSSLRequest(): Buffer; encodeCancelRequest(processId: number, secretKey: Buffer | Uint8Array): Buffer; encodePasswordMessage(password: string): Buffer; encodeSaslInitialResponse(mechanism: string, response: string): Buffer; encodeSaslResponse(response: string): Buffer; encodeQuery(sql: string): Buffer; encodeParse(statement: string, sql: string, parameterTypeOids?: number[]): Buffer; encodeBind(options?: PostgreSqlBindOptions): Buffer; encodeDescribe(target: 'S' | 'P', name?: string): Buffer; encodeExecute(portal?: string, maxRows?: number): Buffer; encodeClose(target: 'S' | 'P', name?: string): Buffer; encodeSync(): Buffer; encodeTerminate(): Buffer; decodeBackendMessage(messageType: string, payload: Buffer): PostgreSqlBackendMessage; BackendMessageParser: PostgreSqlBackendMessageParserConstructor; }
 
 export interface PostgreSqlSslOptions { mode?: 'prefer' | 'require'; rejectUnauthorized?: boolean; ca?: string | Buffer | Array<string | Buffer>; cert?: string | Buffer; key?: string | Buffer; servername?: string; minVersion?: string; maxVersion?: string; }
-export interface PostgreSqlConnectionOptions { host?: string; port?: number; user: string; password?: string; database?: string; applicationName?: string; parameters?: Record<string, string | number | boolean | null | undefined>; ssl?: boolean | 'disable' | 'prefer' | 'require' | PostgreSqlSslOptions; connectTimeout?: number; cancelTimeout?: number; cancelGraceTimeout?: number; maxMessageSize?: number; protocolVersion?: number; signal?: AbortSignal; }
-export interface PostgreSqlQueryOptions { timeout?: number; signal?: AbortSignal; }
+export interface PostgreSqlConnectionOptions { host?: string; port?: number; user: string; password?: string; database?: string; applicationName?: string; parameters?: Record<string, string | number | boolean | null | undefined>; ssl?: boolean | 'disable' | 'prefer' | 'require' | PostgreSqlSslOptions; connectTimeout?: number; cancelTimeout?: number; cancelGraceTimeout?: number; maxMessageSize?: number; maxRows?: number; maxResultBytes?: number; maxRowBytes?: number; protocolVersion?: number; signal?: AbortSignal; }
+export interface PostgreSqlQueryOptions { timeout?: number; signal?: AbortSignal; maxRows?: number; maxResultBytes?: number; maxRowBytes?: number; }
 export interface PostgreSqlCancelOptions { reason?: Error; }
 export interface PostgreSqlPrepareOptions extends PostgreSqlQueryOptions { name?: string; parameterTypeOids?: number[]; }
 export interface PostgreSqlCursorOptions extends PostgreSqlQueryOptions { name?: string; batchSize?: number; }
@@ -50,6 +50,7 @@ export interface PostgreSqlQueryResult<Row = Record<string, unknown>> { rows: Ro
 export interface PostgreSqlCursorBatch<Row = Record<string, unknown>> { rows: Row[]; fields: PostgreSqlFieldDescription[]; done: boolean; command: string; rowCount: number | null; }
 export class PostgreSqlError extends Error { code?: string; severity?: string; fields: Record<string, string>; }
 export class PostgreSqlCancellationError extends Error { readonly code: string; readonly cause?: unknown; }
+export class PostgreSqlResultLimitError extends RangeError { readonly code: string; readonly limit: number; readonly observed: number; }
 export class PortalCursor<Row = Record<string, unknown>> implements AsyncIterable<Row> {
   readonly connection: Connection;
   readonly statement: PreparedStatement;
@@ -82,6 +83,9 @@ export class Connection extends EventEmitter {
   readonly connected: boolean;
   readonly ended: boolean;
   readonly cancelGraceTimeout: number;
+  readonly maxRows: number;
+  readonly maxResultBytes: number;
+  readonly maxRowBytes: number;
   constructor(config: PostgreSqlConnectionOptions);
   connect(): Promise<this>;
   query<Row = Record<string, unknown>>(sql: string, options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult<Row>>;
@@ -125,6 +129,7 @@ export const descriptor: PostgreSqlDialectDescriptor;
 export const capabilities: PostgreSqlCapabilityMap;
 export const services: PostgreSqlDialectServices;
 export const protocol: PostgreSqlProtocol;
+export const DEFAULT_RESULT_LIMITS: Readonly<{ maxRows: number; maxResultBytes: number; maxRowBytes: number }>;
 export function createObjectName(name: PostgreSqlObjectName): Readonly<PostgreSqlObjectName>;
 export function createConnection(config: PostgreSqlConnectionOptions): Connection;
 export function createPool(config: PostgreSqlPoolConfig): Pool;
