@@ -25,7 +25,7 @@ var secondRefresh = cluster.refreshTopology();
 assert.strictEqual(firstRefresh, secondRefresh);
 assert.strictEqual(providerCalls, 0);
 
-process.nextTick(function() {
+setImmediate(function() {
   assert.strictEqual(providerCalls, 1);
 
   resolveProvider([
