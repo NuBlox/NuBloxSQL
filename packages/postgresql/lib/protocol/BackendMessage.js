@@ -8,6 +8,11 @@ function readCString(buffer, offset) {
   return { value: buffer.toString('utf8', offset, end), nextOffset: end + 1 };
 }
 
+function emptyMessage(payload, type, label) {
+  if (payload.length !== 0) throw new Error('Malformed PostgreSQL ' + label + ' message');
+  return { type: type };
+}
+
 function decodeAuthentication(payload) {
   if (payload.length < 4) throw new Error('Malformed PostgreSQL Authentication message');
   var code = payload.readUInt32BE(0);
@@ -117,6 +122,15 @@ function decodeCommandComplete(payload) {
   return { type: 'commandComplete', tag: tag.value };
 }
 
+function decodeParameterDescription(payload) {
+  if (payload.length < 2) throw new Error('Malformed PostgreSQL ParameterDescription message');
+  var count = payload.readUInt16BE(0);
+  if (payload.length !== 2 + count * 4) throw new Error('Malformed PostgreSQL ParameterDescription message');
+  var parameterTypeOids = [];
+  for (var i = 0; i < count; i++) parameterTypeOids.push(payload.readUInt32BE(2 + i * 4));
+  return { type: 'parameterDescription', parameterTypeOids: parameterTypeOids };
+}
+
 function decodeBackendMessage(messageType, payload) {
   switch (messageType) {
     case 'R': return decodeAuthentication(payload);
@@ -128,9 +142,13 @@ function decodeBackendMessage(messageType, payload) {
     case 'T': return decodeRowDescription(payload);
     case 'D': return decodeDataRow(payload);
     case 'C': return decodeCommandComplete(payload);
-    case 'I':
-      if (payload.length !== 0) throw new Error('Malformed PostgreSQL EmptyQueryResponse message');
-      return { type: 'emptyQueryResponse' };
+    case 'I': return emptyMessage(payload, 'emptyQueryResponse', 'EmptyQueryResponse');
+    case '1': return emptyMessage(payload, 'parseComplete', 'ParseComplete');
+    case '2': return emptyMessage(payload, 'bindComplete', 'BindComplete');
+    case '3': return emptyMessage(payload, 'closeComplete', 'CloseComplete');
+    case 'n': return emptyMessage(payload, 'noData', 'NoData');
+    case 's': return emptyMessage(payload, 'portalSuspended', 'PortalSuspended');
+    case 't': return decodeParameterDescription(payload);
     default: return { type: 'unknown', messageType: messageType, payload: Buffer.from(payload) };
   }
 }
