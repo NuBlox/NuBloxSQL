@@ -50,5 +50,6 @@ exports.services = services;
 exports.createObjectName = createObjectName;
 exports.protocol = protocol;
 exports.Connection = connectionModule.Connection;
+exports.PreparedStatement = connectionModule.PreparedStatement;
 exports.PostgreSqlError = connectionModule.PostgreSqlError;
 exports.createConnection = createConnection;
