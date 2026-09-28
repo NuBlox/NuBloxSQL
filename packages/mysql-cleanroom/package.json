@@ -1,0 +1,13 @@
+{
+  "name": "@nublox/mysql-cleanroom",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Clean-room NuBlox-authored MySQL protocol implementation for the proprietary NuBloxSQL v1 transition.",
+  "license": "UNLICENSED",
+  "author": "Stephen J T Spittal",
+  "main": "index.js",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node test/protocol.js"
+  }
+}

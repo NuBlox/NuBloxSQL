@@ -41,10 +41,12 @@
     "test:prepared-cursor":"npm run test:prepared-cursor --workspace @nublox/mysql",
     "test:reset-connection":"npm run test:reset-connection --workspace @nublox/mysql",
     "test:session-state":"npm run test:session-state --workspace @nublox/mysql",
+    "test:mysql-cleanroom":"npm run test --workspace @nublox/mysql-cleanroom",
     "test:sql-core":"npm run test --workspace @nublox/sql-core && node test/dialect-contracts.js",
     "test:postgresql":"npm run test --workspace @nublox/postgresql",
     "test:types":"npx tsc -p test/types/tsconfig.json --noEmit && npm run test:types --workspace @nublox/mysql",
+    "v1:proprietary-audit":"node tool/check-proprietary-v1.js",
     "verify:mysql":"npm run verify --workspace @nublox/mysql",
-    "verify":"npm run verify:mysql && npm run test:sql-core && npm run test:postgresql && npm run test:types"
+    "verify":"npm run verify:mysql && npm run test:mysql-cleanroom && npm run test:sql-core && npm run test:postgresql && npm run test:types"
   }
 }
