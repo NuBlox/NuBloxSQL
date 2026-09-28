@@ -6,8 +6,10 @@
   "license": "UNLICENSED",
   "author": "Stephen J T Spittal",
   "main": "index.js",
+  "types": "index.d.ts",
+  "files": ["index.js", "index.d.ts", "lib/"],
   "engines": { "node": ">=22" },
   "scripts": {
-    "test": "node test/protocol.js && node test/auth.js && node test/prepared.js"
+    "test": "node test/protocol.js && node test/auth.js && node test/prepared.js && node test/api.js"
   }
 }
