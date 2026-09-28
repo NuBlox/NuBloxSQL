@@ -14,6 +14,7 @@ exports.createConnection = function createConnection(config) {
   loadClass('PreparedStatements').decorateConnection(connection);
   loadClass('PreparedStatementReset').decorateConnection(connection);
   loadClass('SessionReset').decorateConnection(connection);
+  loadClass('SessionStateLedger').decorateConnection(connection);
   loadClass('NamedPlaceholders').decorateConnection(connection);
   return decorateConnection(connection, getPromiseImplementation(config));
 };
@@ -32,6 +33,7 @@ exports.createPool = function createPool(config) {
   loadClass('PreparedStatements').decoratePool(pool);
   loadClass('PreparedStatementReset').decoratePool(pool);
   loadClass('SessionReset').decoratePool(pool);
+  loadClass('SessionStateLedger').decoratePool(pool);
   loadClass('NamedPlaceholders').decoratePool(pool);
   loadClass('PoolCircuitBreaker').decoratePool(pool);
   loadClass('PoolAdmissionControl').decoratePool(pool);
@@ -40,7 +42,7 @@ exports.createPool = function createPool(config) {
 
 /**
  * Create a new PoolCluster instance.
- * @param {object} [config] Configuration for pool cluster
+ * @param {object} [config]
  * @return {PoolCluster} New MySQL pool cluster
  * @public
  */
@@ -118,36 +120,20 @@ exports.raw = function raw(sql) {
   return SqlString.raw(sql);
 };
 
-/**
- * Explicit prepared-statement parameter constructors.
- * @public
- */
 Object.defineProperty(exports, 'param', {
   get: function getParam() {
     return loadClass('TypedParameter').api;
   }
 });
 
-/**
- * The type constants.
- * @public
- */
 Object.defineProperty(exports, 'Types', {
   get: loadClass.bind(null, 'Types')
 });
 
-/**
- * Promise connection wrapper constructor.
- * @public
- */
 Object.defineProperty(exports, 'PromiseConnection', {
   get: loadClass.bind(null, 'PromiseConnection')
 });
 
-/**
- * Promise pool wrapper constructor.
- * @public
- */
 Object.defineProperty(exports, 'PromisePool', {
   get: loadClass.bind(null, 'PromisePool')
 });
@@ -163,7 +149,8 @@ function decorateConnection(connection, PromiseImpl) {
 
         wrapper = loadClass('PreparedStatements').decoratePromiseConnection(wrapper);
         wrapper = loadClass('PreparedStatementReset').decoratePromiseConnection(wrapper);
-        return loadClass('SessionReset').decoratePromiseConnection(wrapper);
+        wrapper = loadClass('SessionReset').decoratePromiseConnection(wrapper);
+        return loadClass('SessionStateLedger').decoratePromiseConnection(wrapper);
       }
     });
   }
@@ -182,7 +169,8 @@ function decoratePool(pool, PromiseImpl) {
 
         wrapper = loadClass('PreparedStatements').decoratePromisePool(wrapper);
         wrapper = loadClass('PreparedStatementReset').decoratePromisePool(wrapper);
-        return loadClass('SessionReset').decoratePromisePool(wrapper);
+        wrapper = loadClass('SessionReset').decoratePromisePool(wrapper);
+        return loadClass('SessionStateLedger').decoratePromisePool(wrapper);
       }
     });
   }
@@ -198,12 +186,6 @@ function getPromiseImplementation(config) {
   return global.Promise;
 }
 
-/**
- * Load the given class.
- * @param {string} className Name of class to default
- * @return {function|object} Class constructor or exports
- * @private
- */
 function loadClass(className) {
   var Class = Classes[className];
 
@@ -211,7 +193,6 @@ function loadClass(className) {
     return Class;
   }
 
-  // This uses a switch for static require analysis
   switch (className) {
     case 'Connection':
       Class = require('./lib/Connection');
@@ -252,6 +233,9 @@ function loadClass(className) {
     case 'SessionReset':
       Class = require('./lib/SessionReset');
       break;
+    case 'SessionStateLedger':
+      Class = require('./lib/SessionStateLedger');
+      break;
     case 'SqlString':
       Class = require('./lib/protocol/SqlString');
       break;
@@ -265,7 +249,6 @@ function loadClass(className) {
       throw new Error('Cannot find class \' ' + className + '\'');
   }
 
-  // Store to prevent invoking require()
   Classes[className] = Class;
 
   return Class;
