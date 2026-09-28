@@ -5,13 +5,13 @@ var connectionModule = require('./lib/Connection');
 
 var capabilities = Object.freeze({
   preparedStatements    : true,
-  serverSideCursors     : true,
-  savepoints            : true,
+  serverSideCursors     : false,
+  savepoints            : false,
   catalogs              : true,
   schemas               : true,
   transactionalDdl      : true,
-  queryCancellation     : true,
-  changeDataCapture     : true,
+  queryCancellation     : false,
+  changeDataCapture     : false,
   nativeJson            : true,
   multipleActiveResults : false
 });
