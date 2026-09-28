@@ -76,7 +76,7 @@ test('BinlogRowEventSafety', {
   },
 
   'evicts oldest table maps when the retained byte budget is reached': function() {
-    var decoder = Binlog.createDecoder({maxTableMapBytes: 14});
+    var decoder = Binlog.createDecoder({maxTableMapBytes: 13});
 
     decoder.decode(event(Binlog.EventTypes.TABLE_MAP_EVENT, tableMapPayload(1, 'db', 'one')));
     decoder.decode(event(Binlog.EventTypes.TABLE_MAP_EVENT, tableMapPayload(2, 'db', 'two')));
