@@ -3,6 +3,14 @@
 var assert = require('assert');
 var sqlCore = require('..');
 
+assert.strictEqual(sqlCore.CONTRACT_VERSION, '1.0');
+assert.strictEqual(sqlCore.ISOLATION_LEVELS.READ_COMMITTED, 'read-committed');
+assert.strictEqual(sqlCore.ERROR_CATEGORIES.RESOURCE_LIMIT, 'resource-limit');
+assert.strictEqual(sqlCore.ERROR_CATEGORIES.STATE, 'state');
+assert.strictEqual(sqlCore.CAPABILITIES.QUERY_CANCELLATION, 'queryCancellation');
+assert.strictEqual(sqlCore.CAPABILITIES.CHANGE_DATA_CAPTURE, undefined);
+assert.strictEqual(sqlCore.CAPABILITIES.MULTIPLE_ACTIVE_RESULTS, undefined);
+
 var descriptor = sqlCore.createDialectDescriptor({
   identity: {
     family : sqlCore.DIALECT_FAMILIES.POSTGRESQL,
@@ -39,15 +47,15 @@ assert.deepStrictEqual(sqlCore.createObjectName({
 
 assert.throws(function invalidCapability() {
   sqlCore.createDialectDescriptor({
-    identity     : {family: 'test', name: 'Test'},
-    capabilities : {preparedStatements: 'yes'},
+    identity     : { family: 'test', name: 'Test' },
+    capabilities : { preparedStatements: 'yes' },
     services     : descriptor.services
   });
 }, /boolean/);
 
 assert.throws(function missingServices() {
   sqlCore.createDialectDescriptor({
-    identity     : {family: 'test', name: 'Test'},
+    identity     : { family: 'test', name: 'Test' },
     capabilities : {}
   });
 }, /services/);
