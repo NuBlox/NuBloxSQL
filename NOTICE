@@ -1,7 +1,6 @@
-@nublox/mysql
+NuBloxSQL
 Copyright 2026 Stephen J T Spittal
 
 Licensed under the Apache License, Version 2.0.
 
-This product includes software derived from mysqljs/mysql.
-See THIRD_PARTY_NOTICES for applicable third-party copyright and licence notices.
+NuBloxSQL contains independently versioned SQL driver packages. Individual packages may include additional attribution and third-party notices within their own package directories.
