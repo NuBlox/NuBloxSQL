@@ -32,8 +32,6 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=30
-          --gtid-mode=ON
-          --enforce-gtid-consistency=ON
     steps:
       - name: Checkout
         uses: actions/checkout@v7
