@@ -16,6 +16,8 @@ function ResultStream(connection, state, options) {
   });
   this.connection = connection;
   this.fields = null;
+  this.affectedRows = 0;
+  this.insertId = 0;
   this.serverStatus = 0;
   this.warningCount = 0;
   this.rowCount = 0;
@@ -51,6 +53,21 @@ ResultStream.prototype._pushRow = function _pushRow(row, packetBytes) {
 ResultStream.prototype._complete = function _complete(serverStatus, warningCount) {
   this.serverStatus = serverStatus;
   this.warningCount = warningCount;
+  this.push(null);
+};
+
+ResultStream.prototype._completeCommand = function _completeCommand(ok) {
+  this.fields = [];
+  this.affectedRows = ok.affectedRows;
+  this.insertId = ok.lastInsertId;
+  this.serverStatus = ok.statusFlags;
+  this.warningCount = ok.warnings;
+  this.emit('result', {
+    affectedRows: this.affectedRows,
+    insertId: this.insertId,
+    serverStatus: this.serverStatus,
+    warningCount: this.warningCount
+  });
   this.push(null);
 };
 
