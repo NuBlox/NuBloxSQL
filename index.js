@@ -53,6 +53,17 @@ exports.createPoolCluster = function createPoolCluster(config) {
 };
 
 /**
+ * Probe configured PoolCluster nodes for MySQL read-only/writability evidence.
+ * @param {PoolCluster} cluster Pool cluster to probe
+ * @param {function} [callback] Optional completion callback
+ * @return {Promise} Promise resolving to refreshed topology snapshots
+ * @public
+ */
+exports.probePoolClusterRoles = function probePoolClusterRoles(cluster, callback) {
+  return loadClass('MySQLRoleProbe').probe(cluster, callback);
+};
+
+/**
  * Create a new Query instance.
  * @param {string} sql The SQL for the query
  * @param {array} [values] Any values to insert into placeholders in sql
@@ -222,6 +233,9 @@ function loadClass(className) {
       break;
     case 'ConnectionConfig':
       Class = require('./lib/ConnectionConfig');
+      break;
+    case 'MySQLRoleProbe':
+      Class = require('./lib/MySQLRoleProbe');
       break;
     case 'NamedPlaceholders':
       Class = require('./lib/NamedPlaceholders');
