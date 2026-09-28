@@ -81,9 +81,15 @@ export interface BinlogEventTypeMap {
 
 export interface BinlogDumpOptions {
   filename: string;
-  position?: number;
+  position?: number | bigint;
   flags?: number;
   serverId?: number;
+  /**
+   * MySQL canonical untagged GTID set. When present, NuBloxSQL uses
+   * COM_BINLOG_DUMP_GTID and automatically sets BINLOG_THROUGH_GTID.
+   * Tagged GTIDs are rejected until their wire representation is supported.
+   */
+  gtidSet?: string;
   timeout?: number;
   signal?: mysql.AbortSignalLike;
   decoder?: BinlogEventDecoder;
