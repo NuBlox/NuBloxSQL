@@ -5,33 +5,32 @@ on:
     paths:
       - 'packages/postgresql/**'
       - 'packages/sql-core/**'
-      - 'test/types/**'
       - '.github/workflows/postgresql-dialect.yml'
   push:
     branches: [main]
     paths:
       - 'packages/postgresql/**'
       - 'packages/sql-core/**'
-      - 'test/types/**'
       - '.github/workflows/postgresql-dialect.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   contract:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         node: [22, 24, 26]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-      - run: npm install --ignore-scripts
       - run: npm run test --workspace @nublox/postgresql
-      - run: npm run test:types
-      - run: npm pack --dry-run
-        working-directory: packages/postgresql
+      - run: npm pack --dry-run --workspace @nublox/postgresql
 
   live-postgresql-18:
     runs-on: ubuntu-latest
@@ -50,11 +49,10 @@ jobs:
           --health-timeout 5s
           --health-retries 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - run: npm install --ignore-scripts
       - name: Native SCRAM connection and simple query smoke
         run: npm run test:live --workspace @nublox/postgresql
         env:

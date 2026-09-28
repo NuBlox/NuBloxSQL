@@ -1,22 +1,22 @@
-name: NuBloxSQL MySQL Cleanroom
+name: NuBloxSQL MySQL
 
 on:
   push:
     branches: [main]
     paths:
-      - 'packages/mysql-cleanroom/**'
+      - 'packages/mysql/**'
       - '.github/workflows/mysql-cleanroom.yml'
   pull_request:
     paths:
-      - 'packages/mysql-cleanroom/**'
+      - 'packages/mysql/**'
       - '.github/workflows/mysql-cleanroom.yml'
 
 permissions:
   contents: read
 
 jobs:
-  protocol:
-    name: cleanroom (Node ${{ matrix.node }})
+  contract:
+    name: MySQL contracts (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -24,21 +24,21 @@ jobs:
         node: [22, 24, 26]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-      - name: Verify clean-room protocol and public API contracts
-        run: node packages/mysql-cleanroom/test/protocol.js && node packages/mysql-cleanroom/test/auth.js && node packages/mysql-cleanroom/test/prepared.js && node packages/mysql-cleanroom/test/api.js && node packages/mysql-cleanroom/test/session-reset.js && node packages/mysql-cleanroom/test/streaming.js && node packages/mysql-cleanroom/test/operation-control.js
+      - name: Verify canonical MySQL contracts
+        run: npm run test --workspace @nublox/mysql
       - name: Assert zero package dependencies
         run: |
           node - <<'NODE'
-          const p = require('./packages/mysql-cleanroom/package.json');
+          const p = require('./packages/mysql/package.json');
           for (const key of ['dependencies','optionalDependencies','peerDependencies','devDependencies']) {
-            if (p[key] && Object.keys(p[key]).length) throw new Error(key + ' must remain empty for clean-room MySQL');
+            if (p[key] && Object.keys(p[key]).length) throw new Error(key + ' must remain empty for @nublox/mysql');
           }
-          console.log('clean-room MySQL has zero package dependencies');
+          console.log('@nublox/mysql has zero package dependencies');
           NODE
 
   live:
@@ -71,18 +71,18 @@ jobs:
       MYSQL_DATABASE: nublox_ci
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Direct streaming with backpressure
-        run: node packages/mysql-cleanroom/test/live-streaming.js direct
+        run: node packages/mysql/test/live-streaming.js direct
       - name: Pooled streaming reuse
-        run: node packages/mysql-cleanroom/test/live-streaming.js pool
+        run: node packages/mysql/test/live-streaming.js pool
       - name: Result-limit connection safety
-        run: node packages/mysql-cleanroom/test/live-streaming.js limits
+        run: node packages/mysql/test/live-streaming.js limits
       - name: Deadline and cancellation safety
-        run: node packages/mysql-cleanroom/test/live-operation-control.js
-      - name: Full clean-room connection, prepared, transaction and pool smoke
-        run: node packages/mysql-cleanroom/test/live.js
+        run: node packages/mysql/test/live-operation-control.js
+      - name: Full MySQL connection, prepared, transaction and pool smoke
+        run: node packages/mysql/test/live.js

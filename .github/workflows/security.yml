@@ -10,36 +10,28 @@ on:
 
 permissions:
   contents: read
-  packages: read
   security-events: write
 
 jobs:
-  dependency-and-fuzz:
-    name: Dependency audit and protocol fuzz
+  proprietary-and-fuzz:
+    name: Proprietary boundary and protocol fuzz
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: package.json
-
-      - name: Install dependencies without lifecycle scripts
-        run: npm install --ignore-scripts
-
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
-
-      - name: Fuzz packet and parser boundaries
+      - name: Assert zero third-party package boundary
+        run: npm run v1:proprietary-audit
+      - name: Fuzz canonical MySQL packet framing
         env:
           NUBLOX_FUZZ_ITERATIONS: 10000
           NUBLOX_FUZZ_MAX_PAYLOAD: 2048
-          NUBLOX_FUZZ_SEED: 1314214476
         run: node test/security/fuzz-parser-boundaries.js
+      - name: Verify canonical package contracts
+        run: npm run verify
 
   codeql:
     name: CodeQL JavaScript/TypeScript
@@ -47,13 +39,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           queries: security-extended
-
       - name: Analyze
         uses: github/codeql-action/analyze@v4
         with:

@@ -3,8 +3,7 @@ name: NuBloxSQL SQL Core
 on:
   pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,28 +16,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node:
-          - 22
-          - 24
-          - 26
-
+        node: [22, 24, 26]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v7
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: npm install --ignore-scripts
-
-      - name: Verify SQL core runtime contracts
+      - name: Verify SQL Core runtime and dialect contracts
         run: npm run test:sql-core
-
-      - name: Verify TypeScript contracts
-        run: npm run test:types
-
-      - name: Verify SQL core publish surface
-        run: npm pack --dry-run --prefix packages/sql-core
+      - name: Verify SQL Core publish surface
+        run: npm pack --dry-run --workspace @nublox/sql-core
