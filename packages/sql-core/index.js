@@ -1,24 +1,24 @@
 'use strict';
 
 var DIALECT_FAMILIES = Object.freeze({
-  MYSQL: 'mysql',
-  POSTGRESQL: 'postgresql',
-  SQLITE: 'sqlite',
-  SQLSERVER: 'sqlserver',
-  ORACLE: 'oracle'
+  MYSQL : 'mysql',
+  POSTGRESQL : 'postgresql',
+  SQLITE : 'sqlite',
+  SQLSERVER : 'sqlserver',
+  ORACLE : 'oracle'
 });
 
 var CAPABILITIES = Object.freeze({
-  PREPARED_STATEMENTS: 'preparedStatements',
-  SERVER_SIDE_CURSORS: 'serverSideCursors',
-  SAVEPOINTS: 'savepoints',
-  CATALOGS: 'catalogs',
-  SCHEMAS: 'schemas',
-  TRANSACTIONAL_DDL: 'transactionalDdl',
-  QUERY_CANCELLATION: 'queryCancellation',
-  CHANGE_DATA_CAPTURE: 'changeDataCapture',
-  NATIVE_JSON: 'nativeJson',
-  MULTIPLE_ACTIVE_RESULTS: 'multipleActiveResults'
+  PREPARED_STATEMENTS : 'preparedStatements',
+  SERVER_SIDE_CURSORS : 'serverSideCursors',
+  SAVEPOINTS : 'savepoints',
+  CATALOGS : 'catalogs',
+  SCHEMAS : 'schemas',
+  TRANSACTIONAL_DDL : 'transactionalDdl',
+  QUERY_CANCELLATION : 'queryCancellation',
+  CHANGE_DATA_CAPTURE : 'changeDataCapture',
+  NATIVE_JSON : 'nativeJson',
+  MULTIPLE_ACTIVE_RESULTS : 'multipleActiveResults'
 });
 
 function copyBooleanMap(input) {
@@ -50,10 +50,10 @@ function normalizeIdentity(identity) {
   }
 
   return Object.freeze({
-    family: identity.family,
-    name: identity.name,
-    serverVersion: identity.serverVersion,
-    protocolVersion: identity.protocolVersion
+    family : identity.family,
+    name : identity.name,
+    serverVersion : identity.serverVersion,
+    protocolVersion : identity.protocolVersion
   });
 }
 
@@ -83,10 +83,10 @@ function createDialectDescriptor(options) {
   var services = assertDialectServices(options.services);
 
   var descriptor = {
-    identity: identity,
-    capabilities: capabilities,
-    services: services,
-    supports: function supports(capability) {
+    identity : identity,
+    capabilities : capabilities,
+    services : services,
+    supports : function supports(capability) {
       return capabilities[capability] === true;
     }
   };
@@ -120,9 +120,9 @@ function createObjectName(name) {
   }
 
   return Object.freeze({
-    catalog: name.catalog,
-    schema: name.schema,
-    name: name.name
+    catalog : name.catalog,
+    schema : name.schema,
+    name : name.name
   });
 }
 
