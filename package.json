@@ -1,157 +1,26 @@
 {
-  "name": "@nublox/mysql",
-  "description": "NuBlox mastered high-resilience MySQL client for modern Node.js applications.",
-  "version": "3.1.0-rc.1",
+  "name": "nubloxsql",
+  "version": "0.0.0",
+  "private": true,
+  "description": "NuBloxSQL multi-dialect SQL driver platform.",
   "license": "Apache-2.0",
   "author": "Stephen J T Spittal",
-  "contributors": [
-    "Felix Geisendörfer <felix@debuggable.com> (http://debuggable.com/)",
-    "Andrey Sidorov <sidorares@yandex.ru>",
-    "Bradley Grainger <bgrainger@gmail.com>",
-    "Douglas Christopher Wilson <doug@somethingdoug.com>",
-    "Diogo Resende <dresende@thinkdigital.pt>",
-    "Nathan Woltman <nwoltman@outlook.com>"
-  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NuBlox/NuBloxSQL.git"
   },
-  "homepage": "https://github.com/NuBlox/NuBloxSQL#readme",
-  "bugs": {
-    "url": "https://github.com/NuBlox/NuBloxSQL/issues"
-  },
-  "keywords": [
-    "mysql",
-    "database",
-    "sql",
-    "nodejs",
-    "driver",
-    "connector",
-    "promise",
-    "typescript",
-    "prepared-statements",
-    "opentelemetry",
-    "binlog",
-    "cdc",
-    "nublox"
-  ],
-  "main": "index.js",
-  "types": "index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./index.d.ts",
-      "import": "./index.mjs",
-      "require": "./index.js",
-      "default": "./index.js"
-    },
-    "./promise": {
-      "types": "./promise.d.ts",
-      "import": "./promise.mjs",
-      "require": "./promise.js",
-      "default": "./promise.js"
-    },
-    "./otel": {
-      "types": "./otel.d.ts",
-      "import": "./otel.mjs",
-      "require": "./otel.js",
-      "default": "./otel.js"
-    },
-    "./binlog": {
-      "types": "./binlog.d.ts",
-      "import": "./binlog.mjs",
-      "require": "./binlog.js",
-      "default": "./binlog.js"
-    },
-    "./package.json": "./package.json"
-  },
-  "dependencies": {
-    "bignumber.js": "9.0.2",
-    "named-placeholders": "1.1.6",
-    "safe-buffer": "5.2.1",
-    "sqlstring": "2.3.3"
-  },
-  "devDependencies": {
-    "after": "0.8.2",
-    "eslint": "7.32.0",
-    "mysql2": "3.24.4",
-    "seedrandom": "3.0.5",
-    "selfsigned": "5.5.0",
-    "typescript": "5.9.2",
-    "urun": "0.0.8",
-    "utest": "0.0.8"
-  },
-  "files": [
-    "lib/",
-    "compatibility/",
-    "docs/",
-    "Changes.md",
-    "LICENSE",
-    "NOTICE",
-    "THIRD_PARTY_NOTICES",
-    "README.md",
-    "NUBLOX-MASTERED-PACKAGE.md",
-    "NUBLOX-SQL-ROADMAP.md",
-    "NUBLOX-MYSQL-ROADMAP.md",
-    "NUBLOX-UPSTREAM.json",
-    "index.js",
-    "index.mjs",
-    "index.d.ts",
-    "promise.js",
-    "promise.mjs",
-    "promise.d.ts",
-    "otel.js",
-    "otel.mjs",
-    "otel.d.ts",
-    "binlog.js",
-    "binlog.mjs",
-    "binlog.d.ts"
+  "workspaces": [
+    "packages/*"
   ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "benchmark:memory-soak": "node --expose-gc benchmark/memory-soak.js",
-    "benchmark:mysql2": "node benchmark/competitors/mysql2-query.js",
-    "benchmark:mysql2:bulk": "node --expose-gc benchmark/competitors/mysql2-bulk-insert.js",
-    "benchmark:mysql2:compression": "node --expose-gc benchmark/competitors/mysql2-compression.js",
-    "benchmark:mysql2:pool": "node --expose-gc benchmark/competitors/mysql2-pool-concurrency.js",
-    "benchmark:mysql2:prepared": "node --expose-gc benchmark/competitors/mysql2-prepared.js",
-    "benchmark:mysql2:streaming": "node --expose-gc benchmark/competitors/mysql2-streaming.js",
-    "benchmark:packet-writer": "node --expose-gc benchmark/packet-writer-allocation.js",
-    "benchmark:parser-fragmentation": "node --expose-gc benchmark/parser-fragmentation.js",
-    "compatibility:check": "node tool/check-compatibility-manifest.js",
-    "lint": "eslint . && node tool/lint-readme.js",
-    "release:check": "node tool/check-release-readiness.js",
-    "test": "node test/run.js",
-    "test:binary-results": "node test/integration/binary-result-matrix-smoke.js",
-    "test:compat:mysql2": "node test/compatibility/mysql2/live.js",
-    "test:compat:mysql2:cache": "node test/compatibility/mysql2/cache-live.js",
-    "test:compat:mysql2:contract": "node test/compatibility/mysql2/contract.js",
-    "test:compat:mysql2:execute": "node test/compatibility/mysql2/execute-live.js",
-    "test:compat:mysql2:named": "node test/compatibility/mysql2/named-placeholders-live.js",
-    "test:compat:mysql2:prepare": "node test/compatibility/mysql2/prepare-live.js",
-    "test:compat:mysql2:reset": "node test/compatibility/mysql2/reset-live.js",
-    "test:compression:zlib": "node test/integration/zlib-compression-smoke.js",
-    "test:compression:zstd": "node test/integration/zstd-compression-smoke.js",
-    "test:esm": "node test/compatibility/esm-contract.mjs",
-    "test:pool-maintenance": "node test/integration/pool-minimum-idle-maintenance-smoke.js",
-    "test:pool-warmup": "node test/integration/pool-warmup-smoke.js",
-    "test:prepared-cursor": "node test/integration/prepared-cursor-smoke.js",
-    "test:reset-connection": "node test/integration/reset-connection-smoke.js",
-    "test:session-state": "node test/integration/session-state-tracking-smoke.js",
-    "test:sql-core": "node packages/sql-core/test/contract.js && node test/multi-dialect/mysql-adapter-contract.js",
-    "test:stream-backpressure": "node test/integration/stream-backpressure-smoke.js",
-    "test:temporal-json-parameters": "node test/integration/temporal-json-parameters-smoke.js",
-    "test:typed-parameters": "node test/integration/typed-parameters-smoke.js",
-    "test:types": "tsc -p test/types/tsconfig.json --noEmit",
-    "test:unit": "FILTER=unit node test/run.js",
-    "test-ci": "node tool/install-nyc.js --nyc-optional --reporter=lcovonly --reporter=text -- npm test",
-    "test-cov": "node tool/install-nyc.js --reporter=html --reporter=text -- npm test",
-    "verify": "npm run lint && npm run test:unit && npm run test:types && npm run test:sql-core && npm run compatibility:check && npm run test:compat:mysql2:contract && npm run test:esm && npm run release:check && npm pack --dry-run"
-  },
-  "nublox": {
-    "packageType": "NuBlox Mastered Package",
-    "upstream": "mysqljs/mysql@dc9c152a87ec51a1f647447268917243d2eab1fd",
-    "compatibilityLineage": "mysqljs/mysql 2.18.1"
+    "verify": "npm run verify --workspace @nublox/mysql && npm run test --workspace @nublox/sql-core && npm run test --workspace @nublox/postgresql && node test/dialect-contracts.js",
+    "verify:mysql": "npm run verify --workspace @nublox/mysql",
+    "test:sql-core": "npm run test --workspace @nublox/sql-core",
+    "test:postgresql": "npm run test --workspace @nublox/postgresql",
+    "test:types": "npm run test:types --workspace @nublox/mysql",
+    "test:prepared-cursor": "npm run test:prepared-cursor --workspace @nublox/mysql"
   }
 }
