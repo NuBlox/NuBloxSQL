@@ -98,7 +98,7 @@ Connection.prototype._fail = function _fail(error) {
     this._currentQuery = null;
     query.reject(error);
   }
-  this.emit('error', error);
+  if (this.listenerCount('error') > 0) this.emit('error', error);
 };
 
 Connection.prototype._attachSocket = function _attachSocket(socket) {
@@ -296,27 +296,28 @@ Connection.prototype.query = function query(sql, options) {
   options = options || {};
   if (!this.connected || !this.socket || this.ended) return Promise.reject(new Error('PostgreSQL connection is not ready'));
   if (this._currentQuery) return Promise.reject(new Error('PostgreSQL connection already has an active query'));
+  if (options.timeout !== undefined && (!Number.isFinite(options.timeout) || options.timeout <= 0)) {
+    return Promise.reject(new RangeError('PostgreSQL query timeout must be a positive number'));
+  }
+  if (options.signal && options.signal.aborted) {
+    return Promise.reject(options.signal.reason || new Error('PostgreSQL query aborted'));
+  }
+
   var self = this;
   var state = { rows: [], fields: null, command: '', rowCount: null, error: null };
   state.promise = new Promise(function (resolve, reject) { state.resolve = resolve; state.reject = reject; });
   this._currentQuery = state;
 
-  var timeout = options.timeout;
   var timer = null;
-  if (timeout !== undefined) {
-    if (!Number.isFinite(timeout) || timeout <= 0) return Promise.reject(new RangeError('PostgreSQL query timeout must be a positive number'));
+  if (options.timeout !== undefined) {
     timer = setTimeout(function () {
       self.destroy(new Error('PostgreSQL query timed out'));
-    }, timeout);
+    }, options.timeout);
     if (timer.unref) timer.unref();
   }
   state.promise.then(function () { if (timer) clearTimeout(timer); }, function () { if (timer) clearTimeout(timer); });
 
   if (options.signal) {
-    if (options.signal.aborted) {
-      this._currentQuery = null;
-      return Promise.reject(options.signal.reason || new Error('PostgreSQL query aborted'));
-    }
     options.signal.addEventListener('abort', function () {
       self.destroy(options.signal.reason || new Error('PostgreSQL query aborted'));
     }, { once: true });
