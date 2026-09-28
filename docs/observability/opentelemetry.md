@@ -50,6 +50,44 @@ The adapter follows the stable OpenTelemetry database semantic-convention names 
 
 Span names use `<operation> <database>` when a database is configured, otherwise `<operation> <host>` or the operation alone.
 
+## Pool connection wait time
+
+Pool acquisition timing is opt-in because it wraps the pool's public `getConnection()` boundary rather than adding instrumentation to the core pool implementation:
+
+```js
+const pool = mysql.createPool({
+  host: 'mysql.internal',
+  port: 3306,
+  database: 'orders'
+});
+
+telemetry.instrumentPool(pool);
+```
+
+Each acquisition records `db.client.connection.wait_time` in seconds. This includes immediate reuse, queue wait and physical connection creation time up to the pool callback.
+
+The metric includes `db.client.connection.pool.name`. By default NuBloxSQL derives the name as:
+
+```text
+host:port/database
+```
+
+or `host:port` when no database is known. A stable deployment-specific name can be supplied explicitly:
+
+```js
+telemetry.instrumentPool(pool, {name: 'orders-primary'});
+```
+
+Instrumentation is idempotent. Remove it explicitly with:
+
+```js
+telemetry.uninstrumentPool(pool);
+```
+
+Calling `telemetry.disable()` also restores all instrumented pools to their original `getConnection()` implementation.
+
+OpenTelemetry currently classifies connection-pool metrics separately from the stable database span conventions, so NuBloxSQL keeps this surface isolated in the adapter and does not make it part of the core pool API.
+
 ## SQL text privacy
 
 SQL text is **not recorded by default**. This avoids unintentionally exporting sensitive literals, comments or tenant information.
@@ -66,9 +104,9 @@ When enabled, SQL is emitted as `db.query.text`. Bind values are never emitted b
 
 ## Current coverage
 
-This first M6 adapter consumes the existing `nublox.mysql.query.start`, `nublox.mysql.query.end`, and `nublox.mysql.query.error` diagnostics channels. It therefore traces the Promise text-query surface that currently emits those lifecycle events.
+The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, and `nublox.mysql.query.error` for query tracing, and can instrument pool acquisition timing through `instrumentPool()`.
 
-Prepared execution, pool wait-time telemetry, transaction spans and richer error classification are separate M6 tranches and will build on the same adapter rather than adding instrumentation to the protocol hot path.
+Prepared execution, connection-use time, transaction spans and richer error classification are separate M6 tranches and will build on the same adapter rather than adding instrumentation to the protocol hot path.
 
 ## Custom tracer and meter
 
