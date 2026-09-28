@@ -38,11 +38,12 @@ assert.throws(function () { connection.encodeTextParameter(Infinity); }, /finite
 
 assert.strictEqual(typeof postgres.PreparedStatement, 'function');
 assert.strictEqual(typeof postgres.PostgreSqlCancellationError, 'function');
+assert.strictEqual(typeof postgres.Pool, 'function');
 assert.strictEqual(postgres.capabilities.preparedStatements, true);
 assert.strictEqual(postgres.capabilities.serverSideCursors, false);
 assert.strictEqual(postgres.capabilities.queryCancellation, true);
 assert.strictEqual(postgres.capabilities.changeDataCapture, false);
-assert.strictEqual(postgres.capabilities.savepoints, false);
+assert.strictEqual(postgres.capabilities.savepoints, true);
 
 var instance = postgres.createConnection({ user: 'test', ssl: false });
 assert.ok(instance instanceof postgres.Connection);
@@ -50,5 +51,18 @@ assert.strictEqual(instance.connected, false);
 assert.strictEqual(typeof instance.prepare, 'function');
 assert.strictEqual(typeof instance.execute, 'function');
 assert.strictEqual(typeof instance.cancel, 'function');
+assert.strictEqual(typeof instance.beginTransaction, 'function');
+assert.strictEqual(typeof instance.commit, 'function');
+assert.strictEqual(typeof instance.rollback, 'function');
+assert.strictEqual(typeof instance.withTransaction, 'function');
+assert.strictEqual(typeof instance.savepoint, 'function');
+assert.strictEqual(typeof instance.resetSession, 'function');
+
+var pool = postgres.createPool({ user: 'test', ssl: false });
+assert.ok(pool instanceof postgres.Pool);
+assert.strictEqual(typeof pool.getConnection, 'function');
+assert.strictEqual(typeof pool.releaseConnection, 'function');
+assert.strictEqual(typeof pool.withTransaction, 'function');
+pool.end();
 
 console.log('ok - PostgreSQL runtime contracts');
