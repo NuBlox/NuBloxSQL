@@ -26,7 +26,7 @@ function inspectPackage(file) {
   inspectDependencyMap(file, 'optionalDependencies', manifest.optionalDependencies);
   inspectDependencyMap(file, 'peerDependencies', manifest.peerDependencies);
   if (manifest.nublox && (manifest.nublox.upstream || manifest.nublox.compatibilityLineage)) failures.push(relative(file) + ': contains upstream/compatibility lineage metadata');
-  if (manifest.license !== 'SEE LICENSE IN LICENSE') failures.push(relative(file) + ': v1 package must use SEE LICENSE IN LICENSE');
+  if (manifest.license !== 'SEE LICENSE IN LICENSE') failures.push(relative(file) + ': package must use SEE LICENSE IN LICENSE');
 }
 function walk(dir, visitor) {
   if (!fs.existsSync(dir)) return;
@@ -44,7 +44,7 @@ function inspectLicence(file) {
   }
   var text = fs.readFileSync(file, 'utf8');
   if (text.indexOf(PROPRIETARY_MARKER) === -1) failures.push(relative(file) + ': does not contain the NuBloxSQL proprietary licence');
-  if (/Apache License|Apache-2\.0/.test(text)) failures.push(relative(file) + ': current v1 licence must not be Apache');
+  if (/Apache License|Apache-2\.0/.test(text)) failures.push(relative(file) + ': current licence must not be Apache');
 }
 
 inspectPackage(path.join(ROOT, 'package.json'));
@@ -55,12 +55,12 @@ var mysqlManifest = path.join(PACKAGE_ROOT, 'mysql', 'package.json');
 if (!fs.existsSync(mysqlManifest) || readJson(mysqlManifest).name !== '@nublox/mysql') failures.push('packages/mysql/package.json: canonical @nublox/mysql package is required');
 
 inspectLicence(path.join(ROOT, 'LICENSE'));
-['mysql', 'sql-core', 'postgresql'].forEach(function (name) { inspectLicence(path.join(PACKAGE_ROOT, name, 'LICENSE')); });
+['mysql', 'sql-core', 'postgresql', 'sqlite'].forEach(function (name) { inspectLicence(path.join(PACKAGE_ROOT, name, 'LICENSE')); });
 
 var forbiddenBasenames = new Set(['NUBLOX-UPSTREAM.json', 'NUBLOX-MASTERED-PACKAGE.md', 'THIRD_PARTY_NOTICES']);
 walk(PACKAGE_ROOT, function (file) {
   if (forbiddenBasenames.has(path.basename(file))) {
-    failures.push(relative(file) + ': inherited/third-party provenance marker must not exist in proprietary v1 packages');
+    failures.push(relative(file) + ': inherited/third-party provenance marker must not exist in proprietary NuBloxSQL packages');
     return;
   }
   if (!/\.(?:js|mjs|cjs|ts|json|md|txt)$/i.test(file)) return;
@@ -69,20 +69,20 @@ walk(PACKAGE_ROOT, function (file) {
     if (text.indexOf(marker) !== -1) failures.push(relative(file) + ': contains prohibited lineage marker "' + marker + '"');
   });
   if ((path.basename(file) === 'NOTICE' || path.basename(file) === 'LICENSE') && /Apache License|Apache-2\.0/.test(text)) {
-    failures.push(relative(file) + ': current v1 package contains an Apache licence marker');
+    failures.push(relative(file) + ': current package contains an Apache licence marker');
   }
 });
 
 ['package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'pnpm-lock.yaml'].forEach(function (file) {
-  if (fs.existsSync(path.join(ROOT, file))) failures.push(file + ': dependency lockfile must not exist in the zero-third-party v1 release boundary');
+  if (fs.existsSync(path.join(ROOT, file))) failures.push(file + ': dependency lockfile must not exist in the zero-third-party release boundary');
 });
 
 if (failures.length) {
-  console.error('NuBloxSQL proprietary v1 audit: FAILED');
+  console.error('NuBloxSQL proprietary boundary audit: FAILED');
   failures.forEach(function (failure) { console.error(' - ' + failure); });
-  console.error('\n' + failures.length + ' blocker(s) remain. v1.0.0 proprietary release is not permitted.');
+  console.error('\n' + failures.length + ' blocker(s) remain. Proprietary release is not permitted.');
   process.exitCode = 1;
 } else {
-  console.log('NuBloxSQL proprietary v1 audit: PASS');
-  console.log('No declared third-party package dependencies, known inherited-source markers, or current Apache licence markers were found in the v1 package boundary.');
+  console.log('NuBloxSQL proprietary boundary audit: PASS');
+  console.log('No declared third-party package dependencies, known inherited-source markers, or current Apache licence markers were found in the package boundary.');
 }
