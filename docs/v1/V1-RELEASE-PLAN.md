@@ -14,7 +14,7 @@ External database servers, published protocol specifications, operating systems,
 
 ### SQL Core
 
-`@nublox/sql-core` is the shared cross-dialect contract layer. Keep it deliberately small until the two production adapters prove a portable concept is genuinely shared.
+`@nublox/sql-core` is the shared cross-dialect contract layer. Gate 4 is now active and will freeze only concepts that MySQL and PostgreSQL have both proved in production-oriented implementations.
 
 ### MySQL
 
@@ -34,7 +34,9 @@ Gate 2 evidence includes:
 
 ### PostgreSQL
 
-`@nublox/postgresql` is a NuBlox-authored native driver with no npm package dependencies. It provides native TCP/TLS connectivity, SCRAM authentication and simple-query execution. Gate 3 is actively hardening it to the v1 production surface, beginning with PostgreSQL's native extended-query protocol.
+Gate 3 is complete. `@nublox/postgresql` is a NuBlox-authored native driver with no npm package dependencies and a v1 production baseline across PostgreSQL 15, 16, 17 and 18.
+
+The Gate 3 evidence record is `docs/v1/GATE-3-EVIDENCE.md`.
 
 ### Future dialects
 
@@ -81,32 +83,40 @@ Gate 2 completed the clean-room cut-over:
 
 Historical Git history remains historical evidence and is not rewritten or represented as original NuBlox authorship.
 
-### Gate 3 — PostgreSQL v1 hardening — ACTIVE
+### Gate 3 — PostgreSQL v1 hardening — COMPLETE
 
-Gate 3 must complete PostgreSQL's first-class native production surface:
+Gate 3 is complete. See `docs/v1/GATE-3-EVIDENCE.md` for the implementation, supported-version and production-soak evidence.
 
-- extended query protocol (Parse/Bind/Describe/Execute/Sync)
-- prepared statements and typed parameters
-- cancellation using PostgreSQL CancelRequest
-- bounded pooling and transaction helpers aligned with SQL Core policy
-- streaming/portal behaviour required for production use
-- robust type decoding for the supported v1 matrix
-- TLS/authentication failure-path hardening
-- live supported PostgreSQL version matrix
-- performance/resource-limit tests
+The completed PostgreSQL v1 surface includes:
 
-Do not add PostgreSQL features merely to mirror MySQL; preserve first-class PostgreSQL semantics.
+- native simple and extended query protocols;
+- prepared statements and typed parameters;
+- PostgreSQL CancelRequest cancellation with recovery semantics;
+- bounded pooling, transactions and savepoints;
+- native server-side portals/cursors with bounded batches;
+- bounded result rows, result bytes and row bytes with fail-closed connection handling;
+- deterministic lossless type/precision semantics;
+- TLS/authentication negative-path hardening;
+- live PostgreSQL 15/16/17/18 matrix;
+- production performance, pool-contention, portal, cancellation and forced-GC memory-soak evidence;
+- zero third-party PostgreSQL driver/protocol/type dependencies.
 
-### Gate 4 — Stabilise SQL Core
+PostgreSQL-specific semantics remain first class rather than being forced into a MySQL-shaped API.
 
-Only after MySQL and PostgreSQL both implement the concept:
+### Gate 4 — Stabilise SQL Core — ACTIVE
+
+Now that MySQL and PostgreSQL both implement production-oriented adapters, Gate 4 freezes only portable concepts proven by both:
 
 - freeze v1 execution/result contracts;
 - freeze transaction/cancellation semantics;
 - freeze error categorisation rules;
 - freeze metadata/type extension points;
+- reconcile deadline, resource-limit and observability vocabulary where genuinely portable;
 - keep vendor-only capabilities in adapters;
-- reject lowest-common-denominator abstractions.
+- reject lowest-common-denominator abstractions;
+- publish a v1 compatibility contract for adapter implementers and consumers.
+
+SQL Core must not grow by theoretical abstraction. Every frozen contract requires evidence from both canonical adapters or a clear cross-dialect policy role.
 
 ### Gate 5 — Proprietary and release audit
 
