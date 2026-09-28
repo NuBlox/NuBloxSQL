@@ -1,9 +1,9 @@
 {
   "name": "nubloxsql",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "NuBloxSQL multi-dialect SQL driver platform.",
-  "license": "UNLICENSED",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "Stephen J T Spittal",
   "repository": {"type":"git","url":"git+https://github.com/NuBlox/NuBloxSQL.git"},
   "workspaces": ["packages/*"],
@@ -13,7 +13,8 @@
     "test:sql-core": "npm run test --workspace @nublox/sql-core && node test/dialect-contracts.js && node test/sql-core-v1-contract.js",
     "test:postgresql": "npm run test --workspace @nublox/postgresql",
     "v1:proprietary-audit": "node tool/check-proprietary-v1.js",
+    "v1:release-audit": "node tool/check-release-v1.js",
     "verify": "npm run test:mysql && npm run test:sql-core && npm run test:postgresql",
-    "verify:proprietary": "npm run verify && npm run v1:proprietary-audit"
+    "verify:proprietary": "npm run verify && npm run v1:proprietary-audit && npm run v1:release-audit"
   }
 }

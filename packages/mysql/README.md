@@ -4,7 +4,7 @@ NuBloxSQL's native MySQL driver, authored for the proprietary NuBloxSQL v1 line 
 
 ## Status
 
-This package is the canonical MySQL adapter for the NuBloxSQL v1 release candidate line. It replaces the historical mysqljs-derived implementation in the current source tree.
+`@nublox/mysql@1.0.0` is the stable canonical MySQL adapter for NuBloxSQL v1. It replaces the historical mysqljs-derived implementation in the current source/package tree.
 
 ## Supported v1 surface
 
@@ -42,6 +42,6 @@ const result = await connection.query('SELECT 1 AS ok');
 await connection.end();
 ```
 
-## Release policy
+## Licence
 
-`1.0.0-rc.*` builds are release candidates. NuBloxSQL does not declare the stable `1.0.0` release until every gate in `docs/v1/V1-RELEASE-PLAN.md` and the proprietary-IP audit is satisfied.
+Proprietary. Copyright (c) 2026 Stephen J T Spittal. See `LICENSE`.

@@ -2,6 +2,10 @@
 
 Native PostgreSQL driver for NuBloxSQL. It implements PostgreSQL connectivity directly over the frontend/backend protocol and does not depend on `pg` or another PostgreSQL client library.
 
+## Status
+
+`@nublox/postgresql@1.0.0` is the stable PostgreSQL adapter for NuBloxSQL v1.
+
 ## Connection and query
 
 ```js
@@ -27,13 +31,9 @@ await connection.end();
 Prepared statements use PostgreSQL's extended-query protocol directly. Statements are named server-side resources and can be executed repeatedly before being explicitly closed.
 
 ```js
-const statement = await connection.prepare(
-  'SELECT $1::int4 AS id, $2::text AS name'
-);
-
+const statement = await connection.prepare('SELECT $1::int4 AS id, $2::text AS name');
 const first = await statement.execute([1, 'alpha']);
 const second = await statement.execute([2, 'beta']);
-
 await statement.close();
 ```
 
@@ -99,20 +99,18 @@ NuBloxSQL does not silently coerce values where JavaScript cannot preserve Postg
 
 `timestamp without time zone` deliberately remains a string so the driver never invents a timezone. PostgreSQL `numeric` deliberately remains a string because converting arbitrary precision values to IEEE-754 `Number` can silently lose data. Applications that need decimal arithmetic can choose their own numeric representation without the driver imposing a third-party decimal dependency.
 
-## Current production surface
+## Stable v1 production surface
 
 - native TCP connection lifecycle
 - PostgreSQL SSLRequest negotiation with `disable`, `prefer` and `require` policies
 - StartupMessage and protocol 3.0/3.2 primitives
-- cleartext password authentication
-- MD5 password authentication for compatibility
+- cleartext and MD5 compatibility authentication
 - SCRAM-SHA-256 challenge/response authentication with server-signature verification
 - ParameterStatus and BackendKeyData capture
 - ReadyForQuery transaction state tracking
 - simple-query protocol
 - extended-query Parse/Bind/Describe/Execute/Close/Sync protocol
-- named prepared statements with repeated execution and deterministic close
-- convenience parameterized execution
+- named prepared statements and convenience parameterized execution
 - PostgreSQL CancelRequest cancellation
 - bounded connection pooling and reset-on-release hygiene
 - transactions and savepoints
@@ -123,7 +121,6 @@ NuBloxSQL does not silently coerce values where JavaScript cannot preserve Postg
 - configurable backend message-size limits
 - connection and operation timeout/AbortSignal hooks
 - TypeScript declarations
-- live PostgreSQL 15, 16, 17 and 18 CI target matrix
 
 ## Dialect services
 
@@ -137,32 +134,16 @@ postgresql.descriptor.supports('schemas');     // true
 
 Capability flags describe implemented driver behavior, not merely PostgreSQL server features.
 
-## Protocol layer
-
-Low-level protocol primitives remain available for protocol tooling and advanced consumers:
-
-```js
-const { protocol } = require('@nublox/postgresql');
-
-const sslRequest = protocol.encodeSSLRequest();
-const startup = protocol.encodeStartupMessage({ user: 'app', database: 'appdb' });
-const parse = protocol.encodeParse('statement1', 'SELECT $1::int4', [23]);
-const bind = protocol.encodeBind({ statement: 'statement1', parameters: ['42'] });
-const execute = protocol.encodeExecute('', 0);
-const sync = protocol.encodeSync();
-const parser = new protocol.BackendMessageParser();
-```
-
 ## Supported v1 server majors
 
-The v1 target matrix is PostgreSQL 15, 16, 17 and 18. Every supported major is exercised with the native runtime integration suite, authentication/TLS failure-path tests, resource-limit recovery tests and deterministic type-policy tests.
-
-## Remaining Gate 3 work
-
-NuBloxSQL does not claim complete PostgreSQL v1 coverage yet. Before Gate 3 closes, the remaining focus is:
-
-- performance, memory and resource-soak evidence
-- final support-matrix and failure-path evidence capture
-- any further TLS/authentication edge cases exposed by that evidence
+The stable v1 target matrix is PostgreSQL 15, 16, 17 and 18. Every supported major is exercised with native runtime integration, authentication/TLS failure-path tests, resource-limit recovery and deterministic type-policy tests. Production performance and forced-GC resource evidence is captured on the configured matrix endpoints.
 
 Custom extensions, arrays, ranges and enums remain first-class PostgreSQL semantics; unsupported/custom text OIDs are returned losslessly as strings rather than guessed into JavaScript types.
+
+## Dependency boundary
+
+The package declares no npm runtime, optional, peer, or development dependencies. Production implementation uses Node.js built-ins and NuBlox-authored source only.
+
+## Licence
+
+Proprietary. Copyright (c) 2026 Stephen J T Spittal. See `LICENSE`.

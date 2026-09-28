@@ -39,12 +39,15 @@ function testRuntimeSurface() {
 function testDeclarationSurface() {
   var packageJson = require('../package.json');
   assert.strictEqual(packageJson.name, '@nublox/mysql');
+  assert.strictEqual(packageJson.version, '1.0.0');
   assert.strictEqual(packageJson.private, false);
   assert.strictEqual(packageJson.types, 'types.d.ts');
-  assert.deepStrictEqual(packageJson.files, ['index.js', 'index.d.ts', 'types.d.ts', 'lib/', 'README.md']);
+  assert.strictEqual(packageJson.license, 'SEE LICENSE IN LICENSE');
+  assert.deepStrictEqual(packageJson.files, ['index.js', 'index.d.ts', 'types.d.ts', 'lib/', 'README.md', 'LICENSE']);
   ['dependencies','devDependencies','optionalDependencies','peerDependencies'].forEach(function (key) {
     assert.strictEqual(packageJson[key], undefined, key + ' must be absent');
   });
+  assert.ok(fs.readFileSync(path.join(__dirname, '..', 'LICENSE'), 'utf8').indexOf('NuBloxSQL Proprietary Software Licence') !== -1);
 
   var base = fs.readFileSync(path.join(__dirname, '..', 'index.d.ts'), 'utf8');
   var publicTypes = fs.readFileSync(path.join(__dirname, '..', 'types.d.ts'), 'utf8');

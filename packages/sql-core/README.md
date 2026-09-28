@@ -64,4 +64,8 @@ This package is part of NuBloxSQL and has no dependency on any other NuBlox proj
 
 ## Stability
 
-`1.0.0-rc.x` freezes the intended stable-v1 contract. Breaking contract changes after stable `1.0.0` require a new major version; adapter-specific additions do not require SQL Core changes unless they become genuinely portable concepts.
+`@nublox/sql-core@1.0.0` is the stable contract-family 1.0 release. Breaking changes to the frozen contract require a new major version; adapter-specific additions do not require SQL Core changes unless they become genuinely portable concepts.
+
+## Licence
+
+Proprietary. Copyright (c) 2026 Stephen J T Spittal. See `LICENSE`.
