@@ -1,6 +1,7 @@
 'use strict';
 
 var base = require('./Connection');
+var control = require('./OperationControl');
 var PacketReader = require('./protocol/PacketReader').PacketReader;
 var prepared = require('./protocol/PreparedPackets');
 var server = require('./protocol/ServerPackets');
@@ -24,9 +25,9 @@ PreparedStatement.prototype.execute = function execute(params, options) {
   return this.connection._executePrepared(this, params, options || {});
 };
 
-PreparedStatement.prototype.reset = function reset() {
+PreparedStatement.prototype.reset = function reset(options) {
   if (this.closed) return Promise.reject(new Error('MySQL prepared statement is closed'));
-  return this.connection._resetPrepared(this);
+  return this.connection._resetPrepared(this, options || {});
 };
 
 PreparedStatement.prototype.close = function close() {
@@ -42,10 +43,10 @@ Connection.prototype = Object.create(base.Connection.prototype);
 Connection.prototype.constructor = Connection;
 
 Connection.prototype._startOperation = function _startOperation(kind, state, payload, options) {
-  options = options || {};
+  try { options = control.normalize(options || {}, 'MySQL ' + kind); }
+  catch (error) { return Promise.reject(error); }
   if (!this.connected || !this.socket || this.ended) return Promise.reject(new Error('MySQL connection is not ready'));
   if (this._queryState) return Promise.reject(new Error('MySQL connection already has an active operation'));
-  if (options.timeout !== undefined && (!Number.isFinite(options.timeout) || options.timeout <= 0)) return Promise.reject(new RangeError('MySQL operation timeout must be a positive number'));
   if (options.signal && options.signal.aborted) return Promise.reject(options.signal.reason || new Error('MySQL operation aborted'));
 
   var self = this;
@@ -70,7 +71,12 @@ Connection.prototype._startOperation = function _startOperation(kind, state, pay
   }
   state.promise.then(cleanup, cleanup);
 
-  this._write(payload);
+  try { this._write(payload); }
+  catch (error) {
+    this._queryState = null;
+    cleanup();
+    return Promise.reject(error);
+  }
   return state.promise;
 };
 
@@ -84,9 +90,9 @@ Connection.prototype._executePrepared = function _executePrepared(statement, par
   return this._startOperation('execute', state, prepared.encodeExecute(statement.id, params), options || {});
 };
 
-Connection.prototype._resetPrepared = function _resetPrepared(statement) {
+Connection.prototype._resetPrepared = function _resetPrepared(statement, options) {
   var state = { phase: 'start', statement: statement };
-  return this._startOperation('reset', state, prepared.encodeReset(statement.id), {});
+  return this._startOperation('reset', state, prepared.encodeReset(statement.id), options || {});
 };
 
 Connection.prototype._closePrepared = function _closePrepared(statement) {
