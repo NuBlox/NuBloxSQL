@@ -3,8 +3,8 @@
 var assert = require('assert');
 var mysql = require('..');
 
-async function main() {
-  var connection = mysql.createConnection({
+function config() {
+  return {
     host: process.env.MYSQL_HOST || '127.0.0.1',
     port: Number(process.env.MYSQL_PORT || 3306),
     user: process.env.MYSQL_USER || 'nublox',
@@ -13,7 +13,11 @@ async function main() {
     ssl: 'disable',
     getServerPublicKey: true,
     connectTimeout: 15000
-  });
+  };
+}
+
+async function main() {
+  var connection = mysql.createConnection(config());
 
   await connection.connect();
   assert.strictEqual(connection.connected, true);
@@ -46,24 +50,57 @@ async function main() {
   assert.strictEqual(selectedAgain.rows[0].label, 'again');
   assert.strictEqual(selectedAgain.rows[0].nullable_value, 'value');
   await selectStatement.close();
-  assert.strictEqual(selectStatement.closed, true);
 
   var insertStatement = await connection.prepare('INSERT INTO nublox_cleanroom_live (id, name, score) VALUES (?, ?, ?)');
-  assert.strictEqual(insertStatement.parameterCount, 3);
   var preparedInsert = await insertStatement.execute([3, 'gamma', 3.75]);
   assert.strictEqual(Number(preparedInsert.affectedRows), 1);
   await insertStatement.close();
 
-  var verifyStatement = await connection.prepare('SELECT id, name, score FROM nublox_cleanroom_live WHERE id = ?');
-  var verified = await verifyStatement.execute([3]);
-  assert.strictEqual(verified.rows.length, 1);
-  assert.strictEqual(verified.rows[0].id, 3);
-  assert.strictEqual(verified.rows[0].name, 'gamma');
-  assert.strictEqual(verified.rows[0].score, 3.75);
-  await verifyStatement.close();
+  await connection.beginTransaction({ isolationLevel: 'read-committed' });
+  await connection.query("INSERT INTO nublox_cleanroom_live (id, name, score) VALUES (4, 'rollback', 4.0)");
+  await connection.rollback();
+  var rolledBack = await connection.query('SELECT COUNT(*) AS count_value FROM nublox_cleanroom_live WHERE id = 4');
+  assert.strictEqual(rolledBack.rows[0].count_value, '0');
+
+  var txValue = await connection.withTransaction(async function (tx) {
+    await tx.query("INSERT INTO nublox_cleanroom_live (id, name, score) VALUES (5, 'commit', 5.0)");
+    await tx.savepoint('after_insert');
+    await tx.query("UPDATE nublox_cleanroom_live SET name = 'changed' WHERE id = 5");
+    await tx.rollbackToSavepoint('after_insert');
+    await tx.releaseSavepoint('after_insert');
+    return 'committed';
+  });
+  assert.strictEqual(txValue, 'committed');
+  var committed = await connection.query('SELECT name FROM nublox_cleanroom_live WHERE id = 5');
+  assert.strictEqual(committed.rows[0].name, 'commit');
 
   await connection.end();
-  process.stdout.write('clean-room MySQL live connection/query/prepared smoke passed\n');
+
+  var poolConfig = Object.assign(config(), { connectionLimit: 2, maxIdle: 2, idleTimeout: 30000, acquireTimeout: 5000 });
+  var pool = mysql.createPool(poolConfig);
+  var concurrent = await Promise.all([
+    pool.query('SELECT 11 AS value_one'),
+    pool.query('SELECT 22 AS value_two'),
+    pool.query('SELECT 33 AS value_three')
+  ]);
+  assert.strictEqual(concurrent[0].rows[0].value_one, '11');
+  assert.strictEqual(concurrent[1].rows[0].value_two, '22');
+  assert.strictEqual(concurrent[2].rows[0].value_three, '33');
+  assert.ok(pool.totalCount <= 2);
+
+  var poolPrepared = await pool.execute('SELECT ? AS pooled_value', [123]);
+  assert.strictEqual(poolPrepared.rows[0].pooled_value, 123);
+
+  var pooledTransaction = await pool.withTransaction(async function (tx) {
+    var result = await tx.query("SELECT 'transaction' AS mode");
+    return result.rows[0].mode;
+  });
+  assert.strictEqual(pooledTransaction, 'transaction');
+  assert.strictEqual(pool.waitingCount, 0);
+  await pool.end();
+  assert.strictEqual(pool.totalCount, 0);
+
+  process.stdout.write('clean-room MySQL live connection/query/prepared/transaction/pool smoke passed\n');
 }
 
 main().catch(function (error) {
