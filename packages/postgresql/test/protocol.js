@@ -34,7 +34,10 @@ assert.strictEqual(parsed.length, 2);
 assert.deepStrictEqual(parsed[0], { type: 'authentication', code: 0 });
 assert.deepStrictEqual(parsed[1], { type: 'readyForQuery', transactionStatus: 'I' });
 
-var parameterPayload = Buffer.from('server_version\018.0\0');
+var parameterPayload = Buffer.concat([
+  Buffer.from('server_version\0'),
+  Buffer.from('18.0\0')
+]);
 var parameter = protocol.decodeBackendMessage('S', parameterPayload);
 assert.deepStrictEqual(parameter, { type: 'parameterStatus', name: 'server_version', value: '18.0' });
 
