@@ -39,7 +39,7 @@ function classify(error, operation) {
   var lower = message.toLowerCase();
   var details = { cause: error, code: CODES.OPERATION_STATE, category: 'state', retryable: false };
 
-  if (lower.indexOf('aborted') !== -1 || (error.name === 'AbortError')) {
+  if (lower.indexOf('aborted') !== -1 || error.name === 'AbortError') {
     details.code = operation === 'getConnection' ? CODES.POOL_ACQUIRE_ABORTED : CODES.ABORTED;
     details.category = 'cancelled';
   } else if (lower.indexOf('timed out') !== -1 || lower.indexOf('timeout') !== -1) {
@@ -77,21 +77,6 @@ function isPromise(value) {
   return value && typeof value.then === 'function';
 }
 
-function isStream(value) {
-  return value && typeof value.once === 'function' && typeof value.destroy === 'function' && typeof value[Symbol.asyncIterator] === 'function';
-}
-
-function wrapStream(stream, operation) {
-  stream.once('error', function (error) {
-    if (!error || error.name === 'MySqlClientError' || error.name === 'MySqlError' || error.name === 'MySqlResultLimitError') return;
-    var normalized = classify(error, operation);
-    if (normalized !== error && stream.listenerCount('error') > 1) {
-      stream.emit('clientError', normalized);
-    }
-  });
-  return stream;
-}
-
 function wrapMethod(prototype, name) {
   if (!prototype || typeof prototype[name] !== 'function') return;
   var original = prototype[name];
@@ -105,19 +90,27 @@ function wrapMethod(prototype, name) {
       throw classify(error, name);
     }
     if (isPromise(result)) {
-      return result.then(function (value) {
-        return isStream(value) ? wrapStream(value, name) : value;
-      }, function (error) {
-        throw classify(error, name);
-      });
+      return result.then(function (value) { return value; }, function (error) { throw classify(error, name); });
     }
-    return isStream(result) ? wrapStream(result, name) : result;
+    return result;
   }
   Object.defineProperty(errorModelMethod, '_nubloxErrorModel', { value: true });
   prototype[name] = errorModelMethod;
 }
 
-function install(runtime, pool) {
+function wrapStreamDestroy(ResultStream) {
+  if (!ResultStream || typeof ResultStream.prototype.destroy !== 'function') return;
+  var original = ResultStream.prototype.destroy;
+  if (original._nubloxErrorModel) return;
+
+  function errorModelDestroy(error) {
+    return original.call(this, error ? classify(error, 'queryStream') : error);
+  }
+  Object.defineProperty(errorModelDestroy, '_nubloxErrorModel', { value: true });
+  ResultStream.prototype.destroy = errorModelDestroy;
+}
+
+function install(runtime, pool, ResultStream) {
   var Connection = runtime && runtime.Connection;
   var PreparedStatement = runtime && runtime.PreparedStatement;
   var Pool = pool && pool.Pool;
@@ -135,6 +128,7 @@ function install(runtime, pool) {
       wrapMethod(Pool.prototype, name);
     });
   }
+  wrapStreamDestroy(ResultStream);
 }
 
 exports.CODES = CODES;
