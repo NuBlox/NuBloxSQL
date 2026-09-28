@@ -1,8 +1,8 @@
 'use strict';
 
 var protocol = require('./lib/protocol');
-var connectionModule = require('./lib/PortalConnection');
-var poolModule = require('./lib/Pool');
+var connectionModule = require('./lib/ResourceConnection');
+var poolModule = require('./lib/ResourcePool');
 
 var capabilities = Object.freeze({
   preparedStatements    : true,
@@ -60,5 +60,7 @@ exports.PortalCursor = connectionModule.PortalCursor;
 exports.Pool = poolModule.Pool;
 exports.PostgreSqlError = connectionModule.PostgreSqlError;
 exports.PostgreSqlCancellationError = connectionModule.PostgreSqlCancellationError;
+exports.PostgreSqlResultLimitError = connectionModule.PostgreSqlResultLimitError;
+exports.DEFAULT_RESULT_LIMITS = connectionModule.DEFAULT_RESULT_LIMITS;
 exports.createConnection = createConnection;
 exports.createPool = createPool;
