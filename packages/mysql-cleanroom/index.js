@@ -17,6 +17,7 @@ exports.protocol = {
   encodeQuit: client.encodeQuit,
   decodeErrorPacket: server.decodeErrorPacket,
   decodeOkPacket: server.decodeOkPacket,
+  decodeEofPacket: server.decodeEofPacket,
   decodeAuthSwitchRequest: server.decodeAuthSwitchRequest,
   decodeColumnDefinition41: server.decodeColumnDefinition41,
   decodeTextRow: server.decodeTextRow,
@@ -26,3 +27,8 @@ exports.protocol = {
   scramblePasswordForRsa: auth.scramblePasswordForRsa,
   encryptCachingSha2Password: auth.encryptCachingSha2Password
 };
+
+var runtime = require('./lib/Connection');
+exports.Connection = runtime.Connection;
+exports.MySqlError = runtime.MySqlError;
+exports.createConnection = function createConnection(config) { return new runtime.Connection(config); };
