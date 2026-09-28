@@ -92,6 +92,6 @@ test('BinlogDump', {
 
     assert.equal(typeof connection.binlogDump, 'function');
     assert.equal(connection._nubloxReplicationConnection, true);
-    connection.destroy();
+    assert.equal(connection.state, 'disconnected');
   }
 });
