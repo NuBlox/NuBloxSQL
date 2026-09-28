@@ -13,6 +13,7 @@ var config = {
 };
 var connection = mysql.createConnection(config);
 var cursor;
+var iteratorCursor;
 
 connection.connect()
   .then(function openCursor() {
@@ -45,13 +46,39 @@ connection.connect()
     assert.strictEqual(batch.done, true);
     return cursor.close();
   })
-  .then(function closeConnection() {
+  .then(function verifyManualClose() {
     assert.strictEqual(cursor.closed, true);
+    return connection.openCursor(
+      'SELECT ? AS value UNION ALL SELECT ? AS value UNION ALL SELECT ? AS value ORDER BY value',
+      [10, 20, 30],
+      {fetchSize: 2}
+    );
+  })
+  .then(function verifyIteratorReturn(openedCursor) {
+    var iterator;
+
+    iteratorCursor = openedCursor;
+    iterator = iteratorCursor[global.Symbol.asyncIterator]();
+
+    return iterator.next().then(function verifyFirstIteratedRow(result) {
+      assert.strictEqual(result.done, false);
+      assert.strictEqual(result.value.value, 10);
+      assert.strictEqual(iteratorCursor.closed, false);
+      return iterator.return();
+    });
+  })
+  .then(function verifyIteratorClosed(result) {
+    assert.deepStrictEqual(result, {value: undefined, done: true});
+    assert.strictEqual(iteratorCursor.closed, true);
     return connection.end();
   })
   .catch(function (error) {
     if (cursor && !cursor.closed) {
       cursor.close();
+    }
+
+    if (iteratorCursor && !iteratorCursor.closed) {
+      iteratorCursor.close();
     }
 
     connection.end().catch(function () {}).then(function () {

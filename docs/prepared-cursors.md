@@ -55,10 +55,34 @@ for await (const row of cursor) {
 await cursor.close();
 ```
 
+If async iteration exits early through `break`, `return`, or an exception, the iterator `return()` hook closes the cursor automatically and sends `COM_STMT_CLOSE`. Normal iteration to exhaustion leaves explicit lifetime control with the caller, so call `cursor.close()` after a complete traversal.
+
+## TypeScript
+
+Prepared cursor types are part of the package's root declaration surface. Both callback and Promise connections expose typed `openCursor()` methods, including generic row types:
+
+```ts
+type UserRow = {
+  id: number;
+  name: string;
+};
+
+const cursor = await connection.openCursor<UserRow>(
+  'SELECT id, name FROM users ORDER BY id',
+  [],
+  {fetchSize: 250}
+);
+
+const batch = await cursor.fetch();
+const firstName = batch.rows[0]?.name;
+```
+
+The public contracts include `PreparedCursorOptions`, `PreparedCursor`, `PreparedCursorFetchState`, `PromisePreparedCursor`, and `PromisePreparedCursorFetchResult`.
+
 ## Resource and connection semantics
 
 A MySQL server cursor belongs to one physical prepared statement on one physical connection. NuBloxSQL therefore exposes cursor creation on connections, not directly on pools. Applications using a pool should acquire a connection, keep it checked out for the entire cursor lifetime, close the cursor, and only then release the connection.
 
 Each fetched batch reuses the driver's binary-row decoder and existing row/result resource limits. Cursor opening also applies the existing result-column and metadata bounds.
 
-Closing a cursor sends `COM_STMT_CLOSE`, which also releases the underlying prepared statement on the server. A cursor should always be closed when no longer needed, including after iteration completes.
+Closing a cursor sends `COM_STMT_CLOSE`, which also releases the underlying prepared statement on the server. A cursor should always be closed when no longer needed. Early async-iterator termination closes it automatically; manual fetch workflows and normally exhausted iterators should close it explicitly.
