@@ -1,6 +1,6 @@
 NuBloxSQL
-Copyright 2026 Stephen J T Spittal
+Copyright (c) 2026 Stephen J T Spittal. All rights reserved.
 
-Licensed under the Apache License, Version 2.0.
+NuBloxSQL v1 is proprietary software. See LICENSE for the terms governing the current v1 release line.
 
-NuBloxSQL contains independently versioned SQL driver packages. Individual packages may include additional attribution and third-party notices within their own package directories.
+Historical versions or commits previously distributed under other licence terms remain governed by the rights validly granted for those historical copies.
