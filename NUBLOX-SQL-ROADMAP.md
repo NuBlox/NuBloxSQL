@@ -2,7 +2,7 @@
 
 ## Purpose
 
-NuBloxSQL is the umbrella database connectivity and SQL runtime platform for NuBlox. The repository will support multiple SQL database families through a shared set of contracts with independently evolvable dialect adapters.
+NuBloxSQL is an independent database connectivity and SQL runtime platform supporting multiple SQL database families through a shared set of contracts with independently evolvable dialect adapters.
 
 The existing `@nublox/mysql` package remains the first production adapter and must retain its current release-candidate compatibility while the common platform is extracted incrementally.
 
@@ -159,7 +159,7 @@ Priorities:
 - TLS/authentication coverage;
 - live CI against supported PostgreSQL releases.
 
-Direct `pg` usage in downstream NuBlox applications should be treated as transitional once this adapter reaches production readiness.
+Direct `pg` usage in consuming applications should be treated as transitional once this adapter reaches production readiness.
 
 ### A3 — SQLite
 
@@ -225,25 +225,15 @@ Move only genuinely portable policy from `@nublox/mysql` into `@nublox/sql-core`
 
 Protocol packets, MySQL authentication, MySQL binary encodings, binlog logic and MySQL-specific server-state handling stay in `@nublox/mysql`.
 
-### Phase 4 — Workbench adoption
-
-NuBlox SQL Workbench should depend on NuBloxSQL adapters rather than directly on ecosystem drivers.
-
-Target dependency direction:
-
-```text
-NuBlox SQL Workbench
-        ↓
-Workbench DatabaseProvider contract
-        ↓
-NuBloxSQL dialect adapter
-        ↓
-Database server/runtime
-```
-
-### Phase 5 — Additional dialects
+### Phase 4 — Additional dialects
 
 Add SQLite, SQL Server and Oracle once the common contracts have survived both MySQL and PostgreSQL production requirements.
+
+## Independence principle
+
+NuBloxSQL must remain independently usable, testable, versionable and releasable. Its architecture and roadmap must not depend on any other NuBlox product or application.
+
+Consumers may integrate NuBloxSQL through its public package APIs, but no external project is part of NuBloxSQL's internal architecture, release criteria or product definition.
 
 ## Acceptance criteria for the shared core
 

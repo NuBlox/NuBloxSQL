@@ -2,32 +2,30 @@
 
 ## Decision
 
-NuBloxSQL is the umbrella repository for NuBlox SQL connectivity and runtime behaviour across multiple SQL database families.
+NuBloxSQL is an independent repository for SQL connectivity and runtime behaviour across multiple SQL database families.
 
 The repository currently contains the MySQL implementation and publishes it as `@nublox/mysql`. That remains a valid and supported product boundary while the multi-dialect architecture is introduced incrementally.
 
 ## Boundary model
 
-The architecture separates four concerns:
+The architecture separates three concerns:
 
 1. **portable contracts** — concepts that can be expressed consistently across SQL database families;
 2. **dialect services** — SQL syntax, quoting, placeholders and versioned feature support;
-3. **adapter runtime** — connection, protocol, authentication, execution and vendor-specific behaviour;
-4. **consumer tooling** — products such as NuBlox SQL Workbench that consume adapters without owning transport logic.
+3. **adapter runtime** — connection, protocol, authentication, execution and vendor-specific behaviour.
 
 ```text
-Consumer application / SQL Workbench
-                │
-                ▼
-       shared NuBlox SQL contracts
-                │
-      ┌─────────┼─────────┐
-      ▼         ▼         ▼
-    MySQL   PostgreSQL   SQLite   ...
-      │         │         │
-      ▼         ▼         ▼
-   server     server    runtime
+          shared NuBlox SQL contracts
+                    │
+          ┌─────────┼─────────┐
+          ▼         ▼         ▼
+        MySQL   PostgreSQL   SQLite   ...
+          │         │         │
+          ▼         ▼         ▼
+       server     server    runtime
 ```
+
+NuBloxSQL exposes public package APIs for consumers, but consumer applications are outside the NuBloxSQL architecture and release boundary.
 
 ## Non-goals
 
@@ -218,38 +216,17 @@ PostgreSQL should be the second adapter because it differs from MySQL in enough 
 
 If a proposed `sql-core` contract cannot support both MySQL and PostgreSQL without awkward exceptions, the contract should be redesigned before additional adapters are added.
 
-## SQL Workbench boundary
+## Independence boundary
 
-NuBlox SQL Workbench should not become the owner of database transports.
+NuBloxSQL is independently usable, testable, versionable and releasable.
 
-Its provider layer should focus on tool-facing operations such as:
-
-- connect/disconnect UX;
-- object explorer models;
-- editor execution requests;
-- metadata presentation;
-- schema design and migration workflows;
-- administration workflows.
-
-The actual database connection, protocol/runtime semantics and dialect behaviour should come from NuBloxSQL adapters.
-
-Target dependency:
-
-```text
-SQL Workbench UI
-      ↓
-Workbench provider
-      ↓
-NuBloxSQL adapter
-      ↓
-Database
-```
+Its architecture, source tree, runtime contracts, CI, release criteria and roadmap must not depend on any other NuBlox project. External consumers integrate only through NuBloxSQL's published package APIs and are not part of its internal design.
 
 ## Compatibility strategy
 
-Existing ecosystem libraries may be used for behavioural comparison, migration testing and transitional downstream integrations.
+Existing ecosystem libraries may be used for behavioural comparison, migration testing and transitional integrations.
 
-NuBloxSQL adapters should ultimately own their public NuBlox runtime surface. Any decision to wrap rather than implement a protocol directly should be explicit per adapter and based on maintenance, licensing, security, performance and platform constraints.
+NuBloxSQL adapters should ultimately own their public runtime surface. Any decision to wrap rather than implement a protocol directly should be explicit per adapter and based on maintenance, licensing, security, performance and platform constraints.
 
 ## Migration rules
 
@@ -260,4 +237,4 @@ NuBloxSQL adapters should ultimately own their public NuBlox runtime surface. An
 5. Keep adapter-specific escape hatches first-class.
 6. Keep live-server tests per adapter.
 7. Keep adapter releases independently versionable once the package split occurs.
-8. Move SQL Workbench away from direct third-party-driver dependencies only after the corresponding NuBloxSQL adapter is production-ready.
+8. Keep NuBloxSQL architecture and release decisions independent of external consumer projects.
