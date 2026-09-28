@@ -48,12 +48,18 @@ function run() {
     .then(function (connection) {
       mysql2Connection = connection;
 
-      var sql = 'SELECT ? AS text_value, ? AS number_value, ? AS bool_value, ? AS null_value';
-      var values = ['NuBloxSQL', 41.5, true, null];
+      var attributedExecute = {
+        sql        : 'SELECT ? AS text_value, ? AS number_value, ? AS bool_value, ? AS null_value',
+        values     : ['NuBloxSQL', 41.5, true, null],
+        attributes : {
+          trace_id : 'compat-execute',
+          priority : 3
+        }
+      };
 
       return global.Promise.all([
-        nubloxConnection.execute(sql, values),
-        mysql2Connection.execute(sql, values)
+        nubloxConnection.execute(attributedExecute),
+        mysql2Connection.execute(attributedExecute)
       ]);
     })
     .then(function (results) {
