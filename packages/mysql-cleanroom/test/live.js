@@ -159,5 +159,5 @@ async function main() {
 
 main().catch(function (error) {
   process.stderr.write((error && error.stack) ? error.stack + '\n' : String(error) + '\n');
-  process.exitCode = 1;
+  process.exit(1);
 });
