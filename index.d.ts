@@ -5,6 +5,14 @@ declare namespace mysql {
   type CompressionAlgorithm = 'zlib' | 'zstd' | 'uncompressed';
   type TlsPolicy = 'modern' | 'strict';
   type QueryAttributeValue = string | number | bigint | boolean | Date | Buffer | null;
+  type SessionStateChangeName =
+    | 'system_variables'
+    | 'schema'
+    | 'state_change'
+    | 'gtids'
+    | 'transaction_characteristics'
+    | 'transaction_state'
+    | 'unknown';
 
   interface AbortSignalLike {
     readonly aborted: boolean;
@@ -202,6 +210,16 @@ declare namespace mysql {
     charsetNr?: number;
   }
 
+  interface SessionStateChange {
+    type: number;
+    name: SessionStateChangeName;
+    values: Array<string | null>;
+    data: Buffer;
+    variable?: string | null;
+    value?: string | null;
+    encoding?: number;
+  }
+
   interface OkPacket {
     fieldCount?: number;
     affectedRows?: number;
@@ -210,6 +228,7 @@ declare namespace mysql {
     serverStatus?: number;
     warningCount?: number;
     message?: string;
+    sessionStateChanges: SessionStateChange[];
   }
 
   type Row = Record<string, unknown>;
