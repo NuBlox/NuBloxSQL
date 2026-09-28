@@ -13,6 +13,7 @@ declare namespace createOpenTelemetryAdapter {
     host?: string;
     port?: number;
     captureQueryText?: boolean;
+    slowQueryThresholdMs?: number | false;
   }
 
   interface PoolInstrumentationOptions {
