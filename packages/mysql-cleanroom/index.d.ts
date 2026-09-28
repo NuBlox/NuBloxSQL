@@ -66,6 +66,7 @@ export interface PoolConfig extends ConnectionConfig {
   idleTimeout?: number;
   acquireTimeout?: number;
   queueLimit?: number;
+  resetOnRelease?: boolean;
 }
 
 export interface Field {
@@ -135,6 +136,7 @@ export class Connection {
     options?: OperationOptions
   ): Promise<QueryResult<Row>>;
   prepare(sql: string, options?: OperationOptions): Promise<PreparedStatement>;
+  resetSession(options?: OperationOptions): Promise<QueryResult>;
 
   beginTransaction(options?: TransactionOptions): Promise<this>;
   commit(options?: OperationOptions): Promise<QueryResult>;
@@ -150,9 +152,9 @@ export class Connection {
   end(): Promise<void>;
   destroy(error?: Error): void;
 
-  on(event: 'connect' | 'close', listener: () => void): this;
+  on(event: 'connect' | 'close' | 'reset', listener: () => void): this;
   on(event: 'error', listener: (error: Error) => void): this;
-  once(event: 'connect' | 'close', listener: () => void): this;
+  once(event: 'connect' | 'close' | 'reset', listener: () => void): this;
   once(event: 'error', listener: (error: Error) => void): this;
 }
 
@@ -165,9 +167,11 @@ export class Pool {
   readonly idleTimeout: number;
   readonly acquireTimeout: number;
   readonly queueLimit: number;
+  readonly resetOnRelease: boolean;
   readonly totalCount: number;
   readonly idleCount: number;
   readonly waitingCount: number;
+  readonly resettingCount: number;
 
   getConnection(options?: PoolAcquireOptions): Promise<Connection>;
   releaseConnection(connection: Connection): void;
@@ -186,7 +190,8 @@ export class Pool {
   ): Promise<T>;
   end(): Promise<void>;
 
-  on(event: 'connection' | 'acquire' | 'release' | 'evict', listener: (connection: Connection) => void): this;
+  on(event: 'connection' | 'acquire' | 'release' | 'evict' | 'reset', listener: (connection: Connection) => void): this;
+  on(event: 'resetError', listener: (error: Error, connection: Connection) => void): this;
 }
 
 export function createConnection(config: ConnectionConfig): Connection;

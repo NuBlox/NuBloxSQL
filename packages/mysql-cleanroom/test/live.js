@@ -74,6 +74,11 @@ async function main() {
   var committed = await connection.query('SELECT name FROM nublox_cleanroom_live WHERE id = 5');
   assert.strictEqual(committed.rows[0].name, 'commit');
 
+  await connection.query("SET @nublox_reset_marker = 'dirty'");
+  await connection.resetSession();
+  var resetMarker = await connection.query('SELECT @nublox_reset_marker AS marker');
+  assert.strictEqual(resetMarker.rows[0].marker, null);
+
   await connection.end();
 
   var poolConfig = Object.assign(config(), { connectionLimit: 2, maxIdle: 2, idleTimeout: 30000, acquireTimeout: 5000 });
@@ -100,7 +105,20 @@ async function main() {
   await pool.end();
   assert.strictEqual(pool.totalCount, 0);
 
-  process.stdout.write('clean-room MySQL live connection/query/prepared/transaction/pool smoke passed\n');
+  var isolationPool = mysql.createPool(Object.assign(config(), { connectionLimit: 1, maxIdle: 1, idleTimeout: 30000, acquireTimeout: 5000 }));
+  var resetEvents = 0;
+  isolationPool.on('reset', function () { resetEvents++; });
+  var dirty = await isolationPool.getConnection();
+  await dirty.query("SET @nublox_pool_marker = 'borrower-one'");
+  isolationPool.releaseConnection(dirty);
+  var clean = await isolationPool.getConnection();
+  var cleanMarker = await clean.query('SELECT @nublox_pool_marker AS marker');
+  assert.strictEqual(cleanMarker.rows[0].marker, null);
+  assert.ok(resetEvents >= 1);
+  isolationPool.releaseConnection(clean);
+  await isolationPool.end();
+
+  process.stdout.write('clean-room MySQL live connection/query/prepared/transaction/pool/reset smoke passed\n');
 }
 
 main().catch(function (error) {

@@ -46,9 +46,11 @@ function encodeQuery(sql) {
 }
 
 function encodeQuit() { return Buffer.from([0x01]); }
+function encodeResetConnection() { return Buffer.from([0x1f]); }
 
 exports.writeLengthEncodedInteger = writeLengthEncodedInteger;
 exports.encodeSslRequest = encodeSslRequest;
 exports.encodeHandshakeResponse41 = encodeHandshakeResponse41;
 exports.encodeQuery = encodeQuery;
 exports.encodeQuit = encodeQuit;
+exports.encodeResetConnection = encodeResetConnection;

@@ -13,12 +13,14 @@ function testRuntimeSurface() {
   assert.strictEqual(typeof mysql.PreparedStatement, 'function');
   assert.strictEqual(typeof mysql.MySqlError, 'function');
   assert.ok(mysql.protocol && typeof mysql.protocol === 'object');
+  assert.strictEqual(typeof mysql.protocol.encodeResetConnection, 'function');
 
   var connection = mysql.createConnection({ user: 'test' });
   assert.ok(connection instanceof mysql.Connection);
   assert.strictEqual(typeof connection.connect, 'function');
   assert.strictEqual(typeof connection.query, 'function');
   assert.strictEqual(typeof connection.prepare, 'function');
+  assert.strictEqual(typeof connection.resetSession, 'function');
   assert.strictEqual(typeof connection.beginTransaction, 'function');
   assert.strictEqual(typeof connection.withTransaction, 'function');
   assert.strictEqual(typeof connection.savepoint, 'function');
@@ -26,6 +28,8 @@ function testRuntimeSurface() {
 
   var pool = mysql.createPool({ user: 'test' });
   assert.ok(pool instanceof mysql.Pool);
+  assert.strictEqual(pool.resetOnRelease, true);
+  assert.strictEqual(pool.resettingCount, 0);
   assert.strictEqual(typeof pool.getConnection, 'function');
   assert.strictEqual(typeof pool.releaseConnection, 'function');
   assert.strictEqual(typeof pool.query, 'function');
@@ -47,8 +51,11 @@ function testDeclarationSurface() {
     'export interface ConnectionConfig',
     'export interface QueryResult',
     'export class Connection',
+    'resetSession(options?: OperationOptions)',
     'export class PreparedStatement',
     'export class Pool',
+    'resetOnRelease?: boolean',
+    'readonly resettingCount: number',
     'export function createConnection',
     'export function createPool'
   ].forEach(function (token) {
