@@ -2,10 +2,12 @@
 
 var auth = require('./lib/protocol/Auth');
 var client = require('./lib/protocol/ClientPackets');
+var prepared = require('./lib/protocol/PreparedPackets');
 var server = require('./lib/protocol/ServerPackets');
 
 exports.protocol = {
   capabilities: require('./lib/protocol/capabilities'),
+  types: prepared.types,
   PacketFramer: require('./lib/protocol/PacketFramer').PacketFramer,
   PacketReader: require('./lib/protocol/PacketReader').PacketReader,
   encodePacket: require('./lib/protocol/PacketFramer').encodePacket,
@@ -21,6 +23,13 @@ exports.protocol = {
   decodeAuthSwitchRequest: server.decodeAuthSwitchRequest,
   decodeColumnDefinition41: server.decodeColumnDefinition41,
   decodeTextRow: server.decodeTextRow,
+  encodePrepare: prepared.encodePrepare,
+  decodePrepareOk: prepared.decodePrepareOk,
+  encodeParameter: prepared.encodeParameter,
+  encodeExecute: prepared.encodeExecute,
+  encodeClose: prepared.encodeClose,
+  encodeReset: prepared.encodeReset,
+  decodeBinaryRow: prepared.decodeBinaryRow,
   mysqlNativePassword: auth.mysqlNativePassword,
   cachingSha2Password: auth.cachingSha2Password,
   cleartextPassword: auth.cleartextPassword,
