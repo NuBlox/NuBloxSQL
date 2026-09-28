@@ -25,13 +25,19 @@ import promiseMysql, {
   param as promiseParam,
   raw as promiseRaw
 } from '@nublox/mysql/promise';
+import createOpenTelemetryAdapter, {
+  createOpenTelemetryAdapter as namedCreateOpenTelemetryAdapter
+} from '@nublox/mysql/otel';
 
 const require = createRequire(import.meta.url);
 const callbackCjs = require('@nublox/mysql');
 const promiseCjs = require('@nublox/mysql/promise');
+const otelCjs = require('@nublox/mysql/otel');
 
 assert.equal(mysql, callbackCjs);
 assert.equal(promiseMysql, promiseCjs);
+assert.equal(createOpenTelemetryAdapter, otelCjs);
+assert.equal(namedCreateOpenTelemetryAdapter, otelCjs.createOpenTelemetryAdapter);
 
 assert.equal(createConnection, callbackCjs.createConnection);
 assert.equal(createPool, callbackCjs.createPool);
