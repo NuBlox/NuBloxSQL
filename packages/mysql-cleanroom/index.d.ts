@@ -278,4 +278,10 @@ export const DEFAULT_LIMITS: Readonly<{
   streamHighWaterMark: number;
 }>;
 
+export const OBSERVABILITY_CHANNELS: Readonly<{
+  connection: 'nublox.mysql.connection';
+  statement: 'nublox.mysql.statement';
+  pool: 'nublox.mysql.pool';
+}>;
+
 export const protocol: Readonly<Record<string, unknown>>;
