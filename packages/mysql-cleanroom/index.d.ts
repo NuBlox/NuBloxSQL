@@ -30,6 +30,10 @@ export interface ConnectionConfig {
   characterSet?: number;
   maxPacketSize?: number;
   maxPayloadBytes?: number;
+  maxRows?: number;
+  maxResultBytes?: number;
+  maxRowBytes?: number;
+  streamHighWaterMark?: number;
   serverPublicKey?: string;
   getServerPublicKey?: boolean;
   signal?: AbortSignalLike;
@@ -40,12 +44,30 @@ export interface OperationOptions {
   signal?: AbortSignalLike;
 }
 
+export interface QueryOptions extends OperationOptions {
+  maxRows?: number;
+  maxResultBytes?: number;
+  maxRowBytes?: number;
+}
+
+export interface StreamQueryOptions extends QueryOptions {
+  highWaterMark?: number;
+}
+
 export interface PoolAcquireOptions {
   timeout?: number;
   signal?: AbortSignalLike;
 }
 
 export interface PoolOperationOptions extends OperationOptions {
+  acquire?: PoolAcquireOptions;
+}
+
+export interface PoolQueryOptions extends QueryOptions {
+  acquire?: PoolAcquireOptions;
+}
+
+export interface PoolStreamQueryOptions extends StreamQueryOptions {
   acquire?: PoolAcquireOptions;
 }
 
@@ -92,6 +114,13 @@ export interface QueryResult<Row = Record<string, unknown>> {
   warningCount: number;
 }
 
+export interface StreamCommandResult {
+  affectedRows: number | bigint;
+  insertId: number | bigint;
+  serverStatus: number;
+  warningCount: number;
+}
+
 export interface ResetResult {
   serverStatus: number;
   warningCount: number;
@@ -100,6 +129,39 @@ export interface ResetResult {
 export class MySqlError extends Error {
   readonly code: number | string | null;
   readonly sqlState: string | null;
+}
+
+export class MySqlResultLimitError extends RangeError {
+  readonly code: string;
+  readonly limit: number;
+  readonly observed: number;
+}
+
+export class ResultStream<Row = Record<string, unknown>> implements AsyncIterable<Row> {
+  readonly connection: Connection;
+  fields: Field[] | null;
+  affectedRows: number | bigint;
+  insertId: number | bigint;
+  serverStatus: number;
+  warningCount: number;
+  rowCount: number;
+  byteCount: number;
+
+  destroy(error?: Error): this;
+  pause(): this;
+  resume(): this;
+  [Symbol.asyncIterator](): AsyncIterator<Row>;
+
+  on(event: 'data', listener: (row: Row) => void): this;
+  on(event: 'fields', listener: (fields: Field[]) => void): this;
+  on(event: 'result', listener: (result: StreamCommandResult) => void): this;
+  on(event: 'end' | 'close', listener: () => void): this;
+  on(event: 'error', listener: (error: Error) => void): this;
+  once(event: 'data', listener: (row: Row) => void): this;
+  once(event: 'fields', listener: (fields: Field[]) => void): this;
+  once(event: 'result', listener: (result: StreamCommandResult) => void): this;
+  once(event: 'end' | 'close', listener: () => void): this;
+  once(event: 'error', listener: (error: Error) => void): this;
 }
 
 export class PreparedStatement {
@@ -124,6 +186,10 @@ export class Connection {
   constructor(config: ConnectionConfig);
 
   readonly config: ConnectionConfig;
+  readonly maxRows: number;
+  readonly maxResultBytes: number;
+  readonly maxRowBytes: number;
+  readonly streamHighWaterMark: number;
   connected: boolean;
   ended: boolean;
   secure: boolean;
@@ -133,8 +199,12 @@ export class Connection {
   connect(): Promise<this>;
   query<Row = Record<string, unknown>>(
     sql: string,
-    options?: OperationOptions
+    options?: QueryOptions
   ): Promise<QueryResult<Row>>;
+  queryStream<Row = Record<string, unknown>>(
+    sql: string,
+    options?: StreamQueryOptions
+  ): ResultStream<Row>;
   prepare(sql: string, options?: OperationOptions): Promise<PreparedStatement>;
   resetSession(options?: OperationOptions): Promise<QueryResult>;
 
@@ -177,8 +247,12 @@ export class Pool {
   releaseConnection(connection: Connection): void;
   query<Row = Record<string, unknown>>(
     sql: string,
-    options?: PoolOperationOptions
+    options?: PoolQueryOptions
   ): Promise<QueryResult<Row>>;
+  queryStream<Row = Record<string, unknown>>(
+    sql: string,
+    options?: PoolStreamQueryOptions
+  ): Promise<ResultStream<Row>>;
   execute<Row = Record<string, unknown>>(
     sql: string,
     params?: readonly unknown[],
@@ -196,5 +270,12 @@ export class Pool {
 
 export function createConnection(config: ConnectionConfig): Connection;
 export function createPool(config: PoolConfig): Pool;
+
+export const DEFAULT_LIMITS: Readonly<{
+  maxRows: number;
+  maxResultBytes: number;
+  maxRowBytes: number;
+  streamHighWaterMark: number;
+}>;
 
 export const protocol: Readonly<Record<string, unknown>>;
