@@ -68,6 +68,18 @@ function testBackpressurePrimitive() {
   assert.ok(destroyed);
 }
 
+function testCompletionRestoresSocketFlow() {
+  var socket = fakeSocket();
+  var connection = { socket: socket, ended: false, _queryState: null };
+  var state = {};
+  var stream = new mysql.ResultStream(connection, state, { highWaterMark: 1 });
+  stream._pushRow({ id: 1 }, 3);
+  assert.strictEqual(socket.pauseCount, 1);
+  var before = socket.resumeCount;
+  stream._complete(2, 0);
+  assert.strictEqual(socket.resumeCount, before + 1);
+}
+
 function testQueryStreamStartsProtocolOperation() {
   var connection = mysql.createConnection({ user: 'test', maxRows: 10, maxResultBytes: 1024, maxRowBytes: 128 });
   var socket = fakeSocket();
@@ -92,6 +104,7 @@ Promise.resolve()
   .then(testDefaultLimits)
   .then(testLimitErrors)
   .then(testBackpressurePrimitive)
+  .then(testCompletionRestoresSocketFlow)
   .then(testQueryStreamStartsProtocolOperation)
   .then(testInvalidLimitsFailEarly)
   .then(function () { console.log('ok - clean-room streaming/resource-limit contract'); })
