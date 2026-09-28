@@ -3,8 +3,8 @@
 var assert = require('assert');
 var postgres = require('..');
 
-async function main() {
-  var connection = postgres.createConnection({
+function connectionConfig() {
+  return {
     host: process.env.PGHOST || '127.0.0.1',
     port: Number(process.env.PGPORT || 5432),
     user: process.env.PGUSER || 'postgres',
@@ -14,7 +14,11 @@ async function main() {
     connectTimeout: 10000,
     cancelTimeout: 3000,
     cancelGraceTimeout: 3000
-  });
+  };
+}
+
+async function main() {
+  var connection = postgres.createConnection(connectionConfig());
 
   await connection.connect();
   assert.strictEqual(connection.connected, true);
@@ -94,6 +98,50 @@ async function main() {
   var rows = await connection.query('SELECT id, name, active FROM nublox_rc_test ORDER BY id');
   assert.deepStrictEqual(rows.rows.map(function (row) { return [row.id, row.name, row.active]; }), [[1, 'alpha', true], [2, 'beta', false]]);
 
+  await connection.query('DROP TABLE IF EXISTS nublox_pool_tx_test');
+  await connection.query('CREATE TABLE nublox_pool_tx_test(id int primary key)');
+
+  var pool = postgres.createPool(Object.assign(connectionConfig(), {
+    connectionLimit: 1,
+    maxIdle: 1,
+    idleTimeout: 0,
+    acquireTimeout: 3000
+  }));
+
+  var borrower = await pool.getConnection();
+  var pooledProcessId = borrower.backendKeyData.processId;
+  await borrower.query('CREATE TEMP TABLE nublox_pool_leak(value int)');
+  await borrower.query("SET application_name = 'borrower-leak'");
+  await pool.releaseConnection(borrower);
+  assert.strictEqual(pool.idleCount, 1);
+
+  var reused = await pool.getConnection();
+  assert.strictEqual(reused.backendKeyData.processId, pooledProcessId);
+  var cleared = await reused.query("SELECT to_regclass('pg_temp.nublox_pool_leak') IS NULL AS cleared, current_setting('application_name') <> 'borrower-leak' AS app_reset");
+  assert.strictEqual(cleared.rows[0].cleared, true);
+  assert.strictEqual(cleared.rows[0].app_reset, true);
+  await pool.releaseConnection(reused);
+
+  await pool.withTransaction(async function (tx) {
+    await tx.query('INSERT INTO nublox_pool_tx_test(id) VALUES (1)');
+    await tx.savepoint('before_second');
+    await tx.query('INSERT INTO nublox_pool_tx_test(id) VALUES (2)');
+    await tx.rollbackToSavepoint('before_second');
+    await tx.releaseSavepoint('before_second');
+  }, { isolationLevel: 'serializable', readOnly: false });
+
+  var committed = await connection.query('SELECT id FROM nublox_pool_tx_test ORDER BY id');
+  assert.deepStrictEqual(committed.rows.map(function (row) { return row.id; }), [1]);
+
+  await assert.rejects(pool.withTransaction(async function (tx) {
+    await tx.query('INSERT INTO nublox_pool_tx_test(id) VALUES (3)');
+    throw new Error('force transaction rollback');
+  }), /force transaction rollback/);
+  var rolledBack = await connection.query('SELECT id FROM nublox_pool_tx_test ORDER BY id');
+  assert.deepStrictEqual(rolledBack.rows.map(function (row) { return row.id; }), [1]);
+
+  await pool.end();
+  await connection.query('DROP TABLE nublox_pool_tx_test');
   await connection.end();
 }
 
