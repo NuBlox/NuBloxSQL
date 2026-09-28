@@ -37,7 +37,6 @@ function errorMetadata(error) {
   if (!error) return null;
   return {
     name: error.name || 'Error',
-    message: error.message || String(error),
     code: error.code === undefined ? null : error.code,
     sqlState: error.sqlState === undefined ? null : error.sqlState
   };
