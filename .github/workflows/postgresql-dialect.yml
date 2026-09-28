@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: npm install --ignore-scripts
-      - run: node packages/postgresql/test/contract.js
+      - run: npm run test --workspace @nublox/postgresql
       - run: npm run test:types
       - run: npm pack --dry-run
         working-directory: packages/postgresql
