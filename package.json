@@ -124,6 +124,7 @@
     "test:pool-maintenance": "node test/integration/pool-minimum-idle-maintenance-smoke.js",
     "test:pool-warmup": "node test/integration/pool-warmup-smoke.js",
     "test:reset-connection": "node test/integration/reset-connection-smoke.js",
+    "test:session-state": "node test/integration/session-state-tracking-smoke.js",
     "test:stream-backpressure": "node test/integration/stream-backpressure-smoke.js",
     "test:temporal-json-parameters": "node test/integration/temporal-json-parameters-smoke.js",
     "test:typed-parameters": "node test/integration/typed-parameters-smoke.js",
