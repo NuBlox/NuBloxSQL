@@ -24,11 +24,11 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-      - name: Verify all v1 packages
+      - name: Verify workspace packages
         run: npm run verify
       - name: Assert proprietary dependency boundary
         run: npm run v1:proprietary-audit
-      - name: Assert stable release boundary
+      - name: Assert stable v1 release boundary
         run: npm run v1:release-audit
       - name: Verify MySQL publish surface
         run: npm pack --dry-run --workspace @nublox/mysql
@@ -36,3 +36,5 @@ jobs:
         run: npm pack --dry-run --workspace @nublox/sql-core
       - name: Verify PostgreSQL publish surface
         run: npm pack --dry-run --workspace @nublox/postgresql
+      - name: Verify SQLite publish surface
+        run: npm pack --dry-run --workspace @nublox/sqlite

@@ -1,0 +1,24 @@
+{
+  "name": "@nublox/sqlite",
+  "version": "0.1.0",
+  "description": "Zero-dependency embedded SQLite adapter for NuBloxSQL using Node.js node:sqlite.",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Stephen J T Spittal",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NuBlox/NuBloxSQL.git",
+    "directory": "packages/sqlite"
+  },
+  "homepage": "https://github.com/NuBlox/NuBloxSQL/tree/main/packages/sqlite#readme",
+  "bugs": { "url": "https://github.com/NuBlox/NuBloxSQL/issues" },
+  "keywords": ["sqlite", "sql", "database", "embedded", "driver", "nublox"],
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": { "types": "./index.d.ts", "require": "./index.js", "default": "./index.js" },
+    "./package.json": "./package.json"
+  },
+  "files": ["index.js", "index.d.ts", "lib", "README.md", "LICENSE", "NOTICE"],
+  "engines": { "node": ">=22.16.0" },
+  "scripts": { "test": "node test/runtime.js && node test/errors.js" }
+}
