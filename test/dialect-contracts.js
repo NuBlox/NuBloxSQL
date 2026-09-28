@@ -3,7 +3,8 @@
 var assert = require('assert');
 var sqlCore = require('../packages/sql-core');
 var mysql = require('../packages/mysql/lib/SqlDialectDescriptor');
-var postgresql = require('../packages/postgresql');
+var postgresqlPackage = require('../packages/postgresql');
+var postgresql = postgresqlPackage.descriptor || postgresqlPackage;
 
 sqlCore.assertDialectDescriptor(mysql);
 sqlCore.assertDialectDescriptor(postgresql);
