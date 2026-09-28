@@ -136,19 +136,102 @@ function run() {
 }
 
 function enableGtidMode() {
-  return root.query("SET GLOBAL ENFORCE_GTID_CONSISTENCY = 'WARN'")
-    .then(function() {
-      return root.query("SET GLOBAL ENFORCE_GTID_CONSISTENCY = 'ON'");
-    })
-    .then(function() {
-      return root.query("SET GLOBAL GTID_MODE = 'OFF_PERMISSIVE'");
-    })
-    .then(function() {
-      return root.query("SET GLOBAL GTID_MODE = 'ON_PERMISSIVE'");
-    })
-    .then(function() {
-      return root.query("SET GLOBAL GTID_MODE = 'ON'");
+  return root.query(
+    'SELECT @@global.gtid_mode AS gtidMode, ' +
+    '@@global.enforce_gtid_consistency AS enforceGtidConsistency'
+  )
+    .then(function(result) {
+      var row = result[0][0];
+      var mode = String(row.gtidMode).toUpperCase();
+      var enforce = String(row.enforceGtidConsistency).toUpperCase();
+
+      if (mode === 'ON') {
+        if (enforce !== 'ON') {
+          throw new Error('gtid_mode=ON without enforce_gtid_consistency=ON');
+        }
+        return;
+      }
+
+      return enableGtidConsistency(enforce)
+        .then(function() {
+          return advanceGtidMode(mode);
+        });
     });
+}
+
+function enableGtidConsistency(current) {
+  if (current === 'ON') {
+    return global.Promise.resolve();
+  }
+
+  var work = global.Promise.resolve();
+
+  if (current === 'OFF') {
+    work = work.then(function() {
+      return root.query("SET GLOBAL ENFORCE_GTID_CONSISTENCY = 'WARN'");
+    });
+  } else if (current !== 'WARN') {
+    return global.Promise.reject(new Error('Unexpected enforce_gtid_consistency state: ' + current));
+  }
+
+  return work.then(function() {
+    return root.query("SET GLOBAL ENFORCE_GTID_CONSISTENCY = 'ON'");
+  });
+}
+
+function advanceGtidMode(current) {
+  if (current === 'ON') {
+    return global.Promise.resolve();
+  }
+
+  if (current === 'OFF') {
+    return root.query("SET GLOBAL GTID_MODE = 'OFF_PERMISSIVE'")
+      .then(function() {
+        return advanceGtidMode('OFF_PERMISSIVE');
+      });
+  }
+
+  if (current === 'OFF_PERMISSIVE') {
+    return root.query("SET GLOBAL GTID_MODE = 'ON_PERMISSIVE'")
+      .then(function() {
+        return advanceGtidMode('ON_PERMISSIVE');
+      });
+  }
+
+  if (current === 'ON_PERMISSIVE') {
+    return waitForAnonymousTransactions(20)
+      .then(function() {
+        return root.query("SET GLOBAL GTID_MODE = 'ON'");
+      });
+  }
+
+  return global.Promise.reject(new Error('Unexpected gtid_mode state: ' + current));
+}
+
+function waitForAnonymousTransactions(attemptsRemaining) {
+  return root.query("SHOW GLOBAL STATUS LIKE 'Ongoing_anonymous_transaction_count'")
+    .then(function(result) {
+      var rows = result[0];
+      var count = rows && rows[0] ? Number(rows[0].Value) : NaN;
+
+      if (count === 0) {
+        return;
+      }
+
+      if (!Number.isFinite(count) || attemptsRemaining <= 1) {
+        throw new Error('Anonymous transactions did not drain before enabling gtid_mode=ON: ' + count);
+      }
+
+      return delay(50).then(function() {
+        return waitForAnonymousTransactions(attemptsRemaining - 1);
+      });
+    });
+}
+
+function delay(milliseconds) {
+  return new global.Promise(function(resolve) {
+    setTimeout(resolve, milliseconds);
+  });
 }
 
 function queryReplication(sql) {
