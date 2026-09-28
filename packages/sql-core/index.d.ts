@@ -1,9 +1,17 @@
 export type SqlDialectFamily =
   | 'mysql'
+  | 'mariadb'
   | 'postgresql'
+  | 'cockroachdb'
   | 'sqlite'
+  | 'duckdb'
   | 'sqlserver'
   | 'oracle'
+  | 'db2'
+  | 'snowflake'
+  | 'redshift'
+  | 'bigquery'
+  | 'clickhouse'
   | (string & {});
 
 export interface SqlDialectIdentity {
@@ -11,9 +19,42 @@ export interface SqlDialectIdentity {
   name: string;
   serverVersion?: string;
   protocolVersion?: string;
+  edition?: string;
+  distribution?: string;
 }
 
 export type SqlCapabilityMap = Readonly<Record<string, boolean>>;
+
+export type SqlCapabilityLevel =
+  | 'native'
+  | 'emulated'
+  | 'conditional'
+  | 'unsupported'
+  | 'unknown';
+
+export interface SqlCapabilityEntry {
+  readonly name: string;
+  readonly level: SqlCapabilityLevel;
+  readonly since?: string;
+  readonly until?: string;
+  readonly requires?: readonly string[];
+  readonly notes?: string;
+  readonly extension?: unknown;
+}
+
+export type SqlCapabilityProfileInput = Readonly<Record<string,
+  | boolean
+  | {
+      level?: SqlCapabilityLevel;
+      since?: string;
+      until?: string;
+      requires?: readonly string[];
+      notes?: string;
+      extension?: unknown;
+    }
+>>;
+
+export type SqlCapabilityProfile = Readonly<Record<string, SqlCapabilityEntry>>;
 
 export interface SqlDialectServices {
   quoteIdentifier(identifier: string): string;
@@ -23,8 +64,10 @@ export interface SqlDialectServices {
 export interface SqlDialectDescriptor {
   readonly identity: Readonly<SqlDialectIdentity>;
   readonly capabilities: SqlCapabilityMap;
+  readonly capabilityProfile: SqlCapabilityProfile | null;
   readonly services: SqlDialectServices;
   supports(capability: string): boolean;
+  capability(capability: string): SqlCapabilityEntry;
 }
 
 export interface SqlObjectName {
@@ -119,28 +162,88 @@ export interface SqlAdapterExtension<T = unknown> {
 
 export const DIALECT_FAMILIES: Readonly<{
   MYSQL: 'mysql';
+  MARIADB: 'mariadb';
   POSTGRESQL: 'postgresql';
+  COCKROACHDB: 'cockroachdb';
   SQLITE: 'sqlite';
+  DUCKDB: 'duckdb';
   SQLSERVER: 'sqlserver';
   ORACLE: 'oracle';
+  DB2: 'db2';
+  SNOWFLAKE: 'snowflake';
+  REDSHIFT: 'redshift';
+  BIGQUERY: 'bigquery';
+  CLICKHOUSE: 'clickhouse';
+}>;
+
+export const CAPABILITY_LEVELS: Readonly<{
+  NATIVE: 'native';
+  EMULATED: 'emulated';
+  CONDITIONAL: 'conditional';
+  UNSUPPORTED: 'unsupported';
+  UNKNOWN: 'unknown';
 }>;
 
 export const CAPABILITIES: Readonly<{
+  CONNECTION_POOLING: 'connectionPooling';
+  TLS: 'tls';
+  MUTUAL_TLS: 'mutualTls';
   PREPARED_STATEMENTS: 'preparedStatements';
+  SERVER_PREPARED: 'serverPreparedStatements';
+  NAMED_PARAMETERS: 'namedParameters';
+  POSITIONAL_PARAMETERS: 'positionalParameters';
+  BINARY_PROTOCOL: 'binaryProtocol';
   SERVER_SIDE_CURSORS: 'serverSideCursors';
+  STREAMING_RESULTS: 'streamingResults';
+  QUERY_CANCELLATION: 'queryCancellation';
+  QUERY_TIMEOUT: 'queryTimeout';
+  MULTI_STATEMENT: 'multiStatement';
+  MULTI_RESULT: 'multiResult';
+  MULTIPLE_ACTIVE_RESULTS: 'multipleActiveResults';
   SAVEPOINTS: 'savepoints';
+  TRANSACTION_ISOLATION: 'transactionIsolation';
+  READ_ONLY_TRANSACTIONS: 'readOnlyTransactions';
+  TWO_PHASE_COMMIT: 'twoPhaseCommit';
+  TRANSACTIONAL_DDL: 'transactionalDdl';
   CATALOGS: 'catalogs';
   SCHEMAS: 'schemas';
-  TRANSACTIONAL_DDL: 'transactionalDdl';
-  QUERY_CANCELLATION: 'queryCancellation';
-  CHANGE_DATA_CAPTURE: 'changeDataCapture';
+  GENERATED_KEYS: 'generatedKeys';
+  RETURNING: 'returning';
+  UPSERT: 'upsert';
+  MERGE: 'merge';
+  CTE: 'cte';
+  RECURSIVE_CTE: 'recursiveCte';
+  WINDOW_FUNCTIONS: 'windowFunctions';
   NATIVE_JSON: 'nativeJson';
-  MULTIPLE_ACTIVE_RESULTS: 'multipleActiveResults';
+  ARRAYS: 'arrays';
+  UUID: 'uuid';
+  SPATIAL: 'spatial';
+  FULL_TEXT_SEARCH: 'fullTextSearch';
+  BULK_LOAD: 'bulkLoad';
+  COPY_PROTOCOL: 'copyProtocol';
+  CHANGE_DATA_CAPTURE: 'changeDataCapture';
+  NOTIFICATIONS: 'notifications';
+  SESSION_STATE: 'sessionState';
+  ROLE_SWITCHING: 'roleSwitching';
+  ADVISORY_LOCKS: 'advisoryLocks';
+  STORED_PROCEDURES: 'storedProcedures';
+  STORED_FUNCTIONS: 'storedFunctions';
+  SEQUENCES: 'sequences';
+  IDENTITY_COLUMNS: 'identityColumns';
+  PARTITIONING: 'partitioning';
+  MATERIALIZED_VIEWS: 'materializedViews';
+  EXTENSIONS: 'extensions';
+  EXPLAIN: 'explain';
+  EXPLAIN_ANALYZE: 'explainAnalyze';
 }>;
+
+export function createCapabilityProfile(input: SqlCapabilityProfileInput): SqlCapabilityProfile;
+export function capabilityProfileToBooleanMap(profile: SqlCapabilityProfile): SqlCapabilityMap;
 
 export function createDialectDescriptor(options: {
   identity: SqlDialectIdentity;
   capabilities?: Record<string, boolean>;
+  capabilityProfile?: SqlCapabilityProfileInput;
   services: SqlDialectServices;
 }): SqlDialectDescriptor;
 
