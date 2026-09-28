@@ -104,7 +104,7 @@ function createConnection(threadId) {
   return {
     Promise  : global.Promise,
     threadId : threadId,
-    query: function query() {
+    query    : function query() {
       return global.Promise.resolve([[], []]);
     },
     beginTransaction: function beginTransaction() {
