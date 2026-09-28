@@ -12,7 +12,7 @@ The decoder is exported from the optional package subpath:
 var binlog = require('@nublox/mysql/binlog');
 var decoder = binlog.createDecoder({
   maxEventSize: 64 * 1024 * 1024,
-  checksumBytes: 4
+  checksumBytes: 'auto'
 });
 
 var event = decoder.decode(buffer);
@@ -48,7 +48,7 @@ var dump = connection.binlogDump({
   position: 4,
   serverId: 41001,
   decoderOptions: {
-    checksumBytes: 4
+    checksumBytes: 'auto'
   }
 });
 
@@ -81,7 +81,8 @@ Before event-specific parsing it validates:
 2. the declared event size is at least the common header size;
 3. the event does not exceed the configured `maxEventSize`;
 4. the complete declared event is present;
-5. configured checksum bytes fit inside the event payload.
+5. checksum/footer bytes fit inside the event payload;
+6. configured CRC32 verification succeeds before event-specific payload interpretation.
 
 Event-specific decoders then perform explicit bounds checks before every variable-length read. Malformed data produces a deterministic `BINLOG_*` error instead of an unchecked buffer read or uncontrolled allocation. A malformed event received from a live dump is connection-fatal because continuing after loss of event framing could silently corrupt CDC state.
 
@@ -91,25 +92,72 @@ The request packet also validates the protocol-width boundaries for the 32-bit p
 
 ## Checksums
 
-`checksumBytes` declares how many trailing bytes belong to the event checksum and must therefore be excluded from event-specific payload decoding. The current decoder preserves those bytes but does not yet validate the checksum algorithm.
+NuBloxSQL supports both explicit and format-description-driven checksum handling.
 
-Applications can query the source's active `binlog_checksum` value and pass `checksumBytes: 4` for CRC32 streams. Automatic format-description checksum discovery and CRC32 verification are the next checksum tranche.
+### Automatic discovery
+
+Set:
+
+```js
+var decoder = binlog.createDecoder({
+  checksumBytes: 'auto'
+});
+```
+
+When the decoder receives a checksum-aware `FORMAT_DESCRIPTION_EVENT`, it reads the checksum algorithm descriptor and carries that state forward to subsequent events. MySQL introduced the checksum-aware format at server version 5.6.1.
+
+Current algorithm states are exposed through `decoder.checksumAlgorithm` and each decoded event's `checksumAlgorithm` field:
+
+- `unknown` before an automatic decoder has observed a format-description event;
+- `undefined` for pre-checksum server formats;
+- `off` when subsequent events are checksum-free;
+- `crc32` when subsequent events carry CRC32 footers;
+- `manual` for an explicitly configured non-CRC footer width.
+
+Automatic mode verifies CRC32 by default. A mismatch raises `BINLOG_CHECKSUM_MISMATCH` before the event-specific body is decoded.
+
+MySQL checksum-aware format-description events themselves carry a four-byte CRC footer even when their descriptor is `OFF`. The decoder follows that rule and masks the mutable `LOG_EVENT_BINLOG_IN_USE_F` bit when verifying the format-description CRC, matching the server's checksum semantics.
+
+### Explicit mode and resume points
+
+An application can continue to provide a numeric footer width:
+
+```js
+var decoder = binlog.createDecoder({
+  checksumBytes: 4,
+  verifyChecksum: true
+});
+```
+
+Numeric `checksumBytes` preserves the existing explicit behaviour. `verifyChecksum: true` is supported for the four-byte CRC32 footer.
+
+Automatic discovery requires the decoder to see the relevant `FORMAT_DESCRIPTION_EVENT`. A replication consumer that resumes from the middle of an existing binlog file without replaying its format-description event should persist the previously learned checksum state or configure `checksumBytes` explicitly for that resume session.
 
 ## Validation
 
-The live CDC workflow starts MySQL 8.4 and 9.7, grants replication privileges to the CI account, records the current binary-log coordinates, performs real DDL/DML, requests a non-blocking `COM_BINLOG_DUMP` stream from those coordinates and verifies that change events are received and decoded.
+The live CDC workflow starts MySQL 8.4 and 9.7, grants replication privileges to the CI account, records binary-log coordinates, performs real DDL/DML, requests a non-blocking `COM_BINLOG_DUMP` stream and verifies that change events are received and decoded.
 
-This sits alongside the existing Node 22/24/26 unit/package matrix, CodeQL, dependency audit and protocol fuzzing.
+Checksum unit coverage includes:
+
+- the standard CRC32 test vector;
+- CRC32 format-description discovery;
+- checksum-off format-description state;
+- CRC verification for following events;
+- deterministic corruption rejection;
+- post-write `BINLOG_IN_USE` flag mutation;
+- pre-5.6.1 checksum-unaware formats;
+- unsupported checksum algorithm rejection.
+
+This sits alongside the existing Node 22/24/26 unit/package matrix, MySQL 8.4/9.7 live validation, CodeQL, dependency audit and protocol fuzzing.
 
 ## M7 follow-on work
 
 Remaining CDC tranches are:
 
-1. format-description state, automatic checksum discovery and CRC32 verification;
-2. GTID and previous-GTID event decoding plus `COM_BINLOG_DUMP_GTID`;
-3. row-event framing for write/update/delete events;
-4. table-map metadata interpretation and typed row-image decoding;
-5. reconnect/resume checkpoints using binlog filename/position and later GTID sets;
-6. CDC diagnostics/OpenTelemetry without row-value leakage by default.
+1. GTID and previous-GTID event decoding plus `COM_BINLOG_DUMP_GTID`;
+2. row-event framing for write/update/delete events;
+3. table-map metadata interpretation and typed row-image decoding;
+4. reconnect/resume checkpoints using binlog filename/position and later GTID sets;
+5. CDC diagnostics/OpenTelemetry without row-value leakage by default.
 
 Server-side cursor / streaming prepared-result support remains the other major M7 protocol capability after CDC.
