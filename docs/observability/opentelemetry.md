@@ -56,6 +56,21 @@ Transaction retry metrics also include `nublox.mysql.retry.attempt` and `nublox.
 
 Span names use `<operation> <database>` when a database is configured, otherwise `<operation> <host>` or the operation alone.
 
+## Prepared execute spans
+
+Native prepared-statement execution publishes the same lifecycle surface with `db.operation.name = execute`. Instrumentation lives at the protocol `Execute` sequence boundary, so it automatically covers:
+
+- connection `execute()`;
+- pool `execute()`;
+- Promise execute APIs;
+- cached prepared statements;
+- explicitly prepared/manual statements;
+- internal safe reprepare attempts.
+
+Each actual `COM_STMT_EXECUTE` attempt receives its own span and duration measurement. A stale prepared handle that triggers the existing one-shot safe reprepare therefore produces a failed execute span followed by the replacement execute span, making the recovery visible rather than hiding it.
+
+SQL text remains subject to the adapter's existing `captureQueryText` policy and bind values are never published. Execute durations participate in `db.client.operation.duration` and the optional slow-query policy.
+
 ## Transaction spans
 
 `withTransaction()` publishes one operation lifecycle around the complete transaction orchestration, including any configured deadlock or lock-wait retries. The OpenTelemetry adapter therefore creates one `transaction` client span rather than one span per retry attempt.
@@ -126,9 +141,9 @@ When enabled, SQL is emitted as `db.query.text`, and slow-query diagnostics may 
 
 ## Current coverage
 
-The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, `nublox.mysql.query.error`, and `nublox.mysql.transaction.retry`, plus pool wait/use/state telemetry through `instrumentPool()`. Text queries and complete `withTransaction()` operations now use the common lifecycle surface.
+The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, `nublox.mysql.query.error`, and `nublox.mysql.transaction.retry`, plus pool wait/use/state telemetry through `instrumentPool()`. Text queries, prepared execution and complete `withTransaction()` operations now use the common lifecycle surface.
 
-Prepared execution, connection creation/timeouts, and W3C trace-context propagation through MySQL query attributes remain separate M6 tranches. They will continue to build on the adapter rather than adding OpenTelemetry dependencies to protocol hot paths.
+Connection creation/timeouts and W3C trace-context propagation through MySQL query attributes remain separate M6 tranches. They will continue to build on the adapter rather than adding OpenTelemetry dependencies to protocol hot paths.
 
 ## Custom tracer and meter
 
