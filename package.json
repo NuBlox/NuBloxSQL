@@ -30,6 +30,7 @@
     "promise",
     "typescript",
     "prepared-statements",
+    "opentelemetry",
     "nublox"
   ],
   "main": "index.js",
@@ -46,6 +47,12 @@
       "import": "./promise.mjs",
       "require": "./promise.js",
       "default": "./promise.js"
+    },
+    "./otel": {
+      "types": "./otel.d.ts",
+      "import": "./otel.mjs",
+      "require": "./otel.js",
+      "default": "./otel.js"
     },
     "./package.json": "./package.json"
   },
@@ -81,7 +88,10 @@
     "index.d.ts",
     "promise.js",
     "promise.mjs",
-    "promise.d.ts"
+    "promise.d.ts",
+    "otel.js",
+    "otel.mjs",
+    "otel.d.ts"
   ],
   "engines": {
     "node": ">=22"
