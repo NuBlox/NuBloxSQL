@@ -42,7 +42,11 @@ async function healthyConnectionStillWorksAfterFailures() {
   await connection.connect();
   var result = await connection.query('SELECT current_setting(\'server_version_num\')::int4 AS version_num, 1::int4 AS ok');
   assert.strictEqual(result.rows[0].ok, 1);
-  assert.ok(Number(result.rows[0].version_num) >= 150000);
+  var versionNum = Number(result.rows[0].version_num);
+  assert.ok(versionNum >= 150000);
+  if (process.env.PG_EXPECTED_MAJOR) {
+    assert.strictEqual(Math.floor(versionNum / 10000), Number(process.env.PG_EXPECTED_MAJOR));
+  }
   await connection.end();
 }
 
