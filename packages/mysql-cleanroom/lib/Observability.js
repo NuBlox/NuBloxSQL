@@ -29,10 +29,6 @@ function targetId(target, prefix) {
   return target._nubloxDiagnosticId;
 }
 
-function now() {
-  return process.hrtime.bigint();
-}
-
 function durationMilliseconds(startedAt) {
   return Number(process.hrtime.bigint() - startedAt) / 1000000;
 }
@@ -50,8 +46,10 @@ function errorMetadata(error) {
 function resultMetadata(result) {
   if (!result || typeof result !== 'object') return null;
   var metadata = {};
-  if (Array.isArray(result.rows)) metadata.rowCount = result.rows.length;
-  if (Array.isArray(result.fields)) metadata.fieldCount = result.fields.length;
+  if (result.rowCount !== undefined) metadata.rowCount = result.rowCount;
+  else if (Array.isArray(result.rows)) metadata.rowCount = result.rows.length;
+  if (result.fieldCount !== undefined) metadata.fieldCount = result.fieldCount;
+  else if (Array.isArray(result.fields)) metadata.fieldCount = result.fields.length;
   if (result.affectedRows !== undefined) metadata.affectedRows = result.affectedRows;
   if (result.warningCount !== undefined) metadata.warningCount = result.warningCount;
   if (result.connected !== undefined) metadata.connected = Boolean(result.connected);
@@ -69,7 +67,7 @@ function startContext(channelName, operation, target, prefix, details) {
     channelName: CHANNEL_NAMES[channelName],
     operation: operation,
     targetId: targetId(target, prefix),
-    startedAt: now(),
+    startedAt: process.hrtime.bigint(),
     completed: false
   };
   publish(context.channel, {
@@ -108,8 +106,8 @@ function isStream(value) {
 function observeStream(stream, context) {
   function complete() {
     finishContext(context, 'success', {
-      rows: new Array(stream.rowCount || 0),
-      fields: stream.fields || [],
+      rowCount: stream.rowCount || 0,
+      fieldCount: stream.fields ? stream.fields.length : 0,
       affectedRows: stream.affectedRows,
       warningCount: stream.warningCount
     });
