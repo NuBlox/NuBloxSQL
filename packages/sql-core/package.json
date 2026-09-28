@@ -1,0 +1,47 @@
+{
+  "name": "@nublox/sql-core",
+  "version": "0.1.0",
+  "description": "Vendor-neutral SQL contracts and dialect primitives for NuBloxSQL adapters.",
+  "license": "Apache-2.0",
+  "author": "Stephen J T Spittal",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NuBlox/NuBloxSQL.git",
+    "directory": "packages/sql-core"
+  },
+  "homepage": "https://github.com/NuBlox/NuBloxSQL/tree/main/packages/sql-core#readme",
+  "bugs": {
+    "url": "https://github.com/NuBlox/NuBloxSQL/issues"
+  },
+  "keywords": [
+    "sql",
+    "database",
+    "dialect",
+    "contracts",
+    "typescript",
+    "nublox"
+  ],
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "require": "./index.js",
+      "default": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node test/contract.js"
+  }
+}

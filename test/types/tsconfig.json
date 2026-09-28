@@ -8,6 +8,7 @@
     "skipLibCheck": true
   },
   "files": [
-    "prepared-cursor.ts"
+    "prepared-cursor.ts",
+    "sql-core.ts"
   ]
 }
