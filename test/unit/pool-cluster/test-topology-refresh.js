@@ -10,7 +10,7 @@ var cluster = common.createPoolCluster({
     assert.ok(Object.isFrozen(current[0]));
     assert.ok(Object.isFrozen(current[0].tags));
 
-    return new Promise(function(resolve) {
+    return new global.Promise(function(resolve) {
       resolveProvider = resolve;
     });
   }
