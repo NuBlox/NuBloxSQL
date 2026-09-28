@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: Verify clean-room protocol and public API contracts
-        run: node packages/mysql-cleanroom/test/protocol.js && node packages/mysql-cleanroom/test/auth.js && node packages/mysql-cleanroom/test/prepared.js && node packages/mysql-cleanroom/test/api.js && node packages/mysql-cleanroom/test/session-reset.js && node packages/mysql-cleanroom/test/streaming.js
+        run: node packages/mysql-cleanroom/test/protocol.js && node packages/mysql-cleanroom/test/auth.js && node packages/mysql-cleanroom/test/prepared.js && node packages/mysql-cleanroom/test/api.js && node packages/mysql-cleanroom/test/session-reset.js && node packages/mysql-cleanroom/test/streaming.js && node packages/mysql-cleanroom/test/operation-control.js
       - name: Assert zero package dependencies
         run: |
           node - <<'NODE'
@@ -82,5 +82,7 @@ jobs:
         run: node packages/mysql-cleanroom/test/live-streaming.js pool
       - name: Result-limit connection safety
         run: node packages/mysql-cleanroom/test/live-streaming.js limits
+      - name: Deadline and cancellation safety
+        run: node packages/mysql-cleanroom/test/live-operation-control.js
       - name: Full clean-room connection, prepared, transaction and pool smoke
         run: node packages/mysql-cleanroom/test/live.js
