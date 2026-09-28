@@ -38,11 +38,14 @@ exports.protocol = {
   encryptCachingSha2Password: auth.encryptCachingSha2Password
 };
 
-var runtime = require('./lib/SessionConnection');
+var runtime = require('./lib/StreamingConnection');
 var pool = require('./lib/Pool');
 exports.Connection = runtime.Connection;
 exports.PreparedStatement = runtime.PreparedStatement;
+exports.ResultStream = require('./lib/ResultStream').ResultStream;
 exports.Pool = pool.Pool;
 exports.MySqlError = require('./lib/Connection').MySqlError;
+exports.MySqlResultLimitError = runtime.MySqlResultLimitError;
+exports.DEFAULT_LIMITS = runtime.DEFAULT_LIMITS;
 exports.createConnection = function createConnection(config) { return new runtime.Connection(config); };
 exports.createPool = function createPool(config) { return new pool.Pool(config); };

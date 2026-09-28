@@ -9,6 +9,7 @@
   },
   "files": [
     "sql-core.ts",
-    "postgresql-dialect.ts"
+    "postgresql-dialect.ts",
+    "mysql-cleanroom.ts"
   ]
 }
