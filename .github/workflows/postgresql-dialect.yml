@@ -32,3 +32,34 @@ jobs:
       - run: npm run test:types
       - run: npm pack --dry-run
         working-directory: packages/postgresql
+
+  live-postgresql-18:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: nublox
+          POSTGRES_PASSWORD: nublox_ci_password
+          POSTGRES_DB: nublox
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nublox -d nublox"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --ignore-scripts
+      - name: Native SCRAM connection and simple query smoke
+        run: npm run test:live --workspace @nublox/postgresql
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: nublox
+          PGPASSWORD: nublox_ci_password
+          PGDATABASE: nublox

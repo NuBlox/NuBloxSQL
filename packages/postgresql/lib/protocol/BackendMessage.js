@@ -4,9 +4,7 @@ var constants = require('./constants');
 
 function readCString(buffer, offset) {
   var end = buffer.indexOf(0, offset);
-  if (end === -1) {
-    throw new Error('Malformed PostgreSQL message: unterminated string');
-  }
+  if (end === -1) throw new Error('Malformed PostgreSQL message: unterminated string');
   return { value: buffer.toString('utf8', offset, end), nextOffset: end + 1 };
 }
 
@@ -14,7 +12,6 @@ function decodeAuthentication(payload) {
   if (payload.length < 4) throw new Error('Malformed PostgreSQL Authentication message');
   var code = payload.readUInt32BE(0);
   var message = { type: 'authentication', code: code };
-
   if (code === constants.AUTHENTICATION.MD5_PASSWORD) {
     if (payload.length !== 8) throw new Error('Malformed PostgreSQL AuthenticationMD5Password message');
     message.salt = Buffer.from(payload.subarray(4, 8));
@@ -22,10 +19,7 @@ function decodeAuthentication(payload) {
     var mechanisms = [];
     var offset = 4;
     while (offset < payload.length) {
-      if (payload[offset] === 0) {
-        offset += 1;
-        break;
-      }
+      if (payload[offset] === 0) { offset += 1; break; }
       var item = readCString(payload, offset);
       mechanisms.push(item.value);
       offset = item.nextOffset;
@@ -37,7 +31,6 @@ function decodeAuthentication(payload) {
   } else if (payload.length !== 4) {
     message.data = Buffer.from(payload.subarray(4));
   }
-
   return message;
 }
 
@@ -51,18 +44,14 @@ function decodeParameterStatus(payload) {
 function decodeBackendKeyData(payload) {
   if (payload.length < 8) throw new Error('Malformed PostgreSQL BackendKeyData message');
   var secretKey = Buffer.from(payload.subarray(4));
-  if (secretKey.length < 4 || secretKey.length > 256) {
-    throw new Error('Malformed PostgreSQL BackendKeyData secret key length');
-  }
+  if (secretKey.length < 4 || secretKey.length > 256) throw new Error('Malformed PostgreSQL BackendKeyData secret key length');
   return { type: 'backendKeyData', processId: payload.readUInt32BE(0), secretKey: secretKey };
 }
 
 function decodeReadyForQuery(payload) {
   if (payload.length !== 1) throw new Error('Malformed PostgreSQL ReadyForQuery message');
   var status = String.fromCharCode(payload[0]);
-  if (status !== 'I' && status !== 'T' && status !== 'E') {
-    throw new Error('Malformed PostgreSQL ReadyForQuery transaction status');
-  }
+  if (status !== 'I' && status !== 'T' && status !== 'E') throw new Error('Malformed PostgreSQL ReadyForQuery transaction status');
   return { type: 'readyForQuery', transactionStatus: status };
 }
 
@@ -82,6 +71,52 @@ function decodeFields(payload, type) {
   throw new Error('Malformed PostgreSQL Error/Notice response: missing terminator');
 }
 
+function decodeRowDescription(payload) {
+  if (payload.length < 2) throw new Error('Malformed PostgreSQL RowDescription message');
+  var count = payload.readUInt16BE(0);
+  var offset = 2;
+  var fields = [];
+  for (var i = 0; i < count; i++) {
+    var name = readCString(payload, offset); offset = name.nextOffset;
+    if (offset + 18 > payload.length) throw new Error('Malformed PostgreSQL RowDescription field');
+    fields.push({
+      name          : name.value,
+      tableOid      : payload.readUInt32BE(offset),
+      columnId      : payload.readInt16BE(offset + 4),
+      dataTypeOid   : payload.readUInt32BE(offset + 6),
+      dataTypeSize  : payload.readInt16BE(offset + 10),
+      typeModifier  : payload.readInt32BE(offset + 12),
+      format        : payload.readUInt16BE(offset + 16)
+    });
+    offset += 18;
+  }
+  if (offset !== payload.length) throw new Error('Malformed PostgreSQL RowDescription message');
+  return { type: 'rowDescription', fields: fields };
+}
+
+function decodeDataRow(payload) {
+  if (payload.length < 2) throw new Error('Malformed PostgreSQL DataRow message');
+  var count = payload.readUInt16BE(0);
+  var offset = 2;
+  var values = [];
+  for (var i = 0; i < count; i++) {
+    if (offset + 4 > payload.length) throw new Error('Malformed PostgreSQL DataRow value length');
+    var length = payload.readInt32BE(offset); offset += 4;
+    if (length === -1) { values.push(null); continue; }
+    if (length < 0 || offset + length > payload.length) throw new Error('Malformed PostgreSQL DataRow value');
+    values.push(Buffer.from(payload.subarray(offset, offset + length)));
+    offset += length;
+  }
+  if (offset !== payload.length) throw new Error('Malformed PostgreSQL DataRow message');
+  return { type: 'dataRow', values: values };
+}
+
+function decodeCommandComplete(payload) {
+  var tag = readCString(payload, 0);
+  if (tag.nextOffset !== payload.length) throw new Error('Malformed PostgreSQL CommandComplete message');
+  return { type: 'commandComplete', tag: tag.value };
+}
+
 function decodeBackendMessage(messageType, payload) {
   switch (messageType) {
     case 'R': return decodeAuthentication(payload);
@@ -90,6 +125,12 @@ function decodeBackendMessage(messageType, payload) {
     case 'Z': return decodeReadyForQuery(payload);
     case 'E': return decodeFields(payload, 'errorResponse');
     case 'N': return decodeFields(payload, 'noticeResponse');
+    case 'T': return decodeRowDescription(payload);
+    case 'D': return decodeDataRow(payload);
+    case 'C': return decodeCommandComplete(payload);
+    case 'I':
+      if (payload.length !== 0) throw new Error('Malformed PostgreSQL EmptyQueryResponse message');
+      return { type: 'emptyQueryResponse' };
     default: return { type: 'unknown', messageType: messageType, payload: Buffer.from(payload) };
   }
 }
