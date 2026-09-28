@@ -118,6 +118,42 @@ telemetry.instrumentPool(pool, {name: 'orders-primary'});
 
 Instrumentation is idempotent. `telemetry.uninstrumentPool(pool)` removes it. `telemetry.disable()` also restores instrumented pools and removes the adapter's current UpDownCounter contributions.
 
+## W3C trace context through MySQL query attributes
+
+NuBloxSQL negotiates MySQL `CLIENT_QUERY_ATTRIBUTES` by default. When the server advertises the capability, both text queries and native prepared execution use the extended `COM_QUERY` / `COM_STMT_EXECUTE` formats. Servers that do not advertise the capability automatically fall back to the legacy packet layout.
+
+Applications can attach explicit per-statement attributes without modifying SQL text:
+
+```js
+await connection.promise().query({
+  sql: 'SELECT 1',
+  attributes: {
+    request_id: 'req-123',
+    tenant: 'acme'
+  }
+});
+
+await connection.promise().execute({
+  sql: 'SELECT ?',
+  values: [42],
+  attributes: {
+    request_id: 'req-456'
+  }
+});
+```
+
+When the OpenTelemetry adapter is enabled, the active propagator is asked to inject context synchronously at the public query/execute call boundary. NuBloxSQL forwards only the W3C Trace Context carrier keys `traceparent` and `tracestate` as MySQL query attributes. OpenTelemetry `baggage` is deliberately excluded because baggage can contain high-cardinality or sensitive application data.
+
+Explicit application values take precedence. If the caller supplies `traceparent` or `tracestate` directly in `attributes`, automatic propagation does not overwrite that value.
+
+The trace context is captured before pool acquisition, protocol queueing, prepare, execute or safe reprepare work. This ensures the propagated context belongs to the caller that submitted the operation rather than whichever asynchronous database callback later happens to run.
+
+Supported explicit attribute values are strings, finite numbers, booleans, `null`, `Date`, `Buffer`, and `bigint`. `undefined`, nested objects and other unsupported values fail synchronously. Attribute names containing NUL are rejected. Buffer attributes follow mysql2-compatible `VAR_STRING` raw-byte encoding.
+
+Prepared safe-reprepare retries reuse the already captured attribute set. Manually prepared statements also capture the active W3C trace context each time `statement.execute()` is invoked.
+
+Query attributes are per statement and are not stored as connection/session state. The MySQL `component_query_attributes` component is only required when SQL itself needs to inspect attributes through functions such as `mysql_query_attribute_string()`; wire-level attribute transport does not depend on that SQL component.
+
 ## Slow-query policy
 
 Slow-query detection is disabled by default. Enable it with a threshold in milliseconds:
@@ -153,9 +189,7 @@ When enabled, SQL is emitted as `db.query.text`, and slow-query diagnostics may 
 
 ## Current coverage
 
-The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, `nublox.mysql.query.error`, and `nublox.mysql.transaction.retry`, plus pool wait/use/state telemetry through `instrumentPool()`. Physical connection establishment, text queries, prepared execution and complete `withTransaction()` operations now use the common lifecycle surface.
-
-W3C trace-context propagation through MySQL query attributes remains the major separate M6 tranche. It will continue to build on the adapter rather than adding OpenTelemetry dependencies to protocol hot paths.
+The adapter consumes `nublox.mysql.query.start`, `nublox.mysql.query.end`, `nublox.mysql.query.error`, `nublox.mysql.query.attributes`, and `nublox.mysql.transaction.retry`, plus pool wait/use/state telemetry through `instrumentPool()`. Physical connection establishment, text queries, prepared execution and complete `withTransaction()` operations use the common lifecycle surface, while active W3C trace context is propagated out-of-band through negotiated MySQL query attributes.
 
 ## Custom tracer and meter
 
@@ -169,4 +203,4 @@ const telemetry = createOpenTelemetryAdapter({
 });
 ```
 
-`api` remains necessary when a custom tracer is supplied because the adapter uses OpenTelemetry span-kind, status and active-context APIs.
+`api` remains necessary when a custom tracer is supplied because the adapter uses OpenTelemetry span-kind, status, active-context and propagation APIs.
