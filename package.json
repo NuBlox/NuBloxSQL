@@ -5,22 +5,46 @@
   "description": "NuBloxSQL multi-dialect SQL driver platform.",
   "license": "Apache-2.0",
   "author": "Stephen J T Spittal",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/NuBlox/NuBloxSQL.git"
-  },
-  "workspaces": [
-    "packages/*"
-  ],
-  "engines": {
-    "node": ">=22"
-  },
+  "repository": {"type":"git","url":"git+https://github.com/NuBlox/NuBloxSQL.git"},
+  "workspaces": ["packages/*"],
+  "engines": {"node": ">=22"},
   "scripts": {
-    "verify": "npm run verify --workspace @nublox/mysql && npm run test --workspace @nublox/sql-core && npm run test --workspace @nublox/postgresql && node test/dialect-contracts.js",
-    "verify:mysql": "npm run verify --workspace @nublox/mysql",
-    "test:sql-core": "npm run test --workspace @nublox/sql-core",
-    "test:postgresql": "npm run test --workspace @nublox/postgresql",
-    "test:types": "npm run test:types --workspace @nublox/mysql",
-    "test:prepared-cursor": "npm run test:prepared-cursor --workspace @nublox/mysql"
+    "benchmark:memory-soak":"npm run benchmark:memory-soak --workspace @nublox/mysql",
+    "benchmark:mysql2":"npm run benchmark:mysql2 --workspace @nublox/mysql",
+    "benchmark:mysql2:bulk":"npm run benchmark:mysql2:bulk --workspace @nublox/mysql",
+    "benchmark:mysql2:compression":"npm run benchmark:mysql2:compression --workspace @nublox/mysql",
+    "benchmark:mysql2:pool":"npm run benchmark:mysql2:pool --workspace @nublox/mysql",
+    "benchmark:mysql2:prepared":"npm run benchmark:mysql2:prepared --workspace @nublox/mysql",
+    "benchmark:mysql2:streaming":"npm run benchmark:mysql2:streaming --workspace @nublox/mysql",
+    "benchmark:packet-writer":"npm run benchmark:packet-writer --workspace @nublox/mysql",
+    "benchmark:parser-fragmentation":"npm run benchmark:parser-fragmentation --workspace @nublox/mysql",
+    "compatibility:check":"npm run compatibility:check --workspace @nublox/mysql",
+    "lint":"npm run lint --workspace @nublox/mysql",
+    "release:check":"npm run release:check --workspace @nublox/mysql",
+    "test:unit":"npm run test:unit --workspace @nublox/mysql",
+    "test:esm":"npm run test:esm --workspace @nublox/mysql",
+    "test:compat:mysql2":"npm run test:compat:mysql2 --workspace @nublox/mysql",
+    "test:compat:mysql2:cache":"npm run test:compat:mysql2:cache --workspace @nublox/mysql",
+    "test:compat:mysql2:contract":"npm run test:compat:mysql2:contract --workspace @nublox/mysql",
+    "test:compat:mysql2:execute":"npm run test:compat:mysql2:execute --workspace @nublox/mysql",
+    "test:compat:mysql2:named":"npm run test:compat:mysql2:named --workspace @nublox/mysql",
+    "test:compat:mysql2:prepare":"npm run test:compat:mysql2:prepare --workspace @nublox/mysql",
+    "test:compat:mysql2:reset":"npm run test:compat:mysql2:reset --workspace @nublox/mysql",
+    "test:compression:zlib":"npm run test:compression:zlib --workspace @nublox/mysql",
+    "test:compression:zstd":"npm run test:compression:zstd --workspace @nublox/mysql",
+    "test:pool-maintenance":"npm run test:pool-maintenance --workspace @nublox/mysql",
+    "test:pool-warmup":"npm run test:pool-warmup --workspace @nublox/mysql",
+    "test:stream-backpressure":"npm run test:stream-backpressure --workspace @nublox/mysql",
+    "test:typed-parameters":"npm run test:typed-parameters --workspace @nublox/mysql",
+    "test:temporal-json-parameters":"npm run test:temporal-json-parameters --workspace @nublox/mysql",
+    "test:binary-results":"npm run test:binary-results --workspace @nublox/mysql",
+    "test:prepared-cursor":"npm run test:prepared-cursor --workspace @nublox/mysql",
+    "test:reset-connection":"npm run test:reset-connection --workspace @nublox/mysql",
+    "test:session-state":"npm run test:session-state --workspace @nublox/mysql",
+    "test:sql-core":"npm run test --workspace @nublox/sql-core && node test/dialect-contracts.js",
+    "test:postgresql":"npm run test --workspace @nublox/postgresql",
+    "test:types":"npx tsc -p test/types/tsconfig.json --noEmit && npm run test:types --workspace @nublox/mysql",
+    "verify:mysql":"npm run verify --workspace @nublox/mysql",
+    "verify":"npm run verify:mysql && npm run test:sql-core && npm run test:postgresql && npm run test:types"
   }
 }
