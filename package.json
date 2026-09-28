@@ -31,6 +31,8 @@
     "typescript",
     "prepared-statements",
     "opentelemetry",
+    "binlog",
+    "cdc",
     "nublox"
   ],
   "main": "index.js",
@@ -53,6 +55,12 @@
       "import": "./otel.mjs",
       "require": "./otel.js",
       "default": "./otel.js"
+    },
+    "./binlog": {
+      "types": "./binlog.d.ts",
+      "import": "./binlog.mjs",
+      "require": "./binlog.js",
+      "default": "./binlog.js"
     },
     "./package.json": "./package.json"
   },
@@ -91,7 +99,10 @@
     "promise.d.ts",
     "otel.js",
     "otel.mjs",
-    "otel.d.ts"
+    "otel.d.ts",
+    "binlog.js",
+    "binlog.mjs",
+    "binlog.d.ts"
   ],
   "engines": {
     "node": ">=22"
