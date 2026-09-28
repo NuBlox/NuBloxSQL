@@ -22,6 +22,8 @@ assert.throws(function () { postgres.createPool({ user: 'test', queueLimit: -1 }
 async function transactionSqlContract() {
   var connection = postgres.createConnection({ user: 'test', ssl: false });
   var commands = [];
+  connection.connected = true;
+  connection.ended = false;
   connection.transactionStatus = 'I';
   connection.query = async function (sql) {
     commands.push(sql);
