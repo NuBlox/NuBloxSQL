@@ -69,6 +69,19 @@ async function main() {
   var afterTimeout = await connection.query('SELECT 11::int4 AS value');
   assert.strictEqual(afterTimeout.rows[0].value, 11);
 
+  var explicitPending = connection.query('SELECT pg_sleep(5)');
+  var explicitCancel = new Promise(function (resolve, reject) {
+    setTimeout(function () { connection.cancel().then(resolve, reject); }, 100);
+  });
+  await assert.rejects(explicitPending, function (error) {
+    return error instanceof postgres.PostgreSqlCancellationError && error.code === 'NUBLOX_POSTGRESQL_CANCELLED';
+  });
+  await explicitCancel;
+  assert.strictEqual(connection.connected, true);
+  assert.strictEqual(connection.ended, false);
+  var afterExplicitCancel = await connection.query('SELECT 13::int4 AS value');
+  assert.strictEqual(afterExplicitCancel.rows[0].value, 13);
+
   var controller = new AbortController();
   var pending = connection.query('SELECT pg_sleep(5)', { signal: controller.signal });
   setTimeout(function () { controller.abort(new Error('live PostgreSQL abort')); }, 100);
