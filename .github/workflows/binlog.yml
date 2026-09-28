@@ -1,0 +1,57 @@
+name: NuBloxSQL Binlog CDC
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  binlog-stream:
+    name: MySQL ${{ matrix.mysql }} COM_BINLOG_DUMP
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ['8.4', '9.7']
+    services:
+      mysql:
+        image: mysql:${{ matrix.mysql }}
+        env:
+          MYSQL_ROOT_PASSWORD: nublox_root_password
+          MYSQL_DATABASE: nublox_ci
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: nublox_ci_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -pnublox_root_password --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package.json
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Verify live COM_BINLOG_DUMP stream
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          MYSQL_USER: nublox
+          MYSQL_PASSWORD: nublox_ci_password
+          MYSQL_ROOT_PASSWORD: nublox_root_password
+          MYSQL_DATABASE: nublox_ci
+        run: node test/integration/binlog-stream-smoke.js
