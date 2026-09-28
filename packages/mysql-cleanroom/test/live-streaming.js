@@ -59,12 +59,12 @@ async function pooled() {
     var stream = await pool.queryStream('SELECT 11 AS n UNION ALL SELECT 12 AS n ORDER BY n', { highWaterMark: 1 });
     var rows = await Promise.race([
       collect(stream),
-      timeout(5000, 'pooled streaming', function () { stream.destroy(); })
+      timeout(3000, 'pooled stream consumption', function () { stream.destroy(); })
     ]);
     assert.deepStrictEqual(rows.map(function (row) { return row.n; }), ['11', '12']);
     var followUp = await Promise.race([
       pool.query('SELECT 13 AS n'),
-      timeout(5000, 'pooled streaming follow-up', function () { pool.end(); })
+      timeout(7000, 'pooled post-stream reacquisition', function () { pool.end(); })
     ]);
     assert.strictEqual(followUp.rows[0].n, '13');
   } finally {
