@@ -24,6 +24,14 @@ function decodeOkPacket(payload) {
   return { affectedRows: affectedRows, lastInsertId: lastInsertId, statusFlags: statusFlags, warnings: warnings };
 }
 
+function decodeEofPacket(payload) {
+  var reader = new PacketReader(payload);
+  if (reader.uint8() !== 0xfe || payload.length >= 9) throw new RangeError('Not a MySQL EOF packet');
+  var warnings = reader.remaining() >= 2 ? reader.uint16LE() : 0;
+  var statusFlags = reader.remaining() >= 2 ? reader.uint16LE() : 0;
+  return { warnings: warnings, statusFlags: statusFlags };
+}
+
 function decodeAuthSwitchRequest(payload) {
   var reader = new PacketReader(payload);
   if (reader.uint8() !== 0xfe) throw new RangeError('Not a MySQL AuthSwitchRequest packet');
@@ -62,6 +70,7 @@ function decodeTextRow(payload, fields) {
 
 exports.decodeErrorPacket = decodeErrorPacket;
 exports.decodeOkPacket = decodeOkPacket;
+exports.decodeEofPacket = decodeEofPacket;
 exports.decodeAuthSwitchRequest = decodeAuthSwitchRequest;
 exports.decodeColumnDefinition41 = decodeColumnDefinition41;
 exports.decodeTextRow = decodeTextRow;
