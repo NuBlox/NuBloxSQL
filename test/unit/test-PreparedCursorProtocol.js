@@ -5,6 +5,7 @@ var common = require('../common');
 var path = require('path');
 var test = require('utest');
 
+var ClientConstants = require(path.resolve(common.lib, 'protocol/constants/client'));
 var ComStmtExecutePacket = require(path.resolve(common.lib, 'protocol/packets/ComStmtExecutePacket'));
 var ComStmtFetchPacket = require(path.resolve(common.lib, 'protocol/packets/ComStmtFetchPacket'));
 
@@ -16,6 +17,9 @@ function numberWriter() {
     writer  : {
       writeUnsignedNumber: function writeUnsignedNumber(bytes, value) {
         numbers.push([bytes, value]);
+      },
+      writeLengthCodedNumber: function writeLengthCodedNumber(value) {
+        numbers.push(['lenenc', value]);
       }
     }
   };
@@ -33,6 +37,27 @@ test('PreparedCursorProtocol', {
       [4, 42],
       [1, 0x01],
       [4, 1]
+    ]);
+  },
+
+  'preserves query-attribute flag when opening a cursor': function() {
+    var target = numberWriter();
+    var packet = new ComStmtExecutePacket(
+      42,
+      [],
+      {},
+      ClientConstants.CLIENT_QUERY_ATTRIBUTES,
+      0x01
+    );
+
+    packet.write(target.writer);
+
+    assert.deepStrictEqual(target.numbers, [
+      [1, 0x17],
+      [4, 42],
+      [1, 0x09],
+      [4, 1],
+      ['lenenc', 0]
     ]);
   },
 
