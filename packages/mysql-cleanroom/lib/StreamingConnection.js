@@ -1,5 +1,6 @@
 'use strict';
 
+var base = require('./Connection');
 var session = require('./SessionConnection');
 var PacketReader = require('./protocol/PacketReader').PacketReader;
 var client = require('./protocol/ClientPackets');
@@ -176,7 +177,7 @@ Connection.prototype._handleStreamQueryPacket = function _handleStreamQueryPacke
   }
   if (payload[0] === 0xff) {
     var errorInfo = server.decodeErrorPacket(payload);
-    this._finishStream(state, new session.Connection.prototype.constructor.MySqlError(errorInfo.message, errorInfo));
+    this._finishStream(state, new base.MySqlError(errorInfo.message, errorInfo));
     return;
   }
   if (state.phase === 'start' && payload[0] === 0x00) {
