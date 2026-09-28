@@ -27,8 +27,12 @@ function ResultStream(connection, state, options) {
 ResultStream.prototype = Object.create(Readable.prototype);
 ResultStream.prototype.constructor = ResultStream;
 
-ResultStream.prototype._read = function _read() {
+ResultStream.prototype._resumeSocket = function _resumeSocket() {
   if (this.connection && this.connection.socket && !this.connection.socket.destroyed) this.connection.socket.resume();
+};
+
+ResultStream.prototype._read = function _read() {
+  this._resumeSocket();
 };
 
 ResultStream.prototype._destroy = function _destroy(error, callback) {
@@ -53,6 +57,7 @@ ResultStream.prototype._pushRow = function _pushRow(row, packetBytes) {
 ResultStream.prototype._complete = function _complete(serverStatus, warningCount) {
   this.serverStatus = serverStatus;
   this.warningCount = warningCount;
+  this._resumeSocket();
   this.push(null);
 };
 
@@ -68,6 +73,7 @@ ResultStream.prototype._completeCommand = function _completeCommand(ok) {
     serverStatus: this.serverStatus,
     warningCount: this.warningCount
   });
+  this._resumeSocket();
   this.push(null);
 };
 
