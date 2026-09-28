@@ -128,6 +128,69 @@ declare namespace mysql {
     admissionControl?: PoolAdmissionControl;
   }
 
+  interface PoolClusterNodeMetadata {
+    role?: string;
+    replicationState?: string;
+    priority?: number;
+    weight?: number;
+    tags?: Record<string, unknown>;
+  }
+
+  interface PoolClusterNodeSnapshot {
+    readonly id: string;
+    readonly host?: string;
+    readonly port?: number;
+    readonly socketPath?: string;
+    readonly online: boolean;
+    readonly offlineUntil: number;
+    readonly errorCount: number;
+    readonly role: string;
+    readonly replicationState: string;
+    readonly priority: number;
+    readonly weight: number;
+    readonly tags: Readonly<Record<string, unknown>>;
+  }
+
+  interface PoolTopologyPolicyContext {
+    readonly operation: 'connection' | 'query';
+    readonly pattern: string | RegExp;
+    readonly sql?: string;
+  }
+
+  type PoolTopologyPolicy = (
+    candidates: ReadonlyArray<Readonly<PoolClusterNodeSnapshot>>,
+    context: Readonly<PoolTopologyPolicyContext>
+  ) => string | PoolClusterNodeSnapshot | null | undefined;
+
+  interface PoolClusterOptions {
+    canRetry?: boolean;
+    defaultSelector?: string;
+    removeNodeErrorCount?: number;
+    restoreNodeTimeout?: number;
+    topologyPolicy?: PoolTopologyPolicy;
+  }
+
+  interface PoolNamespace {
+    getConnection(callback: (error: Error | null, connection?: Connection) => void): void;
+    query(sql: string | QueryOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): Query;
+  }
+
+  interface PoolCluster {
+    add(config: PoolOptions, metadata?: PoolClusterNodeMetadata): void;
+    add(id: string, config: PoolOptions, metadata?: PoolClusterNodeMetadata): void;
+    of(pattern?: string | RegExp, selector?: string): PoolNamespace;
+    remove(pattern: string | RegExp): void;
+    getConnection(callback: (error: Error | null, connection?: Connection) => void): void;
+    getConnection(pattern: string | RegExp, callback: (error: Error | null, connection?: Connection) => void): void;
+    getConnection(pattern: string | RegExp, selector: string, callback: (error: Error | null, connection?: Connection) => void): void;
+    setNodeMetadata(id: string, metadata: PoolClusterNodeMetadata): this;
+    topology(): PoolClusterNodeSnapshot[];
+    end(callback?: (error?: Error) => void): void;
+    on(event: 'topology', listener: (topology: PoolClusterNodeSnapshot[]) => void): this;
+    on(event: 'online' | 'offline' | 'remove', listener: (nodeId: string) => void): this;
+    on(event: string, listener: (...args: unknown[]) => void): this;
+  }
+
   interface QueryOptions {
     sql: string;
     values?: unknown[] | Record<string, unknown>;
@@ -455,7 +518,7 @@ declare namespace mysql {
 
   function createConnection(config: string | ConnectionOptions): Connection;
   function createPool(config: string | PoolOptions): Pool;
-  function createPoolCluster(config?: object): unknown;
+  function createPoolCluster(config?: PoolClusterOptions): PoolCluster;
   function createQuery(sql: string, values?: unknown[] | Record<string, unknown>, callback?: Function): Query;
   function escape(value: unknown, stringifyObjects?: boolean, timeZone?: string): string;
   function escapeId(value: unknown, forbidQualified?: boolean): string;
