@@ -69,7 +69,7 @@ exports.createQuery = function createQuery(sql, values, callback) {
  * @param {*} value The value to escape
  * @param {boolean} [stringifyObjects=false] Setting if objects should be stringified
  * @param {string} [timeZone=local] Setting for time zone to use for Date conversion
- * @return {string} Escaped string
+ * @return {string} Escaped string value
  * @public
  */
 exports.escape = function escape(value, stringifyObjects, timeZone) {
@@ -82,7 +82,7 @@ exports.escape = function escape(value, stringifyObjects, timeZone) {
  * Escape an identifier for SQL.
  * @param {*} value The value to escape
  * @param {boolean} [forbidQualified=false] Setting to treat '.' as part of identifier
- * @return {string} Escaped string
+ * @return {string} Escaped string value
  * @public
  */
 exports.escapeId = function escapeId(value, forbidQualified) {
