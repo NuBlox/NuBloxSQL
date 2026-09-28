@@ -81,6 +81,9 @@ function run() {
     })
     .then(function() {
       replication = Binlog.createReplicationConnection(config);
+      return queryReplication('SET @' + 'master_binlog_checksum=@@global.binlog_checksum');
+    })
+    .then(function() {
       var sequence = replication.binlogDump({
         filename       : filename,
         position       : position,
@@ -112,6 +115,19 @@ function run() {
         checksumName || 'NONE'
       );
     });
+}
+
+function queryReplication(sql) {
+  return new global.Promise(function(resolve, reject) {
+    replication.query(sql, function(error) {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
 }
 
 function collect(stream) {
