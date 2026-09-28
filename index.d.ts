@@ -245,6 +245,16 @@ declare namespace mysql {
     autoDestroy?: boolean;
   }
 
+  interface PreparedCursorOptions {
+    fetchSize?: number;
+    attributes?: Record<string, QueryAttributeValue>;
+    timeout?: number;
+    operationTimeout?: number;
+    nestTables?: boolean | string;
+    typeCast?: boolean | Function;
+    signal?: AbortSignalLike;
+  }
+
   interface TypedPreparedParameter<T = unknown> {
     readonly type: number;
     readonly unsigned: boolean;
@@ -326,6 +336,46 @@ declare namespace mysql {
   type QueryResult = Row[] | OkPacket | Array<Row[] | OkPacket>;
   type QueryFields = FieldInfo[] | FieldInfo[][] | undefined;
   type QueryTuple<T = QueryResult> = [T, QueryFields];
+
+  interface PreparedCursorFetchState {
+    done: boolean;
+  }
+
+  type PreparedCursorFetchCallback<T = Row> = (
+    error: Error | null,
+    rows?: T[],
+    state?: PreparedCursorFetchState
+  ) => void;
+
+  type PreparedCursorOpenCallback<T = Row> = (
+    error: Error | null,
+    cursor?: PreparedCursor<T>
+  ) => void;
+
+  interface PreparedCursor<T = Row> {
+    readonly statementId: number;
+    readonly fields: FieldInfo[];
+    readonly done: boolean;
+    readonly closed: boolean;
+    fetch(callback: PreparedCursorFetchCallback<T>): this;
+    fetch(rowCount?: number, callback?: PreparedCursorFetchCallback<T>): this;
+    close(): this;
+  }
+
+  interface PromisePreparedCursorFetchResult<T = Row> {
+    rows: T[];
+    done: boolean;
+    fields: FieldInfo[];
+  }
+
+  interface PromisePreparedCursor<T = Row> extends AsyncIterable<T> {
+    readonly statementId: number;
+    readonly fields: FieldInfo[];
+    readonly done: boolean;
+    readonly closed: boolean;
+    fetch(rowCount?: number): Promise<PromisePreparedCursorFetchResult<T>>;
+    close(): Promise<void>;
+  }
 
   interface AsyncRowStream<T = Row> extends AsyncIterable<T> {
     readonly readableHighWaterMark: number;
@@ -465,6 +515,9 @@ declare namespace mysql {
     query(sql: string | QueryOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): Query;
     execute(sql: string | ExecuteOptions, values?: unknown[] | Record<string, unknown>, callback?: Function): unknown;
     prepare(sql: string | PrepareOptions, callback?: (error: Error | null, statement?: PreparedStatement) => void): unknown;
+    openCursor<T = Row>(sql: string, callback: PreparedCursorOpenCallback<T>): unknown;
+    openCursor<T = Row>(sql: string, values: unknown[], callback: PreparedCursorOpenCallback<T>): unknown;
+    openCursor<T = Row>(sql: string, values: unknown[], options: PreparedCursorOptions, callback: PreparedCursorOpenCallback<T>): unknown;
     unprepare(sql: string): this;
     clearPreparedStatementCache(): this;
     preparedStatementCacheStats(): PreparedStatementCacheStats;
@@ -503,6 +556,7 @@ declare namespace mysql {
     query<T = QueryResult>(sql: string | QueryOptions, values?: unknown[] | Record<string, unknown>): Promise<QueryTuple<T>>;
     execute<T = QueryResult>(sql: string | ExecuteOptions, values?: unknown[] | Record<string, unknown>): Promise<QueryTuple<T>>;
     prepare(sql: string | PrepareOptions): Promise<PromisePreparedStatement>;
+    openCursor<T = Row>(sql: string, values?: unknown[], options?: PreparedCursorOptions): Promise<PromisePreparedCursor<T>>;
     unprepare(sql: string): this;
     clearPreparedStatementCache(): this;
     preparedStatementCacheStats(): PreparedStatementCacheStats;
