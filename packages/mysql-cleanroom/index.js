@@ -17,6 +17,7 @@ exports.protocol = {
   encodeHandshakeResponse41: client.encodeHandshakeResponse41,
   encodeQuery: client.encodeQuery,
   encodeQuit: client.encodeQuit,
+  encodeResetConnection: client.encodeResetConnection,
   decodeErrorPacket: server.decodeErrorPacket,
   decodeOkPacket: server.decodeOkPacket,
   decodeEofPacket: server.decodeEofPacket,
@@ -37,7 +38,7 @@ exports.protocol = {
   encryptCachingSha2Password: auth.encryptCachingSha2Password
 };
 
-var runtime = require('./lib/TransactionConnection');
+var runtime = require('./lib/SessionConnection');
 var pool = require('./lib/Pool');
 exports.Connection = runtime.Connection;
 exports.PreparedStatement = runtime.PreparedStatement;
