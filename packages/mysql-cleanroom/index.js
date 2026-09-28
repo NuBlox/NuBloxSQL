@@ -37,7 +37,8 @@ exports.protocol = {
   encryptCachingSha2Password: auth.encryptCachingSha2Password
 };
 
-var runtime = require('./lib/Connection');
+var runtime = require('./lib/PreparedConnection');
 exports.Connection = runtime.Connection;
-exports.MySqlError = runtime.MySqlError;
+exports.PreparedStatement = runtime.PreparedStatement;
+exports.MySqlError = require('./lib/Connection').MySqlError;
 exports.createConnection = function createConnection(config) { return new runtime.Connection(config); };
