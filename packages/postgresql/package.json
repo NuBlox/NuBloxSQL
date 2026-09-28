@@ -1,7 +1,7 @@
 {
   "name": "@nublox/postgresql",
   "version": "0.1.0",
-  "description": "PostgreSQL dialect foundation for NuBloxSQL.",
+  "description": "Native PostgreSQL dialect and wire-protocol foundation for NuBloxSQL.",
   "license": "Apache-2.0",
   "author": "Stephen J T Spittal",
   "repository": {
@@ -13,7 +13,7 @@
   "bugs": {
     "url": "https://github.com/NuBlox/NuBloxSQL/issues"
   },
-  "keywords": ["postgresql", "postgres", "sql", "database", "dialect", "nublox"],
+  "keywords": ["postgresql", "postgres", "sql", "database", "driver", "protocol", "nublox"],
   "main": "index.js",
   "types": "index.d.ts",
   "exports": {
@@ -24,9 +24,9 @@
     },
     "./package.json": "./package.json"
   },
-  "files": ["index.js", "index.d.ts", "README.md", "LICENSE", "NOTICE"],
+  "files": ["index.js", "index.d.ts", "lib", "README.md", "LICENSE", "NOTICE"],
   "engines": {"node": ">=22"},
   "scripts": {
-    "test": "node test/contract.js"
+    "test": "node test/contract.js && node test/protocol.js"
   }
 }
