@@ -109,11 +109,11 @@ assert.throws(function rejectsMalformedSessionState() {
 function parseOkPacket(body, clientFlags) {
   var result;
   var parser = new Parser({
-    config   : {supportBigNumbers: true},
-    onError  : function onError(error) {
+    config  : {supportBigNumbers: true},
+    onError : function onError(error) {
       throw error;
     },
-    onPacket : function onPacket() {
+    onPacket: function onPacket() {
       result = new OkPacket({
         clientFlags : clientFlags,
         protocol41  : true
