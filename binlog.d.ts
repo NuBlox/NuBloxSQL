@@ -9,6 +9,17 @@ export interface BinlogDecoderOptions {
   maxEventSize?: number;
 }
 
+export interface BinlogGtidInterval {
+  start: bigint;
+  end: bigint;
+}
+
+export interface BinlogPreviousGtidSid {
+  sid: Buffer;
+  sidText: string;
+  intervals: BinlogGtidInterval[];
+}
+
 export interface BinlogEvent {
   timestamp: number;
   type: number;
@@ -47,6 +58,20 @@ export interface BinlogEvent {
   columnMetadata?: Buffer;
   nullBitmap?: Buffer;
   extraData?: Buffer;
+  gtidFlags?: number;
+  sid?: Buffer;
+  sidText?: string;
+  gno?: bigint;
+  gtid?: string | null;
+  anonymous?: boolean;
+  logicalTimestampType?: number;
+  lastCommitted?: bigint;
+  sequenceNumber?: bigint;
+  gtidExtension?: Buffer;
+  previousGtids?: BinlogPreviousGtidSid[];
+  previousGtidSidCount?: number;
+  previousGtidIntervalCount?: number;
+  gtidSetExtension?: Buffer;
 }
 
 export interface BinlogEventTypeMap {

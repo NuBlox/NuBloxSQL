@@ -24,11 +24,38 @@ The decoder understands the common 19-byte event header and adds structured fiel
 - `QUERY_EVENT`;
 - `FORMAT_DESCRIPTION_EVENT`;
 - `XID_EVENT`;
-- `TABLE_MAP_EVENT`.
+- `TABLE_MAP_EVENT`;
+- `GTID_LOG_EVENT`;
+- `ANONYMOUS_GTID_LOG_EVENT`;
+- `PREVIOUS_GTIDS_LOG_EVENT`.
 
 Unknown event types remain forward compatible: the common header is decoded, the event type is retained numerically and the bounded payload is preserved as a `Buffer`.
 
-64-bit rotate positions and transaction XIDs are returned as JavaScript `bigint` values so values above `Number.MAX_SAFE_INTEGER` are not truncated.
+64-bit rotate positions, transaction XIDs, GTID group numbers and GTID interval boundaries are returned as JavaScript `bigint` values so values above `Number.MAX_SAFE_INTEGER` are not truncated.
+
+## GTID event model
+
+`GTID_LOG_EVENT` decoding exposes the source identifier both as the original 16-byte SID and as the canonical UUID text form, together with the 64-bit group number:
+
+```js
+if (event.type === binlog.EventTypes.GTID_LOG_EVENT) {
+  console.log(event.gtid); // 24bc7850-2c16-11e6-a073-0242ac110002:42
+}
+```
+
+The fixed GTID body is decoded as:
+
+- one-byte GTID flags;
+- 16-byte SID;
+- eight-byte GNO;
+- optional logical timestamp type;
+- optional `lastCommitted` and `sequenceNumber` logical-clock values.
+
+Newer MySQL releases can append commit timestamps, transaction length and server-version metadata after the logical-clock fields. NuBloxSQL preserves those bounded bytes in `gtidExtension` until those fields are promoted into their own compatibility tranche rather than guessing at a newer format.
+
+`ANONYMOUS_GTID_LOG_EVENT` uses the same bounded structural decoder but deliberately returns `gtid: null` and `anonymous: true`; it does not fabricate a globally addressable transaction identifier.
+
+`PREVIOUS_GTIDS_LOG_EVENT` is decoded into SID entries and half-open GTID intervals. Each interval is represented as `{start, end}`, where `start` is included and `end` is the first GNO after the interval, matching MySQL's GTID-set interval model. SID and total interval counts are capped before allocation so malformed binlog input cannot force unbounded arrays.
 
 ## Live replication stream
 
@@ -84,7 +111,7 @@ Before event-specific parsing it validates:
 5. checksum/footer bytes fit inside the event payload;
 6. configured CRC32 verification succeeds before event-specific payload interpretation.
 
-Event-specific decoders then perform explicit bounds checks before every variable-length read. Malformed data produces a deterministic `BINLOG_*` error instead of an unchecked buffer read or uncontrolled allocation. A malformed event received from a live dump is connection-fatal because continuing after loss of event framing could silently corrupt CDC state.
+Event-specific decoders then perform explicit bounds checks before every variable-length read. GTID-set decoding additionally caps SID and cumulative interval counts before array allocation. Malformed data produces a deterministic `BINLOG_*` error instead of an unchecked buffer read or uncontrolled allocation. A malformed event received from a live dump is connection-fatal because continuing after loss of event framing could silently corrupt CDC state.
 
 The default `maxEventSize` is 64 MiB. This is deliberately independent from connection-level packet limits because binlog decoding can also be used on captured/offline event buffers.
 
@@ -137,16 +164,9 @@ Automatic discovery requires the decoder to see the relevant `FORMAT_DESCRIPTION
 
 The live CDC workflow starts MySQL 8.4 and 9.7, grants replication privileges to the CI account, records binary-log coordinates, performs real DDL/DML, requests a non-blocking `COM_BINLOG_DUMP` stream and verifies that change events are received and decoded.
 
-Checksum unit coverage includes:
+Checksum unit coverage includes the standard CRC32 test vector, automatic format-description discovery, checksum-off state, following-event CRC verification, deterministic corruption rejection, mutable `BINLOG_IN_USE` handling and pre-checksum server formats.
 
-- the standard CRC32 test vector;
-- CRC32 format-description discovery;
-- checksum-off format-description state;
-- CRC verification for following events;
-- deterministic corruption rejection;
-- post-write `BINLOG_IN_USE` flag mutation;
-- pre-5.6.1 checksum-unaware formats;
-- unsupported checksum algorithm rejection.
+GTID unit coverage includes 64-bit GNO boundaries, canonical SID formatting, anonymous GTIDs, logical-clock fields, previous-GTID interval sets, truncation detection, invalid interval rejection and pre-allocation count limits.
 
 This sits alongside the existing Node 22/24/26 unit/package matrix, MySQL 8.4/9.7 live validation, CodeQL, dependency audit and protocol fuzzing.
 
@@ -154,10 +174,10 @@ This sits alongside the existing Node 22/24/26 unit/package matrix, MySQL 8.4/9.
 
 Remaining CDC tranches are:
 
-1. GTID and previous-GTID event decoding plus `COM_BINLOG_DUMP_GTID`;
+1. `COM_BINLOG_DUMP_GTID` request encoding and live GTID resume validation;
 2. row-event framing for write/update/delete events;
 3. table-map metadata interpretation and typed row-image decoding;
-4. reconnect/resume checkpoints using binlog filename/position and later GTID sets;
+4. reconnect/resume checkpoints using binlog filename/position and GTID sets;
 5. CDC diagnostics/OpenTelemetry without row-value leakage by default.
 
 Server-side cursor / streaming prepared-result support remains the other major M7 protocol capability after CDC.
