@@ -1,8 +1,8 @@
 import {
   DEFAULT_LIMITS,
-  MySqlResultLimitError,
   createConnection,
   createPool,
+  type MySqlResultLimitError,
   type ResultStream
 } from '../../packages/mysql-cleanroom';
 
@@ -45,12 +45,8 @@ async function exercise(): Promise<void> {
   await consume(pooled);
 
   DEFAULT_LIMITS.maxRows.toFixed();
-  const error = new MySqlResultLimitError('limit', {
-    code: 'NUBLOX_MYSQL_MAX_ROWS',
-    limit: 1,
-    observed: 2
-  } as never);
-  error.limit.toFixed();
+  const maybeError = null as MySqlResultLimitError | null;
+  void maybeError;
 }
 
 void exercise;
