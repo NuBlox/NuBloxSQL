@@ -14,6 +14,12 @@ var requiredFiles = [
   'promise.js',
   'promise.mjs',
   'promise.d.ts',
+  'otel.js',
+  'otel.mjs',
+  'otel.d.ts',
+  'binlog.js',
+  'binlog.mjs',
+  'binlog.d.ts',
   'README.md',
   'Changes.md',
   'LICENSE',
@@ -37,6 +43,8 @@ assert.strictEqual(packageJson.homepage, 'https://github.com/NuBlox/NuBloxSQL#re
 assert.strictEqual(packageJson.bugs.url, 'https://github.com/NuBlox/NuBloxSQL/issues');
 assert.ok(packageJson.exports['.']);
 assert.ok(packageJson.exports['./promise']);
+assert.ok(packageJson.exports['./otel']);
+assert.ok(packageJson.exports['./binlog']);
 assert.strictEqual(packageJson.exports['./package.json'], './package.json');
 assert.ok(packageJson.files.indexOf('lib/') !== -1);
 assert.ok(packageJson.files.indexOf('compatibility/') !== -1);
@@ -45,6 +53,9 @@ assert.ok(packageJson.files.indexOf('README.md') !== -1);
 assert.ok(packageJson.files.indexOf('LICENSE') !== -1);
 assert.ok(packageJson.files.indexOf('NOTICE') !== -1);
 assert.ok(packageJson.files.indexOf('THIRD_PARTY_NOTICES') !== -1);
+assert.ok(packageJson.files.indexOf('binlog.js') !== -1);
+assert.ok(packageJson.files.indexOf('binlog.mjs') !== -1);
+assert.ok(packageJson.files.indexOf('binlog.d.ts') !== -1);
 assert.strictEqual(upstreamMetadata.nubloxPackage, packageJson.name);
 assert.strictEqual(upstreamMetadata.nubloxVersion, packageJson.version);
 assert.strictEqual(upstreamMetadata.nubloxLicense, 'Apache-2.0');

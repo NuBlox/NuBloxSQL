@@ -28,16 +28,26 @@ import promiseMysql, {
 import createOpenTelemetryAdapter, {
   createOpenTelemetryAdapter as namedCreateOpenTelemetryAdapter
 } from '@nublox/mysql/otel';
+import createBinlogDecoder, {
+  BinlogEventDecoder,
+  EventTypes as BinlogEventTypes,
+  createDecoder as namedCreateBinlogDecoder
+} from '@nublox/mysql/binlog';
 
 const require = createRequire(import.meta.url);
 const callbackCjs = require('@nublox/mysql');
 const promiseCjs = require('@nublox/mysql/promise');
 const otelCjs = require('@nublox/mysql/otel');
+const binlogCjs = require('@nublox/mysql/binlog');
 
 assert.equal(mysql, callbackCjs);
 assert.equal(promiseMysql, promiseCjs);
 assert.equal(createOpenTelemetryAdapter, otelCjs);
 assert.equal(namedCreateOpenTelemetryAdapter, otelCjs.createOpenTelemetryAdapter);
+assert.equal(createBinlogDecoder, binlogCjs);
+assert.equal(namedCreateBinlogDecoder, binlogCjs.createDecoder);
+assert.equal(BinlogEventDecoder, binlogCjs.BinlogEventDecoder);
+assert.equal(BinlogEventTypes, binlogCjs.EventTypes);
 
 assert.equal(createConnection, callbackCjs.createConnection);
 assert.equal(createPool, callbackCjs.createPool);
@@ -65,3 +75,5 @@ assert.equal(format('SELECT ? AS value', [42]), 'SELECT 42 AS value');
 assert.equal(promiseFormat('SELECT ? AS value', [42]), 'SELECT 42 AS value');
 assert.equal(param.uint32(4294967295).unsigned, true);
 assert.equal(promiseParam.int8(-1).type, Types.TINY);
+assert.equal(createBinlogDecoder().maxEventSize, 64 * 1024 * 1024);
+assert.equal(BinlogEventTypes.TABLE_MAP_EVENT, 19);
