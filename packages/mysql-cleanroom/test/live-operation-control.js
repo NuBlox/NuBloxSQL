@@ -18,7 +18,10 @@ async function expiredDeadlineKeepsConnectionUsable() {
   var connection = mysql.createConnection(config());
   await connection.connect();
   await assert.rejects(connection.query('SELECT 1', { deadline: Date.now() - 1 }), function (error) {
-    return error && error.code === 'NUBLOX_MYSQL_DEADLINE_EXCEEDED';
+    return error instanceof mysql.MySqlClientError &&
+      error.code === mysql.ERROR_CODES.TIMEOUT &&
+      error.category === 'timeout' &&
+      error.cause && error.cause.code === 'NUBLOX_MYSQL_DEADLINE_EXCEEDED';
   });
   var result = await connection.query('SELECT 1 AS ok');
   assert.strictEqual(Number(result.rows[0].ok), 1);
@@ -28,7 +31,9 @@ async function expiredDeadlineKeepsConnectionUsable() {
 async function inFlightTimeoutDestroysConnection() {
   var connection = mysql.createConnection(config());
   await connection.connect();
-  await assert.rejects(connection.query('SELECT SLEEP(1)', { timeout: 100 }), /timed out|closed unexpectedly/);
+  await assert.rejects(connection.query('SELECT SLEEP(1)', { timeout: 100 }), function (error) {
+    return error instanceof mysql.MySqlClientError && error.code === mysql.ERROR_CODES.TIMEOUT;
+  });
   assert.strictEqual(connection.ended, true);
 }
 
@@ -38,7 +43,9 @@ async function inFlightAbortDestroysConnection() {
   var controller = new AbortController();
   var pending = connection.query('SELECT SLEEP(1)', { signal: controller.signal });
   setTimeout(function () { controller.abort(new Error('live cancellation')); }, 100);
-  await assert.rejects(pending, /live cancellation|closed unexpectedly/);
+  await assert.rejects(pending, function (error) {
+    return error instanceof mysql.MySqlClientError && error.code === mysql.ERROR_CODES.ABORTED;
+  });
   assert.strictEqual(connection.ended, true);
 }
 
@@ -46,7 +53,9 @@ async function poolTimeoutCoversAcquisition() {
   var pool = mysql.createPool(Object.assign(config(), { connectionLimit: 1, acquireTimeout: 5000, resetOnRelease: false }));
   var held = await pool.getConnection();
   var started = Date.now();
-  await assert.rejects(pool.query('SELECT 1', { timeout: 150 }), /acquisition timed out|deadline exceeded/);
+  await assert.rejects(pool.query('SELECT 1', { timeout: 150 }), function (error) {
+    return error instanceof mysql.MySqlClientError && error.code === mysql.ERROR_CODES.POOL_ACQUIRE_TIMEOUT;
+  });
   var elapsed = Date.now() - started;
   assert.ok(elapsed < 1500, 'pool operation timeout must include acquisition time');
   pool.releaseConnection(held);
