@@ -3,7 +3,7 @@ var common = require('../../common');
 
 var observedContext = null;
 var cluster = common.createPoolCluster({
-  topologyPolicy : function topologyPolicy(candidates, context) {
+  topologyPolicy: function topologyPolicy(candidates, context) {
     observedContext = context;
 
     if (context.operation === 'query' && /^\s*select\b/i.test(context.sql || '')) {
@@ -66,7 +66,7 @@ assert.strictEqual(replica.role, 'replica');
 
 assert.throws(function invalidSelection() {
   var invalidCluster = common.createPoolCluster({
-    topologyPolicy : function topologyPolicy() {
+    topologyPolicy: function topologyPolicy() {
       return 'MISSING';
     }
   });
