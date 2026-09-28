@@ -7,6 +7,7 @@ export interface BinlogDecoderOptions {
   checksumBytes?: BinlogChecksumBytes;
   verifyChecksum?: boolean;
   maxEventSize?: number;
+  maxTableMaps?: number;
 }
 
 export interface BinlogGtidInterval {
@@ -18,6 +19,17 @@ export interface BinlogPreviousGtidSid {
   sid: Buffer;
   sidText: string;
   intervals: BinlogGtidInterval[];
+}
+
+export interface BinlogTableMapSnapshot {
+  tableId: number;
+  database: string;
+  table: string;
+  columnCount: number;
+  columnTypes: Buffer;
+  columnMetadata: Buffer;
+  nullBitmap: Buffer;
+  extraData: Buffer;
 }
 
 export interface BinlogEvent {
@@ -51,13 +63,21 @@ export interface BinlogEvent {
   xid?: bigint;
   tableId?: number;
   tableFlags?: number;
+  rowFlags?: number;
   database?: string;
   table?: string;
   columnCount?: number;
+  rowColumnCount?: number;
   columnTypes?: Buffer;
   columnMetadata?: Buffer;
   nullBitmap?: Buffer;
   extraData?: Buffer;
+  columnsPresent?: Buffer;
+  columnsPresentBefore?: Buffer;
+  columnsPresentAfter?: Buffer;
+  rowsPayload?: Buffer;
+  tableMapMatched?: boolean;
+  tableMap?: BinlogTableMapSnapshot;
   gtidFlags?: number;
   sid?: Buffer;
   sidText?: string;
@@ -116,6 +136,7 @@ export class BinlogEventDecoder {
   readonly checksumAlgorithm: BinlogChecksumAlgorithm;
   readonly verifyChecksum: boolean;
   readonly maxEventSize: number;
+  readonly maxTableMaps: number;
   constructor(options?: BinlogDecoderOptions);
   decode(input: Buffer): BinlogEvent;
 }
