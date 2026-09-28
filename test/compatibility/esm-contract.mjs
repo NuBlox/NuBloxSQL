@@ -31,7 +31,8 @@ import createOpenTelemetryAdapter, {
 import createBinlogDecoder, {
   BinlogEventDecoder,
   EventTypes as BinlogEventTypes,
-  createDecoder as namedCreateBinlogDecoder
+  createDecoder as namedCreateBinlogDecoder,
+  createReplicationConnection
 } from '@nublox/mysql/binlog';
 
 const require = createRequire(import.meta.url);
@@ -46,6 +47,7 @@ assert.equal(createOpenTelemetryAdapter, otelCjs);
 assert.equal(namedCreateOpenTelemetryAdapter, otelCjs.createOpenTelemetryAdapter);
 assert.equal(createBinlogDecoder, binlogCjs);
 assert.equal(namedCreateBinlogDecoder, binlogCjs.createDecoder);
+assert.equal(createReplicationConnection, binlogCjs.createReplicationConnection);
 assert.equal(BinlogEventDecoder, binlogCjs.BinlogEventDecoder);
 assert.equal(BinlogEventTypes, binlogCjs.EventTypes);
 
@@ -77,3 +79,4 @@ assert.equal(param.uint32(4294967295).unsigned, true);
 assert.equal(promiseParam.int8(-1).type, Types.TINY);
 assert.equal(createBinlogDecoder().maxEventSize, 64 * 1024 * 1024);
 assert.equal(BinlogEventTypes.TABLE_MAP_EVENT, 19);
+assert.equal(typeof createReplicationConnection, 'function');
