@@ -1,5 +1,7 @@
 'use strict';
 
+var protocol = require('./lib/protocol');
+
 var capabilities = Object.freeze({
   preparedStatements    : true,
   serverSideCursors     : true,
@@ -66,3 +68,4 @@ exports.descriptor = descriptor;
 exports.capabilities = capabilities;
 exports.services = services;
 exports.createObjectName = createObjectName;
+exports.protocol = protocol;
