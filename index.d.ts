@@ -549,6 +549,7 @@ declare namespace mysql {
   function createConnection(config: string | ConnectionOptions): Connection;
   function createPool(config: string | PoolOptions): Pool;
   function createPoolCluster(config?: PoolClusterOptions): PoolCluster;
+  function probePoolClusterRoles(cluster: PoolCluster, callback?: (error: Error | null, topology?: PoolClusterNodeSnapshot[]) => void): Promise<PoolClusterNodeSnapshot[]>;
   function createQuery(sql: string, values?: unknown[] | Record<string, unknown>, callback?: Function): Query;
   function escape(value: unknown, stringifyObjects?: boolean, timeZone?: string): string;
   function escapeId(value: unknown, forbidQualified?: boolean): string;
