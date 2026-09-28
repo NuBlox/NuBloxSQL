@@ -1,7 +1,7 @@
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
-var runtime = require('./TransactionConnection');
+var runtime = require('./PortalConnection');
 
 function positiveInteger(value, fallback, name) {
   if (value === undefined) return fallback;
