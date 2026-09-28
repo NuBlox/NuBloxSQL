@@ -48,6 +48,7 @@ function run() {
     .then(function() {
       return root.query("GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '" + config.user + "'@'%'");
     })
+    .then(enableGtidMode)
     .then(function() {
       return root.query('SELECT @@global.gtid_mode AS gtidMode, @@global.gtid_executed AS executed');
     })
@@ -131,6 +132,22 @@ function run() {
         filename,
         position.toString()
       );
+    });
+}
+
+function enableGtidMode() {
+  return root.query("SET GLOBAL ENFORCE_GTID_CONSISTENCY = 'WARN'")
+    .then(function() {
+      return root.query("SET GLOBAL ENFORCE_GTID_CONSISTENCY = 'ON'");
+    })
+    .then(function() {
+      return root.query("SET GLOBAL GTID_MODE = 'OFF_PERMISSIVE'");
+    })
+    .then(function() {
+      return root.query("SET GLOBAL GTID_MODE = 'ON_PERMISSIVE'");
+    })
+    .then(function() {
+      return root.query("SET GLOBAL GTID_MODE = 'ON'");
     });
 }
 
