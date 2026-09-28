@@ -1,41 +1,36 @@
 'use strict';
 
-var capabilities = Object.freeze({
-  preparedStatements    : true,
-  serverSideCursors     : true,
-  savepoints            : true,
-  catalogs              : true,
-  schemas               : false,
-  transactionalDdl      : false,
-  queryCancellation     : true,
-  changeDataCapture     : true,
-  nativeJson            : true,
-  multipleActiveResults : false
+var CAPABILITIES = Object.freeze({
+  preparedStatements: true,
+  serverSideCursors: false,
+  savepoints: true,
+  catalogs: true,
+  schemas: false,
+  transactionalDdl: false,
+  queryCancellation: false,
+  changeDataCapture: false,
+  nativeJson: true,
+  multipleActiveResults: false
 });
 
-var services = Object.freeze({
-  quoteIdentifier: function quoteIdentifier(identifier) {
-    if (typeof identifier !== 'string') {
-      throw new TypeError('MySQL identifier must be a string');
-    }
+function quoteIdentifier(identifier) {
+  return '`' + String(identifier).replace(/`/g, '``') + '`';
+}
 
-    return '`' + identifier.replace(/`/g, '``') + '`';
-  },
-  placeholder: function placeholder() {
-    return '?';
-  }
-});
+function placeholder() {
+  return '?';
+}
 
-var descriptor = {
-  identity: Object.freeze({
-    family : 'mysql',
-    name   : 'MySQL'
+var descriptor = Object.freeze({
+  identity: Object.freeze({ family: 'mysql', name: 'MySQL' }),
+  capabilities: CAPABILITIES,
+  services: Object.freeze({
+    quoteIdentifier: quoteIdentifier,
+    placeholder: placeholder
   }),
-  capabilities : capabilities,
-  services     : services,
-  supports     : function supports(capability) {
-    return capabilities[capability] === true;
+  supports: function supports(capability) {
+    return CAPABILITIES[capability] === true;
   }
-};
+});
 
-module.exports = Object.freeze(descriptor);
+module.exports = descriptor;

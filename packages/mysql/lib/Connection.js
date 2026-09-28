@@ -1,609 +1,397 @@
-var Crypto           = require('crypto');
-var Diagnostics      = require('diagnostics_channel');
-var Events           = require('events');
-var Net              = require('net');
-var tls              = require('tls');
-var ConnectionConfig = require('./ConnectionConfig');
-var NamedPlaceholders = require('./NamedPlaceholders');
-var Protocol         = require('./protocol/Protocol');
-var SqlString        = require('./protocol/SqlString');
-var Query            = require('./protocol/sequences/Query');
-var Util             = require('util');
+'use strict';
 
-var ConnectStartChannel = Diagnostics.channel('nublox.mysql.query.start');
-var ConnectEndChannel = Diagnostics.channel('nublox.mysql.query.end');
-var ConnectErrorChannel = Diagnostics.channel('nublox.mysql.query.error');
+var net = require('net');
+var tls = require('tls');
+var EventEmitter = require('events').EventEmitter;
+var Auth = require('./protocol/Auth');
+var capabilities = require('./protocol/capabilities');
+var ClientPackets = require('./protocol/ClientPackets');
+var HandshakeV10 = require('./protocol/HandshakeV10');
+var PacketFramer = require('./protocol/PacketFramer');
+var PacketReader = require('./protocol/PacketReader').PacketReader;
+var ServerPackets = require('./protocol/ServerPackets');
 
-module.exports = Connection;
-Util.inherits(Connection, Events.EventEmitter);
-function Connection(options) {
-  Events.EventEmitter.call(this);
+var SERVER_STATUS_MORE_RESULTS_EXISTS = 0x0008;
 
-  this.config = options.config;
+function MySqlError(message, details) {
+  Error.call(this, message);
+  this.name = 'MySqlError';
+  this.message = message;
+  details = details || {};
+  this.code = details.code || null;
+  this.sqlState = details.sqlState || null;
+  if (Error.captureStackTrace) Error.captureStackTrace(this, MySqlError);
+}
+MySqlError.prototype = Object.create(Error.prototype);
+MySqlError.prototype.constructor = MySqlError;
 
-  this._socket        = options.socket;
-  this._protocol      = new Protocol({config: this.config, connection: this});
-  this._connectCalled = false;
-  this._connectTelemetryStartedAt = null;
-  this._connectTelemetryEnded = false;
-  this.state          = 'disconnected';
-  this.threadId       = null;
+function normalizeSsl(ssl) {
+  if (ssl === false || ssl === 'disable') return { mode: 'disable', options: null };
+  if (ssl === true || ssl === 'require') return { mode: 'require', options: {} };
+  if (ssl === 'prefer' || ssl === undefined) return { mode: 'prefer', options: {} };
+  if (ssl && typeof ssl === 'object') return { mode: ssl.mode || 'require', options: ssl };
+  throw new TypeError('Invalid MySQL ssl option');
 }
 
-Connection.createQuery = function createQuery(sql, values, callback) {
-  if (sql instanceof Query) {
-    return sql;
+function desiredCapabilities(config, useTls) {
+  var c = capabilities;
+  var flags = c.LONG_PASSWORD | c.LONG_FLAG | c.PROTOCOL_41 | c.TRANSACTIONS | c.SECURE_CONNECTION | c.MULTI_RESULTS | c.PLUGIN_AUTH | c.PLUGIN_AUTH_LENENC_CLIENT_DATA;
+  if (config.database) flags |= c.CONNECT_WITH_DB;
+  if (useTls) flags |= c.SSL;
+  return flags >>> 0;
+}
+
+function authResponse(plugin, password, scramble, secure) {
+  if (plugin === 'caching_sha2_password') return Auth.cachingSha2Password(password, scramble);
+  if (plugin === 'mysql_native_password' || !plugin) return Auth.mysqlNativePassword(password, scramble);
+  if (plugin === 'sha256_password' && secure) return Auth.cleartextPassword(password);
+  throw new Error('Unsupported MySQL authentication plugin: ' + plugin);
+}
+
+function cleanupState(state) {
+  if (!state || !state.cleanup) return;
+  var cleanup = state.cleanup;
+  state.cleanup = null;
+  cleanup();
+}
+
+function Connection(config) {
+  EventEmitter.call(this);
+  config = config || {};
+  if (!config.user) throw new TypeError('MySQL connection requires user');
+  this.config = Object.assign({ host: '127.0.0.1', port: 3306, connectTimeout: 10000 }, config);
+  this.socket = null;
+  this.connected = false;
+  this.ended = false;
+  this.secure = false;
+  this.server = null;
+  this._framer = new PacketFramer.PacketFramer({ maxPayloadBytes: config.maxPayloadBytes });
+  this._sequence = 0;
+  this._connectState = null;
+  this._queryState = null;
+  this._closedEmitted = false;
+}
+Connection.prototype = Object.create(EventEmitter.prototype);
+Connection.prototype.constructor = Connection;
+
+Connection.prototype._emitError = function _emitError(error) {
+  if (this.listenerCount('error') > 0) this.emit('error', error);
+};
+
+Connection.prototype._fail = function _fail(error) {
+  if (!(error instanceof Error)) error = new Error(String(error));
+  if (this._connectState) {
+    var connectState = this._connectState;
+    this._connectState = null;
+    cleanupState(connectState);
+    connectState.reject(error);
   }
+  if (this._queryState) {
+    var queryState = this._queryState;
+    this._queryState = null;
+    cleanupState(queryState);
+    queryState.reject(error);
+  }
+  this._emitError(error);
+};
 
-  var cb      = callback;
-  var options = {};
+Connection.prototype._write = function _write(payload) {
+  if (!this.socket || this.socket.destroyed) throw new Error('MySQL socket is not writable');
+  this.socket.write(PacketFramer.encodePacket(payload, this._sequence));
+  this._sequence = (this._sequence + 1) & 0xff;
+};
 
-  if (typeof sql === 'function') {
-    cb = sql;
-  } else if (typeof sql === 'object') {
-    options = Object.create(sql);
-
-    if (typeof values === 'function') {
-      cb = values;
-    } else if (values !== undefined) {
-      Object.defineProperty(options, 'values', { value: values });
+Connection.prototype._attachSocket = function _attachSocket(socket) {
+  var self = this;
+  this.socket = socket;
+  socket.on('data', function (chunk) {
+    try {
+      var packets = self._framer.push(chunk);
+      for (var i = 0; i < packets.length; i++) self._acceptPacket(packets[i]);
+    } catch (error) {
+      self._fail(error);
+      socket.destroy();
     }
-  } else {
-    options.sql = sql;
-
-    if (typeof values === 'function') {
-      cb = values;
-    } else if (values !== undefined) {
-      options.values = values;
+  });
+  socket.on('error', function (error) { self._fail(error); });
+  socket.on('close', function () {
+    self.connected = false;
+    self.ended = true;
+    if (self._connectState || self._queryState) self._fail(new Error('MySQL connection closed unexpectedly'));
+    if (!self._closedEmitted) {
+      self._closedEmitted = true;
+      self.emit('close');
     }
-  }
-
-  if (cb !== undefined) {
-    cb = wrapCallbackInDomain(null, cb);
-
-    if (cb === undefined) {
-      throw new TypeError('argument callback must be a function when provided');
-    }
-  }
-
-  var query = new Query(options, cb);
-  query.namedPlaceholders = options.namedPlaceholders;
-  return query;
-};
-
-Connection.prototype.connect = function connect(options, callback) {
-  if (!callback && typeof options === 'function') {
-    callback = options;
-    options = {};
-  }
-
-  if (!this._connectCalled) {
-    this._connectCalled = true;
-    this._startConnectTelemetry();
-
-    // Connect either via a UNIX domain socket or a TCP socket.
-    this._socket = (this.config.socketPath)
-      ? Net.createConnection(this.config.socketPath)
-      : Net.createConnection(this.config.port, this.config.host);
-
-    // Connect socket to connection domain
-    if (Events.usingDomains) {
-      this._socket.domain = this.domain;
-    }
-
-    var connection = this;
-    this._protocol.on('data', function(data) {
-      connection._socket.write(data);
-    });
-    this._socket.on('data', wrapToDomain(connection, function (data) {
-      connection._protocol.write(data);
-    }));
-    this._protocol.on('end', function() {
-      connection._socket.end();
-    });
-    this._socket.on('end', wrapToDomain(connection, function () {
-      connection._protocol.end();
-    }));
-
-    this._socket.on('error', this._handleNetworkError.bind(this));
-    this._socket.on('connect', this._handleProtocolConnect.bind(this));
-    this._protocol.on('handshake', this._handleProtocolHandshake.bind(this));
-    this._protocol.on('initialize', this._handleProtocolInitialize.bind(this));
-    this._protocol.on('unhandledError', this._handleProtocolError.bind(this));
-    this._protocol.on('drain', this._handleProtocolDrain.bind(this));
-    this._protocol.on('end', this._handleProtocolEnd.bind(this));
-    this._protocol.on('enqueue', this._handleProtocolEnqueue.bind(this));
-
-    if (this.config.connectTimeout) {
-      var handleConnectTimeout = this._handleConnectTimeout.bind(this);
-
-      this._socket.setTimeout(this.config.connectTimeout, handleConnectTimeout);
-      this._socket.once('connect', function() {
-        this.setTimeout(0, handleConnectTimeout);
-      });
-    }
-  }
-
-  var handshakeCallback = wrapCallbackInDomain(this, callback);
-
-  if (handshakeCallback) {
-    var originalCallback = handshakeCallback;
-    var self = this;
-
-    handshakeCallback = function connectCallback(error) {
-      if (error) {
-        self._finishConnectTelemetry(error);
-      }
-
-      return originalCallback.apply(this, arguments);
-    };
-  }
-
-  this._protocol.handshake(options, handshakeCallback);
-};
-
-Connection.prototype.changeUser = function changeUser(options, callback) {
-  if (!callback && typeof options === 'function') {
-    callback = options;
-    options = {};
-  }
-
-  this._implyConnect();
-
-  var charsetNumber = (options.charset)
-    ? ConnectionConfig.getCharsetNumber(options.charset)
-    : this.config.charsetNumber;
-
-  return this._protocol.changeUser({
-    user          : options.user || this.config.user,
-    password      : options.password || this.config.password,
-    database      : options.database || this.config.database,
-    timeout       : options.timeout,
-    charsetNumber : charsetNumber,
-    currentConfig : this.config
-  }, wrapCallbackInDomain(this, callback));
-};
-
-Connection.prototype.beginTransaction = function beginTransaction(options, callback) {
-  if (!callback && typeof options === 'function') {
-    callback = options;
-    options = {};
-  }
-
-  options = options || {};
-  options.sql = 'START TRANSACTION';
-  options.values = null;
-
-  return this.query(options, callback);
-};
-
-Connection.prototype.commit = function commit(options, callback) {
-  if (!callback && typeof options === 'function') {
-    callback = options;
-    options = {};
-  }
-
-  options = options || {};
-  options.sql = 'COMMIT';
-  options.values = null;
-
-  return this.query(options, callback);
-};
-
-Connection.prototype.rollback = function rollback(options, callback) {
-  if (!callback && typeof options === 'function') {
-    callback = options;
-    options = {};
-  }
-
-  options = options || {};
-  options.sql = 'ROLLBACK';
-  options.values = null;
-
-  return this.query(options, callback);
-};
-
-Connection.prototype.query = function query(sql, values, cb) {
-  var query = Connection.createQuery(sql, values, cb);
-  query._connection = this;
-
-  if (!(typeof sql === 'object' && 'typeCast' in sql)) {
-    query.typeCast = this.config.typeCast;
-  }
-
-  NamedPlaceholders.resolve(this.config, query);
-
-  if (query.sql) {
-    query.sql = this.format(query.sql, query.values);
-  }
-
-  if (query._callback) {
-    query._callback = wrapCallbackInDomain(this, query._callback);
-  }
-
-  this._implyConnect();
-
-  return this._protocol._enqueue(query);
-};
-
-Connection.prototype.ping = function ping(options, callback) {
-  if (!callback && typeof options === 'function') {
-    callback = options;
-    options = {};
-  }
-
-  this._implyConnect();
-  this._protocol.ping(options, wrapCallbackInDomain(this, callback));
-};
-
-Connection.prototype.statistics = function statistics(options, callback) {
-  if (!callback && typeof options === 'function') {
-    callback = options;
-    options = {};
-  }
-
-  this._implyConnect();
-  this._protocol.stats(options, wrapCallbackInDomain(this, callback));
-};
-
-Connection.prototype.end = function end(options, callback) {
-  var cb   = callback;
-  var opts = options;
-
-  if (!callback && typeof options === 'function') {
-    cb   = options;
-    opts = null;
-  }
-
-  // create custom options reference
-  opts = Object.create(opts || null);
-
-  if (opts.timeout === undefined) {
-    // default timeout of 30 seconds
-    opts.timeout = 30000;
-  }
-
-  this._implyConnect();
-  this._protocol.quit(opts, wrapCallbackInDomain(this, cb));
-};
-
-Connection.prototype.destroy = function() {
-  this.state = 'disconnected';
-  this._implyConnect();
-  this._socket.destroy();
-  this._protocol.destroy();
-};
-
-Connection.prototype.pause = function() {
-  this._socket.pause();
-  this._protocol.pause();
-};
-
-Connection.prototype.resume = function() {
-  this._socket.resume();
-  this._protocol.resume();
-};
-
-Connection.prototype.escape = function(value) {
-  return SqlString.escape(value, false, this.config.timezone);
-};
-
-Connection.prototype.escapeId = function escapeId(value) {
-  return SqlString.escapeId(value, false);
-};
-
-Connection.prototype.format = function(sql, values) {
-  if (typeof this.config.queryFormat === 'function') {
-    return this.config.queryFormat.call(this, sql, values, this.config.timezone);
-  }
-  return SqlString.format(sql, values, this.config.stringifyObjects, this.config.timezone);
-};
-
-Connection.prototype._startConnectTelemetry = function _startConnectTelemetry() {
-  if (this._connectTelemetryStartedAt !== null) {
-    return;
-  }
-
-  this._connectTelemetryStartedAt = process.hrtime.bigint();
-  ConnectStartChannel.publish({
-    correlationId : 'connect:' + this._connectTelemetryStartedAt.toString(),
-    operation     : 'connect',
-    threadId      : this.threadId
   });
 };
 
-Connection.prototype._finishConnectTelemetry = function _finishConnectTelemetry(error) {
-  if (this._connectTelemetryEnded || this._connectTelemetryStartedAt === null) {
-    return;
-  }
-
-  this._connectTelemetryEnded = true;
-
-  var message = {
-    correlationId : 'connect:' + this._connectTelemetryStartedAt.toString(),
-    operation     : 'connect',
-    threadId      : this.threadId,
-    durationMs    : Number(process.hrtime.bigint() - this._connectTelemetryStartedAt) / 1000000
-  };
-
-  if (error) {
-    message.errorCode = error.code;
-    message.errno = error.errno !== undefined ? error.errno : error.errorno;
-    ConnectErrorChannel.publish(message);
-  } else {
-    ConnectEndChannel.publish(message);
-  }
+Connection.prototype._acceptPacket = function _acceptPacket(packet) {
+  if (packet.sequenceId !== this._sequence) throw new Error('Unexpected MySQL packet sequence: expected ' + this._sequence + ', received ' + packet.sequenceId);
+  this._sequence = (this._sequence + 1) & 0xff;
+  if (this._connectState) this._handleAuthPacket(packet.payload);
+  else if (this._queryState) this._handleQueryPacket(packet.payload);
 };
 
-if (tls.TLSSocket) {
-  // 0.11+ environment
-  Connection.prototype._startTLS = function _startTLS(onSecure) {
-    var connection = this;
-
-    createSecureContext(this.config, function (err, secureContext) {
-      if (err) {
-        onSecure(err);
-        return;
-      }
-
-      // "unpipe"
-      connection._socket.removeAllListeners('data');
-      connection._protocol.removeAllListeners('data');
-
-      // socket <-> encrypted
-      var rejectUnauthorized = connection.config.ssl.rejectUnauthorized;
-      var secureEstablished  = false;
-      var secureSocket       = new tls.TLSSocket(connection._socket, {
-        rejectUnauthorized : rejectUnauthorized,
-        requestCert        : true,
-        secureContext      : secureContext,
-        isServer           : false
-      });
-
-      // error handler for secure socket
-      secureSocket.on('_tlsError', function(err) {
-        if (secureEstablished) {
-          connection._handleNetworkError(err);
-        } else {
-          onSecure(err);
-        }
-      });
-
-      // cleartext <-> protocol
-      secureSocket.pipe(connection._protocol, { end: false });
-      connection._protocol.on('data', function(data) {
-        secureSocket.write(data);
-      });
-
-      secureSocket.on('secure', function() {
-        secureEstablished = true;
-
-        onSecure(rejectUnauthorized ? this.ssl.verifyError() : null);
-      });
-
-      // start TLS communications
-      secureSocket._start();
-    });
-  };
-} else {
-  // pre-0.11 environment
-  Connection.prototype._startTLS = function _startTLS(onSecure) {
-    // before TLS:
-    //  _socket <-> _protocol
-    // after:
-    //  _socket <-> securePair.encrypted <-> securePair.cleartext <-> _protocol
-
-    var connection  = this;
-    var credentials = Crypto.createCredentials({
-      ca         : this.config.ssl.ca,
-      cert       : this.config.ssl.cert,
-      ciphers    : this.config.ssl.ciphers,
-      key        : this.config.ssl.key,
-      passphrase : this.config.ssl.passphrase
-    });
-
-    var rejectUnauthorized = this.config.ssl.rejectUnauthorized;
-    var secureEstablished  = false;
-    var securePair         = tls.createSecurePair(credentials, false, true, rejectUnauthorized);
-
-    // error handler for secure pair
-    securePair.on('error', function(err) {
-      if (secureEstablished) {
-        connection._handleNetworkError(err);
-      } else {
-        onSecure(err);
-      }
-    });
-
-    // "unpipe"
-    this._socket.removeAllListeners('data');
-    this._protocol.removeAllListeners('data');
-
-    // socket <-> encrypted
-    securePair.encrypted.pipe(this._socket);
-    this._socket.on('data', function(data) {
-      securePair.encrypted.write(data);
-    });
-
-    // cleartext <-> protocol
-    securePair.cleartext.pipe(this._protocol);
-    this._protocol.on('data', function(data) {
-      securePair.cleartext.write(data);
-    });
-
-    // secure established
-    securePair.on('secure', function() {
-      secureEstablished = true;
-
-      if (!rejectUnauthorized) {
-        onSecure();
-        return;
-      }
-
-      var verifyError = this.ssl.verifyError();
-      var err = verifyError;
-
-      // node.js 0.6 support
-      if (typeof err === 'string') {
-        err = new Error(verifyError);
-        err.code = verifyError;
-      }
-
-      onSecure(err);
-    });
-
-    // node.js 0.8 bug
-    securePair._cycle = securePair.cycle;
-    securePair.cycle  = function cycle() {
-      if (this.ssl && this.ssl.error) {
-        this.error();
-      }
-
-      return this._cycle.apply(this, arguments);
-    };
-  };
-}
-
-Connection.prototype._handleConnectTimeout = function() {
-  if (this._socket) {
-    this._socket.setTimeout(0);
-    this._socket.destroy();
-  }
-
-  var err = new Error('connect ETIMEDOUT');
-  err.errorno = 'ETIMEDOUT';
-  err.code = 'ETIMEDOUT';
-  err.syscall = 'connect';
-
-  this._finishConnectTelemetry(err);
-  this._handleNetworkError(err);
+Connection.prototype._authToken = function _authToken(plugin, scramble) {
+  return authResponse(plugin, this.config.password, scramble, this.secure);
 };
 
-Connection.prototype._handleNetworkError = function(err) {
-  if (this.state !== 'authenticated') {
-    this._finishConnectTelemetry(err);
-  }
-
-  this._protocol.handleNetworkError(err);
+Connection.prototype._sendHandshakeResponse = function _sendHandshakeResponse() {
+  var state = this._connectState;
+  var response = ClientPackets.encodeHandshakeResponse41({
+    capabilities: state.capabilities,
+    characterSet: this.config.characterSet || 45,
+    maxPacketSize: this.config.maxPacketSize,
+    user: this.config.user,
+    database: this.config.database,
+    authPluginName: state.plugin,
+    authResponse: this._authToken(state.plugin, state.scramble)
+  });
+  this._write(response);
 };
 
-Connection.prototype._handleProtocolError = function(err) {
-  if (this.state !== 'authenticated') {
-    this._finishConnectTelemetry(err);
-  }
-
-  this.state = 'protocol_error';
-  this.emit('error', err);
-};
-
-Connection.prototype._handleProtocolDrain = function() {
-  this.emit('drain');
-};
-
-Connection.prototype._handleProtocolConnect = function() {
-  this.state = 'connected';
+Connection.prototype._completeConnection = function _completeConnection() {
+  var state = this._connectState;
+  this._connectState = null;
+  cleanupState(state);
+  this.connected = true;
+  state.resolve(this);
   this.emit('connect');
 };
 
-Connection.prototype._handleProtocolHandshake = function _handleProtocolHandshake() {
-  this.state = 'authenticated';
-  this._finishConnectTelemetry();
-};
-
-Connection.prototype._handleProtocolInitialize = function _handleProtocolInitialize(packet) {
-  this.threadId = packet.threadId;
-};
-
-Connection.prototype._handleProtocolEnd = function(err) {
-  if (this.state !== 'authenticated') {
-    this._finishConnectTelemetry(err);
+Connection.prototype._handleAuthPacket = function _handleAuthPacket(payload) {
+  var state = this._connectState;
+  if (payload[0] === 0x00) {
+    this._completeConnection();
+    return;
   }
-
-  this.state = 'disconnected';
-  this.emit('end', err);
-};
-
-Connection.prototype._handleProtocolEnqueue = function _handleProtocolEnqueue(sequence) {
-  this.emit('enqueue', sequence);
-};
-
-Connection.prototype._implyConnect = function() {
-  if (!this._connectCalled) {
-    this.connect();
+  if (payload[0] === 0xff) {
+    var err = ServerPackets.decodeErrorPacket(payload);
+    throw new MySqlError(err.message, err);
   }
-};
-
-function createSecureContext (config, cb) {
-  var context = null;
-  var error   = null;
-
-  try {
-    context = tls.createSecureContext({
-      ca         : config.ssl.ca,
-      cert       : config.ssl.cert,
-      ciphers    : config.ssl.ciphers,
-      key        : config.ssl.key,
-      maxVersion : config.ssl.maxVersion,
-      minVersion : config.ssl.minVersion,
-      passphrase : config.ssl.passphrase
-    });
-  } catch (err) {
-    error = err;
+  if (payload[0] === 0xfe && payload.length > 1) {
+    var authSwitch = ServerPackets.decodeAuthSwitchRequest(payload);
+    state.plugin = authSwitch.pluginName;
+    state.scramble = authSwitch.pluginData;
+    this._write(this._authToken(state.plugin, state.scramble));
+    return;
   }
-
-  cb(error, context);
-}
-
-function unwrapFromDomain(fn) {
-  return function () {
-    var domains = [];
-    var ret;
-
-    while (process.domain) {
-      domains.shift(process.domain);
-      process.domain.exit();
+  if (payload[0] === 0x01 && state.plugin === 'caching_sha2_password') {
+    var status = payload[1];
+    if (state.awaitingPublicKey && payload.length > 2) {
+      var key = payload.subarray(1).toString('utf8').replace(/\0+$/, '');
+      state.awaitingPublicKey = false;
+      this._write(Auth.encryptCachingSha2Password(this.config.password, state.scramble, key));
+      return;
     }
-
-    try {
-      ret = fn.apply(this, arguments);
-    } finally {
-      for (var i = 0; i < domains.length; i++) {
-        domains[i].enter();
+    if (status === 0x03) return;
+    if (status === 0x04) {
+      if (this.secure) {
+        this._write(Auth.cleartextPassword(this.config.password));
+        return;
       }
+      if (this.config.serverPublicKey) {
+        this._write(Auth.encryptCachingSha2Password(this.config.password, state.scramble, this.config.serverPublicKey));
+        return;
+      }
+      if (this.config.getServerPublicKey) {
+        state.awaitingPublicKey = true;
+        this._write(Buffer.from([0x02]));
+        return;
+      }
+      throw new Error('MySQL caching_sha2_password full authentication requires TLS, serverPublicKey, or getServerPublicKey');
     }
-
-    return ret;
-  };
-}
-
-function wrapCallbackInDomain(ee, fn) {
-  if (typeof fn !== 'function') {
-    return undefined;
   }
+  throw new Error('Unexpected MySQL authentication packet');
+};
 
-  if (fn.domain) {
-    return fn;
+Connection.prototype._finishQuery = function _finishQuery(result, error) {
+  var state = this._queryState;
+  this._queryState = null;
+  if (!state) return;
+  cleanupState(state);
+  if (error) state.reject(error);
+  else state.resolve(result);
+};
+
+Connection.prototype._handleQueryPacket = function _handleQueryPacket(payload) {
+  var state = this._queryState;
+  if (payload[0] === 0xff) {
+    var err = ServerPackets.decodeErrorPacket(payload);
+    this._finishQuery(null, new MySqlError(err.message, err));
+    return;
   }
-
-  var domain = process.domain;
-
-  if (domain) {
-    return domain.bind(fn);
-  } else if (ee) {
-    return unwrapFromDomain(wrapToDomain(ee, fn));
-  } else {
-    return fn;
+  if (state.phase === 'start' && payload[0] === 0x00) {
+    var ok = ServerPackets.decodeOkPacket(payload);
+    this._finishQuery({ rows: [], fields: [], affectedRows: ok.affectedRows, insertId: ok.lastInsertId, serverStatus: ok.statusFlags, warningCount: ok.warnings });
+    return;
   }
-}
-
-function wrapToDomain(ee, fn) {
-  return function () {
-    if (Events.usingDomains && ee.domain) {
-      ee.domain.enter();
-      fn.apply(this, arguments);
-      ee.domain.exit();
-    } else {
-      fn.apply(this, arguments);
+  if (state.phase === 'start') {
+    var reader = new PacketReader(payload);
+    state.columnCount = Number(reader.lengthEncodedInteger());
+    state.phase = 'columns';
+    return;
+  }
+  if (state.phase === 'columns') {
+    state.fields.push(ServerPackets.decodeColumnDefinition41(payload));
+    if (state.fields.length === state.columnCount) state.phase = 'columnTerminator';
+    return;
+  }
+  if (state.phase === 'columnTerminator') {
+    if (payload[0] !== 0xfe || payload.length >= 9) throw new Error('Expected MySQL EOF after column definitions');
+    ServerPackets.decodeEofPacket(payload);
+    state.phase = 'rows';
+    return;
+  }
+  if (state.phase === 'rows') {
+    if (payload[0] === 0xfe && payload.length < 9) {
+      var eof = ServerPackets.decodeEofPacket(payload);
+      if (eof.statusFlags & SERVER_STATUS_MORE_RESULTS_EXISTS) throw new Error('Multiple MySQL result sets are not implemented in clean-room runtime yet');
+      this._finishQuery({ rows: state.rows, fields: state.fields, affectedRows: 0, insertId: 0, serverStatus: eof.statusFlags, warningCount: eof.warnings });
+      return;
     }
+    state.rows.push(ServerPackets.decodeTextRow(payload, state.fields));
+  }
+};
+
+Connection.prototype.connect = function connect() {
+  var self = this;
+  if (this.connected) return Promise.resolve(this);
+  if (this._connectState) return this._connectState.promise;
+  if (this.ended) return Promise.reject(new Error('MySQL connection has ended'));
+
+  var state = { plugin: null, scramble: null, capabilities: 0, awaitingPublicKey: false, cleanup: null };
+  state.promise = new Promise(function (resolve, reject) { state.resolve = resolve; state.reject = reject; });
+  this._connectState = state;
+
+  var raw = net.createConnection({ host: this.config.host, port: this.config.port });
+  var handshakeFramer = new PacketFramer.PacketFramer({ maxPayloadBytes: this.config.maxPayloadBytes });
+  var ssl = normalizeSsl(this.config.ssl);
+  var timer = setTimeout(function () {
+    raw.destroy();
+    self._fail(new Error('MySQL connection timed out'));
+  }, this.config.connectTimeout);
+  if (timer.unref) timer.unref();
+
+  var abortHandler = null;
+  if (this.config.signal) {
+    if (this.config.signal.aborted) {
+      raw.destroy();
+      this._fail(this.config.signal.reason || new Error('MySQL connection aborted'));
+      return state.promise;
+    }
+    abortHandler = function () {
+      raw.destroy();
+      self._fail(self.config.signal.reason || new Error('MySQL connection aborted'));
+    };
+    this.config.signal.addEventListener('abort', abortHandler, { once: true });
+  }
+  state.cleanup = function () {
+    clearTimeout(timer);
+    if (abortHandler) self.config.signal.removeEventListener('abort', abortHandler);
   };
-}
+
+  function initialError(error) { self._fail(error); }
+  raw.once('error', initialError);
+  raw.on('data', function onHandshakeData(chunk) {
+    try {
+      var packets = handshakeFramer.push(chunk);
+      if (!packets.length) return;
+      if (packets.length !== 1 || packets[0].sequenceId !== 0) throw new Error('Invalid MySQL initial handshake framing');
+      raw.removeListener('data', onHandshakeData);
+      raw.removeListener('error', initialError);
+      self.server = HandshakeV10.parseHandshakeV10(packets[0].payload);
+      state.plugin = self.server.authPluginName || 'mysql_native_password';
+      state.scramble = self.server.authPluginData;
+      var serverCaps = self.server.capabilityFlags >>> 0;
+      var wantsTls = ssl.mode !== 'disable';
+      var canTls = (serverCaps & capabilities.SSL) !== 0;
+      if (wantsTls && !canTls && ssl.mode === 'require') throw new Error('MySQL server does not support TLS');
+      var useTls = wantsTls && canTls;
+      state.capabilities = (desiredCapabilities(self.config, useTls) & serverCaps) >>> 0;
+      if ((state.capabilities & capabilities.PROTOCOL_41) === 0) throw new Error('MySQL server does not support protocol 4.1');
+      self._sequence = 1;
+
+      if (!useTls) {
+        self._framer.reset();
+        self._attachSocket(raw);
+        self._sendHandshakeResponse();
+        return;
+      }
+
+      self.socket = raw;
+      self._write(ClientPackets.encodeSslRequest({ capabilities: state.capabilities, characterSet: self.config.characterSet || 45, maxPacketSize: self.config.maxPacketSize }));
+      var tlsOptions = Object.assign({}, ssl.options || {}, { socket: raw, servername: (ssl.options && ssl.options.servername) || self.config.host });
+      delete tlsOptions.mode;
+      function secureError(error) { self._fail(error); }
+      var secureSocket = tls.connect(tlsOptions, function () {
+        secureSocket.removeListener('error', secureError);
+        self.secure = true;
+        self._framer.reset();
+        self._attachSocket(secureSocket);
+        self._sendHandshakeResponse();
+      });
+      secureSocket.once('error', secureError);
+    } catch (error) {
+      self._fail(error);
+      raw.destroy();
+    }
+  });
+
+  return state.promise;
+};
+
+Connection.prototype.query = function query(sql, options) {
+  options = options || {};
+  if (!this.connected || !this.socket || this.ended) return Promise.reject(new Error('MySQL connection is not ready'));
+  if (this._queryState) return Promise.reject(new Error('MySQL connection already has an active query'));
+  if (options.timeout !== undefined && (!Number.isFinite(options.timeout) || options.timeout <= 0)) return Promise.reject(new RangeError('MySQL query timeout must be a positive number'));
+  if (options.signal && options.signal.aborted) return Promise.reject(options.signal.reason || new Error('MySQL query aborted'));
+
+  var self = this;
+  var state = { phase: 'start', columnCount: 0, fields: [], rows: [], cleanup: null };
+  state.promise = new Promise(function (resolve, reject) { state.resolve = resolve; state.reject = reject; });
+  this._queryState = state;
+  this._sequence = 0;
+
+  var timer = null;
+  if (options.timeout !== undefined) {
+    timer = setTimeout(function () { self.destroy(new Error('MySQL query timed out')); }, options.timeout);
+    if (timer.unref) timer.unref();
+  }
+  var abortHandler = null;
+  if (options.signal) {
+    abortHandler = function () { self.destroy(options.signal.reason || new Error('MySQL query aborted')); };
+    options.signal.addEventListener('abort', abortHandler, { once: true });
+  }
+  state.cleanup = function () {
+    if (timer) clearTimeout(timer);
+    if (abortHandler) options.signal.removeEventListener('abort', abortHandler);
+  };
+
+  this._write(ClientPackets.encodeQuery(sql));
+  return state.promise;
+};
+
+Connection.prototype.end = function end() {
+  if (!this.socket || this.ended) return Promise.resolve();
+  this.ended = true;
+  try {
+    this._sequence = 0;
+    this._write(ClientPackets.encodeQuit());
+    this.socket.end();
+  } catch (error) {
+    this.socket.destroy();
+  }
+  return Promise.resolve();
+};
+
+Connection.prototype.destroy = function destroy(error) {
+  this.ended = true;
+  if (this.socket) this.socket.destroy();
+  if (error) this._fail(error);
+};
+
+exports.Connection = Connection;
+exports.MySqlError = MySqlError;
+exports.normalizeSsl = normalizeSsl;
