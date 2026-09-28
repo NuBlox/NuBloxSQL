@@ -24,22 +24,21 @@ function createApi() {
       getTracer: function getTracer() {
         return {
           startSpan: function startSpan(name, options, context) {
-            var span = {
-              name       : name,
-              options    : options,
-              context    : context,
-              attributes : {},
-              status     : null,
-              ended      : false,
-              setAttributes: function setAttributes(attributes) {
-                Object.assign(this.attributes, attributes);
-              },
-              setStatus: function setStatus(status) {
-                this.status = status;
-              },
-              end: function end() {
-                this.ended = true;
-              }
+            var span = {};
+            span.name = name;
+            span.options = options;
+            span.context = context;
+            span.attributes = {};
+            span.status = null;
+            span.ended = false;
+            span.setAttributes = function setAttributes(attributes) {
+              Object.assign(this.attributes, attributes);
+            };
+            span.setStatus = function setStatus(status) {
+              this.status = status;
+            };
+            span.end = function end() {
+              this.ended = true;
             };
             spans.push(span);
             return span;
