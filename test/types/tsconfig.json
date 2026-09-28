@@ -9,6 +9,7 @@
   },
   "files": [
     "prepared-cursor.ts",
-    "sql-core.ts"
+    "sql-core.ts",
+    "postgresql-dialect.ts"
   ]
 }

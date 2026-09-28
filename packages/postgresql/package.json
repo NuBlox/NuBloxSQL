@@ -1,0 +1,32 @@
+{
+  "name": "@nublox/postgresql",
+  "version": "0.1.0",
+  "description": "PostgreSQL dialect foundation for NuBloxSQL.",
+  "license": "Apache-2.0",
+  "author": "Stephen J T Spittal",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NuBlox/NuBloxSQL.git",
+    "directory": "packages/postgresql"
+  },
+  "homepage": "https://github.com/NuBlox/NuBloxSQL/tree/main/packages/postgresql#readme",
+  "bugs": {
+    "url": "https://github.com/NuBlox/NuBloxSQL/issues"
+  },
+  "keywords": ["postgresql", "postgres", "sql", "database", "dialect", "nublox"],
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "require": "./index.js",
+      "default": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["index.js", "index.d.ts", "README.md", "LICENSE", "NOTICE"],
+  "engines": {"node": ">=22"},
+  "scripts": {
+    "test": "node test/contract.js"
+  }
+}

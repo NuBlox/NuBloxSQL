@@ -1,0 +1,34 @@
+name: NuBloxSQL PostgreSQL Dialect
+
+on:
+  pull_request:
+    paths:
+      - 'packages/postgresql/**'
+      - 'packages/sql-core/**'
+      - 'test/types/**'
+      - '.github/workflows/postgresql-dialect.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/postgresql/**'
+      - 'packages/sql-core/**'
+      - 'test/types/**'
+      - '.github/workflows/postgresql-dialect.yml'
+  workflow_dispatch:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24, 26]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm install --ignore-scripts
+      - run: node packages/postgresql/test/contract.js
+      - run: npm run test:types
+      - run: npm pack --dry-run
+        working-directory: packages/postgresql
