@@ -63,14 +63,14 @@ jobs:
             -out .ci/sqlserver/ca.pem \
             -days 1
           openssl req -nodes -newkey rsa:2048 \
-            -subj '/CN=sqlserver.nublox.test' \
+            -subj '/CN=sqlserver' \
             -keyout .ci/sqlserver/mssql.key \
             -out .ci/sqlserver/mssql.csr
           cat > .ci/sqlserver/server.ext <<'EOF'
           basicConstraints=critical,CA:FALSE
           keyUsage=critical,digitalSignature,keyEncipherment
           extendedKeyUsage=serverAuth
-          subjectAltName=DNS:sqlserver.nublox.test,DNS:localhost,IP:127.0.0.1
+          subjectAltName=DNS:sqlserver,DNS:sqlserver.nublox.test,DNS:localhost,IP:127.0.0.1
           EOF
           openssl x509 -req \
             -in .ci/sqlserver/mssql.csr \
@@ -130,7 +130,7 @@ jobs:
       - name: Native TDS 8 TLS, PRELOGIN and LOGIN7 qualification
         env:
           MSSQL_HOST: 127.0.0.1
-          MSSQL_SERVER_NAME: sqlserver.nublox.test
+          MSSQL_SERVER_NAME: sqlserver
           MSSQL_PORT: 1433
         run: node lib/dialects/sqlserver/test/live-connection.js
       - name: Show SQL Server logs on failure
