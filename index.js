@@ -29,14 +29,9 @@ function normalizeDialect(value) {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new TypeError('NuBloxSQL requires a dialect: mysql, postgresql or sqlite');
   }
-
   var dialect = value.trim().toLowerCase();
   if (dialect === 'postgres' || dialect === 'pg') dialect = 'postgresql';
-
-  if (!Object.prototype.hasOwnProperty.call(loaders, dialect)) {
-    throw new RangeError('Unsupported NuBloxSQL dialect: ' + value);
-  }
-
+  if (!Object.prototype.hasOwnProperty.call(loaders, dialect)) throw new RangeError('Unsupported NuBloxSQL dialect: ' + value);
   return dialect;
 }
 
@@ -49,29 +44,22 @@ function loadAdapter(dialect) {
 function resolveInvocation(dialectOrConfig, maybeConfig) {
   var dialect;
   var config;
-
   if (typeof dialectOrConfig === 'string') {
     dialect = normalizeDialect(dialectOrConfig);
     config = maybeConfig || {};
   } else {
     config = dialectOrConfig || {};
-    if (!config || typeof config !== 'object' || Array.isArray(config)) {
-      throw new TypeError('NuBloxSQL connection configuration must be an object');
-    }
+    if (!config || typeof config !== 'object' || Array.isArray(config)) throw new TypeError('NuBloxSQL connection configuration must be an object');
     dialect = normalizeDialect(config.dialect);
   }
-
   var adapterConfig = {};
   Object.keys(config).forEach(function copyConfig(key) {
     if (key !== 'dialect') adapterConfig[key] = config[key];
   });
-
   return { dialect: dialect, adapter: loadAdapter(dialect), config: adapterConfig };
 }
 
-function adapter(dialect) {
-  return loadAdapter(dialect);
-}
+function adapter(dialect) { return loadAdapter(dialect); }
 
 function createConnection(dialectOrConfig, maybeConfig) {
   var invocation = resolveInvocation(dialectOrConfig, maybeConfig);
@@ -80,16 +68,22 @@ function createConnection(dialectOrConfig, maybeConfig) {
 
 function createPool(dialectOrConfig, maybeConfig) {
   var invocation = resolveInvocation(dialectOrConfig, maybeConfig);
-
-  if (typeof invocation.adapter.createPool !== 'function') {
-    throw errorApi.unsupportedError(invocation.dialect, 'connection pools');
-  }
-
+  if (typeof invocation.adapter.createPool !== 'function') throw errorApi.unsupportedError(invocation.dialect, 'connection pools');
   return invocation.adapter.createPool(invocation.config);
 }
 
 function createClient(dialectOrConfig, maybeConfig) {
   var invocation = resolveInvocation(dialectOrConfig, maybeConfig);
+  var telemetry = invocation.config.telemetry;
+  if (telemetry !== undefined) {
+    if (telemetry === null || typeof telemetry !== 'object' || Array.isArray(telemetry)) throw new TypeError('NuBloxSQL telemetry must be an options object');
+    Object.defineProperty(invocation.config, 'telemetry', {
+      value: telemetry,
+      enumerable: false,
+      configurable: false,
+      writable: false
+    });
+  }
   return new clientApi.Client(invocation.adapter, invocation.dialect, invocation.config);
 }
 
@@ -105,11 +99,7 @@ function descriptor(dialect) {
 }
 
 function defineLazy(target, name, loader) {
-  Object.defineProperty(target, name, {
-    enumerable: true,
-    configurable: false,
-    get: loader
-  });
+  Object.defineProperty(target, name, { enumerable: true, configurable: false, get: loader });
 }
 
 var dialects = {};
