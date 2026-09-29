@@ -87,6 +87,22 @@ async function main() {
     assert.strictEqual((await selectPrepared.one({ id: 11 })).name, 'prepared-two');
     await selectPrepared.close();
 
+    var streamed = [];
+    var rowStream = db.stream(sql`
+      SELECT id, name FROM ${table}
+      WHERE id >= ${10}
+      ORDER BY id
+    `, { batchSize: 1, highWaterMark: 1 });
+    for await (var streamedRow of rowStream) streamed.push(streamedRow);
+    assert.deepStrictEqual(streamed.map(function (row) { return row.name; }), ['prepared-one', 'prepared-two']);
+    assert.strictEqual(rowStream.closed, true);
+
+    var earlyStream = db.stream(sql`SELECT id, name FROM ${table} ORDER BY id`, { batchSize: 1, highWaterMark: 1 });
+    var firstStreamed = await earlyStream.next();
+    assert.strictEqual(firstStreamed.done, false);
+    await earlyStream.close();
+    assert.strictEqual(earlyStream.closed, true);
+
     await db.transaction(async function (tx) {
       await tx.execute(sql`INSERT INTO ${table} (id, name) VALUES (${2}, ${'committed'})`);
       var txPrepared = await tx.prepare(sql`SELECT name FROM ${table} WHERE id = ${sql.parameter('id')}`);
