@@ -1,14 +1,12 @@
 {
   "name": "@nublox/mysql",
   "version": "1.0.0",
-  "private": false,
-  "description": "NuBlox-authored native MySQL driver for NuBloxSQL.",
+  "private": true,
+  "description": "Internal MySQL runtime module for NuBloxSQL.",
   "license": "SEE LICENSE IN LICENSE",
   "author": "Stephen J T Spittal",
   "main": "index.js",
   "types": "types.d.ts",
-  "files": ["index.js", "index.d.ts", "types.d.ts", "lib/", "README.md", "LICENSE"],
-  "repository": {"type":"git","url":"git+https://github.com/NuBlox/NuBloxSQL.git","directory":"packages/mysql"},
   "engines": {"node": ">=22"},
   "scripts": {"test":"node test/protocol.js && node test/auth.js && node test/prepared.js && node test/api.js && node test/session-reset.js && node test/streaming.js && node test/operation-control.js && node test/dialect.js && node test/package.js"}
 }

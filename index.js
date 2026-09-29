@@ -1,21 +1,18 @@
 'use strict';
 
-var sqlCore = require('./packages/sql-core');
-var mysql = require('./packages/mysql');
-var postgresql = require('./packages/postgresql');
-var sqlite = require('./packages/sqlite');
-
 var DIALECTS = Object.freeze({
   mysql: 'mysql',
   postgresql: 'postgresql',
   sqlite: 'sqlite'
 });
 
-var adapters = Object.freeze({
-  mysql: mysql,
-  postgresql: postgresql,
-  sqlite: sqlite
+var loaders = Object.freeze({
+  mysql: function loadMySql() { return require('./packages/mysql'); },
+  postgresql: function loadPostgreSql() { return require('./packages/postgresql'); },
+  sqlite: function loadSqlite() { return require('./packages/sqlite'); }
 });
+
+var cache = Object.create(null);
 
 function normalizeDialect(value) {
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -25,11 +22,17 @@ function normalizeDialect(value) {
   var dialect = value.trim().toLowerCase();
   if (dialect === 'postgres' || dialect === 'pg') dialect = 'postgresql';
 
-  if (!Object.prototype.hasOwnProperty.call(adapters, dialect)) {
+  if (!Object.prototype.hasOwnProperty.call(loaders, dialect)) {
     throw new RangeError('Unsupported NuBloxSQL dialect: ' + value);
   }
 
   return dialect;
+}
+
+function loadAdapter(dialect) {
+  var normalized = normalizeDialect(dialect);
+  if (!cache[normalized]) cache[normalized] = loaders[normalized]();
+  return cache[normalized];
 }
 
 function resolveInvocation(dialectOrConfig, maybeConfig) {
@@ -52,11 +55,11 @@ function resolveInvocation(dialectOrConfig, maybeConfig) {
     if (key !== 'dialect') adapterConfig[key] = config[key];
   });
 
-  return { dialect: dialect, adapter: adapters[dialect], config: adapterConfig };
+  return { dialect: dialect, adapter: loadAdapter(dialect), config: adapterConfig };
 }
 
 function adapter(dialect) {
-  return adapters[normalizeDialect(dialect)];
+  return loadAdapter(dialect);
 }
 
 function createConnection(dialectOrConfig, maybeConfig) {
@@ -75,36 +78,47 @@ function createPool(dialectOrConfig, maybeConfig) {
 }
 
 function supports(dialect, capability) {
-  var implementation = adapter(dialect);
-  if (implementation.descriptor && typeof implementation.descriptor.supports === 'function') {
-    return implementation.descriptor.supports(capability);
+  var implementation = loadAdapter(dialect);
+  var dialectDescriptor = implementation.descriptor;
+
+  if (!dialectDescriptor && normalizeDialect(dialect) === 'mysql') {
+    dialectDescriptor = require('./packages/mysql/lib/SqlDialectDescriptor');
   }
 
-  if (dialect === 'mysql') {
-    return require('./packages/mysql/lib/SqlDialectDescriptor').supports(capability);
-  }
-
-  return false;
+  return !!(dialectDescriptor && typeof dialectDescriptor.supports === 'function' && dialectDescriptor.supports(capability));
 }
 
 function descriptor(dialect) {
   var normalized = normalizeDialect(dialect);
-  var implementation = adapters[normalized];
+  var implementation = loadAdapter(normalized);
   if (implementation.descriptor) return implementation.descriptor;
   if (normalized === 'mysql') return require('./packages/mysql/lib/SqlDialectDescriptor');
   return null;
 }
 
+function defineLazy(target, name, loader) {
+  Object.defineProperty(target, name, {
+    enumerable: true,
+    configurable: false,
+    get: loader
+  });
+}
+
+var dialects = {};
+defineLazy(dialects, 'mysql', function () { return loadAdapter('mysql'); });
+defineLazy(dialects, 'postgresql', function () { return loadAdapter('postgresql'); });
+defineLazy(dialects, 'sqlite', function () { return loadAdapter('sqlite'); });
+Object.freeze(dialects);
+
 exports.DIALECTS = DIALECTS;
-exports.sqlCore = sqlCore;
-exports.dialects = adapters;
+exports.dialects = dialects;
 exports.adapter = adapter;
 exports.descriptor = descriptor;
 exports.supports = supports;
 exports.createConnection = createConnection;
 exports.createPool = createPool;
 
-// Advanced/native access remains available from the same installation.
-exports.mysql = mysql;
-exports.postgresql = postgresql;
-exports.sqlite = sqlite;
+defineLazy(exports, 'sqlCore', function () { return require('./packages/sql-core'); });
+defineLazy(exports, 'mysql', function () { return loadAdapter('mysql'); });
+defineLazy(exports, 'postgresql', function () { return loadAdapter('postgresql'); });
+defineLazy(exports, 'sqlite', function () { return loadAdapter('sqlite'); });

@@ -36,14 +36,13 @@ function testRuntimeSurface() {
   return pool.end();
 }
 
-function testDeclarationSurface() {
+function testInternalModuleSurface() {
   var packageJson = require('../package.json');
   assert.strictEqual(packageJson.name, '@nublox/mysql');
   assert.strictEqual(packageJson.version, '1.0.0');
-  assert.strictEqual(packageJson.private, false);
+  assert.strictEqual(packageJson.private, true);
   assert.strictEqual(packageJson.types, 'types.d.ts');
   assert.strictEqual(packageJson.license, 'SEE LICENSE IN LICENSE');
-  assert.deepStrictEqual(packageJson.files, ['index.js', 'index.d.ts', 'types.d.ts', 'lib/', 'README.md', 'LICENSE']);
   ['dependencies','devDependencies','optionalDependencies','peerDependencies'].forEach(function (key) {
     assert.strictEqual(packageJson[key], undefined, key + ' must be absent');
   });
@@ -68,8 +67,8 @@ function testDeclarationSurface() {
 
 Promise.resolve()
   .then(testRuntimeSurface)
-  .then(testDeclarationSurface)
-  .then(function () { console.log('ok - canonical MySQL API contract'); })
+  .then(testInternalModuleSurface)
+  .then(function () { console.log('ok - internal MySQL runtime contract'); })
   .catch(function (error) {
     console.error(error.stack || error);
     process.exitCode = 1;
