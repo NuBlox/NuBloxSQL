@@ -3,10 +3,10 @@
 var assert = require('assert');
 var fs = require('fs');
 var path = require('path');
-var sqlCore = require('../packages/sql-core');
-var mysql = require('../packages/mysql');
-var mysqlDescriptor = require('../packages/mysql/lib/SqlDialectDescriptor');
-var postgresql = require('../packages/postgresql');
+var sqlCore = require('../lib/core');
+var mysql = require('../lib/dialects/mysql');
+var mysqlDescriptor = require('../lib/dialects/mysql/lib/SqlDialectDescriptor');
+var postgresql = require('../lib/dialects/postgresql');
 
 function assertConnectionSurface(connection, family) {
   [
@@ -60,7 +60,7 @@ assertPoolSurface(postgresql.createPool({ user: 'contract' }), 'postgresql');
 assert.strictEqual(typeof mysql.MySqlResultLimitError, 'function');
 assert.strictEqual(typeof postgresql.PostgreSqlResultLimitError, 'function');
 
-var declaration = fs.readFileSync(path.join(__dirname, '..', 'packages', 'sql-core', 'index.d.ts'), 'utf8');
+var declaration = fs.readFileSync(path.join(__dirname, '..', 'lib', 'core', 'index.d.ts'), 'utf8');
 [
   'export interface SqlAbortSignal',
   'timeout?: number;',
