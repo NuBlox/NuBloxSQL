@@ -33,4 +33,5 @@ assert.strictEqual(sqlserver.supports('transactions'), true);
 assert.strictEqual(sqlserver.supports('nestedTransactions'), true);
 assert.strictEqual(sqlserver.supports('transactionIsolation'), true);
 assert.strictEqual(sqlserver.supports('readOnlyTransactions'), false);
+assert.strictEqual(sqlserver.supports(sqlCore.CAPABILITIES.QUERY_CANCELLATION), true);
 assert.strictEqual(sqlserver.supports(sqlCore.CAPABILITIES.PREPARED_STATEMENTS), false);

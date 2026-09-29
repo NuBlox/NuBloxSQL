@@ -49,6 +49,7 @@ assert.strictEqual(sql.supports('mysql', 'preparedStatements'), true);
 assert.strictEqual(sql.supports('postgresql', 'serverSideCursors'), true);
 assert.strictEqual(sql.supports('sqlite', 'queryCancellation'), false);
 assert.strictEqual(sql.supports('sqlserver', 'rawQuery'), true);
+assert.strictEqual(sql.supports('sqlserver', 'queryCancellation'), true);
 assert.strictEqual(sql.supports('sqlserver', 'preparedStatements'), false);
 
 var mysqlConnection = sql.createConnection({ dialect: 'mysql', host: '127.0.0.1', user: 'test' });
@@ -67,6 +68,11 @@ sqliteConnection.close();
 var sqlServerConnection = sql.createConnection({ dialect: 'sqlserver', host: '127.0.0.1', user: 'test' });
 assert(sqlServerConnection instanceof sqlserver.Connection);
 
+var sqlServerPool = sql.createPool({ dialect: 'sqlserver', host: '127.0.0.1', user: 'test', connectionLimit: 2 });
+assert(sqlServerPool instanceof sqlserver.Pool);
+assert.strictEqual(sqlServerPool.connectionLimit, 2);
+assert.strictEqual(sqlServerPool.totalCount, 0);
+
 var sqlServerClient = sql.createClient({ dialect: 'sqlserver', host: '127.0.0.1', user: 'test', pool: false });
 var compiledSqlServer = sqlServerClient.compile(sql.sql`SELECT ${42} AS answer`);
 assert.strictEqual(compiledSqlServer.text, 'SELECT @p1 AS answer');
@@ -83,10 +89,6 @@ assert.throws(function unsupportedDialect() {
 
 assert.throws(function sqlitePool() {
   sql.createPool({ dialect: 'sqlite' });
-}, /does not support connection pools/);
-
-assert.throws(function sqlServerPool() {
-  sql.createPool({ dialect: 'sqlserver' });
 }, /does not support connection pools/);
 
 assert.strictEqual(sql.sqlCore, require('../lib/core'));
