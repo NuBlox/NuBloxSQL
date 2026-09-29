@@ -17,7 +17,7 @@ export class SqlServerError extends Error { readonly code?:number|string|null; r
 export class Connection { constructor(config?:SqlServerConnectionConfig); readonly config:SqlServerConnectionConfig; connected:boolean; ended:boolean; packetSize:number; serverPrelogin:unknown; loginResponse:unknown; transactionDescriptor:bigint; connect():Promise<this>; query<Row=Record<string,unknown>>(sqlText:string,options?:{timeout?:number}):Promise<SqlServerQueryResult<Row>>; execute<Row=Record<string,unknown>>(sqlText:string,options?:{timeout?:number}):Promise<SqlServerQueryResult<Row>>; end():Promise<void>; close():Promise<void> }
 export function createConnection(config?:SqlServerConnectionConfig):Connection;
 export const descriptor:SqlServerDialectDescriptor;
-export const capabilities:Readonly<Record<string,boolean>>;
+export const capabilities:Readonly<{ rawQuery:true } & Record<string,boolean>>;
 export const plannedCapabilities:Readonly<Record<string,boolean>>;
 export const services:SqlServerDialectDescriptor['services'];
 export const TdsPacket:{ readonly HEADER_LENGTH:8; readonly MAX_PACKET_LENGTH:32767; readonly DEFAULT_PACKET_SIZE:4096; readonly PACKET_TYPES:Readonly<Record<string,number>>; readonly STATUS:Readonly<Record<string,number>>; encodePacket(options:TdsPacketOptions):Buffer; decodePacket(buffer:Uint8Array):TdsPacket; packetize(type:number,payload?:Uint8Array,options?:{packetSize?:number;packetId?:number;spid?:number;window?:number}):Buffer[]; PacketParser:new()=>{push(chunk:Uint8Array):TdsPacket[];bufferedBytes():number} };
