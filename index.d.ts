@@ -25,6 +25,8 @@ type ErrorCategory =
   | 'unknown';
 
 type TelemetryEventType = 'query' | 'execute' | 'prepare' | 'prepared' | 'transaction' | 'stream' | 'connection' | 'error';
+type TransactionIsolationLevel = 'read-uncommitted' | 'read-committed' | 'repeatable-read' | 'serializable';
+type SqliteTransactionMode = 'deferred' | 'immediate' | 'exclusive';
 
 type MySqlConfig = ConstructorParameters<typeof mysql.Connection>[0] & { dialect: 'mysql' };
 type PostgreSqlConfig = ConstructorParameters<typeof postgresql.Connection>[0] & { dialect: 'postgresql' | 'postgres' | 'pg' };
@@ -82,7 +84,31 @@ interface TelemetryOptions {
   onError?: (event: TelemetryEvent) => void;
 }
 
-type ClientConfig = ConnectionConfig & { pool?: boolean | ClientPoolOptions; telemetry?: TelemetryOptions };
+interface TypeCodecContext {
+  readonly dialect: Dialect;
+  readonly direction: 'encode' | 'decode';
+  readonly column?: string;
+  readonly field?: unknown;
+  readonly nativeType?: string | null;
+  readonly parameterIndex?: number;
+}
+
+type TypeEncoder = (value: unknown, context: TypeCodecContext) => unknown;
+type TypeDecoder = (value: unknown, context: TypeCodecContext) => unknown;
+
+interface TypeOptions {
+  encode?: TypeEncoder;
+  decode?: TypeDecoder;
+  decodeNulls?: boolean;
+  columns?: Readonly<Record<string, TypeDecoder>>;
+  nativeTypes?: Readonly<Record<string, TypeDecoder>>;
+}
+
+type ClientConfig = ConnectionConfig & {
+  pool?: boolean | ClientPoolOptions;
+  telemetry?: TelemetryOptions;
+  types?: TypeOptions;
+};
 
 interface SqlFragment {}
 interface SqlIdentifier {}
@@ -131,6 +157,15 @@ interface ClientStreamOptions extends ClientOperationOptions {
   maxRows?: number;
   maxResultBytes?: number;
   maxRowBytes?: number;
+}
+
+interface ClientTransactionOptions extends ClientOperationOptions {
+  isolationLevel?: TransactionIsolationLevel;
+  readOnly?: boolean;
+  deferrable?: boolean;
+  mode?: SqliteTransactionMode;
+  retries?: number;
+  retryDelayMs?: number;
 }
 
 interface MetadataScope {
@@ -275,6 +310,21 @@ declare class Observer {
   start(type: TelemetryEventType, details?: Record<string, unknown>): (extra?: Record<string, unknown>) => void;
 }
 
+declare class TypeRegistry {
+  readonly client: Client;
+  readonly encode: TypeEncoder | null;
+  readonly decode: TypeDecoder | null;
+  readonly decodeNulls: boolean;
+  registerColumn(name: string, decoder: TypeDecoder): this;
+  registerNativeType(name: string, decoder: TypeDecoder): this;
+  unregisterColumn(name: string): this;
+  unregisterNativeType(name: string): this;
+  encodeValue(value: unknown, context?: Partial<TypeCodecContext>): unknown;
+  encodeParameters(values: readonly unknown[]): readonly unknown[];
+  decodeRows<Row = Record<string, unknown>>(rows: readonly Row[], fields?: readonly unknown[]): Row[];
+  decodeResult<Row = Record<string, unknown>>(result: ClientResult<Row>): ClientResult<Row>;
+}
+
 declare class ClientRowStream<Row = Record<string, unknown>> implements AsyncIterable<Row>, AsyncIterator<Row> {
   readonly client: Client;
   readonly dialect: Dialect;
@@ -297,6 +347,7 @@ declare class PreparedClientStatement {
   readonly bindings: readonly string[];
   readonly native: unknown;
   readonly closed: boolean;
+  readonly types: TypeRegistry;
 
   query<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: ClientOperationOptions): Promise<ClientResult<Row>>;
   all<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: ClientOperationOptions): Promise<Row[]>;
@@ -313,6 +364,7 @@ declare class Client {
   readonly adapter: unknown;
   readonly native: unknown;
   readonly metadata: MetadataCatalog;
+  readonly types: TypeRegistry;
 
   supports(capability: string): boolean;
   compile(statement: SqlFragment | string): CompiledSql;
@@ -322,7 +374,10 @@ declare class Client {
   execute<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: ClientOperationOptions): Promise<ClientResult<Row>>;
   prepare(statement: SqlFragment | string, options?: ClientPrepareOptions): Promise<PreparedClientStatement>;
   stream<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: ClientStreamOptions): ClientRowStream<Row>;
-  transaction<T>(fn: (transaction: Client) => T | Promise<T>, options?: ClientOperationOptions): Promise<T>;
+  transaction<T>(fn: (transaction: Client) => T | Promise<T>, options?: ClientTransactionOptions): Promise<T>;
+  savepoint(name: string, options?: ClientOperationOptions): Promise<unknown>;
+  rollbackTo(name: string, options?: ClientOperationOptions): Promise<unknown>;
+  releaseSavepoint(name: string, options?: ClientOperationOptions): Promise<unknown>;
   close(): Promise<void>;
 }
 
@@ -361,9 +416,9 @@ declare function createPool(dialect: 'mysql', config?: ConstructorParameters<typ
 declare function createPool(dialect: 'postgresql' | 'postgres' | 'pg', config?: ConstructorParameters<typeof postgresql.Pool>[0]): InstanceType<typeof postgresql.Pool>;
 
 declare function createClient(config: ClientConfig): Client;
-declare function createClient(dialect: 'mysql', config: ConstructorParameters<typeof mysql.Connection>[0] & { pool?: boolean | ClientPoolOptions; telemetry?: TelemetryOptions }): Client;
-declare function createClient(dialect: 'postgresql' | 'postgres' | 'pg', config: ConstructorParameters<typeof postgresql.Connection>[0] & { pool?: boolean | ClientPoolOptions; telemetry?: TelemetryOptions }): Client;
-declare function createClient(dialect: 'sqlite', config?: ConstructorParameters<typeof sqlite.Connection>[0] & { pool?: false; telemetry?: TelemetryOptions }): Client;
+declare function createClient(dialect: 'mysql', config: ConstructorParameters<typeof mysql.Connection>[0] & { pool?: boolean | ClientPoolOptions; telemetry?: TelemetryOptions; types?: TypeOptions }): Client;
+declare function createClient(dialect: 'postgresql' | 'postgres' | 'pg', config: ConstructorParameters<typeof postgresql.Connection>[0] & { pool?: boolean | ClientPoolOptions; telemetry?: TelemetryOptions; types?: TypeOptions }): Client;
+declare function createClient(dialect: 'sqlite', config?: ConstructorParameters<typeof sqlite.Connection>[0] & { pool?: false; telemetry?: TelemetryOptions; types?: TypeOptions }): Client;
 
 export {
   Dialect,
@@ -373,6 +428,12 @@ export {
   TelemetryPoolSnapshot,
   TelemetryEvent,
   TelemetryOptions,
+  TypeCodecContext,
+  TypeEncoder,
+  TypeDecoder,
+  TypeOptions,
+  TransactionIsolationLevel,
+  SqliteTransactionMode,
   ConnectionConfig,
   ClientConfig,
   ClientPoolOptions,
@@ -380,6 +441,7 @@ export {
   ClientOperationOptions,
   ClientPrepareOptions,
   ClientStreamOptions,
+  ClientTransactionOptions,
   MetadataScope,
   DatabaseMetadata,
   SchemaMetadata,
@@ -398,6 +460,7 @@ export {
   NuBloxSqlError,
   ERROR_CATEGORIES,
   Observer,
+  TypeRegistry,
   ClientRowStream,
   PreparedClientStatement,
   Client,
