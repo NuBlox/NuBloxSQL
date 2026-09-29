@@ -1,35 +1,39 @@
 # @nublox/sqlite
 
-`@nublox/sqlite` is the embedded SQLite adapter for NuBloxSQL.
+Embedded SQLite adapter for NuBloxSQL.
 
-The initial `0.1.x` line is a post-v1 development package built on Node.js `node:sqlite`. It introduces no third-party npm dependency and preserves the NuBloxSQL separation between portable SQL contracts and database-specific runtime semantics.
+## Status
+
+- Package: `@nublox/sqlite`
+- Version: `0.1.0`
+- Status: **Development**
+- NuBloxSQL baseline: **Post-v1**
+- Minimum Node.js: **22.16.0**
+
+SQLite is not part of the stable NuBloxSQL v1.0.0 support matrix.
 
 ## Runtime model
 
-SQLite is embedded rather than client/server. The adapter therefore exposes a synchronous connection model around `DatabaseSync` and does not claim server-side capabilities that SQLite does not have.
+SQLite is embedded rather than client/server. The adapter uses Node.js `node:sqlite` and exposes a synchronous database lifecycle around `DatabaseSync`.
 
-Current foundation capabilities include:
+## Current capabilities
 
 - in-memory and file-backed databases;
 - prepared statements and positional/named binding;
-- JavaScript `BigInt` reads for SQLite INTEGER values;
-- DEFERRED, IMMEDIATE and EXCLUSIVE transaction starts;
+- `BigInt` reads for SQLite INTEGER values;
+- DEFERRED, IMMEDIATE and EXCLUSIVE transaction modes;
 - savepoints, rollback-to-savepoint and release;
 - configurable busy timeout;
 - foreign-key enforcement enabled by default;
 - optional query-only mode;
-- row, row-byte and total-result-byte safety limits;
+- row, row-byte and result-byte limits;
 - database, table/view and column introspection;
 - deterministic NuBloxSQL error classification;
-- SQL Core dialect descriptor and capability reporting.
+- SQL Core dialect descriptor compatibility.
 
-## Requirements
+The adapter deliberately does not claim client/server features such as native query cancellation or server-side cursors.
 
-- Node.js 22.16.0 or later.
-
-The minimum is intentional because this adapter uses the Node 22.16 SQLite metadata and transaction-state APIs.
-
-## Example
+## Quick start
 
 ```js
 const sqlite = require('@nublox/sqlite');
@@ -50,24 +54,24 @@ db.close();
 
 ## Transaction semantics
 
-SQLite supports one simultaneous write transaction per database. `begin()` accepts `deferred`, `immediate` or `exclusive`, matching SQLite transaction modes. Nested `BEGIN` calls are not emulated; use `savepoint()`, `rollbackTo()` and `release()` for nested units of work.
+`begin()` accepts `deferred`, `immediate` or `exclusive`. Nested `BEGIN` operations are not emulated; use savepoints for nested units of work.
 
-`transaction(fn)` is synchronous. Returning a Promise from the callback is rejected so a transaction cannot accidentally remain open while asynchronous work escapes the embedded database operation.
+`transaction(fn)` is synchronous. Promise-returning callbacks are rejected so asynchronous work cannot escape an open embedded transaction.
 
-## Result limits
+## Development frontier
 
-`query()` accepts:
+The authoritative sequence is maintained in `../../NUBLOX-SQL-ROADMAP.md`. The next slice is index, foreign-key and constraint introspection, followed by backup/restore lifecycle, attached-database management, type-affinity/STRICT helpers and storage/locking policy.
 
-- `maxRows`;
-- `maxRowBytes`;
-- `maxResultBytes`.
+## Dependency boundary
 
-Exceeding a configured limit throws `SqliteResultLimitError` with category `resource-limit`.
+The package declares no third-party npm runtime, development, optional or peer dependencies. Runtime implementation uses Node.js `node:sqlite` and NuBlox-authored source.
 
-## Status
+## Related documentation
 
-This package is the A3 SQLite foundation. The next SQLite slices should add deeper index/foreign-key introspection, backup/serialization lifecycle operations, attached-database management, type-affinity helpers, WAL/locking policy, observability and performance evidence.
+- `../../README.md`
+- `../../docs/architecture/multi-dialect.md`
+- `../../NUBLOX-SQL-ROADMAP.md`
 
 ## Licence
 
-Proprietary software. See `LICENSE`.
+Proprietary software. Copyright (c) 2026 Stephen J T Spittal. See `LICENSE`.

@@ -1,61 +1,31 @@
-# NuBloxSQL Multi-Dialect Roadmap
+# NuBloxSQL Roadmap
 
-## Purpose
+## Current baseline
 
-NuBloxSQL is an independent database connectivity and SQL runtime platform for multiple SQL database families. Portable contracts live in `@nublox/sql-core`; protocol, storage, locking, authentication and vendor-specific behaviour stay inside each adapter.
+NuBloxSQL v1.0.0 established the stable three-package baseline:
 
-NuBloxSQL does not force databases into a lowest-common-denominator abstraction. Capabilities are explicit so consumers can branch intentionally when semantics differ.
+| Package | Version | Status |
+| --- | ---: | --- |
+| `@nublox/sql-core` | `1.0.0` | Stable |
+| `@nublox/mysql` | `1.0.0` | Stable |
+| `@nublox/postgresql` | `1.0.0` | Stable |
 
-## Package family
+The current post-v1 development package is `@nublox/sqlite@0.1.0`.
 
-```text
-@nublox/sql-core       stable 1.0 contract
-@nublox/mysql          stable 1.0 native driver
-@nublox/postgresql     stable 1.0 native driver
-@nublox/sqlite         post-v1 development
-@nublox/sqlserver      planned
-@nublox/oracle         planned
-```
-
-The repository root is private workspace orchestration. Public runtime packages live under `packages/` and remain independently versioned and publishable.
-
-## Platform architecture
-
-```text
-NuBloxSQL workspace
-├── shared SQL contracts
-├── execution/result contracts
-├── transactions and savepoints
-├── resource limits and cancellation contracts
-├── metadata/introspection contracts
-├── type-system contracts
-├── diagnostics/observability contracts
-│
-├── MySQL native adapter
-├── PostgreSQL native adapter
-├── SQLite embedded adapter
-├── SQL Server adapter
-└── Oracle adapter
-```
-
-## Adapter principles
+## Development principles
 
 Every adapter must:
 
 1. implement shared contracts only where semantics genuinely align;
-2. expose first-class native extensions for vendor-specific capabilities;
-3. never silently emulate unsupported behaviour when semantics would change;
-4. identify its database family and runtime/version explicitly;
-5. publish explicit capability metadata;
-6. preserve resource limits and deterministic failure classification;
-7. keep transport/storage-specific implementation isolated from SQL Core;
-8. maintain independent package, test and release evidence.
+2. expose native extensions for vendor-specific behaviour;
+3. report unsupported semantics explicitly rather than emulate them silently;
+4. preserve deterministic resource and lifecycle safety;
+5. maintain independent package, test and release evidence;
+6. remain compatible with SQL Core contract family `1.0` unless a deliberate major contract revision is approved.
 
 ## A1 — MySQL
 
 **Status:** stable `@nublox/mysql@1.0.0`.
-
-The v1 driver owns its MySQL wire protocol, authentication, prepared execution, transactions, streaming/resource controls and operational error model.
 
 Post-v1 priorities:
 
@@ -63,41 +33,39 @@ Post-v1 priorities:
 - richer metadata/introspection;
 - resilience and observability hardening;
 - compatibility/performance evidence across supported MySQL versions;
-- advanced replication/change-data-capture only where it remains independently authored and supportable.
+- advanced replication/change-data-capture only where independently authored and supportable.
 
 ## A2 — PostgreSQL
 
 **Status:** stable `@nublox/postgresql@1.0.0`.
 
-The v1 driver includes native startup/authentication, SCRAM-SHA-256, query execution, prepared/portal execution, cancellation, transactions, pooling, result limits and deterministic type decoding.
-
 Post-v1 priorities:
 
 - deeper catalog/schema introspection;
-- expanded native type registry and binary-format coverage;
-- richer observability and operational diagnostics;
-- prepared statement/portal performance hardening;
-- replication/change-data-capture after the query runtime is mature.
+- expanded native type and binary-format coverage;
+- richer observability and diagnostics;
+- prepared-statement/portal performance hardening;
+- replication/change-data-capture after the query runtime remains mature.
 
 ## A3 — SQLite
 
-**Status:** foundation implemented as `@nublox/sqlite@0.1.0` development package.
+**Status:** active development, `@nublox/sqlite@0.1.0`.
 
-Initial foundation:
+Implemented foundation:
 
-- Node.js `node:sqlite` embedded runtime with no third-party npm dependency;
-- file-backed and in-memory database lifecycle;
+- `node:sqlite` embedded runtime with no third-party npm dependency;
+- in-memory and file-backed lifecycle;
 - prepared statements and BigInt-safe reads;
-- explicit DEFERRED, IMMEDIATE and EXCLUSIVE transaction modes;
+- DEFERRED, IMMEDIATE and EXCLUSIVE transaction modes;
 - savepoints, rollback-to-savepoint and release;
 - busy timeout and foreign-key policy;
 - optional query-only mode;
 - row/result resource limits;
 - deterministic SQLite error classification;
 - database, table/view and column introspection;
-- SQL Core v1 dialect descriptor compatibility.
+- SQL Core v1 descriptor compatibility.
 
-Next SQLite slices:
+Next slices, in order:
 
 1. index, foreign-key and constraint introspection;
 2. backup, serialization and restore lifecycle;
@@ -107,27 +75,27 @@ Next SQLite slices:
 6. application-defined function/aggregate registration policy;
 7. changeset/session support where appropriate;
 8. observability and performance/memory evidence;
-9. hardening against malformed SQL/configuration and unsafe extension loading;
+9. malformed SQL/configuration hardening and extension-loading safety;
 10. release-candidate qualification.
 
 ## A4 — SQL Server
 
-**Status:** planned after SQLite foundation hardening.
+**Status:** planned after SQLite hardening.
 
-Priorities:
+Primary workstreams:
 
-- TDS transport architecture;
-- SQL and integrated authentication strategy;
+- TDS transport;
+- authentication strategy;
 - SQL Server type system and metadata;
 - transactions/isolation semantics;
 - schema/security introspection;
-- cancellation, pooling and operational diagnostics.
+- cancellation, pooling and diagnostics.
 
 ## A5 — Oracle
 
 **Status:** planned.
 
-Priorities:
+Primary workstreams:
 
 - connectivity/runtime dependency strategy;
 - service/session model;
@@ -136,65 +104,34 @@ Priorities:
 - schema/security introspection;
 - pooling, cancellation and operational constraints.
 
-## Delivery phases
+## Cross-dialect workstream
 
-### Phase 0 — Stable v1 baseline — complete
+Cross-dialect policy evolves continuously, but only after real adapters prove portability. Protocol packets, authentication, binary encodings, server/session state and SQLite storage/locking rules remain adapter-owned.
 
-- `@nublox/mysql@1.0.0`;
-- `@nublox/postgresql@1.0.0`;
-- `@nublox/sql-core@1.0.0`;
-- proprietary zero-third-party package boundary;
-- Node 22/24/26 verification and release evidence.
+## Quality bar
 
-### Phase 1 — Protect the v1 contract — continuous
+A stable adapter should have:
 
-SQL Core contract family `1.0` is frozen for compatible evolution. New adapters validate the contract; they do not mutate it merely to simplify their implementation.
-
-### Phase 2 — SQLite embedded adapter — active
-
-Build SQLite vertically from runtime correctness through lifecycle, introspection, locking policy, diagnostics and release qualification.
-
-### Phase 3 — Cross-dialect policy hardening — active alongside adapters
-
-Promote policy into SQL Core only after multiple real adapters prove that the semantics are genuinely portable. Protocol packets, authentication, binary encodings, vendor server state and SQLite storage/locking rules remain adapter-owned.
-
-### Phase 4 — SQL Server
-
-Start TDS and authentication work after the SQLite adapter has validated embedded-database semantics against the common contracts.
-
-### Phase 5 — Oracle
-
-Select and validate an Oracle connectivity strategy without contaminating the shared core with client-library-specific assumptions.
-
-## World-class quality bar
-
-Every production adapter should target:
-
-- correctness against qualified database/runtime versions;
-- secure authentication and transport where applicable;
+- qualified runtime/database versions;
+- secure transport/authentication where applicable;
 - strong TypeScript contracts;
-- prepared execution and streaming/iteration where supported;
+- prepared execution where supported;
 - explicit transaction and locking semantics;
 - cancellation/deadline behaviour where genuinely available;
 - defensive resource limits;
 - deterministic error classification;
 - metadata and type fidelity;
 - observability and adapter-native diagnostics;
-- multi-version CI or runtime qualification;
-- performance and memory regression evidence;
-- zero silent cross-dialect semantic emulation;
-- independent package release and provenance controls.
+- multi-version CI or equivalent qualification;
+- performance and memory evidence;
+- independent package/release provenance controls.
 
-## SQL Core acceptance rule
+## Release sequencing
 
-A capability belongs in `@nublox/sql-core` only when:
+1. **Stable v1 baseline** — complete.
+2. **Protect SQL Core contract family 1.0** — continuous.
+3. **SQLite vertical hardening** — active.
+4. **SQL Server** — follows SQLite qualification.
+5. **Oracle** — follows connectivity-strategy validation.
 
-- its semantics can be expressed without misrepresenting database behaviour;
-- at least two dialects can implement it meaningfully, or it is clearly portable policy;
-- vendor-specific information remains representable without lossy flattening;
-- tests define the portable behaviour;
-- unsupported behaviour is visible through capability metadata rather than hidden emulation.
-
-## Independence
-
-NuBloxSQL remains independently usable, testable, versionable and releasable. Consumers integrate through published package APIs; no other NuBlox application is part of its internal architecture or release criteria.
+Release-specific historical evidence is kept under `docs/v1/`; this roadmap is the authoritative source for current forward development.
