@@ -83,6 +83,18 @@ jobs:
             --volume "$PWD/.ci/sqlserver/mssql.pem:/etc/ssl/certs/mssql.pem:ro" \
             --volume "$PWD/.ci/sqlserver/mssql.key:/etc/ssl/private/mssql.key:ro" \
             mcr.microsoft.com/mssql/server:2022-latest
+      - name: Wait for SQL Server engine readiness
+        shell: bash
+        run: |
+          for attempt in $(seq 1 90); do
+            if docker logs nublox-sqlserver 2>&1 | grep -q 'SQL Server is now ready for client connections'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs nublox-sqlserver
+          echo 'SQL Server did not report engine readiness within 90 seconds' >&2
+          exit 1
       - name: Native TDS 8 TLS, PRELOGIN and LOGIN7 qualification
         env:
           MSSQL_HOST: 127.0.0.1
