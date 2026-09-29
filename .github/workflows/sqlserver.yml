@@ -88,7 +88,21 @@ jobs:
           tlsprotocols = 1.2
           forceencryption = 0
           EOF
-          chmod 644 .ci/sqlserver/ca.pem .ci/sqlserver/mssql.key .ci/sqlserver/mssql.pem .ci/sqlserver/mssql.conf
+          cat > .ci/sqlserver/Dockerfile <<'EOF'
+          FROM mcr.microsoft.com/mssql/server:2022-latest
+          USER root
+          COPY ca.pem /usr/local/share/ca-certificates/nubloxsql-ci-root.crt
+          COPY mssql.pem /var/opt/mssql/secrets/mssql.pem
+          COPY mssql.key /var/opt/mssql/secrets/mssql.key
+          COPY mssql.conf /var/opt/mssql/mssql.conf
+          RUN update-ca-certificates \
+              && chown mssql:root /var/opt/mssql/secrets/mssql.pem /var/opt/mssql/secrets/mssql.key /var/opt/mssql/mssql.conf \
+              && chmod 600 /var/opt/mssql/secrets/mssql.pem /var/opt/mssql/secrets/mssql.key \
+              && chmod 644 /var/opt/mssql/mssql.conf
+          USER mssql
+          EOF
+          cp .ci/sqlserver/ca.pem .ci/sqlserver/mssql.pem .ci/sqlserver/mssql.key .ci/sqlserver/mssql.conf .ci/sqlserver/
+          docker build --tag nublox-sqlserver-ci .ci/sqlserver
       - name: Start disposable SQL Server 2022
         shell: bash
         run: |
@@ -100,10 +114,7 @@ jobs:
             --env ACCEPT_EULA=Y \
             --env MSSQL_PID=Developer \
             --env "MSSQL_SA_PASSWORD=$password" \
-            --volume "$PWD/.ci/sqlserver/mssql.conf:/var/opt/mssql/mssql.conf:ro" \
-            --volume "$PWD/.ci/sqlserver/mssql.pem:/var/opt/mssql/secrets/mssql.pem:ro" \
-            --volume "$PWD/.ci/sqlserver/mssql.key:/var/opt/mssql/secrets/mssql.key:ro" \
-            mcr.microsoft.com/mssql/server:2022-latest
+            nublox-sqlserver-ci
       - name: Wait for SQL Server engine readiness
         shell: bash
         run: |
