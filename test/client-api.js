@@ -27,8 +27,50 @@ async function main() {
   var db = nublox.createClient({ dialect: 'sqlite', filename: ':memory:' });
   assert.strictEqual(db.dialect, 'sqlite');
   assert.strictEqual(db.supports('savepoints'), true);
+  assert.ok(db.metadata);
 
-  await db.execute(sql`CREATE TABLE ${sql.identifier('users')} (id INTEGER PRIMARY KEY, name TEXT NOT NULL)`);
+  await db.execute(sql`CREATE TABLE ${sql.identifier('roles')} (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE)`);
+  await db.execute(sql`
+    CREATE TABLE ${sql.identifier('users')} (
+      id INTEGER PRIMARY KEY,
+      role_id INTEGER,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE,
+      FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL
+    )
+  `);
+  await db.execute(sql`CREATE INDEX ${sql.identifier('idx_users_name')} ON ${sql.identifier('users')} (name)`);
+
+  var databases = await db.metadata.databases();
+  assert.ok(databases.some(function (entry) { return entry.name === 'main'; }));
+  var schemas = await db.metadata.schemas();
+  assert.ok(schemas.some(function (entry) { return entry.name === 'main'; }));
+  var metadataTables = await db.metadata.tables();
+  assert.ok(metadataTables.some(function (entry) { return entry.name === 'users' && entry.type === 'table'; }));
+  assert.ok(metadataTables.some(function (entry) { return entry.name === 'roles' && entry.type === 'table'; }));
+  var metadataColumns = await db.metadata.columns('users');
+  assert.strictEqual(metadataColumns.find(function (entry) { return entry.name === 'id'; }).primaryKey, true);
+  assert.strictEqual(metadataColumns.find(function (entry) { return entry.name === 'name'; }).nullable, false);
+  var metadataIndexes = await db.metadata.indexes('users');
+  assert.ok(metadataIndexes.some(function (entry) { return entry.name === 'idx_users_name' && entry.columns[0] === 'name'; }));
+  assert.ok(metadataIndexes.some(function (entry) { return entry.unique === true && entry.columns.indexOf('email') >= 0; }));
+  var metadataForeignKeys = await db.metadata.foreignKeys('users');
+  assert.strictEqual(metadataForeignKeys.length, 1);
+  assert.deepStrictEqual(Array.from(metadataForeignKeys[0].columns), ['role_id']);
+  assert.strictEqual(metadataForeignKeys[0].referencedTable, 'roles');
+  assert.deepStrictEqual(Array.from(metadataForeignKeys[0].referencedColumns), ['id']);
+  assert.strictEqual(metadataForeignKeys[0].onDelete, 'SET NULL');
+  var metadataConstraints = await db.metadata.constraints('users');
+  assert.ok(metadataConstraints.some(function (entry) { return entry.type === 'primary-key'; }));
+  assert.ok(metadataConstraints.some(function (entry) { return entry.type === 'unique' && entry.columns.indexOf('email') >= 0; }));
+  assert.ok(metadataConstraints.some(function (entry) { return entry.type === 'foreign-key'; }));
+  var metadataTable = await db.metadata.table('users');
+  assert.strictEqual(metadataTable.name, 'users');
+  assert.ok(metadataTable.definition.indexOf('CREATE TABLE') >= 0);
+  assert.ok(metadataTable.columns.length >= 4);
+  assert.ok(metadataTable.indexes.length >= 2);
+  assert.strictEqual(await db.metadata.table('missing_table'), null);
+
   var inserted = await db.execute(sql`INSERT INTO ${sql.identifier('users')} (name) VALUES (${'Stephen'})`);
   assert.strictEqual(inserted.affectedRows, 1);
 
