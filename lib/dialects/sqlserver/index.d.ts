@@ -16,6 +16,8 @@ export interface SqlServerNativeError { readonly type:'error'; readonly number:n
 export interface SqlServerEnvChange { readonly type:'envchange'; readonly changeType:number; readonly newValue:string|Buffer; readonly oldValue:string|Buffer; readonly newRaw:Buffer; readonly oldRaw:Buffer }
 export interface SqlServerQueryResult<Row=Record<string,unknown>> { readonly columns:readonly SqlServerColumn[]; readonly rows:readonly Row[]; readonly errors:readonly SqlServerNativeError[]; readonly info:readonly unknown[]; readonly envChanges:readonly SqlServerEnvChange[]; readonly order:readonly number[]; readonly rowCount:bigint; readonly done:unknown; readonly success:boolean }
 export interface SqlServerOperationOptions { timeout?:number; deadline?:number; signal?:AbortSignal; cancelTimeout?:number; acquire?:{ timeout?:number; deadline?:number; signal?:AbortSignal } }
+export interface SqlServerStreamOptions extends SqlServerOperationOptions { highWaterMark?:number }
+export interface SqlServerRowStream<Row=Record<string,unknown>> extends AsyncIterableIterator<Row> { readonly fields:readonly SqlServerColumn[]|null; readonly closed:boolean; readonly done:boolean; readonly result:SqlServerQueryResult<Row>|null; close():Promise<void> }
 export interface SqlServerTransactionOptions extends SqlServerOperationOptions { isolationLevel?:'read-uncommitted'|'read-committed'|'repeatable-read'|'serializable'; readOnly?:never; deferrable?:never }
 export class SqlServerError extends Error { readonly code?:number|string|null; readonly category?:string; readonly retryable?:boolean; readonly severity?:number|null; readonly state?:number|null; readonly native?:unknown; readonly alpnProtocol?:string|null; readonly cause?:unknown; readonly result?:unknown }
 export class PreparedStatement {
@@ -31,6 +33,8 @@ export class Connection {
   connect():Promise<this>;
   query<Row=Record<string,unknown>>(sqlText:string,options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
   queryParameters<Row=Record<string,unknown>>(sqlText:string,values:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
+  queryStream<Row=Record<string,unknown>>(sqlText:string,options?:SqlServerStreamOptions):SqlServerRowStream<Row>;
+  queryParametersStream<Row=Record<string,unknown>>(sqlText:string,values:readonly unknown[],options?:SqlServerStreamOptions):SqlServerRowStream<Row>;
   execute<Row=Record<string,unknown>>(sqlText:string,options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
   execute<Row=Record<string,unknown>>(sqlText:string,values:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
   executeParameters<Row=Record<string,unknown>>(sqlText:string,values:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;

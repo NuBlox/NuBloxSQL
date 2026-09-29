@@ -8,6 +8,7 @@ var metadataApi = require('./lib/client/Metadata');
 var observabilityApi = require('./lib/client/Observability');
 var typesApi = require('./lib/client/Types');
 streamApi.install(clientApi);
+require('./lib/client/SqlServerStreamIntegration').install(streamApi);
 require('./lib/client/OperationControlIntegration').install(clientApi);
 require('./lib/client/ErrorIntegration').install(clientApi);
 observabilityApi.install(clientApi, streamApi);
