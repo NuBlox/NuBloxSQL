@@ -2,10 +2,10 @@
 
 var assert = require('assert');
 
-var mysqlPath = require.resolve('../packages/mysql');
-var postgresqlPath = require.resolve('../packages/postgresql');
-var sqlitePath = require.resolve('../packages/sqlite');
-var sqlCorePath = require.resolve('../packages/sql-core');
+var mysqlPath = require.resolve('../lib/dialects/mysql');
+var postgresqlPath = require.resolve('../lib/dialects/postgresql');
+var sqlitePath = require.resolve('../lib/dialects/sqlite');
+var sqlCorePath = require.resolve('../lib/core');
 
 var sql = require('..');
 
@@ -63,6 +63,6 @@ assert.throws(function sqlitePool() {
   sql.createPool({ dialect: 'sqlite' });
 }, /does not support connection pools/);
 
-assert.strictEqual(sql.sqlCore, require('../packages/sql-core'));
+assert.strictEqual(sql.sqlCore, require('../lib/core'));
 
 console.log('NuBloxSQL lazy single-entry platform contract passed');
