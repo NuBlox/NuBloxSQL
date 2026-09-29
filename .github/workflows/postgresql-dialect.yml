@@ -3,12 +3,22 @@ name: NuBloxSQL PostgreSQL Dialect
 on:
   pull_request:
     paths:
+      - 'index.js'
+      - 'index.d.ts'
+      - 'package.json'
+      - 'lib/client/**'
+      - 'test/client-api.js'
       - 'lib/dialects/postgresql/**'
       - 'lib/core/**'
       - '.github/workflows/postgresql-dialect.yml'
   push:
     branches: [main]
     paths:
+      - 'index.js'
+      - 'index.d.ts'
+      - 'package.json'
+      - 'lib/client/**'
+      - 'test/client-api.js'
       - 'lib/dialects/postgresql/**'
       - 'lib/core/**'
       - '.github/workflows/postgresql-dialect.yml'
