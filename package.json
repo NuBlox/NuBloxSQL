@@ -7,7 +7,7 @@
   "author": "Stephen J T Spittal",
   "main": "index.js",
   "types": "index.d.ts",
-  "files": ["index.js","index.d.ts","lib/client/","lib/core/index.js","lib/core/index.d.ts","lib/dialects/mysql/index.js","lib/dialects/mysql/index.d.ts","lib/dialects/mysql/types.d.ts","lib/dialects/mysql/lib/","lib/dialects/postgresql/index.js","lib/dialects/postgresql/index.d.ts","lib/dialects/postgresql/lib/","lib/dialects/sqlite/index.js","lib/dialects/sqlite/index.d.ts","lib/dialects/sqlite/lib/","README.md","LICENSE","NOTICE"],
+  "files": ["index.js","index.d.ts","lib/client/","lib/core/index.js","lib/core/index.d.ts","lib/dialects/mysql/index.js","lib/dialects/mysql/index.d.ts","lib/dialects/mysql/types.d.ts","lib/dialects/mysql/lib/","lib/dialects/postgresql/index.js","lib/dialects/postgresql/index.d.ts","lib/dialects/postgresql/lib/","lib/dialects/sqlite/index.js","lib/dialects/sqlite/index.d.ts","lib/dialects/sqlite/lib/","lib/dialects/sqlserver/index.js","lib/dialects/sqlserver/index.d.ts","lib/dialects/sqlserver/lib/","README.md","LICENSE","NOTICE"],
   "repository":{"type":"git","url":"git+https://github.com/NuBlox/NuBloxSQL.git"},
   "engines":{"node":">=22"},
   "scripts":{
@@ -16,7 +16,7 @@
     "test:sql-core":"node lib/core/test/contract.js && node test/dialect-contracts.js && node test/sql-core-v1-contract.js",
     "test:postgresql":"node lib/dialects/postgresql/test/contract.js && node lib/dialects/postgresql/test/protocol.js && node lib/dialects/postgresql/test/runtime.js && node lib/dialects/postgresql/test/lifecycle.js && node lib/dialects/postgresql/test/cancel.js && node lib/dialects/postgresql/test/pool-transaction.js && node lib/dialects/postgresql/test/portal.js && node lib/dialects/postgresql/test/result-limits.js && node lib/dialects/postgresql/test/type-decoding.js",
     "test:sqlite":"node lib/dialects/sqlite/test/runtime.js && node lib/dialects/sqlite/test/errors.js",
-    "test:sqlserver":"node lib/dialects/sqlserver/test/protocol.js && node lib/dialects/sqlserver/test/login-token.js && node lib/dialects/sqlserver/test/connection.js && node lib/dialects/sqlserver/test/result-stream.js",
+    "test:sqlserver":"node lib/dialects/sqlserver/test/protocol.js && node lib/dialects/sqlserver/test/login-token.js && node lib/dialects/sqlserver/test/connection.js && node lib/dialects/sqlserver/test/result-stream.js && node lib/dialects/sqlserver/test/rpc.js",
     "v1:proprietary-audit":"node tool/check-proprietary-v1.js",
     "v1:release-audit":"node tool/check-release-v1.js",
     "verify":"npm run test:platform && npm run test:mysql && npm run test:sql-core && npm run test:postgresql && npm run test:sqlite && npm run test:sqlserver",
