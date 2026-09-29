@@ -57,6 +57,8 @@ The public platform owns:
 - portable SQL value placeholders and identifier quoting;
 - a unified query/result contract;
 - portable prepared statements with named bindings;
+- async-iterable streaming with deterministic resource cleanup;
+- a portable error taxonomy with native diagnostics retained;
 - connection and pool ownership;
 - transactions;
 - capability discovery;
@@ -140,6 +142,46 @@ await insertUser.close();
 
 Missing named bindings fail explicitly. `sql.parameter()` is intentionally rejected by ordinary `query()`/`execute()` calls so unresolved parameters cannot accidentally reach a database.
 
+### Portable streaming
+
+`stream()` exposes one async-iterable row contract while retaining each database's native streaming implementation:
+
+```js
+const rows = db.stream(sql`
+  SELECT id, event_type, created_at
+  FROM ${sql.identifier('audit_log')}
+  WHERE created_at >= ${startDate}
+  ORDER BY created_at
+`, {
+  batchSize: 128,
+  highWaterMark: 16,
+  timeout: 30_000,
+  signal
+});
+
+for await (const row of rows) {
+  processRow(row);
+}
+```
+
+NuBloxSQL does not buffer the complete result to simulate streaming:
+
+- **MySQL** uses the native row stream and socket backpressure. Parameterised streams use prepared execution and binary row decoding rather than SQL literal interpolation.
+- **PostgreSQL** uses a transaction-scoped server portal and batched fetches. NuBloxSQL owns the temporary transaction and pooled connection lifecycle when necessary.
+- **SQLite** uses lazy prepared-statement iteration.
+
+Early termination is explicit and deterministic:
+
+```js
+const rows = db.stream(sql`SELECT * FROM ${sql.identifier('events')}`);
+
+for await (const row of rows) {
+  if (shouldStop(row)) break;
+}
+```
+
+Breaking from async iteration invokes the stream's iterator cleanup. `await rows.close()` is also available when explicit shutdown is preferred. Outstanding public streams are closed before `db.close()` releases client resources.
+
 ### Unified result contract
 
 `query()` and `execute()` return a portable result envelope:
@@ -167,6 +209,33 @@ const user = await db.one(sql`SELECT * FROM ${sql.identifier('users')} WHERE id 
 ```
 
 `one()` requires exactly one row and rejects otherwise.
+
+### Portable errors
+
+Public client operations expose `NuBloxSqlError` with stable categories while retaining the original engine error:
+
+```js
+const { NuBloxSqlError } = require('nubloxsql');
+
+try {
+  await db.execute(sql`
+    INSERT INTO ${sql.identifier('users')} (email)
+    VALUES (${email})
+  `);
+} catch (error) {
+  if (error instanceof NuBloxSqlError && error.category === 'unique_violation') {
+    // portable application behavior
+  }
+
+  console.log(error.sqlState);
+  console.log(error.nativeCode);
+  console.log(error.native);
+}
+```
+
+Portable categories currently include authentication, authorization, connection, timeout, cancellation, constraint violations, unique/foreign-key/not-null violations, syntax, deadlock, serialization, resource limits, state, cardinality and unsupported capabilities.
+
+NuBloxSQL preserves native diagnostics such as PostgreSQL SQLSTATE, MySQL error numbers and SQLite result codes. Ordinary application exceptions thrown from callbacks such as `transaction()` remain ordinary application exceptions rather than being misclassified as database errors.
 
 ### Transactions
 
@@ -240,7 +309,7 @@ These are advanced primitives. `createClient()` is the primary developer-facing 
 
 NuBloxSQL has three internal layers:
 
-1. **Developer client** — portable SQL compilation, prepared statements, result normalization, transactions and lifecycle.
+1. **Developer client** — portable SQL compilation, prepared statements, streaming, error normalization, result normalization, transactions and lifecycle.
 2. **Shared SQL contracts** — capabilities and semantics proven across dialects.
 3. **Native dialect runtimes** — database-specific implementation and native behavior.
 
