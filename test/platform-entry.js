@@ -17,10 +17,10 @@ assert.strictEqual(sql.supports('mysql', 'preparedStatements'), true);
 assert.strictEqual(sql.supports('postgresql', 'serverSideCursors'), true);
 assert.strictEqual(sql.supports('sqlite', 'queryCancellation'), false);
 
-var mysqlConnection = sql.createConnection({ dialect: 'mysql', host: '127.0.0.1' });
+var mysqlConnection = sql.createConnection({ dialect: 'mysql', host: '127.0.0.1', user: 'test' });
 assert(mysqlConnection instanceof sql.mysql.Connection);
 
-var postgresConnection = sql.createConnection('postgresql', { host: '127.0.0.1' });
+var postgresConnection = sql.createConnection('postgresql', { host: '127.0.0.1', user: 'test', database: 'test' });
 assert(postgresConnection instanceof sql.postgresql.Connection);
 
 var sqliteConnection = sql.createConnection({ dialect: 'sqlite', filename: ':memory:' });
