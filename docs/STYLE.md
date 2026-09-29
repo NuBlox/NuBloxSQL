@@ -1,102 +1,62 @@
-# NuBloxSQL Documentation Standard
+# Documentation Standard
 
-NuBloxSQL documentation must describe **one platform consistently** while preserving the different technical roles of its packages.
+NuBloxSQL documentation must describe **one product with one developer entry point**.
 
-## Canonical product language
+## Canonical product statement
 
-Use these terms consistently:
+Use this design statement consistently:
 
-- **NuBloxSQL** — the overall database connectivity/runtime platform.
-- **SQL Core** / `@nublox/sql-core` — the portable platform contract layer.
-- **adapter** or **runtime** — a database-family implementation such as MySQL, PostgreSQL or SQLite.
-- **consumer** — a product/application that uses NuBloxSQL, for example NuBlox SQL Workbench.
-- **native extension** — an adapter-specific capability that deliberately sits outside the portable contract.
+> NuBloxSQL is a single-entry, multi-dialect SQL database integration platform. Developers install and import NuBloxSQL once; NuBloxSQL selects and manages the appropriate native dialect runtime underneath one coherent platform API.
 
-Do not describe the repository as merely a collection of independent drivers.
+Do not describe NuBloxSQL as a collection of separate products or imply that ordinary application developers are expected to install every dialect package independently.
 
-## Design statement
+## Product boundaries
 
-Every current document should be compatible with this sentence:
+- Public product: **NuBloxSQL** / `nubloxsql`.
+- Public installation model: one package.
+- Public import model: one entry point.
+- Internal dialect workspaces: implementation and testing boundaries.
+- SQL Core: shared internal contract vocabulary, not the primary developer entry point.
 
-> NuBloxSQL is one platform: SQL Core defines proven portable contracts, native adapters own real database semantics, and consumers depend on NuBloxSQL rather than owning database transports themselves.
+Do not discuss unrelated products in NuBloxSQL product documentation.
 
-If a document contradicts that sentence, the document is wrong or historical context must be stated explicitly.
+## Package README structure
 
-## Package README contract
+Every package/workspace README must use this order:
 
-Every package README uses this order:
+1. **Role inside NuBloxSQL**
+2. **Status**
+3. **What it implements**
+4. **How NuBloxSQL reaches it**
+5. **Native semantics**
+6. **Verification**
+7. **Licence**
 
-1. one-sentence package identity;
-2. **Role in NuBloxSQL**;
-3. **Status** table;
-4. **Platform contract**;
-5. **Native capabilities** (or **Platform contract surface** for SQL Core);
-6. **Quick start**;
-7. **Native semantics** / evolution policy;
-8. **Verification and dependency boundary**;
-9. **Related documentation**;
-10. **Licence**.
-
-The headings are intentionally uniform. The content is not forced to be identical because the package roles differ.
+Each README must state that the normal developer installation path is `nubloxsql` and that the workspace exists to implement a dialect or shared contract inside the platform.
 
 ## Status vocabulary
 
 Use only:
 
-- **Stable** — supported and included in a stable release baseline.
-- **Development** — implemented but not yet part of a stable support baseline.
-- **Planned** — intended future work with no implemented support claim.
-- **Historical** — retained release/migration evidence that is no longer current product guidance.
+- **Stable** — supported in a qualified release baseline.
+- **Development** — implemented but not yet in a stable support baseline.
+- **Planned** — roadmap intent without a supported implementation.
+- **Historical** — retained evidence for an earlier release or migration.
 
-## Version vocabulary
+## Source of truth
 
-Always distinguish:
+- `README.md` — current public product and developer entry point.
+- `docs/architecture/design-intent.md` — why NuBloxSQL exists.
+- `docs/architecture/multi-dialect.md` — current platform architecture.
+- `NUBLOX-SQL-ROADMAP.md` — development sequence.
+- package READMEs — implementation-role details only.
+- `docs/v1/` — stable v1 historical release evidence.
 
-- NuBloxSQL release baseline, e.g. `v1.0.0`;
-- package version, e.g. `@nublox/postgresql@1.0.0`;
-- SQL Core contract family, e.g. `1.0`;
-- database/runtime qualification, e.g. PostgreSQL 15–18.
+## Technical language
 
-## Source-of-truth ownership
-
-| Subject | Authoritative document |
-| --- | --- |
-| Product intent | `docs/architecture/design-intent.md` |
-| Current platform/package status | `README.md` |
-| Technical architecture | `docs/architecture/multi-dialect.md` |
-| Forward engineering sequence | `NUBLOX-SQL-ROADMAP.md` |
-| Package API/capabilities | package README + code/types/tests |
-| Stable v1 support matrix | `docs/v1/V1-SUPPORT-MATRIX.md` |
-| Stable SQL Core v1 contract | `docs/v1/SQL-CORE-V1-CONTRACT.md` |
-| Historical v1 release evidence | `docs/v1/` |
-
-Do not create competing current-state documents.
-
-## Technical rules
-
-Documentation must:
-
-- distinguish platform contracts from native adapter semantics;
-- describe capability flags as implemented NuBloxSQL behaviour, not theoretical server features;
-- preserve catalog/database/schema distinctions;
-- state when a behaviour is adapter-native;
-- avoid claiming unsupported equivalence, emulation or cancellation semantics;
-- favour data fidelity over convenient but lossy descriptions;
-- identify supported versions precisely;
-- link to the authoritative source instead of duplicating mutable matrices unnecessarily.
-
-## Historical documents
-
-Historical RC notes, migration guides and release-gate evidence should not be rewritten to appear current. Add framing when necessary, but preserve the historical record.
-
-## Naming
-
-- `NuBloxSQL`
-- `NuBlox SQL Workbench`
-- `Node.js`
-- `MySQL`
-- `PostgreSQL`
-- `SQLite`
-- `SQL Server`
-- `Oracle`
-- use `Licence` in prose and preserve literal filenames such as `LICENSE`.
+- Unify only semantics that are genuinely portable.
+- Preserve native database behaviour where it differs.
+- Prefer capability discovery over unsupported assumptions.
+- Never claim silent emulation as compatibility.
+- Preserve data fidelity, native diagnostics and native extension access.
+- Distinguish public facade behaviour from internal adapter behaviour.
