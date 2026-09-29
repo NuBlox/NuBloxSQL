@@ -6,10 +6,12 @@ var errorApi = require('./lib/client/Error');
 var streamApi = require('./lib/client/Stream');
 var metadataApi = require('./lib/client/Metadata');
 var observabilityApi = require('./lib/client/Observability');
+var typesApi = require('./lib/client/Types');
 streamApi.install(clientApi);
 require('./lib/client/OperationControlIntegration').install(clientApi);
 require('./lib/client/ErrorIntegration').install(clientApi);
 observabilityApi.install(clientApi, streamApi);
+require('./lib/client/TypesIntegration').install(clientApi, streamApi);
 
 var DIALECTS = Object.freeze({
   mysql: 'mysql',
@@ -72,18 +74,26 @@ function createPool(dialectOrConfig, maybeConfig) {
   return invocation.adapter.createPool(invocation.config);
 }
 
+function hideClientOption(config, name, validate) {
+  var value = config[name];
+  if (value === undefined) return;
+  if (validate) validate(value);
+  Object.defineProperty(config, name, {
+    value: value,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+}
+
 function createClient(dialectOrConfig, maybeConfig) {
   var invocation = resolveInvocation(dialectOrConfig, maybeConfig);
-  var telemetry = invocation.config.telemetry;
-  if (telemetry !== undefined) {
+  hideClientOption(invocation.config, 'telemetry', function (telemetry) {
     if (telemetry === null || typeof telemetry !== 'object' || Array.isArray(telemetry)) throw new TypeError('NuBloxSQL telemetry must be an options object');
-    Object.defineProperty(invocation.config, 'telemetry', {
-      value: telemetry,
-      enumerable: false,
-      configurable: false,
-      writable: false
-    });
-  }
+  });
+  hideClientOption(invocation.config, 'types', function (types) {
+    if (types === null || typeof types !== 'object' || Array.isArray(types)) throw new TypeError('NuBloxSQL types must be an options object');
+  });
   return new clientApi.Client(invocation.adapter, invocation.dialect, invocation.config);
 }
 
@@ -123,6 +133,7 @@ exports.MetadataCatalog = metadataApi.Metadata;
 exports.NuBloxSqlError = errorApi.NuBloxSqlError;
 exports.ERROR_CATEGORIES = errorApi.CATEGORIES;
 exports.Observer = observabilityApi.Observer;
+exports.TypeRegistry = typesApi.TypeRegistry;
 
 defineLazy(exports, 'sqlCore', function () { return require('./lib/core'); });
 defineLazy(exports, 'mysql', function () { return loadAdapter('mysql'); });
