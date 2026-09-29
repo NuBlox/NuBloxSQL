@@ -83,6 +83,107 @@ interface ClientStreamOptions extends Record<string, unknown> {
   acquire?: Record<string, unknown>;
 }
 
+interface MetadataScope {
+  database?: string;
+  schema?: string;
+  includeSystem?: boolean;
+}
+
+interface DatabaseMetadata {
+  readonly name: string;
+  readonly native: unknown;
+  readonly [key: string]: unknown;
+}
+
+interface SchemaMetadata {
+  readonly database: string | null;
+  readonly name: string;
+  readonly native: unknown;
+  readonly [key: string]: unknown;
+}
+
+interface TableMetadata {
+  readonly database: string | null;
+  readonly schema: string | null;
+  readonly name: string;
+  readonly type: 'table' | 'view' | 'foreign-table';
+  readonly native: unknown;
+  readonly columns?: readonly ColumnMetadata[];
+  readonly indexes?: readonly IndexMetadata[];
+  readonly foreignKeys?: readonly ForeignKeyMetadata[];
+  readonly constraints?: readonly ConstraintMetadata[];
+  readonly [key: string]: unknown;
+}
+
+interface ColumnMetadata {
+  readonly database: string | null;
+  readonly schema: string | null;
+  readonly table: string;
+  readonly name: string;
+  readonly ordinal: number;
+  readonly dataType: string;
+  readonly nativeType: string;
+  readonly nullable: boolean;
+  readonly default: unknown;
+  readonly primaryKey: boolean;
+  readonly generated: boolean;
+  readonly native: unknown;
+  readonly [key: string]: unknown;
+}
+
+interface IndexMetadata {
+  readonly database: string | null;
+  readonly schema: string | null;
+  readonly table: string;
+  readonly name: string;
+  readonly unique: boolean;
+  readonly primary: boolean;
+  readonly method: string | null;
+  readonly columns: readonly (string | null)[];
+  readonly native: unknown;
+  readonly [key: string]: unknown;
+}
+
+interface ForeignKeyMetadata {
+  readonly database: string | null;
+  readonly schema: string | null;
+  readonly table: string;
+  readonly name: string;
+  readonly columns: readonly string[];
+  readonly referencedDatabase: string | null;
+  readonly referencedSchema: string | null;
+  readonly referencedTable: string;
+  readonly referencedColumns: readonly string[];
+  readonly onUpdate: string | null;
+  readonly onDelete: string | null;
+  readonly match: string | null;
+  readonly native: unknown;
+}
+
+interface ConstraintMetadata {
+  readonly database: string | null;
+  readonly schema: string | null;
+  readonly table: string;
+  readonly name: string;
+  readonly type: string;
+  readonly columns: readonly string[];
+  readonly definition: string | null;
+  readonly native: unknown;
+}
+
+declare class MetadataCatalog {
+  readonly client: Client;
+  readonly dialect: Dialect;
+  databases(): Promise<readonly DatabaseMetadata[]>;
+  schemas(options?: MetadataScope): Promise<readonly SchemaMetadata[]>;
+  tables(options?: MetadataScope): Promise<readonly TableMetadata[]>;
+  columns(table: string, options?: MetadataScope): Promise<readonly ColumnMetadata[]>;
+  indexes(table: string, options?: MetadataScope): Promise<readonly IndexMetadata[]>;
+  foreignKeys(table: string, options?: MetadataScope): Promise<readonly ForeignKeyMetadata[]>;
+  constraints(table: string, options?: MetadataScope): Promise<readonly ConstraintMetadata[]>;
+  table(name: string, options?: MetadataScope): Promise<TableMetadata | null>;
+}
+
 declare class NuBloxSqlError extends Error {
   readonly code: string;
   readonly category: ErrorCategory;
@@ -152,6 +253,7 @@ declare class Client {
   readonly capabilities: Readonly<Record<string, boolean>>;
   readonly adapter: unknown;
   readonly native: unknown;
+  readonly metadata: MetadataCatalog;
 
   supports(capability: string): boolean;
   compile(statement: SqlFragment | string): CompiledSql;
@@ -213,6 +315,15 @@ export {
   ClientPoolOptions,
   ClientPrepareOptions,
   ClientStreamOptions,
+  MetadataScope,
+  DatabaseMetadata,
+  SchemaMetadata,
+  TableMetadata,
+  ColumnMetadata,
+  IndexMetadata,
+  ForeignKeyMetadata,
+  ConstraintMetadata,
+  MetadataCatalog,
   SqlFragment,
   SqlIdentifier,
   SqlParameter,
