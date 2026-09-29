@@ -4,7 +4,7 @@ var fs = require('fs');
 var path = require('path');
 
 var ROOT = path.resolve(__dirname, '..');
-var PACKAGE_ROOT = path.join(ROOT, 'packages');
+var RUNTIME_ROOT = path.join(ROOT, 'lib');
 var failures = [];
 var PROPRIETARY_MARKER = 'NuBloxSQL Proprietary Software Licence';
 
@@ -12,11 +12,10 @@ function relative(file) {
   return path.relative(ROOT, file).split(path.sep).join('/');
 }
 function readJson(file) { return JSON.parse(fs.readFileSync(file, 'utf8')); }
-function isNuBloxPackage(name) { return name === 'nubloxsql' || name.indexOf('@nublox/') === 0; }
 function inspectDependencyMap(file, section, map) {
   if (!map) return;
   Object.keys(map).sort().forEach(function (name) {
-    if (!isNuBloxPackage(name)) failures.push(relative(file) + ': ' + section + ' contains third-party package ' + name + '@' + map[name]);
+    failures.push(relative(file) + ': ' + section + ' contains package dependency ' + name + '@' + map[name]);
   });
 }
 function inspectPackage(file) {
@@ -48,28 +47,25 @@ function inspectLicence(file) {
 }
 
 inspectPackage(path.join(ROOT, 'package.json'));
-walk(PACKAGE_ROOT, function (file) { if (path.basename(file) === 'package.json') inspectPackage(file); });
-
-if (fs.existsSync(path.join(PACKAGE_ROOT, 'mysql-cleanroom'))) failures.push('packages/mysql-cleanroom: transitional package must not exist after Gate 2 promotion');
-var mysqlManifest = path.join(PACKAGE_ROOT, 'mysql', 'package.json');
-if (!fs.existsSync(mysqlManifest) || readJson(mysqlManifest).name !== '@nublox/mysql') failures.push('packages/mysql/package.json: canonical @nublox/mysql package is required');
-
 inspectLicence(path.join(ROOT, 'LICENSE'));
-['mysql', 'sql-core', 'postgresql', 'sqlite'].forEach(function (name) { inspectLicence(path.join(PACKAGE_ROOT, name, 'LICENSE')); });
+
+if (fs.existsSync(path.join(ROOT, 'packages'))) failures.push('packages/: legacy multi-package runtime tree must not exist');
+if (!fs.existsSync(RUNTIME_ROOT)) failures.push('lib/: consolidated runtime tree is required');
 
 var forbiddenBasenames = new Set(['NUBLOX-UPSTREAM.json', 'NUBLOX-MASTERED-PACKAGE.md', 'THIRD_PARTY_NOTICES']);
-walk(PACKAGE_ROOT, function (file) {
+walk(RUNTIME_ROOT, function (file) {
   if (forbiddenBasenames.has(path.basename(file))) {
-    failures.push(relative(file) + ': inherited/third-party provenance marker must not exist in proprietary NuBloxSQL packages');
+    failures.push(relative(file) + ': inherited/third-party provenance marker must not exist in proprietary NuBloxSQL runtime');
     return;
   }
+  if (path.basename(file) === 'package.json') failures.push(relative(file) + ': nested package manifests are not permitted in the NuBloxSQL runtime tree');
   if (!/\.(?:js|mjs|cjs|ts|json|md|txt)$/i.test(file)) return;
   var text = fs.readFileSync(file, 'utf8');
   ['mysqljs/mysql', 'NuBlox Mastered Package', 'compatibilityLineage'].forEach(function (marker) {
     if (text.indexOf(marker) !== -1) failures.push(relative(file) + ': contains prohibited lineage marker "' + marker + '"');
   });
   if ((path.basename(file) === 'NOTICE' || path.basename(file) === 'LICENSE') && /Apache License|Apache-2\.0/.test(text)) {
-    failures.push(relative(file) + ': current package contains an Apache licence marker');
+    failures.push(relative(file) + ': runtime contains an Apache licence marker');
   }
 });
 
@@ -84,5 +80,5 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   console.log('NuBloxSQL proprietary boundary audit: PASS');
-  console.log('No declared third-party package dependencies, known inherited-source markers, or current Apache licence markers were found in the package boundary.');
+  console.log('The consolidated runtime contains no declared package dependencies, nested package manifests, inherited-source markers, or Apache licence markers.');
 }
