@@ -1,62 +1,49 @@
 # NuBloxSQL
 
-NuBloxSQL is an independent multi-dialect SQL driver platform for Node.js.
+NuBloxSQL is an independent, proprietary, multi-dialect SQL driver platform for Node.js.
 
-## Stable v1 baseline
+## Package status
 
-NuBloxSQL v1.0.0 contains three stable packages:
+| Package | Version | Status | Role |
+| --- | ---: | --- | --- |
+| `@nublox/sql-core` | `1.0.0` | Stable | Portable contracts and dialect vocabulary |
+| `@nublox/mysql` | `1.0.0` | Stable | Native MySQL adapter |
+| `@nublox/postgresql` | `1.0.0` | Stable | Native PostgreSQL adapter |
+| `@nublox/sqlite` | `0.1.0` | Development | Embedded SQLite adapter using `node:sqlite` |
+| `@nublox/sqlserver` | — | Planned | SQL Server adapter |
+| `@nublox/oracle` | — | Planned | Oracle adapter |
 
-- `@nublox/mysql@1.0.0` — NuBlox-authored native MySQL driver.
-- `@nublox/postgresql@1.0.0` — NuBlox-authored native PostgreSQL driver.
-- `@nublox/sql-core@1.0.0` — stable cross-dialect contract family `1.0`.
-
-The v1 implementation boundary uses Node.js built-ins and NuBlox-authored source. The stable packages declare no third-party npm runtime, development, optional or peer dependencies.
-
-## Post-v1 development
-
-The next dialect wave has started with:
-
-- `@nublox/sqlite@0.1.0` — embedded SQLite foundation using Node.js `node:sqlite` with no third-party npm dependency.
-
-The SQLite foundation provides prepared execution, explicit transaction modes, savepoints, result limits, deterministic error classification, database/table/column introspection and typed APIs. SQL Server and Oracle remain planned later dialects.
+The stable v1.0.0 release boundary is the three-package set `@nublox/sql-core`, `@nublox/mysql` and `@nublox/postgresql`. SQLite is post-v1 development and is not part of the v1.0.0 support claim.
 
 ## Architecture
 
-NuBloxSQL keeps portable contracts, dialect syntax/services and vendor runtimes separate. Database-specific behaviour remains inside each adapter rather than being forced into a lowest-common-denominator API.
+NuBloxSQL separates portable contracts from database-specific implementation:
 
 ```text
-                @nublox/sql-core
-                      ▲
-          ┌───────────┼───────────┐
-          │           │           │
- @nublox/mysql @nublox/postgresql @nublox/sqlite
+                    @nublox/sql-core
+                           │
+          ┌────────────────┼────────────────┐
+          │                │                │
+          ▼                ▼                ▼
+  @nublox/mysql   @nublox/postgresql   @nublox/sqlite
+          │                │                │
+       MySQL           PostgreSQL         SQLite
+      protocol          protocol       embedded API
 ```
 
-See `docs/architecture/multi-dialect.md` and `docs/v1/SQL-CORE-V1-CONTRACT.md`.
+Shared contracts are promoted only when semantics are genuinely portable. Authentication, protocol framing, locking, storage, type-system details and other vendor behaviour remain adapter-owned.
 
-## Repository layout
+See [docs/architecture/multi-dialect.md](docs/architecture/multi-dialect.md).
 
-```text
-packages/
-  sql-core/
-  mysql/
-  postgresql/
-  sqlite/
-```
-
-The repository root orchestrates the workspace and release gates; applications consume the individual packages.
-
-## Supported matrix
-
-Stable v1 qualification:
+## Supported stable v1 matrix
 
 - Node.js 22, 24 and 26
 - MySQL 8.4 and 9.7
 - PostgreSQL 15, 16, 17 and 18
 
-SQLite development currently requires Node.js 22.16.0 or later because the adapter uses Node's built-in SQLite metadata and transaction-state APIs.
+SQLite development requires Node.js 22.16.0 or later.
 
-See `docs/v1/V1-SUPPORT-MATRIX.md` for the qualified v1 release matrix.
+See [docs/v1/V1-SUPPORT-MATRIX.md](docs/v1/V1-SUPPORT-MATRIX.md).
 
 ## Verification
 
@@ -66,36 +53,40 @@ npm run v1:proprietary-audit
 npm run v1:release-audit
 ```
 
-`npm run verify` exercises MySQL, PostgreSQL, SQL Core and the current SQLite development package. The stable v1 release audit remains pinned to the three v1.0.0 packages.
+`npm run verify` exercises the current workspace, including SQLite development. The v1 release audit remains pinned to the three stable v1.0.0 packages.
 
-CI additionally validates package dry-runs, supported database integration matrices, protocol/resource failure paths, fuzzing and CodeQL.
+CI additionally validates supported Node/database matrices, package dry-runs, protocol and resource-safety behaviour, proprietary boundaries, fuzzing and CodeQL.
 
 ## Local workspace setup
 
-NuBloxSQL's proprietary release boundary intentionally contains no dependency lockfile. The repository `.npmrc` disables `package-lock.json` generation so a normal `npm install` does not invalidate the local proprietary/release audits.
-
-If a lockfile was created by an older checkout, remove it once before running the release gates:
+NuBloxSQL intentionally keeps the proprietary release boundary lockfile-free. The repository `.npmrc` disables `package-lock.json` generation.
 
 ```bash
 rm -f package-lock.json
 npm install
-npm run verify:proprietary
+npm run verify
 ```
 
-## Migration and release documentation
+## Documentation
 
-- `docs/v1/V1-MIGRATION.md`
-- `docs/v1/V1-RELEASE-NOTES.md`
-- `docs/v1/V1-SUPPORT-MATRIX.md`
-- `docs/v1/V1-RELEASE-PLAN.md`
-- `docs/v1/PROPRIETARY-IP-RELEASE-GATE.md`
+Start with [docs/README.md](docs/README.md).
+
+Key documents:
+
+- [Architecture](docs/architecture/multi-dialect.md)
+- [Roadmap](NUBLOX-SQL-ROADMAP.md)
+- [v1 support matrix](docs/v1/V1-SUPPORT-MATRIX.md)
+- [v1 release notes](docs/v1/V1-RELEASE-NOTES.md)
+- [v1 migration guide](docs/v1/V1-MIGRATION.md)
+- [SQL Core v1 contract](docs/v1/SQL-CORE-V1-CONTRACT.md)
+- [Proprietary release gate](docs/v1/PROPRIETARY-IP-RELEASE-GATE.md)
 
 ## Licence
 
-NuBloxSQL is proprietary software. Copyright (c) 2026 Stephen J T Spittal. All rights reserved. See `LICENSE`.
+NuBloxSQL is proprietary software. Copyright (c) 2026 Stephen J T Spittal. All rights reserved. See [LICENSE](LICENSE).
 
-Public availability of this repository does not grant an open-source licence. Historical copies previously distributed under earlier licence terms retain the rights validly granted for those copies.
+Public availability of the repository does not grant an open-source licence. Historical copies validly distributed under earlier licence terms retain the rights granted for those copies.
 
 ## Independence
 
-NuBloxSQL is independently usable, testable, versionable and releasable. Its architecture and roadmap do not depend on any other NuBlox project.
+NuBloxSQL is independently usable, testable, versionable and releasable. Other NuBlox products may consume it, but they are not part of its architecture or release criteria.

@@ -1,71 +1,73 @@
 # @nublox/sql-core
 
-`@nublox/sql-core` defines the stable vendor-neutral contracts and small runtime vocabularies shared by NuBloxSQL database adapters.
+Portable contract and dialect vocabulary for NuBloxSQL adapters.
 
-It is intentionally transport-free. Database protocols, authentication, wire formats, native type codecs, replication/change-data-capture implementations and server-specific behaviour belong in dialect adapters.
+## Status
 
-## v1 contract philosophy
+- Package: `@nublox/sql-core`
+- Version: `1.0.0`
+- Status: **Stable**
+- Contract family: **1.0**
+- NuBloxSQL baseline: **v1.0.0**
+- Node.js: **22, 24, 26**
 
-SQL Core does **not** make MySQL and PostgreSQL look identical. It freezes only concepts that the canonical adapters have both proved, or cross-dialect policy vocabulary that consumers genuinely need.
+## Purpose
 
-Vendor-specific behavior remains first class in each adapter. For example:
+SQL Core defines the vendor-neutral contracts that real adapters have proven portable. It is intentionally transport-free: protocols, authentication, native type codecs, replication, storage and vendor-specific lifecycle behaviour remain inside adapters.
 
-- MySQL placeholders are `?`; PostgreSQL placeholders are `$1`, `$2`, ...;
-- PostgreSQL exposes schemas while the MySQL adapter does not claim PostgreSQL-style schema semantics;
-- PostgreSQL implements native server cancellation with CancelRequest; MySQL v1 treats cancellation as connection-aborting behavior and therefore reports `queryCancellation: false` as a dialect capability;
-- MySQL may expose absolute deadlines as an adapter extension, while the portable v1 operation contract freezes the relative `timeout` and cancellation-signal concepts both adapters implement.
+## Stable contract surface
 
-The runtime constant `CONTRACT_VERSION` is `1.0` for this contract family.
+Contract family `1.0` covers:
 
-## Frozen v1 portable surface
-
-The v1 contract covers:
-
-- dialect identity, capabilities, identifier quoting and placeholders;
-- catalog/schema/name object identity without pretending those database concepts are equivalent;
-- structural abort signals and relative operation timeout policy;
+- dialect identity and capability metadata;
+- identifier quoting and placeholder services;
+- catalog/schema/object-name vocabulary without pretending those concepts are identical;
+- structural cancellation signals and relative timeout policy;
 - bounded result policy: `maxRows`, `maxResultBytes`, `maxRowBytes`;
 - positional execution parameters;
-- row-result and command-result shapes;
-- portable field metadata with explicit vendor extension space;
-- transaction isolation and read-only policy;
-- error categorisation, native code/SQLSTATE preservation, retryability and resource-limit evidence;
-- explicit native adapter extension points.
+- row and command result shapes;
+- portable field metadata with adapter extension space;
+- transaction isolation/read-only policy;
+- error categories, native diagnostic preservation, retryability and resource-limit evidence.
 
-## Deliberately not frozen in v1
+## Deliberately adapter-specific
 
-SQL Core v1 does not freeze abstractions that are not proven by both production adapters:
+SQL Core does not freeze vendor details merely to make adapters look uniform. Examples include:
 
-- generic named-parameter maps;
-- generic multi-result-set containers;
-- a universal absolute-deadline option;
-- CDC/replication contracts;
-- multiple-active-result semantics;
-- vendor-specific cursor/portal packet models;
-- vendor-specific type codecs.
+- MySQL `?` versus PostgreSQL `$1` placeholders;
+- PostgreSQL schemas versus MySQL database/catalog semantics;
+- PostgreSQL native CancelRequest versus MySQL connection-aborting cancellation behaviour;
+- vendor-native cursor/portal packet models;
+- vendor-native type codecs;
+- absolute deadline extensions that are not genuinely portable.
 
-Those can be added in a later contract version when multiple adapters demonstrate a genuinely portable need.
-
-## Example
+## Quick start
 
 ```js
 const sql = require('@nublox/sql-core');
 
 console.log(sql.CONTRACT_VERSION); // 1.0
-console.log(sql.CAPABILITIES.PREPARED_STATEMENTS); // preparedStatements
-console.log(sql.ERROR_CATEGORIES.RESOURCE_LIMIT); // resource-limit
+console.log(sql.CAPABILITIES.PREPARED_STATEMENTS);
+console.log(sql.ERROR_CATEGORIES.RESOURCE_LIMIT);
 ```
 
-Adapters expose their native APIs directly. SQL Core is a shared contract vocabulary, not an extra driver wrapper layer.
+Adapters expose their own runtime APIs directly. SQL Core is contract vocabulary, not a wrapper driver.
 
-## Independence
+## Compatibility policy
 
-This package is part of NuBloxSQL and has no dependency on any other NuBlox project or third-party npm package. It remains independently testable, versionable and publishable.
+Breaking changes to contract family `1.0` require a new major package version. Adapter-specific features do not require SQL Core changes unless multiple adapters demonstrate a genuinely portable contract.
 
-## Stability
+## Dependency boundary
 
-`@nublox/sql-core@1.0.0` is the stable contract-family 1.0 release. Breaking changes to the frozen contract require a new major version; adapter-specific additions do not require SQL Core changes unless they become genuinely portable concepts.
+The package declares no third-party npm runtime, development, optional or peer dependencies.
+
+## Related documentation
+
+- `../../README.md`
+- `../../docs/architecture/multi-dialect.md`
+- `../../docs/v1/SQL-CORE-V1-CONTRACT.md`
+- `../../docs/v1/V1-SUPPORT-MATRIX.md`
 
 ## Licence
 
-Proprietary. Copyright (c) 2026 Stephen J T Spittal. See `LICENSE`.
+Proprietary software. Copyright (c) 2026 Stephen J T Spittal. See `LICENSE`.
