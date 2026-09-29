@@ -4,10 +4,20 @@ on:
   push:
     branches: [main]
     paths:
+      - 'index.js'
+      - 'index.d.ts'
+      - 'package.json'
+      - 'lib/client/**'
+      - 'test/client-api.js'
       - 'lib/dialects/mysql/**'
       - '.github/workflows/mysql-cleanroom.yml'
   pull_request:
     paths:
+      - 'index.js'
+      - 'index.d.ts'
+      - 'package.json'
+      - 'lib/client/**'
+      - 'test/client-api.js'
       - 'lib/dialects/mysql/**'
       - '.github/workflows/mysql-cleanroom.yml'
 
