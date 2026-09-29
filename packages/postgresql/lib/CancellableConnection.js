@@ -100,10 +100,28 @@ Connection.prototype._startOperation = function _startOperation(state, messages,
 };
 
 Connection.prototype._finishOperation = function _finishOperation(state) {
+  var self = this;
   if (state && state.cancelReason) {
     if (state.error && state.cancelReason.cause === undefined) state.cancelReason.cause = state.error;
     state.error = state.cancelReason;
   }
+
+  // CancelRequest identifies a backend session, not an individual operation.
+  // Keep this operation occupying the connection until the auxiliary cancel
+  // dispatch settles so a late packet cannot target a subsequent query.
+  if (state && state.cancelPromise) {
+    if (state.finishPending) return;
+    state.finishPending = true;
+    state.cancelPromise.then(function () {
+      state.finishPending = false;
+      if (self._currentQuery === state) base.Connection.prototype._finishOperation.call(self, state);
+    }, function () {
+      state.finishPending = false;
+      if (self._currentQuery === state && !self.ended) self.destroy(state.cancelReason || new Error('PostgreSQL cancellation failed'));
+    });
+    return;
+  }
+
   return base.Connection.prototype._finishOperation.call(this, state);
 };
 
