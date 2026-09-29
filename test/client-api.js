@@ -5,6 +5,9 @@ var nublox = require('..');
 var sql = nublox.sql;
 
 async function main() {
+  assert.strictEqual(typeof nublox.NuBloxSqlError, 'function');
+  assert.strictEqual(nublox.ERROR_CATEGORIES.UNIQUE_VIOLATION, 'unique_violation');
+
   var mysql = nublox.createClient({ dialect: 'mysql', user: 'test', pool: false });
   var mysqlCompiled = mysql.compile(sql`SELECT * FROM ${sql.identifier('users')} WHERE id = ${42} AND name = ${'Stephen'}`);
   assert.strictEqual(mysqlCompiled.text, 'SELECT * FROM `users` WHERE id = ? AND name = ?');
@@ -35,6 +38,17 @@ async function main() {
   var one = await db.one(sql`SELECT id, name FROM ${sql.identifier('users')} WHERE id = ${rows[0].id}`);
   assert.strictEqual(one.name, 'Stephen');
 
+  await assert.rejects(
+    function () { return db.one(sql`SELECT id FROM ${sql.identifier('users')} WHERE id = ${999999}`); },
+    function (error) {
+      assert.ok(error instanceof nublox.NuBloxSqlError);
+      assert.strictEqual(error.category, 'cardinality');
+      assert.strictEqual(error.code, 'NUBLOXSQL_CARDINALITY');
+      assert.strictEqual(error.dialect, 'sqlite');
+      return true;
+    }
+  );
+
   var insertUser = await db.prepare(sql`
     INSERT INTO ${sql.identifier('users')} (id, name)
     VALUES (${sql.parameter('id')}, ${sql.parameter('name')})
@@ -43,6 +57,17 @@ async function main() {
   await insertUser.execute({ id: 20, name: 'Prepared' });
   await insertUser.execute({ id: 21, name: 'Prepared Again' });
   await assert.rejects(function () { return insertUser.execute({ id: 22 }); }, /missing binding "name"/);
+  await assert.rejects(
+    function () { return insertUser.execute({ id: 20, name: 'Duplicate' }); },
+    function (error) {
+      assert.ok(error instanceof nublox.NuBloxSqlError);
+      assert.strictEqual(error.category, 'unique_violation');
+      assert.strictEqual(error.code, 'NUBLOXSQL_UNIQUE_VIOLATION');
+      assert.strictEqual(error.dialect, 'sqlite');
+      assert.ok(error.native);
+      return true;
+    }
+  );
   await insertUser.close();
   assert.strictEqual(insertUser.closed, true);
 
@@ -74,6 +99,7 @@ async function main() {
     assert.fail('transaction should have thrown');
   } catch (error) {
     assert.strictEqual(error.message, 'rollback sentinel');
+    assert.strictEqual(error instanceof nublox.NuBloxSqlError, false);
   }
 
   var committed = await db.all(sql`SELECT name FROM ${sql.identifier('users')} WHERE name = ${'Committed'}`);
