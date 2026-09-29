@@ -9,6 +9,10 @@ export interface TdsPacket { readonly type:number; readonly status:number; reado
 export interface TdsPacketOptions { type:number; status?:number; spid?:number; packetId?:number; window?:number; payload?:Uint8Array }
 export interface PreloginOptions { version?:{major?:number;minor?:number;build?:number;subbuild?:number}; encryption?:number; instance?:string; threadId?:number; mars?:boolean; fedAuthRequired?:boolean; nonce?:Uint8Array }
 export interface Login7Options { hostName?:string; userName?:string; user?:string; password?:string; appName?:string; serverName?:string; host?:string; clientInterfaceName?:string; language?:string; database?:string; attachDbFile?:string; changePassword?:string; packetSize?:number; tdsVersion?:number; clientProgramVersion?:number; clientPid?:number; connectionId?:number; optionFlags1?:number; optionFlags2?:number; typeFlags?:number; optionFlags3?:number; readOnlyIntent?:boolean; clientTimeZone?:number; clientLcid?:number; clientId?:Uint8Array }
+export interface SqlServerConnectionConfig extends Login7Options { host?:string; port?:number; connectTimeout?:number; serverName?:string; hostnameInCertificate?:string; rejectUnauthorized?:boolean; minTlsVersion?:string; ca?:unknown; cert?:unknown; key?:unknown; pfx?:unknown; passphrase?:string; ciphers?:string; mars?:boolean; clientVersion?:{major?:number;minor?:number;build?:number;subbuild?:number} }
+export class SqlServerError extends Error { readonly code?:number|null; readonly severity?:number|null; readonly state?:number|null; readonly native?:unknown; readonly alpnProtocol?:string|null }
+export class Connection { constructor(config?:SqlServerConnectionConfig); readonly config:SqlServerConnectionConfig; connected:boolean; ended:boolean; packetSize:number; serverPrelogin:unknown; loginResponse:unknown; connect():Promise<this>; end():Promise<void>; close():Promise<void> }
+export function createConnection(config?:SqlServerConnectionConfig):Connection;
 export const descriptor:SqlServerDialectDescriptor;
 export const capabilities:Readonly<Record<string,boolean>>;
 export const plannedCapabilities:Readonly<Record<string,boolean>>;
