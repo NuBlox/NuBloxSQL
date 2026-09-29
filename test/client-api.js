@@ -6,6 +6,7 @@ var sql = nublox.sql;
 
 async function main() {
   assert.strictEqual(typeof nublox.NuBloxSqlError, 'function');
+  assert.strictEqual(typeof nublox.ClientRowStream, 'function');
   assert.strictEqual(nublox.ERROR_CATEGORIES.UNIQUE_VIOLATION, 'unique_violation');
 
   var mysql = nublox.createClient({ dialect: 'mysql', user: 'test', pool: false });
@@ -82,6 +83,22 @@ async function main() {
   assert.strictEqual(preparedRows.length, 1);
   assert.strictEqual(preparedRows[0].name, 'Prepared Again');
   await findUser.close();
+
+  var streamed = [];
+  var rowStream = db.stream(sql`
+    SELECT id, name FROM ${sql.identifier('users')}
+    WHERE id >= ${20}
+    ORDER BY id
+  `);
+  for await (var streamedRow of rowStream) streamed.push(streamedRow);
+  assert.deepStrictEqual(streamed.map(function (row) { return row.name; }), ['Prepared', 'Prepared Again']);
+  assert.strictEqual(rowStream.closed, true);
+
+  var earlyStream = db.stream(sql`SELECT id, name FROM ${sql.identifier('users')} ORDER BY id`);
+  var firstStreamed = await earlyStream.next();
+  assert.strictEqual(firstStreamed.done, false);
+  await earlyStream.close();
+  assert.strictEqual(earlyStream.closed, true);
 
   await db.transaction(async function (tx) {
     await tx.execute(sql`INSERT INTO ${sql.identifier('users')} (name) VALUES (${'Committed'})`);
