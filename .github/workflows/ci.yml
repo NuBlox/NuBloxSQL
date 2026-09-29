@@ -30,11 +30,13 @@ jobs:
         run: npm run v1:proprietary-audit
       - name: Assert stable v1 release boundary
         run: npm run v1:release-audit
-      - name: Verify MySQL publish surface
+      - name: Verify NuBloxSQL single-entry publish surface
+        run: npm pack --dry-run
+      - name: Verify MySQL internal publish surface
         run: npm pack --dry-run --workspace @nublox/mysql
-      - name: Verify SQL Core publish surface
+      - name: Verify SQL Core internal publish surface
         run: npm pack --dry-run --workspace @nublox/sql-core
-      - name: Verify PostgreSQL publish surface
+      - name: Verify PostgreSQL internal publish surface
         run: npm pack --dry-run --workspace @nublox/postgresql
-      - name: Verify SQLite publish surface
+      - name: Verify SQLite internal publish surface
         run: npm pack --dry-run --workspace @nublox/sqlite
