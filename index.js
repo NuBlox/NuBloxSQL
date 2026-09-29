@@ -5,9 +5,11 @@ var sqlApi = require('./lib/client/Sql');
 var errorApi = require('./lib/client/Error');
 var streamApi = require('./lib/client/Stream');
 var metadataApi = require('./lib/client/Metadata');
+var observabilityApi = require('./lib/client/Observability');
 streamApi.install(clientApi);
 require('./lib/client/OperationControlIntegration').install(clientApi);
 require('./lib/client/ErrorIntegration').install(clientApi);
+observabilityApi.install(clientApi, streamApi);
 
 var DIALECTS = Object.freeze({
   mysql: 'mysql',
@@ -130,6 +132,7 @@ exports.ClientRowStream = streamApi.ClientRowStream;
 exports.MetadataCatalog = metadataApi.Metadata;
 exports.NuBloxSqlError = errorApi.NuBloxSqlError;
 exports.ERROR_CATEGORIES = errorApi.CATEGORIES;
+exports.Observer = observabilityApi.Observer;
 
 defineLazy(exports, 'sqlCore', function () { return require('./lib/core'); });
 defineLazy(exports, 'mysql', function () { return loadAdapter('mysql'); });
