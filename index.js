@@ -13,6 +13,7 @@ require('./lib/client/ErrorIntegration').install(clientApi);
 observabilityApi.install(clientApi, streamApi);
 require('./lib/client/TypesIntegration').install(clientApi, streamApi);
 require('./lib/client/TransactionIntegration').install(clientApi);
+require('./lib/client/SqlServerMetadataIntegration').install(metadataApi);
 
 var DIALECTS = Object.freeze({
   mysql: 'mysql',
