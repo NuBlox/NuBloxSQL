@@ -18,6 +18,12 @@ export interface SqlServerQueryResult<Row=Record<string,unknown>> { readonly col
 export interface SqlServerOperationOptions { timeout?:number; deadline?:number; signal?:AbortSignal; cancelTimeout?:number; acquire?:{ timeout?:number; deadline?:number; signal?:AbortSignal } }
 export interface SqlServerTransactionOptions extends SqlServerOperationOptions { isolationLevel?:'read-uncommitted'|'read-committed'|'repeatable-read'|'serializable'; readOnly?:never; deferrable?:never }
 export class SqlServerError extends Error { readonly code?:number|string|null; readonly category?:string; readonly retryable?:boolean; readonly severity?:number|null; readonly state?:number|null; readonly native?:unknown; readonly alpnProtocol?:string|null; readonly cause?:unknown; readonly result?:unknown }
+export class PreparedStatement {
+  readonly connection:Connection; readonly sqlText:string; readonly options:SqlServerOperationOptions; readonly handle:number|null; readonly closed:boolean;
+  execute<Row=Record<string,unknown>>(values?:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
+  query<Row=Record<string,unknown>>(values?:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
+  close(options?:SqlServerOperationOptions):Promise<void>;
+}
 export class Connection {
   constructor(config?:SqlServerConnectionConfig);
   readonly config:SqlServerConnectionConfig;
@@ -28,6 +34,7 @@ export class Connection {
   execute<Row=Record<string,unknown>>(sqlText:string,options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
   execute<Row=Record<string,unknown>>(sqlText:string,values:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
   executeParameters<Row=Record<string,unknown>>(sqlText:string,values:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
+  prepare(sqlText:string,options?:SqlServerOperationOptions):PreparedStatement;
   beginTransaction(options?:SqlServerTransactionOptions):Promise<this>;
   commit(options?:SqlServerOperationOptions):Promise<this>;
   rollback(options?:SqlServerOperationOptions):Promise<this>;
@@ -52,7 +59,7 @@ export class Pool {
 export function createConnection(config?:SqlServerConnectionConfig):Connection;
 export function createPool(config:SqlServerPoolConfig):Pool;
 export const descriptor:SqlServerDialectDescriptor;
-export const capabilities:Readonly<{ rawQuery:true; transactions:true; savepoints:true; nestedTransactions:true; transactionIsolation:true; readOnlyTransactions:false; deferrableTransactions:false; queryCancellation:true } & Record<string,boolean>>;
+export const capabilities:Readonly<{ rawQuery:true; transactions:true; savepoints:true; nestedTransactions:true; transactionIsolation:true; readOnlyTransactions:false; deferrableTransactions:false; queryCancellation:true; preparedStatements:true } & Record<string,boolean>>;
 export const plannedCapabilities:Readonly<Record<string,boolean>>;
 export const services:SqlServerDialectDescriptor['services'];
 export const TdsPacket:{ readonly HEADER_LENGTH:8; readonly MAX_PACKET_LENGTH:32767; readonly DEFAULT_PACKET_SIZE:4096; readonly PACKET_TYPES:Readonly<Record<string,number>>; readonly STATUS:Readonly<Record<string,number>>; encodePacket(options:TdsPacketOptions):Buffer; decodePacket(buffer:Uint8Array):TdsPacket; packetize(type:number,payload?:Uint8Array,options?:{packetSize?:number;packetId?:number;spid?:number;window?:number}):Buffer[]; PacketParser:new()=>{push(chunk:Uint8Array):TdsPacket[];bufferedBytes():number} };
