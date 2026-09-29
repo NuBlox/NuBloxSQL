@@ -10,6 +10,9 @@ async function main() {
   assert.strictEqual(mysqlCompiled.text, 'SELECT * FROM `users` WHERE id = ? AND name = ?');
   assert.deepStrictEqual(mysqlCompiled.parameters, [42, 'Stephen']);
   assert.strictEqual(mysql.supports('preparedStatements'), true);
+  assert.throws(function () {
+    mysql.compile(sql`SELECT * FROM users WHERE id = ${sql.parameter('id')}`);
+  }, /only be used with prepare/);
 
   var postgresql = nublox.createClient({ dialect: 'postgresql', user: 'test', pool: false });
   var pgCompiled = postgresql.compile(sql`SELECT * FROM ${sql.identifier('public', 'users')} WHERE id = ${42} AND name = ${'Stephen'}`);
@@ -32,8 +35,35 @@ async function main() {
   var one = await db.one(sql`SELECT id, name FROM ${sql.identifier('users')} WHERE id = ${rows[0].id}`);
   assert.strictEqual(one.name, 'Stephen');
 
+  var insertUser = await db.prepare(sql`
+    INSERT INTO ${sql.identifier('users')} (id, name)
+    VALUES (${sql.parameter('id')}, ${sql.parameter('name')})
+  `);
+  assert.deepStrictEqual(insertUser.bindings, ['id', 'name']);
+  await insertUser.execute({ id: 20, name: 'Prepared' });
+  await insertUser.execute({ id: 21, name: 'Prepared Again' });
+  await assert.rejects(function () { return insertUser.execute({ id: 22 }); }, /missing binding "name"/);
+  await insertUser.close();
+  assert.strictEqual(insertUser.closed, true);
+
+  var findUser = await db.prepare(sql`
+    SELECT id, name
+    FROM ${sql.identifier('users')}
+    WHERE id = ${sql.parameter('id')}
+  `);
+  var preparedRow = await findUser.one({ id: 20 });
+  assert.strictEqual(preparedRow.name, 'Prepared');
+  var preparedRows = await findUser.all({ id: 21 });
+  assert.strictEqual(preparedRows.length, 1);
+  assert.strictEqual(preparedRows[0].name, 'Prepared Again');
+  await findUser.close();
+
   await db.transaction(async function (tx) {
     await tx.execute(sql`INSERT INTO ${sql.identifier('users')} (name) VALUES (${'Committed'})`);
+    var txPrepared = await tx.prepare(sql`
+      SELECT name FROM ${sql.identifier('users')} WHERE name = ${sql.parameter('name')}
+    `);
+    assert.strictEqual((await txPrepared.one({ name: 'Committed' })).name, 'Committed');
   });
 
   try {

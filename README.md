@@ -56,6 +56,7 @@ The public platform owns:
 - dialect selection;
 - portable SQL value placeholders and identifier quoting;
 - a unified query/result contract;
+- portable prepared statements with named bindings;
 - connection and pool ownership;
 - transactions;
 - capability discovery;
@@ -104,6 +105,40 @@ const rows = await db.all(sql`
   FROM ${sql.identifier('app', 'users')}
 `);
 ```
+
+### Portable prepared statements
+
+Prepare once and execute repeatedly with named bindings:
+
+```js
+const findUser = await db.prepare(sql`
+  SELECT id, name, email
+  FROM ${sql.identifier('users')}
+  WHERE id = ${sql.parameter('id')}
+`);
+
+const first = await findUser.one({ id: 42 });
+const second = await findUser.one({ id: 84 });
+
+await findUser.close();
+```
+
+`sql.parameter()` is compiled to the selected dialect's native placeholder form. The statement keeps the underlying prepared resource and, when created from a pooled client, leases exactly one native connection until `close()`. NuBloxSQL releases that connection automatically when the statement closes. Statements created inside `transaction()` are also closed before the transaction connection returns to the pool.
+
+Prepared writes use the same contract:
+
+```js
+const insertUser = await db.prepare(sql`
+  INSERT INTO ${sql.identifier('users')} (id, name)
+  VALUES (${sql.parameter('id')}, ${sql.parameter('name')})
+`);
+
+await insertUser.execute({ id: 1, name: 'Stephen' });
+await insertUser.execute({ id: 2, name: 'Alice' });
+await insertUser.close();
+```
+
+Missing named bindings fail explicitly. `sql.parameter()` is intentionally rejected by ordinary `query()`/`execute()` calls so unresolved parameters cannot accidentally reach a database.
 
 ### Unified result contract
 
@@ -205,7 +240,7 @@ These are advanced primitives. `createClient()` is the primary developer-facing 
 
 NuBloxSQL has three internal layers:
 
-1. **Developer client** — portable SQL compilation, result normalization, transactions and lifecycle.
+1. **Developer client** — portable SQL compilation, prepared statements, result normalization, transactions and lifecycle.
 2. **Shared SQL contracts** — capabilities and semantics proven across dialects.
 3. **Native dialect runtimes** — database-specific implementation and native behavior.
 

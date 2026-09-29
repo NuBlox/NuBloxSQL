@@ -48,8 +48,25 @@ async function main() {
     assert.strictEqual(rows.length, 1);
     assert.strictEqual(rows[0].name, 'portable');
 
+    var insertPrepared = await db.prepare(sql`
+      INSERT INTO ${table} (id, name)
+      VALUES (${sql.parameter('id')}, ${sql.parameter('name')})
+    `);
+    await insertPrepared.execute({ id: 10, name: 'prepared-one' });
+    await insertPrepared.execute({ id: 11, name: 'prepared-two' });
+    await insertPrepared.close();
+
+    var selectPrepared = await db.prepare(sql`
+      SELECT id, name FROM ${table} WHERE id = ${sql.parameter('id')}
+    `);
+    assert.strictEqual((await selectPrepared.one({ id: 10 })).name, 'prepared-one');
+    assert.strictEqual((await selectPrepared.one({ id: 11 })).name, 'prepared-two');
+    await selectPrepared.close();
+
     await db.transaction(async function (tx) {
       await tx.execute(sql`INSERT INTO ${table} (id, name) VALUES (${2}, ${'committed'})`);
+      var txPrepared = await tx.prepare(sql`SELECT name FROM ${table} WHERE id = ${sql.parameter('id')}`);
+      assert.strictEqual((await txPrepared.one({ id: 2 })).name, 'committed');
     });
 
     try {

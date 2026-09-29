@@ -25,6 +25,7 @@ type ClientConfig = ConnectionConfig & { pool?: boolean | ClientPoolOptions };
 
 interface SqlFragment {}
 interface SqlIdentifier {}
+interface SqlParameter {}
 interface CompiledSql {
   readonly text: string;
   readonly parameters: readonly unknown[];
@@ -33,6 +34,7 @@ interface CompiledSql {
 interface SqlTag {
   (strings: TemplateStringsArray, ...values: unknown[]): SqlFragment;
   identifier(...parts: string[]): SqlIdentifier;
+  parameter(name: string): SqlParameter;
   join(fragments: readonly SqlFragment[], separator?: string): SqlFragment;
 }
 
@@ -45,6 +47,25 @@ interface ClientResult<Row = Record<string, unknown>> {
   readonly command: string;
   readonly dialect: Dialect;
   readonly native: unknown;
+}
+
+interface ClientPrepareOptions extends Record<string, unknown> {
+  acquire?: Record<string, unknown>;
+}
+
+declare class PreparedClientStatement {
+  readonly client: Client;
+  readonly dialect: Dialect;
+  readonly text: string;
+  readonly bindings: readonly string[];
+  readonly native: unknown;
+  readonly closed: boolean;
+
+  query<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: Record<string, unknown>): Promise<ClientResult<Row>>;
+  all<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: Record<string, unknown>): Promise<Row[]>;
+  one<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: Record<string, unknown>): Promise<Row>;
+  execute<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: Record<string, unknown>): Promise<ClientResult<Row>>;
+  close(options?: Record<string, unknown>): Promise<void>;
 }
 
 declare class Client {
@@ -61,6 +82,7 @@ declare class Client {
   all<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<Row[]>;
   one<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<Row>;
   execute<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<ClientResult<Row>>;
+  prepare(statement: SqlFragment | string, options?: ClientPrepareOptions): Promise<PreparedClientStatement>;
   transaction<T>(fn: (transaction: Client) => T | Promise<T>, options?: Record<string, unknown>): Promise<T>;
   close(): Promise<void>;
 }
@@ -110,11 +132,14 @@ export {
   ConnectionConfig,
   ClientConfig,
   ClientPoolOptions,
+  ClientPrepareOptions,
   SqlFragment,
   SqlIdentifier,
+  SqlParameter,
   CompiledSql,
   SqlTag,
   ClientResult,
+  PreparedClientStatement,
   Client,
   sql,
   DIALECTS,
