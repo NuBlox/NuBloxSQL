@@ -48,6 +48,30 @@ async function main() {
     assert.strictEqual(rows.length, 1);
     assert.strictEqual(rows[0].name, 'portable');
 
+    await assert.rejects(
+      function () { return db.execute(sql`INSERT INTO ${table} (id, name) VALUES (${1}, ${'duplicate'})`); },
+      function (error) {
+        assert.ok(error instanceof nublox.NuBloxSqlError);
+        assert.strictEqual(error.category, 'unique_violation');
+        assert.strictEqual(error.code, 'NUBLOXSQL_UNIQUE_VIOLATION');
+        assert.strictEqual(error.dialect, dialect);
+        assert.ok(error.native);
+        if (dialect === 'mysql') assert.strictEqual(Number(error.nativeCode), 1062);
+        if (dialect === 'postgresql') assert.strictEqual(error.sqlState, '23505');
+        return true;
+      }
+    );
+
+    await assert.rejects(
+      function () { return db.query('SELEC definitely_invalid_syntax'); },
+      function (error) {
+        assert.ok(error instanceof nublox.NuBloxSqlError);
+        assert.strictEqual(error.category, 'syntax');
+        assert.strictEqual(error.dialect, dialect);
+        return true;
+      }
+    );
+
     var insertPrepared = await db.prepare(sql`
       INSERT INTO ${table} (id, name)
       VALUES (${sql.parameter('id')}, ${sql.parameter('name')})
@@ -77,6 +101,7 @@ async function main() {
       assert.fail('transaction should have rolled back');
     } catch (error) {
       assert.strictEqual(error.message, 'rollback sentinel');
+      assert.strictEqual(error instanceof nublox.NuBloxSqlError, false);
     }
 
     var committed = await db.one(sql`SELECT id, name FROM ${table} WHERE id = ${2}`);
