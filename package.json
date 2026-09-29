@@ -7,7 +7,7 @@
   "author": "Stephen J T Spittal",
   "main": "index.js",
   "types": "index.d.ts",
-  "files": ["index.js","index.d.ts","lib/client/","lib/core/index.js","lib/core/index.d.ts","lib/dialects/mysql/index.js","lib/dialects/mysql/index.d.ts","lib/dialects/mysql/types.d.ts","lib/dialects/mysql/lib/","lib/dialects/postgresql/index.js","lib/dialects/postgresql/index.d.ts","lib/dialects/postgresql/lib/","lib/dialects/sqlite/index.js","lib/dialects/sqlite/index.d.ts","lib/dialects/sqlite/lib/","README.md","LICENSE","NOTICE"],
+  "files": ["index.js","index.d.ts","lib/client/","lib/core/index.js","lib/core/index.d.ts","lib/dialects/mysql/index.js","lib/dialects/mysql/index.d.ts","lib/dialects/mysql/types.d.ts","lib/dialects/mysql/lib/","lib/dialects/postgresql/index.js","lib/dialects/postgresql/index.d.ts","lib/dialects/postgresql/lib/","lib/dialects/sqlite/index.js","lib/dialects/sqlite/index.d.ts","lib/dialects/sqlite/lib/","lib/dialects/sqlserver/index.js","lib/dialects/sqlserver/index.d.ts","lib/dialects/sqlserver/lib/","README.md","LICENSE","NOTICE"],
   "repository":{"type":"git","url":"git+https://github.com/NuBlox/NuBloxSQL.git"},
   "engines":{"node":">=22"},
   "scripts":{
