@@ -67,20 +67,27 @@ interface ClientResult<Row = Record<string, unknown>> {
   readonly native: unknown;
 }
 
-interface ClientPrepareOptions extends Record<string, unknown> {
-  acquire?: Record<string, unknown>;
-}
-
-interface ClientStreamOptions extends Record<string, unknown> {
-  batchSize?: number;
-  highWaterMark?: number;
+interface ClientAcquireOptions extends Record<string, unknown> {
   timeout?: number;
   deadline?: number | Date;
   signal?: AbortSignal;
+}
+
+interface ClientOperationOptions extends Record<string, unknown> {
+  timeout?: number;
+  deadline?: number | Date;
+  signal?: AbortSignal;
+  acquire?: ClientAcquireOptions;
+}
+
+interface ClientPrepareOptions extends ClientOperationOptions {}
+
+interface ClientStreamOptions extends ClientOperationOptions {
+  batchSize?: number;
+  highWaterMark?: number;
   maxRows?: number;
   maxResultBytes?: number;
   maxRowBytes?: number;
-  acquire?: Record<string, unknown>;
 }
 
 interface MetadataScope {
@@ -239,10 +246,10 @@ declare class PreparedClientStatement {
   readonly native: unknown;
   readonly closed: boolean;
 
-  query<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: Record<string, unknown>): Promise<ClientResult<Row>>;
-  all<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: Record<string, unknown>): Promise<Row[]>;
-  one<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: Record<string, unknown>): Promise<Row>;
-  execute<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: Record<string, unknown>): Promise<ClientResult<Row>>;
+  query<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: ClientOperationOptions): Promise<ClientResult<Row>>;
+  all<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: ClientOperationOptions): Promise<Row[]>;
+  one<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: ClientOperationOptions): Promise<Row>;
+  execute<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: ClientOperationOptions): Promise<ClientResult<Row>>;
   close(options?: Record<string, unknown>): Promise<void>;
 }
 
@@ -257,13 +264,13 @@ declare class Client {
 
   supports(capability: string): boolean;
   compile(statement: SqlFragment | string): CompiledSql;
-  query<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<ClientResult<Row>>;
-  all<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<Row[]>;
-  one<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<Row>;
-  execute<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<ClientResult<Row>>;
+  query<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: ClientOperationOptions): Promise<ClientResult<Row>>;
+  all<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: ClientOperationOptions): Promise<Row[]>;
+  one<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: ClientOperationOptions): Promise<Row>;
+  execute<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: ClientOperationOptions): Promise<ClientResult<Row>>;
   prepare(statement: SqlFragment | string, options?: ClientPrepareOptions): Promise<PreparedClientStatement>;
   stream<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: ClientStreamOptions): ClientRowStream<Row>;
-  transaction<T>(fn: (transaction: Client) => T | Promise<T>, options?: Record<string, unknown>): Promise<T>;
+  transaction<T>(fn: (transaction: Client) => T | Promise<T>, options?: ClientOperationOptions): Promise<T>;
   close(): Promise<void>;
 }
 
@@ -313,6 +320,8 @@ export {
   ConnectionConfig,
   ClientConfig,
   ClientPoolOptions,
+  ClientAcquireOptions,
+  ClientOperationOptions,
   ClientPrepareOptions,
   ClientStreamOptions,
   MetadataScope,

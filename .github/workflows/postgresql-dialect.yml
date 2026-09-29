@@ -9,6 +9,8 @@ on:
       - 'lib/client/**'
       - 'test/client-api.js'
       - 'test/client-live.js'
+      - 'test/client-operation-live.js'
+      - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
       - 'lib/core/**'
       - '.github/workflows/postgresql-dialect.yml'
@@ -21,6 +23,8 @@ on:
       - 'lib/client/**'
       - 'test/client-api.js'
       - 'test/client-live.js'
+      - 'test/client-operation-live.js'
+      - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
       - 'lib/core/**'
       - '.github/workflows/postgresql-dialect.yml'
@@ -79,6 +83,8 @@ jobs:
           node-version: 24
       - name: Unified NuBloxSQL client contract
         run: node test/client-live.js
+      - name: Portable operation control contract
+        run: node test/client-operation-live.js
       - name: Native runtime, extended protocol, cancellation, pooling and portals
         run: node lib/dialects/postgresql/test/live.js
       - name: Authentication and TLS failure paths
