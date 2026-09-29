@@ -180,6 +180,10 @@ export class PreparedStatement {
     params?: readonly unknown[],
     options?: OperationOptions
   ): Promise<QueryResult<Row>>;
+  stream<Row = Record<string, unknown>>(
+    params?: readonly unknown[],
+    options?: StreamQueryOptions
+  ): ResultStream<Row>;
   reset(options?: OperationOptions): Promise<ResetResult>;
   close(): Promise<void>;
 }
