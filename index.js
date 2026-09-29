@@ -1,5 +1,8 @@
 'use strict';
 
+var clientApi = require('./lib/client/Client');
+var sqlApi = require('./lib/client/Sql');
+
 var DIALECTS = Object.freeze({
   mysql: 'mysql',
   postgresql: 'postgresql',
@@ -77,24 +80,20 @@ function createPool(dialectOrConfig, maybeConfig) {
   return invocation.adapter.createPool(invocation.config);
 }
 
+function createClient(dialectOrConfig, maybeConfig) {
+  var invocation = resolveInvocation(dialectOrConfig, maybeConfig);
+  return new clientApi.Client(invocation.adapter, invocation.dialect, invocation.config);
+}
+
 function supports(dialect, capability) {
-  var normalized = normalizeDialect(dialect);
-  var implementation = loadAdapter(normalized);
+  var implementation = loadAdapter(dialect);
   var dialectDescriptor = implementation.descriptor;
-
-  if (!dialectDescriptor && normalized === 'mysql') {
-    dialectDescriptor = require('./lib/dialects/mysql/lib/SqlDialectDescriptor');
-  }
-
   return !!(dialectDescriptor && typeof dialectDescriptor.supports === 'function' && dialectDescriptor.supports(capability));
 }
 
 function descriptor(dialect) {
-  var normalized = normalizeDialect(dialect);
-  var implementation = loadAdapter(normalized);
-  if (implementation.descriptor) return implementation.descriptor;
-  if (normalized === 'mysql') return require('./lib/dialects/mysql/lib/SqlDialectDescriptor');
-  return null;
+  var implementation = loadAdapter(dialect);
+  return implementation.descriptor || null;
 }
 
 function defineLazy(target, name, loader) {
@@ -118,6 +117,9 @@ exports.descriptor = descriptor;
 exports.supports = supports;
 exports.createConnection = createConnection;
 exports.createPool = createPool;
+exports.createClient = createClient;
+exports.sql = sqlApi.sql;
+exports.Client = clientApi.Client;
 
 defineLazy(exports, 'sqlCore', function () { return require('./lib/core'); });
 defineLazy(exports, 'mysql', function () { return loadAdapter('mysql'); });
