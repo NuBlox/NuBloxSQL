@@ -38,7 +38,20 @@ jobs:
       - name: Run complete release gate
         run: npm run release:check
 
+      - name: Check registry state
+        id: registry
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "nubloxsql@${VERSION}" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "already_published=true" >> "${GITHUB_OUTPUT}"
+            echo "nubloxsql@${VERSION} is already published; verifying the tag without republishing."
+          else
+            echo "already_published=false" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Publish with semantic dist-tag
+        if: steps.registry.outputs.already_published != 'true'
         shell: bash
         run: |
           VERSION="$(node -p "require('./package.json').version")"
@@ -48,3 +61,10 @@ jobs:
             DIST_TAG=latest
           fi
           npm publish --access public --tag "${DIST_TAG}"
+
+      - name: Verify published version
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          PUBLISHED="$(npm view "nubloxsql@${VERSION}" version --registry=https://registry.npmjs.org)"
+          test "${PUBLISHED}" = "${VERSION}"
