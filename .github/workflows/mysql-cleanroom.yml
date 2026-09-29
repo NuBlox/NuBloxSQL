@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'packages/mysql/**'
+      - 'lib/dialects/mysql/**'
       - '.github/workflows/mysql-cleanroom.yml'
   pull_request:
     paths:
-      - 'packages/mysql/**'
+      - 'lib/dialects/mysql/**'
       - '.github/workflows/mysql-cleanroom.yml'
 
 permissions:
@@ -29,17 +29,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-      - name: Verify canonical MySQL contracts
-        run: npm run test --workspace @nublox/mysql
-      - name: Assert zero package dependencies
-        run: |
-          node - <<'NODE'
-          const p = require('./packages/mysql/package.json');
-          for (const key of ['dependencies','optionalDependencies','peerDependencies','devDependencies']) {
-            if (p[key] && Object.keys(p[key]).length) throw new Error(key + ' must remain empty for @nublox/mysql');
-          }
-          console.log('@nublox/mysql has zero package dependencies');
-          NODE
+      - name: Verify MySQL runtime contracts
+        run: npm run test:mysql
 
   live:
     name: live MySQL ${{ matrix.mysql }}
@@ -77,12 +68,12 @@ jobs:
         with:
           node-version: 24
       - name: Direct streaming with backpressure
-        run: node packages/mysql/test/live-streaming.js direct
+        run: node lib/dialects/mysql/test/live-streaming.js direct
       - name: Pooled streaming reuse
-        run: node packages/mysql/test/live-streaming.js pool
+        run: node lib/dialects/mysql/test/live-streaming.js pool
       - name: Result-limit connection safety
-        run: node packages/mysql/test/live-streaming.js limits
+        run: node lib/dialects/mysql/test/live-streaming.js limits
       - name: Deadline and cancellation safety
-        run: node packages/mysql/test/live-operation-control.js
+        run: node lib/dialects/mysql/test/live-operation-control.js
       - name: Full MySQL connection, prepared, transaction and pool smoke
-        run: node packages/mysql/test/live.js
+        run: node lib/dialects/mysql/test/live.js
