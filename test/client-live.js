@@ -37,11 +37,54 @@ async function main() {
   if (!dialect) throw new Error('NUBLOX_DIALECT is required');
 
   var db = nublox.createClient(configFor(dialect));
-  var table = sql.identifier('nublox_client_conformance');
+  var tableName = 'nublox_client_conformance';
+  var roleTableName = 'nublox_client_roles';
+  var table = sql.identifier(tableName);
+  var roleTable = sql.identifier(roleTableName);
 
   try {
     await db.execute(sql`DROP TABLE IF EXISTS ${table}`);
-    await db.execute(sql`CREATE TABLE ${table} (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL)`);
+    await db.execute(sql`DROP TABLE IF EXISTS ${roleTable}`);
+    await db.execute(sql`CREATE TABLE ${roleTable} (id INTEGER PRIMARY KEY, label VARCHAR(100) NOT NULL UNIQUE)`);
+    await db.execute(sql`
+      CREATE TABLE ${table} (
+        id INTEGER PRIMARY KEY,
+        role_id INTEGER,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(200),
+        CONSTRAINT uq_nublox_client_email UNIQUE (email),
+        CONSTRAINT fk_nublox_client_role FOREIGN KEY (role_id) REFERENCES nublox_client_roles(id) ON DELETE SET NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX ${sql.identifier('idx_nublox_client_name')} ON ${table} (name)`);
+
+    var databases = await db.metadata.databases();
+    assert.ok(databases.length > 0);
+    var schemas = await db.metadata.schemas();
+    assert.ok(schemas.length > 0);
+    var tables = await db.metadata.tables();
+    assert.ok(tables.some(function (entry) { return entry.name === tableName && entry.type === 'table'; }));
+    var columns = await db.metadata.columns(tableName);
+    assert.strictEqual(columns.find(function (entry) { return entry.name === 'id'; }).primaryKey, true);
+    assert.strictEqual(columns.find(function (entry) { return entry.name === 'name'; }).nullable, false);
+    var indexes = await db.metadata.indexes(tableName);
+    assert.ok(indexes.some(function (entry) { return entry.name === 'idx_nublox_client_name' && entry.columns.indexOf('name') >= 0; }));
+    assert.ok(indexes.some(function (entry) { return entry.unique === true && entry.columns.indexOf('email') >= 0; }));
+    var foreignKeys = await db.metadata.foreignKeys(tableName);
+    assert.strictEqual(foreignKeys.length, 1);
+    assert.deepStrictEqual(Array.from(foreignKeys[0].columns), ['role_id']);
+    assert.strictEqual(foreignKeys[0].referencedTable, roleTableName);
+    assert.deepStrictEqual(Array.from(foreignKeys[0].referencedColumns), ['id']);
+    assert.strictEqual(foreignKeys[0].onDelete, 'SET NULL');
+    var constraints = await db.metadata.constraints(tableName);
+    assert.ok(constraints.some(function (entry) { return entry.type === 'primary-key'; }));
+    assert.ok(constraints.some(function (entry) { return entry.type === 'unique' && entry.columns.indexOf('email') >= 0; }));
+    assert.ok(constraints.some(function (entry) { return entry.type === 'foreign-key'; }));
+    var tableMetadata = await db.metadata.table(tableName);
+    assert.strictEqual(tableMetadata.name, tableName);
+    assert.ok(tableMetadata.columns.length >= 4);
+    assert.ok(tableMetadata.indexes.length >= 2);
+    assert.strictEqual(await db.metadata.table('nublox_missing_table'), null);
 
     await db.execute(sql`INSERT INTO ${table} (id, name) VALUES (${1}, ${'portable'})`);
     var rows = await db.all(sql`SELECT id, name FROM ${table} WHERE id = ${1}`);
@@ -128,6 +171,7 @@ async function main() {
     console.log('NuBloxSQL live unified client contract passed for ' + dialect);
   } finally {
     try { await db.execute(sql`DROP TABLE IF EXISTS ${table}`); } catch (_) {}
+    try { await db.execute(sql`DROP TABLE IF EXISTS ${roleTable}`); } catch (_) {}
     await db.close();
   }
 }

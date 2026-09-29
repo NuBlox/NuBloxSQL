@@ -58,6 +58,7 @@ The public platform owns:
 - a unified query/result contract;
 - portable prepared statements with named bindings;
 - async-iterable streaming with deterministic resource cleanup;
+- portable metadata and schema introspection;
 - a portable error taxonomy with native diagnostics retained;
 - connection and pool ownership;
 - transactions;
@@ -181,6 +182,39 @@ for await (const row of rows) {
 ```
 
 Breaking from async iteration invokes the stream's iterator cleanup. `await rows.close()` is also available when explicit shutdown is preferred. Outstanding public streams are closed before `db.close()` releases client resources.
+
+### Portable metadata and introspection
+
+`db.metadata` provides one catalog API across supported engines:
+
+```js
+const databases = await db.metadata.databases();
+const schemas = await db.metadata.schemas();
+const tables = await db.metadata.tables();
+const columns = await db.metadata.columns('users');
+const indexes = await db.metadata.indexes('users');
+const foreignKeys = await db.metadata.foreignKeys('users');
+const constraints = await db.metadata.constraints('users');
+const table = await db.metadata.table('users');
+```
+
+Scope can be made explicit when required:
+
+```js
+await db.metadata.tables({ schema: 'app' });
+await db.metadata.columns('users', { schema: 'app' });
+await db.metadata.tables({ database: 'main' });
+```
+
+NuBloxSQL normalizes portable concepts such as names, ordinals, nullability, primary keys, uniqueness, referenced columns and referential actions while retaining the original catalog rows in `native`.
+
+The implementation remains database-native:
+
+- **MySQL** uses `information_schema`.
+- **PostgreSQL** combines `information_schema` with `pg_catalog` for richer index, constraint and composite foreign-key metadata.
+- **SQLite** uses `sqlite_schema` and PRAGMA metadata including `table_xinfo`, `index_list`, `index_xinfo` and `foreign_key_list`.
+
+`metadata.table(name)` returns the table summary plus its columns, indexes, foreign keys and constraints. A missing table returns `null` rather than fabricating an empty object.
 
 ### Unified result contract
 
@@ -309,7 +343,7 @@ These are advanced primitives. `createClient()` is the primary developer-facing 
 
 NuBloxSQL has three internal layers:
 
-1. **Developer client** — portable SQL compilation, prepared statements, streaming, error normalization, result normalization, transactions and lifecycle.
+1. **Developer client** — portable SQL compilation, prepared statements, streaming, metadata, error normalization, result normalization, transactions and lifecycle.
 2. **Shared SQL contracts** — capabilities and semantics proven across dialects.
 3. **Native dialect runtimes** — database-specific implementation and native behavior.
 

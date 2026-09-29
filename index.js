@@ -4,6 +4,7 @@ var clientApi = require('./lib/client/Client');
 var sqlApi = require('./lib/client/Sql');
 var errorApi = require('./lib/client/Error');
 var streamApi = require('./lib/client/Stream');
+var metadataApi = require('./lib/client/Metadata');
 streamApi.install(clientApi);
 require('./lib/client/ErrorIntegration').install(clientApi);
 
@@ -125,6 +126,7 @@ exports.createClient = createClient;
 exports.sql = sqlApi.sql;
 exports.Client = clientApi.Client;
 exports.ClientRowStream = streamApi.ClientRowStream;
+exports.MetadataCatalog = metadataApi.Metadata;
 exports.NuBloxSqlError = errorApi.NuBloxSqlError;
 exports.ERROR_CATEGORIES = errorApi.CATEGORIES;
 
