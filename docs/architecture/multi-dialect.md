@@ -2,218 +2,152 @@
 
 ## Architectural decision
 
-NuBloxSQL is the umbrella runtime for SQL connectivity and database semantics across multiple database families.
+NuBloxSQL presents **one public developer entry point** over multiple SQL dialect runtimes.
 
-It is composed of independently versioned packages, but those packages implement one platform architecture. Package independence exists for release and compatibility management; it does not imply unrelated product intent.
-
-## Layer model
-
-NuBloxSQL separates four concerns.
-
-### Layer 1 — Platform contracts
-
-`@nublox/sql-core` defines concepts that are safe to share across database families:
-
-- dialect identity and capability discovery;
-- portable object naming and metadata vocabulary;
-- execution/result categories;
-- transaction policy vocabulary;
-- cancellation/timeout vocabulary;
-- resource limits;
-- error categories and native diagnostic preservation;
-- extension points for adapter-native information.
-
-### Layer 2 — Dialect services
-
-Each adapter owns SQL-family semantics such as:
-
-- identifier quoting;
-- parameter placeholders;
-- feature/version support;
-- catalog/schema mapping;
-- type-system rules;
-- engine-specific SQL behaviour.
-
-Dialect services expose these differences deliberately rather than hiding them.
-
-### Layer 3 — Adapter runtime
-
-Each database adapter owns its actual runtime implementation.
-
-For MySQL and PostgreSQL this includes network protocol, authentication, TLS, session lifecycle, execution, prepared statements, cancellation, pooling and server diagnostics.
-
-For SQLite this includes the embedded runtime, database lifecycle, transaction modes, locking/storage policy and SQLite-specific introspection.
-
-Future SQL Server and Oracle adapters will own their corresponding native runtime semantics.
-
-### Layer 4 — Consumer integration
-
-Consumers such as NuBlox SQL Workbench sit above NuBloxSQL.
+The developer-facing dependency is `nubloxsql`. Dialect workspaces exist inside the repository to isolate implementation, testing and database-specific behaviour; they are not the intended installation model for application developers.
 
 ```text
-NuBlox SQL Workbench / application
-               │
-               ▼
-   consumer provider/service layer
-               │
-               ▼
-           NuBloxSQL
-               │
-      ┌────────┼────────┐
-      ▼        ▼        ▼
-    MySQL   PostgreSQL SQLite ...
+                      application
+                          │
+                          ▼
+                    require('nubloxsql')
+                          │
+                          ▼
+                 public platform facade
+                          │
+                 dialect + capability routing
+                          │
+         ┌────────────────┼────────────────┐
+         ▼                ▼                ▼
+       MySQL          PostgreSQL         SQLite
+    native runtime    native runtime   embedded runtime
 ```
 
-Consumers own product workflows and presentation. NuBloxSQL owns database transport/runtime behaviour.
+## Public facade responsibility
 
-## Repository structure
+The root facade owns the common developer entry points:
 
-```text
-NuBloxSQL/
-├── packages/
-│   ├── sql-core/       # portable platform contracts
-│   ├── mysql/          # native MySQL runtime
-│   ├── postgresql/     # native PostgreSQL runtime
-│   └── sqlite/         # embedded SQLite runtime
-├── docs/
-│   ├── architecture/
-│   └── v1/
-├── test/
-├── tool/
-└── package.json
-```
+- `createConnection(...)`;
+- `createPool(...)` where supported;
+- `adapter(...)` for explicit native access;
+- `descriptor(...)` and `supports(...)` for capability discovery;
+- shared SQL contract access;
+- dialect namespaces from the same installation.
 
-Planned packages:
+Dialect selection is explicit. The facade does not guess silently when doing so could change semantics.
 
-```text
-packages/sqlserver/
-packages/oracle/
-```
+## Internal runtime responsibility
 
-## Platform contract rules
-
-A concept belongs in SQL Core only when all of the following are true:
-
-1. the semantics can be stated without misrepresenting a supported database family;
-2. at least two real adapters prove the abstraction, or it is clearly portable policy;
-3. vendor-specific detail can still be represented through extension space;
-4. unsupported behaviour remains explicit;
-5. tests define the portable contract.
-
-If an adapter does not fit cleanly, the first question is whether the abstraction is wrong — not how to force the adapter into it.
-
-## Native-runtime rules
-
-Every adapter must:
-
-1. preserve the database engine's real semantics;
-2. expose explicit capability metadata;
-3. own its native transport/storage implementation boundary;
-4. retain native error/diagnostic information;
-5. fail deterministically under configured resource limits;
-6. avoid silent semantic emulation;
-7. provide native extension points where portable contracts are insufficient;
-8. remain independently versionable, testable and releasable;
-9. meet the NuBloxSQL evidence bar before claiming stable support.
-
-## Database-family boundaries
+Each dialect runtime owns what is truly database-specific.
 
 ### MySQL
 
-MySQL-owned concerns include classic protocol framing, authentication plugins, prepared-statement binary protocol, session status, streaming/backpressure and MySQL transaction/session semantics.
+- classic MySQL protocol framing;
+- authentication plugins and SHA-2 flows;
+- server-side prepared-statement binary protocol;
+- session state/reset;
+- MySQL transaction and error behaviour;
+- streaming/backpressure and pooling.
 
 ### PostgreSQL
 
-PostgreSQL-owned concerns include frontend/backend protocol, SCRAM, BackendKeyData/CancelRequest, portals, OID-based types, PostgreSQL schema/catalog semantics and PostgreSQL transaction state.
+- startup/TLS/authentication protocol;
+- simple and extended query protocols;
+- OID/type decoding;
+- prepared statements;
+- portals/cursors;
+- native CancelRequest semantics;
+- PostgreSQL transaction/error behaviour.
 
 ### SQLite
 
-SQLite-owned concerns include embedded lifecycle, transaction modes, savepoints, attached databases, type affinity/STRICT semantics, PRAGMA-based metadata, journal/WAL/synchronous policy and file/storage locking.
+- embedded database lifecycle;
+- synchronous `node:sqlite` execution;
+- transaction modes and savepoints;
+- locking/storage semantics;
+- affinity/STRICT behaviour;
+- embedded introspection and lifecycle operations.
 
-### SQL Server
+Future SQL Server and Oracle runtimes must follow the same architectural boundary.
 
-SQL Server will pressure-test TDS, integrated authentication, SQL Server metadata/security concepts, MARS-like semantics, isolation behaviour and enterprise administration requirements.
+## Shared contracts
 
-### Oracle
+SQL Core contains only concepts that multiple dialects have proven portable, including:
 
-Oracle will pressure-test service/session semantics, NUMBER/DATE/TIMESTAMP/LOB fidelity, PL/SQL metadata, schema ownership and client/runtime dependency strategy.
+- dialect identity;
+- capability vocabulary;
+- identifier/placeholder services;
+- result and field metadata shapes;
+- resource limits;
+- transaction policy;
+- error categories;
+- object-name qualification;
+- native extension points.
 
-## Metadata architecture
+Shared core is a contract layer, not the developer entry point and not a replacement for native runtime semantics.
 
-NuBloxSQL must preserve hierarchy instead of assuming that `database`, `catalog` and `schema` mean the same thing everywhere.
+## One-install packaging rule
 
-Portable object identity therefore retains qualifiers:
+The published NuBloxSQL package must contain the supported dialect runtimes required by the public facade.
 
-```ts
-interface SqlObjectName {
-  catalog?: string;
-  schema?: string;
-  name: string;
-}
+Developers should not need to install:
+
+```text
+@nublox/mysql
+@nublox/postgresql
+@nublox/sqlite
 ```
 
-Adapters determine which qualifiers are meaningful for their engine and expose richer native metadata as extensions.
+in order to use those dialects through NuBloxSQL.
 
-## Capability architecture
+Those names may continue to exist as repository/workspace boundaries and may remain useful for internal testing or specialist packaging decisions, but the default public integration contract is the root NuBloxSQL package.
 
-Capabilities represent **implemented NuBloxSQL adapter behaviour**, not a marketing list of what the underlying server could theoretically do.
+## Native escape hatches
 
-Examples include prepared statements, server-side cursors, savepoints, schemas, catalogs, transactional DDL, query cancellation, multiple active results, native JSON/document behaviour and CDC/replication support.
+Uniform entry points must not become a lowest-common-denominator abstraction.
 
-Capabilities may vary by adapter version, server version or connection/runtime conditions.
+The same installation therefore exposes native runtime namespaces:
 
-## Result and type architecture
+```js
+const sql = require('nubloxsql');
 
-The portable result model distinguishes rows from command outcomes and retains extension space for native metadata.
+sql.mysql;
+sql.postgresql;
+sql.sqlite;
+```
 
-Type conversion must prioritise fidelity. When JavaScript cannot preserve a database value safely, an adapter should retain a lossless representation rather than silently coerce it.
+This allows advanced features without requiring a second driver package.
 
-## Consumer boundary
+## Capability model
 
-NuBlox SQL Workbench is a major intended consumer but is not part of this repository's runtime boundary.
+Consumers must query capabilities rather than infer them from dialect names.
 
-Workbench responsibilities include:
+```js
+sql.supports('postgresql', 'serverSideCursors');
+sql.supports('sqlite', 'queryCancellation');
+```
 
-- editor and execution UX;
-- connection-profile management UX;
-- object explorer presentation;
-- schema-design workflows;
-- administration workflows;
-- migration and comparison tools;
-- user-facing diagnostics.
+Unsupported semantics are reported explicitly. NuBloxSQL must not silently emulate features where doing so would change correctness, isolation, fidelity or operational behaviour.
 
-NuBloxSQL responsibilities include:
+## Evolution rule
 
-- actual database connectivity;
-- protocol/runtime semantics;
-- execution and transactions;
-- metadata retrieval;
-- type handling;
-- cancellation and resource safety;
-- capability discovery;
-- database-native extensions.
+Every new dialect has two obligations:
 
-## Non-goals
+1. implement its native runtime correctly;
+2. pressure-test the NuBloxSQL public and shared contracts.
 
-NuBloxSQL must not become:
+If a new dialect exposes a weak abstraction, the abstraction should be revised rather than forcing the dialect into an existing MySQL- or PostgreSQL-shaped model.
 
-- a universal ORM;
-- a SQL UI product;
-- a lowest-common-denominator facade;
-- a universal SQL parser required for basic connectivity;
-- a place where native features are renamed into misleading generic concepts;
-- a transport implementation duplicated inside consumer applications.
+## Target dialect family
 
-## Compatibility and evolution
+```text
+NuBloxSQL
+├── MySQL
+├── PostgreSQL
+├── SQLite
+├── SQL Server
+├── Oracle
+└── future SQL dialects
+```
 
-Stable contracts evolve conservatively. New adapters are expected to pressure-test the platform model.
-
-The platform should grow by evidence:
-
-1. implement native behaviour correctly;
-2. identify genuinely portable concepts;
-3. promote those concepts into SQL Core only when proven;
-4. keep native escape hatches first class;
-5. maintain cross-dialect contract tests and per-dialect live tests.
-
-See [Design Intent](design-intent.md) for the product-level rationale and `../../NUBLOX-SQL-ROADMAP.md` for the active delivery sequence.
+The target state is not several unrelated drivers. It is one SQL integration platform with first-class native implementations underneath one developer entry point.

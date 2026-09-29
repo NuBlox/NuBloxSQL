@@ -2,76 +2,101 @@
 
 ## Mission
 
-Build NuBloxSQL into the NuBlox-owned SQL connectivity and database-runtime platform for multiple database families, suitable for direct application use and as the database substrate beneath products such as NuBlox SQL Workbench.
+Build NuBloxSQL into the preferred **single-entry SQL database integration platform for developers**: one installation, one import, one coherent API, multiple first-class SQL dialects.
 
-The roadmap must advance two things together:
+The roadmap advances two things together:
 
-1. **native runtime depth** for each database family;
-2. **platform quality** in the shared contracts, metadata model, capability model, diagnostics and consumer integration surface.
+1. **public platform maturity** — the quality of the one-entry developer API, capability model and shared contracts;
+2. **native runtime depth** — how completely each database dialect is implemented and qualified.
 
-A new dialect is not complete merely because it can execute `SELECT 1`.
+A dialect is not complete merely because it can execute `SELECT 1`, and NuBloxSQL is not complete merely because several internal packages exist.
 
-## Platform state
+## Public platform target
 
-| Component | Version | Status | Role |
-| --- | ---: | --- | --- |
-| `@nublox/sql-core` | `1.0.0` | Stable | Portable platform contracts |
-| `@nublox/mysql` | `1.0.0` | Stable | Native MySQL runtime |
-| `@nublox/postgresql` | `1.0.0` | Stable | Native PostgreSQL runtime |
-| `@nublox/sqlite` | `0.1.0` | Development | Embedded SQLite runtime |
-| `@nublox/sqlserver` | — | Planned | Native SQL Server runtime |
-| `@nublox/oracle` | — | Planned | Native Oracle runtime |
+The intended developer experience is:
 
-## Architectural programme
+```bash
+npm install nubloxsql
+```
 
-Every delivery wave should improve the following platform dimensions where relevant:
+```js
+const sql = require('nubloxsql');
+const db = sql.createConnection({ dialect: 'postgresql', ...config });
+```
 
-- connectivity/session lifecycle;
-- execution and prepared execution;
-- transactions/savepoints;
-- cancellation/deadlines;
-- streaming/cursors/iteration;
-- metadata and introspection;
-- type fidelity;
-- errors and diagnostics;
-- resource limits;
-- observability;
-- security hardening;
-- supported-version evidence;
-- consumer-facing capability discovery;
-- native extension surfaces.
+The internal dialect workspaces remain implementation boundaries. Developers should not need to install a separate driver package for each supported dialect.
 
-## Phase 0 — Stable v1 baseline — complete
+## Current dialect state
 
-NuBloxSQL v1.0.0 established:
+| Dialect | Status | Runtime model |
+| --- | --- | --- |
+| MySQL | Stable | Native client/server runtime |
+| PostgreSQL | Stable | Native client/server runtime |
+| SQLite | Development | Embedded runtime |
+| SQL Server | Planned | Native client/server runtime |
+| Oracle | Planned | Native client/server runtime |
+
+## Phase 0 — Stable native baseline — complete
+
+The first stable baseline established:
 
 - SQL Core contract family `1.0`;
 - stable native MySQL runtime;
 - stable native PostgreSQL runtime;
-- zero-third-party npm package boundary for the stable packages;
+- zero-third-party npm package boundary for stable runtime implementation;
 - Node.js 22/24/26 verification;
 - MySQL 8.4/9.7 live qualification;
 - PostgreSQL 15/16/17/18 live qualification;
 - proprietary release gates, fuzzing and CodeQL.
 
-## Phase 1 — Protect and extend the platform contract — continuous
+## Phase 1 — Single-entry NuBloxSQL facade — active
 
-SQL Core `1.0` is stable. New portable concepts must be proven by real adapters before promotion.
+Make the root `nubloxsql` package the canonical public product.
 
-Current platform concerns to evolve carefully include:
+### Initial facade
+
+- one install and one import;
+- explicit dialect selection;
+- `createConnection(...)` routing;
+- `createPool(...)` routing where supported;
+- adapter/native access from the same installation;
+- capability and descriptor discovery;
+- shared SQL Core access;
+- root TypeScript declarations;
+- root packaging that contains supported runtimes;
+- facade contract tests and package dry-run validation.
+
+### Next facade slices
+
+1. connection-string/URL dialect selection where semantics are unambiguous;
+2. consistent async lifecycle conventions across networked and embedded engines;
+3. platform-level connection and pool configuration validation;
+4. stable public error surface for facade/routing failures;
+5. richer capability discovery, including server/runtime-specific capabilities;
+6. public metadata/introspection entry points;
+7. public transaction helper policy where genuinely portable;
+8. observability conventions across dialects;
+9. TypeScript discrimination and inference by dialect;
+10. stable release qualification for the single-entry package.
+
+## Phase 2 — Shared contracts — continuous
+
+SQL Core remains an internal contract foundation. New portable concepts must be proven by multiple real dialects before promotion.
+
+Priority areas include:
 
 - richer metadata/introspection vocabulary;
-- capability scoping by runtime/server state;
+- capability scoping;
 - observability vocabulary;
-- topology/routing policy only when multiple networked adapters justify it;
 - richer result metadata where genuinely portable;
-- consumer-facing connection/metadata patterns needed by SQL Workbench.
+- topology/routing policy only when multiple networked dialects justify it;
+- consistent native extension conventions.
 
-Do not change SQL Core merely to make one adapter easier to implement.
+Do not change SQL Core merely to make one dialect easier to implement.
 
-## Phase 2 — SQLite — active
+## Phase 3 — SQLite — active
 
-SQLite is the current priority because it tests NuBloxSQL against embedded-database semantics rather than another client/server engine.
+SQLite is the current dialect-depth priority because it pressure-tests NuBloxSQL against embedded-database semantics.
 
 ### Completed foundation
 
@@ -86,79 +111,24 @@ SQLite is the current priority because it tests NuBloxSQL against embedded-datab
 - row/result resource limits;
 - deterministic error classification;
 - database/table/view/column introspection;
-- SQL Core dialect/capability integration.
+- SQL Core descriptor/capability integration.
 
 ### Next SQLite slices
 
-1. **Schema introspection**
-   - indexes;
-   - index columns/expressions/partial indexes;
-   - foreign keys, including composites;
-   - primary-key/unique metadata;
-   - raw CREATE SQL where normalized CHECK/constraint metadata cannot be represented safely.
-
-2. **Database lifecycle**
-   - backup;
-   - serialization/deserialization where supported;
-   - restore workflows;
-   - file/query-only/open-mode semantics.
-
-3. **Attached databases**
-   - ATTACH/DETACH management;
-   - explicit `main`/`temp`/attached namespace behaviour;
-   - safe identifier/literal handling.
-
-4. **Type and schema semantics**
-   - affinity helpers;
-   - STRICT tables;
-   - generated columns and WITHOUT ROWID considerations;
-   - fidelity rules for INTEGER/REAL/TEXT/BLOB/NULL.
-
-5. **Storage and concurrency policy**
-   - WAL/journal modes;
-   - synchronous policy;
-   - busy handling;
-   - locking/concurrency documentation and APIs.
-
-6. **Extensibility**
-   - application-defined functions;
-   - aggregates;
-   - session/changeset support where appropriate;
-   - extension loading disabled by default and security-reviewed before any exposure.
-
-7. **Production qualification**
-   - observability;
-   - memory/performance evidence;
-   - malformed-input/configuration hardening;
-   - package/API review;
-   - release-candidate gates.
-
-## Phase 3 — SQL Workbench integration contract — evolve alongside adapters
-
-NuBlox SQL Workbench is a major intended consumer.
-
-NuBloxSQL should supply the runtime and semantic data that Workbench providers need, including:
-
-- connection lifecycle;
-- capability discovery;
-- execution requests/results;
-- metadata/object discovery;
-- transaction state;
-- cancellation/resource-limit behaviour;
-- native adapter extensions for administration features.
-
-Workbench should own presentation and workflows, not database transports.
-
-Do not couple NuBloxSQL to Workbench UI code; define reusable runtime/provider contracts instead.
+1. schema introspection: indexes, index expressions, partial indexes, composite foreign keys, primary/unique metadata and raw CREATE SQL where required;
+2. database lifecycle: backup, serialization/deserialization where supported, restore and explicit open-mode semantics;
+3. attached databases: ATTACH/DETACH and namespace semantics;
+4. type/schema semantics: affinity, STRICT tables, generated columns and WITHOUT ROWID;
+5. storage/concurrency: WAL, journal, synchronous and busy/locking policy;
+6. extensibility: application-defined functions/aggregates and session/changeset support where appropriate;
+7. production qualification: observability, memory/performance evidence, malformed-input hardening and release gates.
 
 ## Phase 4 — SQL Server — planned
 
-SQL Server is the next networked dialect after SQLite reaches sufficient maturity.
-
-Key engineering areas:
+Key areas:
 
 - TDS transport;
-- authentication strategy, including enterprise/integrated-auth constraints;
+- authentication strategy;
 - SQL Server types and metadata;
 - schema/security concepts;
 - transactions/isolation;
@@ -166,16 +136,16 @@ Key engineering areas:
 - cancellation;
 - pooling;
 - multiple-active-result semantics where implemented;
-- observability and diagnostics;
-- supported SQL Server version matrix.
+- observability/diagnostics;
+- supported-version qualification.
 
-SQL Server should pressure-test platform assumptions around enterprise authentication, metadata/security and concurrent results.
+SQL Server must integrate through the same public `nubloxsql` entry point.
 
 ## Phase 5 — Oracle — planned
 
-Key engineering areas:
+Key areas:
 
-- client/connectivity strategy;
+- connectivity/client strategy;
 - service/session model;
 - authentication/TLS/client-library implications;
 - NUMBER/DATE/TIMESTAMP/LOB fidelity;
@@ -184,17 +154,17 @@ Key engineering areas:
 - prepared execution and bind behaviour;
 - pooling/cancellation;
 - observability;
-- supported Oracle version matrix.
+- supported-version qualification.
 
-Oracle should pressure-test platform assumptions around client dependencies, session state, type fidelity and schema ownership.
+Oracle must integrate through the same public `nubloxsql` entry point.
 
 ## Later dialect candidates
 
-Additional adapters should be selected based on product need and how much they improve NuBloxSQL's platform coverage. Candidates may include MariaDB, CockroachDB, DB2 and other SQL-family engines, but no support claim exists until a package is implemented and qualified.
+Potential future dialects include MariaDB, CockroachDB, DB2 and other SQL-family engines. No support claim exists until a runtime is implemented, integrated into the NuBloxSQL facade and qualified.
 
-## Quality bar for every stable adapter
+## Quality bar for every stable dialect
 
-A stable adapter should demonstrate:
+A stable dialect must demonstrate:
 
 - correct lifecycle behaviour;
 - secure authentication/transport where applicable;
@@ -208,13 +178,11 @@ A stable adapter should demonstrate:
 - observability;
 - multi-version CI/live qualification;
 - failure-path/security testing;
-- performance and memory evidence;
+- performance/memory evidence;
 - explicit capability metadata;
-- native extension APIs where portable contracts are insufficient;
+- native extension access through NuBloxSQL;
 - proprietary-source/release-boundary compliance.
 
 ## Product-level success condition
 
-NuBloxSQL succeeds when a sophisticated consumer such as NuBlox SQL Workbench can target multiple SQL database families through one NuBlox-owned runtime architecture **without losing the ability to expose each database engine's native power**.
-
-That is the standard against which future design decisions should be judged.
+NuBloxSQL succeeds when a developer can choose it as their **single SQL integration dependency** across database families and retain both a coherent common API and first-class access to each engine's native power.
