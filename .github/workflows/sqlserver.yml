@@ -58,6 +58,9 @@ jobs:
           openssl req -x509 -nodes -newkey rsa:2048 \
             -subj '/CN=localhost' \
             -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' \
+            -addext 'basicConstraints=critical,CA:FALSE' \
+            -addext 'keyUsage=critical,digitalSignature,keyEncipherment' \
+            -addext 'extendedKeyUsage=serverAuth' \
             -keyout .ci/sqlserver/mssql.key \
             -out .ci/sqlserver/mssql.pem \
             -days 1
