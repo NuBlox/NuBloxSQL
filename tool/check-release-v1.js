@@ -32,12 +32,14 @@ if (fs.existsSync(path.join(root, 'packages'))) fail('legacy packages/ runtime t
   'lib/dialects/postgresql/index.js',
   'lib/dialects/postgresql/index.d.ts',
   'lib/dialects/sqlite/index.js',
-  'lib/dialects/sqlite/index.d.ts'
+  'lib/dialects/sqlite/index.d.ts',
+  'lib/dialects/sqlserver/index.js',
+  'lib/dialects/sqlserver/index.d.ts'
 ].forEach(function (file) {
   if (!fs.existsSync(path.join(root, file))) fail('missing consolidated runtime file: ' + file);
 });
 
-['mysql', 'postgresql', 'sqlite'].forEach(function (dialect) {
+['mysql', 'postgresql', 'sqlite', 'sqlserver'].forEach(function (dialect) {
   var runtimeRoot = path.join(root, 'lib', 'dialects', dialect);
   ['package.json', 'README.md', 'LICENSE', 'NOTICE'].forEach(function (file) {
     if (fs.existsSync(path.join(runtimeRoot, file))) fail('dialect runtime must not contain nested package metadata: lib/dialects/' + dialect + '/' + file);
