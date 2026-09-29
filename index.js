@@ -12,6 +12,7 @@ require('./lib/client/OperationControlIntegration').install(clientApi);
 require('./lib/client/ErrorIntegration').install(clientApi);
 observabilityApi.install(clientApi, streamApi);
 require('./lib/client/TypesIntegration').install(clientApi, streamApi);
+require('./lib/client/TransactionIntegration').install(clientApi);
 
 var DIALECTS = Object.freeze({
   mysql: 'mysql',
