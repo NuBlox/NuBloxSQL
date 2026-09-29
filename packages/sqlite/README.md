@@ -1,24 +1,35 @@
 # @nublox/sqlite
 
-Embedded SQLite adapter for NuBloxSQL.
+`@nublox/sqlite` is the **embedded SQLite runtime of the NuBloxSQL platform**.
+
+## Role in NuBloxSQL
+
+The package extends NuBloxSQL into embedded databases. SQLite is an important architectural test because it has no network protocol or server session in the same sense as MySQL/PostgreSQL; it therefore proves whether the NuBloxSQL platform contracts are genuinely about database semantics rather than client/server assumptions.
 
 ## Status
 
-- Package: `@nublox/sqlite`
-- Version: `0.1.0`
-- Status: **Development**
-- NuBloxSQL baseline: **Post-v1**
-- Minimum Node.js: **22.16.0**
+| Item | Value |
+| --- | --- |
+| Package | `@nublox/sqlite` |
+| Version | `0.1.0` |
+| Status | **Development** |
+| Release position | Post-v1 |
+| Minimum Node.js | 22.16.0 |
 
 SQLite is not part of the stable NuBloxSQL v1.0.0 support matrix.
 
-## Runtime model
+## Platform contract
 
-SQLite is embedded rather than client/server. The adapter uses Node.js `node:sqlite` and exposes a synchronous database lifecycle around `DatabaseSync`.
+The adapter participates in NuBloxSQL dialect identity, capabilities, execution/results, transaction, resource-limit, error and metadata vocabulary where those concepts are meaningful for SQLite.
 
-## Current capabilities
+It intentionally does **not** claim client/server features that SQLite does not provide, such as server-side cursors or ordinary remote-query cancellation semantics.
+
+## Native capabilities
+
+Current development capabilities include:
 
 - in-memory and file-backed databases;
+- Node.js `node:sqlite` embedded runtime;
 - prepared statements and positional/named binding;
 - `BigInt` reads for SQLite INTEGER values;
 - DEFERRED, IMMEDIATE and EXCLUSIVE transaction modes;
@@ -26,12 +37,10 @@ SQLite is embedded rather than client/server. The adapter uses Node.js `node:sql
 - configurable busy timeout;
 - foreign-key enforcement enabled by default;
 - optional query-only mode;
-- row, row-byte and result-byte limits;
+- row, row-byte and result-byte safety limits;
 - database, table/view and column introspection;
 - deterministic NuBloxSQL error classification;
-- SQL Core dialect descriptor compatibility.
-
-The adapter deliberately does not claim client/server features such as native query cancellation or server-side cursors.
+- SQL Core dialect/capability compatibility.
 
 ## Quick start
 
@@ -52,25 +61,54 @@ console.log(result.rows);
 db.close();
 ```
 
-## Transaction semantics
+## Native semantics
 
-`begin()` accepts `deferred`, `immediate` or `exclusive`. Nested `BEGIN` operations are not emulated; use savepoints for nested units of work.
+SQLite-specific behaviour remains adapter-owned:
 
-`transaction(fn)` is synchronous. Promise-returning callbacks are rejected so asynchronous work cannot escape an open embedded transaction.
+- embedded rather than client/server lifecycle;
+- transaction start modes;
+- savepoint behaviour;
+- file/storage locking;
+- attached databases;
+- PRAGMA-driven metadata and configuration;
+- type affinity and STRICT-table semantics;
+- journal/WAL/synchronous policy.
+
+Nested `BEGIN` operations are not silently emulated. Use savepoints for nested units of work.
+
+`transaction(fn)` is synchronous; Promise-returning callbacks are rejected so asynchronous work cannot escape an open embedded transaction.
 
 ## Development frontier
 
-The authoritative sequence is maintained in `../../NUBLOX-SQL-ROADMAP.md`. The next slice is index, foreign-key and constraint introspection, followed by backup/restore lifecycle, attached-database management, type-affinity/STRICT helpers and storage/locking policy.
+The current sequence is:
 
-## Dependency boundary
+1. index, foreign-key and constraint introspection;
+2. backup/serialization/restore lifecycle;
+3. ATTACH/DETACH database management;
+4. type-affinity and STRICT-table helpers;
+5. WAL/journal/synchronous and locking policy;
+6. user-defined function/aggregate policy;
+7. sessions/changesets where appropriate;
+8. observability and performance evidence;
+9. security/configuration hardening;
+10. release qualification.
+
+The authoritative roadmap is `../../NUBLOX-SQL-ROADMAP.md`.
+
+## Verification and dependency boundary
 
 The package declares no third-party npm runtime, development, optional or peer dependencies. Runtime implementation uses Node.js `node:sqlite` and NuBlox-authored source.
 
+```bash
+npm run test --workspace @nublox/sqlite
+```
+
 ## Related documentation
 
-- `../../README.md`
-- `../../docs/architecture/multi-dialect.md`
-- `../../NUBLOX-SQL-ROADMAP.md`
+- [NuBloxSQL overview](../../README.md)
+- [Design intent](../../docs/architecture/design-intent.md)
+- [Multi-dialect architecture](../../docs/architecture/multi-dialect.md)
+- [Roadmap](../../NUBLOX-SQL-ROADMAP.md)
 
 ## Licence
 

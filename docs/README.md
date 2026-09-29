@@ -1,48 +1,54 @@
 # NuBloxSQL Documentation
 
-This directory is the documentation entry point for the NuBloxSQL repository.
+This is the documentation map for the NuBloxSQL platform.
 
-## Documentation model
+## Read in this order
 
-NuBloxSQL documentation is divided into four classes so current product truth is not mixed with historical release evidence.
+1. [Repository overview](../README.md) — what NuBloxSQL is and the current package/runtime state.
+2. [Design intent](architecture/design-intent.md) — why the platform exists and the architectural rules it must preserve.
+3. [Multi-dialect architecture](architecture/multi-dialect.md) — how the platform is partitioned into contracts, dialect services, adapter runtimes and consumers.
+4. [Roadmap](../NUBLOX-SQL-ROADMAP.md) — the active engineering sequence.
+5. Package READMEs — concrete package APIs, capabilities and native semantics.
+6. `docs/v1/` — frozen release evidence for the stable v1.0.0 baseline.
 
-| Class | Purpose | Authority |
-| --- | --- | --- |
-| Product | What NuBloxSQL is now | `README.md` |
-| Architecture | Current technical boundaries and design rules | `docs/architecture/` |
-| Roadmap | Current and planned development | `NUBLOX-SQL-ROADMAP.md` |
-| Release record | Frozen evidence and guidance for a specific release | `docs/v1/` |
+## Current platform documentation
 
-Package READMEs describe package-specific usage and supported surfaces. They should not redefine repository-wide architecture or release policy.
-
-## Current product documentation
-
-- [Repository overview](../README.md)
-- [Multi-dialect architecture](architecture/multi-dialect.md)
-- [Development roadmap](../NUBLOX-SQL-ROADMAP.md)
+| Document | Owns |
+| --- | --- |
+| [`README.md`](../README.md) | Current platform and package status |
+| [`architecture/design-intent.md`](architecture/design-intent.md) | Product intent and architectural invariants |
+| [`architecture/multi-dialect.md`](architecture/multi-dialect.md) | Current technical architecture and boundaries |
+| [`NUBLOX-SQL-ROADMAP.md`](../NUBLOX-SQL-ROADMAP.md) | Forward engineering sequence |
+| [`STYLE.md`](STYLE.md) | Documentation structure and terminology |
 
 ## Package documentation
 
-- [`@nublox/sql-core`](../packages/sql-core/README.md)
-- [`@nublox/mysql`](../packages/mysql/README.md)
-- [`@nublox/postgresql`](../packages/postgresql/README.md)
-- [`@nublox/sqlite`](../packages/sqlite/README.md)
+Every package README follows the same structural contract but documents the package's actual role.
+
+- [`@nublox/sql-core`](../packages/sql-core/README.md) — platform contracts and portable vocabulary.
+- [`@nublox/mysql`](../packages/mysql/README.md) — native MySQL runtime.
+- [`@nublox/postgresql`](../packages/postgresql/README.md) — native PostgreSQL runtime.
+- [`@nublox/sqlite`](../packages/sqlite/README.md) — embedded SQLite runtime under development.
+
+Planned adapters are documented in the roadmap until an implementation package exists.
 
 ## Stable v1.0.0 release record
 
-The `docs/v1/` directory records the stable three-package v1.0.0 baseline. These documents are historical release evidence unless explicitly stated otherwise.
+The v1 directory is release evidence, not the place to describe current post-v1 architecture.
 
 - [Release notes](v1/V1-RELEASE-NOTES.md)
 - [Support matrix](v1/V1-SUPPORT-MATRIX.md)
 - [Migration guide](v1/V1-MIGRATION.md)
-- [Release plan and completion record](v1/V1-RELEASE-PLAN.md)
+- [Release completion record](v1/V1-RELEASE-PLAN.md)
 - [SQL Core v1 contract](v1/SQL-CORE-V1-CONTRACT.md)
-- [Proprietary release gate](v1/PROPRIETARY-IP-RELEASE-GATE.md)
-- [Gate 1 evidence](v1/GATE-1-EVIDENCE.md)
-- [Gate 3 evidence](v1/GATE-3-EVIDENCE.md)
-- [Gate 4 evidence](v1/GATE-4-EVIDENCE.md)
-- [Gate 5 evidence](v1/GATE-5-EVIDENCE.md)
+- [Proprietary/IP release gate](v1/PROPRIETARY-IP-RELEASE-GATE.md)
+- [Gate evidence](v1/GATE-1-EVIDENCE.md)
+- [Gate evidence](v1/GATE-3-EVIDENCE.md)
+- [Gate evidence](v1/GATE-4-EVIDENCE.md)
+- [Gate evidence](v1/GATE-5-EVIDENCE.md)
 
-## Documentation conventions
+## Documentation rule
 
-See [STYLE.md](STYLE.md). The core rule is simple: one document owns each kind of truth, and other documents link to it instead of restating mutable facts unnecessarily.
+The documents should tell one consistent story:
+
+> NuBloxSQL is one platform, `@nublox/sql-core` defines the portable contract vocabulary, adapters own real database semantics, and consumer products depend on those adapters instead of owning database transports themselves.

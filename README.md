@@ -1,49 +1,115 @@
 # NuBloxSQL
 
-NuBloxSQL is an independent, proprietary, multi-dialect SQL driver platform for Node.js.
+**NuBloxSQL is the NuBlox-owned SQL connectivity and database-runtime platform.**
 
-## Package status
+Its purpose is to give NuBlox applications and other Node.js consumers one deliberate database substrate across multiple SQL engines without pretending those engines are identical.
 
-| Package | Version | Status | Role |
-| --- | ---: | --- | --- |
-| `@nublox/sql-core` | `1.0.0` | Stable | Portable contracts and dialect vocabulary |
-| `@nublox/mysql` | `1.0.0` | Stable | Native MySQL adapter |
-| `@nublox/postgresql` | `1.0.0` | Stable | Native PostgreSQL adapter |
-| `@nublox/sqlite` | `0.1.0` | Development | Embedded SQLite adapter using `node:sqlite` |
-| `@nublox/sqlserver` | — | Planned | SQL Server adapter |
-| `@nublox/oracle` | — | Planned | Oracle adapter |
+NuBloxSQL is therefore **not** just a collection of unrelated drivers and it is **not** a lowest-common-denominator ORM. It is one platform made from a stable portable contract layer plus first-class native dialect runtimes.
 
-The stable v1.0.0 release boundary is the three-package set `@nublox/sql-core`, `@nublox/mysql` and `@nublox/postgresql`. SQLite is post-v1 development and is not part of the v1.0.0 support claim.
+## Design intent
 
-## Architecture
-
-NuBloxSQL separates portable contracts from database-specific implementation:
+NuBloxSQL is intended to sit underneath database-consuming products such as NuBlox SQL Workbench and, where appropriate, the wider NuBlox application estate.
 
 ```text
+        NuBlox applications / SQL Workbench / other consumers
+                              │
+                              ▼
+                    NuBloxSQL platform contract
                     @nublox/sql-core
-                           │
-          ┌────────────────┼────────────────┐
-          │                │                │
-          ▼                ▼                ▼
-  @nublox/mysql   @nublox/postgresql   @nublox/sqlite
-          │                │                │
-       MySQL           PostgreSQL         SQLite
-      protocol          protocol       embedded API
+                              │
+         ┌────────────────────┼────────────────────┐
+         ▼                    ▼                    ▼
+ @nublox/mysql       @nublox/postgresql       @nublox/sqlite
+         │                    │                    │
+         ▼                    ▼                    ▼
+       MySQL              PostgreSQL              SQLite
+     native runtime        native runtime       embedded runtime
 ```
 
-Shared contracts are promoted only when semantics are genuinely portable. Authentication, protocol framing, locking, storage, type-system details and other vendor behaviour remain adapter-owned.
+The platform has four architectural responsibilities:
 
-See [docs/architecture/multi-dialect.md](docs/architecture/multi-dialect.md).
+1. **Portable contracts** — shared execution, result, transaction, error, resource-limit, metadata and capability vocabulary.
+2. **Dialect services** — quoting, placeholders, capability discovery and database-family SQL semantics.
+3. **Native adapter runtimes** — protocol/authentication/storage lifecycle, prepared execution, cancellation, pooling, locking, type fidelity and vendor-specific behaviour.
+4. **Consumer integration** — a stable database substrate for tooling and applications so consumers do not need to own database transport logic.
 
-## Supported stable v1 matrix
+The governing rule is: **unify what is genuinely portable; preserve what is genuinely database-specific.**
 
-- Node.js 22, 24 and 26
-- MySQL 8.4 and 9.7
-- PostgreSQL 15, 16, 17 and 18
+See [Design intent](docs/architecture/design-intent.md) and [Multi-dialect architecture](docs/architecture/multi-dialect.md).
 
-SQLite development requires Node.js 22.16.0 or later.
+## Package family
 
-See [docs/v1/V1-SUPPORT-MATRIX.md](docs/v1/V1-SUPPORT-MATRIX.md).
+| Package | Version | Status | Responsibility |
+| --- | ---: | --- | --- |
+| `@nublox/sql-core` | `1.0.0` | Stable | Platform contracts and portable SQL/runtime vocabulary |
+| `@nublox/mysql` | `1.0.0` | Stable | Native MySQL runtime |
+| `@nublox/postgresql` | `1.0.0` | Stable | Native PostgreSQL runtime |
+| `@nublox/sqlite` | `0.1.0` | Development | Embedded SQLite runtime |
+| `@nublox/sqlserver` | — | Planned | SQL Server runtime |
+| `@nublox/oracle` | — | Planned | Oracle runtime |
+
+The packages are independently versioned because database engines evolve independently. They still form one NuBloxSQL platform and must conform to the same architectural rules, quality gates and platform contracts where those contracts apply.
+
+## Stable v1 baseline
+
+NuBloxSQL v1.0.0 established the first stable platform baseline with:
+
+- `@nublox/sql-core@1.0.0`;
+- `@nublox/mysql@1.0.0`;
+- `@nublox/postgresql@1.0.0`.
+
+Qualified runtime matrix:
+
+- Node.js 22, 24 and 26;
+- MySQL 8.4 and 9.7;
+- PostgreSQL 15, 16, 17 and 18.
+
+SQLite `0.1.0` is active post-v1 development and is intentionally outside the v1.0.0 support claim.
+
+See [v1 support matrix](docs/v1/V1-SUPPORT-MATRIX.md).
+
+## Platform principles
+
+Every NuBloxSQL adapter must follow these rules:
+
+- own its real database protocol/runtime semantics;
+- expose explicit capability metadata rather than relying on package-name assumptions;
+- preserve database-native concepts such as schemas, catalogs, transaction states, type identities and locking semantics;
+- avoid silent semantic emulation;
+- expose native extensions when the portable contract is insufficient;
+- preserve data fidelity rather than applying convenient lossy conversions;
+- provide deterministic error and resource-limit behaviour;
+- remain independently testable and releasable;
+- meet supported-version CI, security and proprietary-source gates before a stable support claim is made.
+
+## What NuBloxSQL should enable
+
+A consumer should be able to build against NuBloxSQL for common concerns — connection lifecycle, execution, transactions, results, metadata, errors, limits and capability discovery — while still being able to access engine-specific power when it matters.
+
+For example, NuBlox SQL Workbench should consume NuBloxSQL adapters for connectivity and database semantics while the Workbench itself owns editor UX, object-explorer presentation, administration workflows and schema-design tooling.
+
+```text
+SQL Workbench UI
+      │
+      ▼
+Workbench provider/services
+      │
+      ▼
+NuBloxSQL
+      │
+      ▼
+Database engine
+```
+
+That boundary is fundamental: **database runtime logic belongs in NuBloxSQL, not duplicated in every consuming application.**
+
+## Current development direction
+
+The immediate active programme is SQLite hardening. The next engineering slice is deeper schema introspection, followed by database lifecycle, attached-database management, type-affinity/STRICT semantics, storage/locking policy, observability and release qualification.
+
+After SQLite reaches the required maturity, the planned dialect sequence continues with SQL Server and Oracle.
+
+See [NuBloxSQL roadmap](NUBLOX-SQL-ROADMAP.md).
 
 ## Verification
 
@@ -53,40 +119,23 @@ npm run v1:proprietary-audit
 npm run v1:release-audit
 ```
 
-`npm run verify` exercises the current workspace, including SQLite development. The v1 release audit remains pinned to the three stable v1.0.0 packages.
-
-CI additionally validates supported Node/database matrices, package dry-runs, protocol and resource-safety behaviour, proprietary boundaries, fuzzing and CodeQL.
-
-## Local workspace setup
-
-NuBloxSQL intentionally keeps the proprietary release boundary lockfile-free. The repository `.npmrc` disables `package-lock.json` generation.
-
-```bash
-rm -f package-lock.json
-npm install
-npm run verify
-```
+`npm run verify` validates the current workspace. Stable-release audits remain intentionally pinned to the v1.0.0 package baseline.
 
 ## Documentation
 
 Start with [docs/README.md](docs/README.md).
 
-Key documents:
+The key current documents are:
 
-- [Architecture](docs/architecture/multi-dialect.md)
+- [Design intent](docs/architecture/design-intent.md)
+- [Multi-dialect architecture](docs/architecture/multi-dialect.md)
 - [Roadmap](NUBLOX-SQL-ROADMAP.md)
-- [v1 support matrix](docs/v1/V1-SUPPORT-MATRIX.md)
-- [v1 release notes](docs/v1/V1-RELEASE-NOTES.md)
-- [v1 migration guide](docs/v1/V1-MIGRATION.md)
+- [Documentation standard](docs/STYLE.md)
+- [Stable v1 support matrix](docs/v1/V1-SUPPORT-MATRIX.md)
 - [SQL Core v1 contract](docs/v1/SQL-CORE-V1-CONTRACT.md)
-- [Proprietary release gate](docs/v1/PROPRIETARY-IP-RELEASE-GATE.md)
 
 ## Licence
 
 NuBloxSQL is proprietary software. Copyright (c) 2026 Stephen J T Spittal. All rights reserved. See [LICENSE](LICENSE).
 
-Public availability of the repository does not grant an open-source licence. Historical copies validly distributed under earlier licence terms retain the rights granted for those copies.
-
-## Independence
-
-NuBloxSQL is independently usable, testable, versionable and releasable. Other NuBlox products may consume it, but they are not part of its architecture or release criteria.
+Public availability of this repository does not grant an open-source licence. Historical copies validly distributed under earlier licence terms retain the rights granted for those copies.
