@@ -2,6 +2,8 @@
 
 var clientApi = require('./lib/client/Client');
 var sqlApi = require('./lib/client/Sql');
+var errorApi = require('./lib/client/Error');
+require('./lib/client/ErrorIntegration').install(clientApi);
 
 var DIALECTS = Object.freeze({
   mysql: 'mysql',
@@ -74,7 +76,7 @@ function createPool(dialectOrConfig, maybeConfig) {
   var invocation = resolveInvocation(dialectOrConfig, maybeConfig);
 
   if (typeof invocation.adapter.createPool !== 'function') {
-    throw new Error('NuBloxSQL dialect "' + invocation.dialect + '" does not support connection pools');
+    throw errorApi.unsupportedError(invocation.dialect, 'connection pools');
   }
 
   return invocation.adapter.createPool(invocation.config);
@@ -120,6 +122,8 @@ exports.createPool = createPool;
 exports.createClient = createClient;
 exports.sql = sqlApi.sql;
 exports.Client = clientApi.Client;
+exports.NuBloxSqlError = errorApi.NuBloxSqlError;
+exports.ERROR_CATEGORIES = errorApi.CATEGORIES;
 
 defineLazy(exports, 'sqlCore', function () { return require('./lib/core'); });
 defineLazy(exports, 'mysql', function () { return loadAdapter('mysql'); });
