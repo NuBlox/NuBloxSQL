@@ -1,10 +1,11 @@
 import mysql = require('./lib/dialects/mysql');
 import postgresql = require('./lib/dialects/postgresql');
 import sqlite = require('./lib/dialects/sqlite');
+import sqlserver = require('./lib/dialects/sqlserver');
 import sqlCore = require('./lib/core');
 
-type Dialect = 'mysql' | 'postgresql' | 'sqlite';
-type DialectAlias = Dialect | 'postgres' | 'pg';
+type Dialect = 'mysql' | 'postgresql' | 'sqlite' | 'sqlserver';
+type DialectAlias = Dialect | 'postgres' | 'pg' | 'mssql' | 'sql-server';
 type ErrorCategory =
   | 'authentication'
   | 'authorization'
@@ -31,7 +32,8 @@ type SqliteTransactionMode = 'deferred' | 'immediate' | 'exclusive';
 type MySqlConfig = ConstructorParameters<typeof mysql.Connection>[0] & { dialect: 'mysql' };
 type PostgreSqlConfig = ConstructorParameters<typeof postgresql.Connection>[0] & { dialect: 'postgresql' | 'postgres' | 'pg' };
 type SqliteConfig = ConstructorParameters<typeof sqlite.Connection>[0] & { dialect: 'sqlite' };
-type ConnectionConfig = MySqlConfig | PostgreSqlConfig | SqliteConfig;
+type SqlServerConfig = ConstructorParameters<typeof sqlserver.Connection>[0] & { dialect: 'sqlserver' | 'mssql' | 'sql-server' };
+type ConnectionConfig = MySqlConfig | PostgreSqlConfig | SqliteConfig | SqlServerConfig;
 
 interface ClientPoolOptions {
   max?: number;
@@ -348,7 +350,6 @@ declare class PreparedClientStatement {
   readonly native: unknown;
   readonly closed: boolean;
   readonly types: TypeRegistry;
-
   query<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: ClientOperationOptions): Promise<ClientResult<Row>>;
   all<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: ClientOperationOptions): Promise<Row[]>;
   one<Row = Record<string, unknown>>(bindings?: Record<string, unknown>, options?: ClientOperationOptions): Promise<Row>;
@@ -365,7 +366,6 @@ declare class Client {
   readonly native: unknown;
   readonly metadata: MetadataCatalog;
   readonly types: TypeRegistry;
-
   supports(capability: string): boolean;
   compile(statement: SqlFragment | string): CompiledSql;
   query<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: ClientOperationOptions): Promise<ClientResult<Row>>;
@@ -387,18 +387,21 @@ declare const DIALECTS: Readonly<{
   mysql: 'mysql';
   postgresql: 'postgresql';
   sqlite: 'sqlite';
+  sqlserver: 'sqlserver';
 }>;
 
 declare const dialects: Readonly<{
   mysql: typeof mysql;
   postgresql: typeof postgresql;
   sqlite: typeof sqlite;
+  sqlserver: typeof sqlserver;
 }>;
 
 declare function adapter(dialect: 'mysql'): typeof mysql;
 declare function adapter(dialect: 'postgresql' | 'postgres' | 'pg'): typeof postgresql;
 declare function adapter(dialect: 'sqlite'): typeof sqlite;
-declare function adapter(dialect: DialectAlias): typeof mysql | typeof postgresql | typeof sqlite;
+declare function adapter(dialect: 'sqlserver' | 'mssql' | 'sql-server'): typeof sqlserver;
+declare function adapter(dialect: DialectAlias): typeof mysql | typeof postgresql | typeof sqlite | typeof sqlserver;
 
 declare function descriptor(dialect: DialectAlias): unknown;
 declare function supports(dialect: DialectAlias, capability: string): boolean;
@@ -406,9 +409,11 @@ declare function supports(dialect: DialectAlias, capability: string): boolean;
 declare function createConnection(config: MySqlConfig): InstanceType<typeof mysql.Connection>;
 declare function createConnection(config: PostgreSqlConfig): InstanceType<typeof postgresql.Connection>;
 declare function createConnection(config: SqliteConfig): InstanceType<typeof sqlite.Connection>;
+declare function createConnection(config: SqlServerConfig): InstanceType<typeof sqlserver.Connection>;
 declare function createConnection(dialect: 'mysql', config?: ConstructorParameters<typeof mysql.Connection>[0]): InstanceType<typeof mysql.Connection>;
 declare function createConnection(dialect: 'postgresql' | 'postgres' | 'pg', config?: ConstructorParameters<typeof postgresql.Connection>[0]): InstanceType<typeof postgresql.Connection>;
 declare function createConnection(dialect: 'sqlite', config?: ConstructorParameters<typeof sqlite.Connection>[0]): InstanceType<typeof sqlite.Connection>;
+declare function createConnection(dialect: 'sqlserver' | 'mssql' | 'sql-server', config?: ConstructorParameters<typeof sqlserver.Connection>[0]): InstanceType<typeof sqlserver.Connection>;
 
 declare function createPool(config: MySqlConfig): InstanceType<typeof mysql.Pool>;
 declare function createPool(config: PostgreSqlConfig): InstanceType<typeof postgresql.Pool>;
@@ -419,6 +424,7 @@ declare function createClient(config: ClientConfig): Client;
 declare function createClient(dialect: 'mysql', config: ConstructorParameters<typeof mysql.Connection>[0] & { pool?: boolean | ClientPoolOptions; telemetry?: TelemetryOptions; types?: TypeOptions }): Client;
 declare function createClient(dialect: 'postgresql' | 'postgres' | 'pg', config: ConstructorParameters<typeof postgresql.Connection>[0] & { pool?: boolean | ClientPoolOptions; telemetry?: TelemetryOptions; types?: TypeOptions }): Client;
 declare function createClient(dialect: 'sqlite', config?: ConstructorParameters<typeof sqlite.Connection>[0] & { pool?: false; telemetry?: TelemetryOptions; types?: TypeOptions }): Client;
+declare function createClient(dialect: 'sqlserver' | 'mssql' | 'sql-server', config: ConstructorParameters<typeof sqlserver.Connection>[0] & { pool?: false; telemetry?: TelemetryOptions; types?: TypeOptions }): Client;
 
 export {
   Dialect,
@@ -471,6 +477,7 @@ export {
   mysql,
   postgresql,
   sqlite,
+  sqlserver,
   adapter,
   descriptor,
   supports,
