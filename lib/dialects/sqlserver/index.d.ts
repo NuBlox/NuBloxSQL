@@ -13,8 +13,26 @@ export interface SqlServerConnectionConfig extends Login7Options { host?:string;
 export interface SqlServerColumn { readonly name:string; readonly userType:number; readonly flags:number; readonly nullable:boolean; readonly type:number; readonly maxLength:number|null; readonly collation:Buffer|null }
 export interface SqlServerNativeError { readonly type:'error'; readonly number:number; readonly state:number; readonly severity:number; readonly message:string; readonly serverName:string; readonly procedureName:string; readonly lineNumber:number }
 export interface SqlServerQueryResult<Row=Record<string,unknown>> { readonly columns:readonly SqlServerColumn[]; readonly rows:readonly Row[]; readonly errors:readonly SqlServerNativeError[]; readonly info:readonly unknown[]; readonly rowCount:bigint; readonly done:unknown; readonly success:boolean }
+export interface SqlServerOperationOptions { timeout?:number }
 export class SqlServerError extends Error { readonly code?:number|string|null; readonly severity?:number|null; readonly state?:number|null; readonly native?:unknown; readonly alpnProtocol?:string|null; readonly cause?:unknown; readonly result?:unknown }
-export class Connection { constructor(config?:SqlServerConnectionConfig); readonly config:SqlServerConnectionConfig; connected:boolean; ended:boolean; packetSize:number; serverPrelogin:unknown; loginResponse:unknown; transactionDescriptor:bigint; connect():Promise<this>; query<Row=Record<string,unknown>>(sqlText:string,options?:{timeout?:number}):Promise<SqlServerQueryResult<Row>>; execute<Row=Record<string,unknown>>(sqlText:string,options?:{timeout?:number}):Promise<SqlServerQueryResult<Row>>; end():Promise<void>; close():Promise<void> }
+export class Connection {
+  constructor(config?:SqlServerConnectionConfig);
+  readonly config:SqlServerConnectionConfig;
+  connected:boolean;
+  ended:boolean;
+  packetSize:number;
+  serverPrelogin:unknown;
+  loginResponse:unknown;
+  transactionDescriptor:bigint;
+  connect():Promise<this>;
+  query<Row=Record<string,unknown>>(sqlText:string,options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
+  queryParameters<Row=Record<string,unknown>>(sqlText:string,values:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
+  execute<Row=Record<string,unknown>>(sqlText:string,options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
+  execute<Row=Record<string,unknown>>(sqlText:string,values:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
+  executeParameters<Row=Record<string,unknown>>(sqlText:string,values:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
+  end():Promise<void>;
+  close():Promise<void>;
+}
 export function createConnection(config?:SqlServerConnectionConfig):Connection;
 export const descriptor:SqlServerDialectDescriptor;
 export const capabilities:Readonly<{ rawQuery:true } & Record<string,boolean>>;
