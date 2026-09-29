@@ -51,6 +51,24 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
+      - name: Provision ephemeral SQL Server TLS identity
+        shell: bash
+        run: |
+          mkdir -p .ci/sqlserver
+          openssl req -x509 -nodes -newkey rsa:2048 \
+            -subj '/CN=localhost' \
+            -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' \
+            -keyout .ci/sqlserver/mssql.key \
+            -out .ci/sqlserver/mssql.pem \
+            -days 1
+          cat > .ci/sqlserver/mssql.conf <<'EOF'
+          [network]
+          tlscert = /etc/ssl/certs/mssql.pem
+          tlskey = /etc/ssl/private/mssql.key
+          tlsprotocols = 1.2
+          forceencryption = 0
+          EOF
+          chmod 644 .ci/sqlserver/mssql.key .ci/sqlserver/mssql.pem .ci/sqlserver/mssql.conf
       - name: Start disposable SQL Server 2022
         shell: bash
         run: |
@@ -61,6 +79,9 @@ jobs:
             --env ACCEPT_EULA=Y \
             --env MSSQL_PID=Developer \
             --env "MSSQL_SA_PASSWORD=$password" \
+            --volume "$PWD/.ci/sqlserver/mssql.conf:/var/opt/mssql/mssql.conf:ro" \
+            --volume "$PWD/.ci/sqlserver/mssql.pem:/etc/ssl/certs/mssql.pem:ro" \
+            --volume "$PWD/.ci/sqlserver/mssql.key:/etc/ssl/private/mssql.key:ro" \
             mcr.microsoft.com/mssql/server:2022-latest
       - name: Native TDS 8 TLS, PRELOGIN and LOGIN7 qualification
         env:
