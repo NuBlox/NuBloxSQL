@@ -1,69 +1,102 @@
-# Documentation Style
+# NuBloxSQL Documentation Standard
 
-NuBloxSQL documentation should be precise, current and non-duplicative.
+NuBloxSQL documentation must describe **one platform consistently** while preserving the different technical roles of its packages.
 
-## Naming
+## Canonical product language
 
-- Product: `NuBloxSQL`
-- Packages: always use their published names, for example `@nublox/postgresql`
-- Database families: `MySQL`, `PostgreSQL`, `SQLite`, `SQL Server`, `Oracle`
-- Runtime: `Node.js`
-- Licence spelling: `Licence` in prose; retain literal filenames such as `LICENSE`
+Use these terms consistently:
+
+- **NuBloxSQL** — the overall database connectivity/runtime platform.
+- **SQL Core** / `@nublox/sql-core` — the portable platform contract layer.
+- **adapter** or **runtime** — a database-family implementation such as MySQL, PostgreSQL or SQLite.
+- **consumer** — a product/application that uses NuBloxSQL, for example NuBlox SQL Workbench.
+- **native extension** — an adapter-specific capability that deliberately sits outside the portable contract.
+
+Do not describe the repository as merely a collection of independent drivers.
+
+## Design statement
+
+Every current document should be compatible with this sentence:
+
+> NuBloxSQL is one platform: SQL Core defines proven portable contracts, native adapters own real database semantics, and consumers depend on NuBloxSQL rather than owning database transports themselves.
+
+If a document contradicts that sentence, the document is wrong or historical context must be stated explicitly.
+
+## Package README contract
+
+Every package README uses this order:
+
+1. one-sentence package identity;
+2. **Role in NuBloxSQL**;
+3. **Status** table;
+4. **Platform contract**;
+5. **Native capabilities** (or **Platform contract surface** for SQL Core);
+6. **Quick start**;
+7. **Native semantics** / evolution policy;
+8. **Verification and dependency boundary**;
+9. **Related documentation**;
+10. **Licence**.
+
+The headings are intentionally uniform. The content is not forced to be identical because the package roles differ.
 
 ## Status vocabulary
 
-Use only these package-status terms:
+Use only:
 
-- **Stable** — released and included in a supported release baseline.
-- **Development** — implemented but not yet included in a stable support baseline.
-- **Planned** — roadmap intent with no supported package claim.
-- **Historical** — retained release or migration evidence that is not current planning.
+- **Stable** — supported and included in a stable release baseline.
+- **Development** — implemented but not yet part of a stable support baseline.
+- **Planned** — intended future work with no implemented support claim.
+- **Historical** — retained release/migration evidence that is no longer current product guidance.
 
-Do not call a stable adapter a “foundation”. Use “foundation” only for an explicitly incomplete development slice.
-
-## Version claims
+## Version vocabulary
 
 Always distinguish:
 
-- package version, such as `@nublox/postgresql@1.0.0`;
-- SQL Core contract family, such as `1.0`;
-- repository/release baseline, such as `NuBloxSQL v1.0.0`.
+- NuBloxSQL release baseline, e.g. `v1.0.0`;
+- package version, e.g. `@nublox/postgresql@1.0.0`;
+- SQL Core contract family, e.g. `1.0`;
+- database/runtime qualification, e.g. PostgreSQL 15–18.
 
-Do not imply that post-v1 development packages are part of the stable v1.0.0 support matrix.
+## Source-of-truth ownership
 
-## Source of truth
+| Subject | Authoritative document |
+| --- | --- |
+| Product intent | `docs/architecture/design-intent.md` |
+| Current platform/package status | `README.md` |
+| Technical architecture | `docs/architecture/multi-dialect.md` |
+| Forward engineering sequence | `NUBLOX-SQL-ROADMAP.md` |
+| Package API/capabilities | package README + code/types/tests |
+| Stable v1 support matrix | `docs/v1/V1-SUPPORT-MATRIX.md` |
+| Stable SQL Core v1 contract | `docs/v1/SQL-CORE-V1-CONTRACT.md` |
+| Historical v1 release evidence | `docs/v1/` |
 
-- `README.md` owns the current product/package status summary.
-- `docs/architecture/multi-dialect.md` owns current architecture rules.
-- `NUBLOX-SQL-ROADMAP.md` owns future development sequence.
-- `docs/v1/V1-SUPPORT-MATRIX.md` owns the stable v1 qualification matrix.
-- package READMEs own package usage and package-specific behaviour.
-- `docs/v1/GATE-*-EVIDENCE.md` are immutable-style historical evidence except for factual corrections.
+Do not create competing current-state documents.
 
-Prefer links over copying mutable tables into multiple documents.
+## Technical rules
 
-## Package README structure
+Documentation must:
 
-Package READMEs should use this order where applicable:
-
-1. purpose;
-2. status;
-3. requirements/support;
-4. capabilities;
-5. quick start;
-6. semantics or package-specific policy;
-7. verification/dependency boundary;
-8. related documentation;
-9. licence.
-
-## Technical language
-
-- Describe capabilities as implemented driver behaviour, not merely server features.
-- Separate portable contracts from adapter-native extensions.
-- Do not claim semantic equivalence between catalogs, schemas, databases or transaction models where vendors differ.
-- Do not claim cancellation, cursor or JSON capabilities unless the adapter actually implements the stated semantics.
-- Prefer exact commands and supported-version lists over vague phrases such as “modern versions”.
+- distinguish platform contracts from native adapter semantics;
+- describe capability flags as implemented NuBloxSQL behaviour, not theoretical server features;
+- preserve catalog/database/schema distinctions;
+- state when a behaviour is adapter-native;
+- avoid claiming unsupported equivalence, emulation or cancellation semantics;
+- favour data fidelity over convenient but lossy descriptions;
+- identify supported versions precisely;
+- link to the authoritative source instead of duplicating mutable matrices unnecessarily.
 
 ## Historical documents
 
-Historical RC notes and migration documents may reference superseded versions when the reference is necessary to explain history. Add context rather than rewriting history to look current.
+Historical RC notes, migration guides and release-gate evidence should not be rewritten to appear current. Add framing when necessary, but preserve the historical record.
+
+## Naming
+
+- `NuBloxSQL`
+- `NuBlox SQL Workbench`
+- `Node.js`
+- `MySQL`
+- `PostgreSQL`
+- `SQLite`
+- `SQL Server`
+- `Oracle`
+- use `Licence` in prose and preserve literal filenames such as `LICENSE`.

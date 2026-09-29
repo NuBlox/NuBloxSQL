@@ -1,26 +1,38 @@
 # @nublox/postgresql
 
-Native PostgreSQL adapter for NuBloxSQL.
+`@nublox/postgresql` is the **native PostgreSQL runtime of the NuBloxSQL platform**.
+
+## Role in NuBloxSQL
+
+The package owns PostgreSQL connectivity and PostgreSQL-specific runtime semantics. PostgreSQL is also a critical reference dialect because its schemas, type OIDs, cancellation, portals and extended-query lifecycle pressure-test whether NuBloxSQL portable contracts are genuinely database-neutral.
 
 ## Status
 
-- Package: `@nublox/postgresql`
-- Version: `1.0.0`
-- Status: **Stable**
-- NuBloxSQL baseline: **v1.0.0**
-- Node.js: **22, 24, 26**
-- Qualified PostgreSQL: **15, 16, 17, 18**
+| Item | Value |
+| --- | --- |
+| Package | `@nublox/postgresql` |
+| Version | `1.0.0` |
+| Status | **Stable** |
+| Stable baseline | NuBloxSQL `v1.0.0` |
+| Node.js | 22, 24, 26 |
+| Qualified PostgreSQL | 15, 16, 17, 18 |
 
-## Capabilities
+## Platform contract
 
-The stable v1 surface includes:
+The adapter participates in the NuBloxSQL contract for dialect identity, capabilities, execution/results, transactions, resource limits, errors and metadata vocabulary where those concepts are portable.
+
+PostgreSQL-specific protocol, schema/catalog semantics, portal lifecycle, type OIDs and CancelRequest behaviour remain native to this package.
+
+## Native capabilities
+
+The stable runtime includes:
 
 - native TCP lifecycle and PostgreSQL SSLRequest negotiation;
-- StartupMessage and protocol 3.0/3.2 primitives;
+- StartupMessage and PostgreSQL frontend/backend protocol primitives;
 - cleartext, MD5 compatibility and SCRAM-SHA-256 authentication;
 - simple-query protocol;
 - extended-query Parse/Bind/Describe/Execute/Close/Sync protocol;
-- named prepared statements and one-shot parameterized execution;
+- named prepared statements and parameterized execution;
 - native CancelRequest cancellation with race-safe backend ownership;
 - bounded connection pooling and release hygiene;
 - transactions and savepoints;
@@ -30,7 +42,7 @@ The stable v1 surface includes:
 - structured PostgreSQL errors and notices;
 - TypeScript declarations.
 
-Capability flags describe implemented adapter behaviour, not every feature available in PostgreSQL.
+Capability metadata describes what this adapter implements, not every feature PostgreSQL may expose.
 
 ## Quick start
 
@@ -51,20 +63,11 @@ const result = await connection.query('SELECT 1::int4 AS answer');
 await connection.end();
 ```
 
-## Prepared statements
+## Native semantics
 
-```js
-const statement = await connection.prepare(
-  'SELECT $1::int4 AS id, $2::text AS name'
-);
+PostgreSQL-native features are not flattened into MySQL-shaped concepts. Schemas remain schemas, portals remain PostgreSQL server-side resources, CancelRequest remains a PostgreSQL backend-session operation, and unknown/custom OIDs remain lossless rather than guessed.
 
-const result = await statement.execute([1, 'alpha']);
-await statement.close();
-```
-
-## Type policy
-
-NuBloxSQL preserves PostgreSQL semantics rather than forcing lossy JavaScript coercion.
+### Type fidelity
 
 | PostgreSQL type | JavaScript value |
 | --- | --- |
@@ -80,19 +83,26 @@ NuBloxSQL preserves PostgreSQL semantics rather than forcing lossy JavaScript co
 | `uuid` | `string` |
 | unknown/custom text OIDs | `string` |
 
-`timestamp without time zone` remains a string so the driver does not invent timezone semantics. Arbitrary-precision numeric values remain strings to prevent silent IEEE-754 precision loss.
+`timestamp without time zone` stays a string so the driver does not invent timezone meaning. Arbitrary-precision numerics remain strings to avoid silent IEEE-754 loss.
 
-## Dependency boundary
+## Verification and dependency boundary
 
-The package declares no third-party npm runtime, development, optional or peer dependencies. Production implementation uses Node.js built-ins and NuBlox-authored source.
+The package declares no third-party npm runtime, development, optional or peer dependencies. Runtime implementation uses Node.js built-ins and NuBlox-authored source.
+
+```bash
+npm run test --workspace @nublox/postgresql
+```
+
+The maintained CI matrix additionally exercises live PostgreSQL 15, 16, 17 and 18 behaviour.
 
 ## Related documentation
 
-- `../../README.md`
-- `../../docs/architecture/multi-dialect.md`
-- `../../docs/v1/V1-SUPPORT-MATRIX.md`
-- `../../docs/v1/V1-MIGRATION.md`
-- `docs/releases/0.2.0-rc.1.md` — historical RC note
+- [NuBloxSQL overview](../../README.md)
+- [Design intent](../../docs/architecture/design-intent.md)
+- [Multi-dialect architecture](../../docs/architecture/multi-dialect.md)
+- [Stable v1 support matrix](../../docs/v1/V1-SUPPORT-MATRIX.md)
+- [v1 migration guide](../../docs/v1/V1-MIGRATION.md)
+- [`0.2.0-rc.1` historical release note](docs/releases/0.2.0-rc.1.md)
 
 ## Licence
 
