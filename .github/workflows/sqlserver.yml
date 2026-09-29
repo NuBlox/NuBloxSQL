@@ -101,7 +101,6 @@ jobs:
               && chmod 644 /var/opt/mssql/mssql.conf
           USER mssql
           EOF
-          cp .ci/sqlserver/ca.pem .ci/sqlserver/mssql.pem .ci/sqlserver/mssql.key .ci/sqlserver/mssql.conf .ci/sqlserver/
           docker build --tag nublox-sqlserver-ci .ci/sqlserver
       - name: Start disposable SQL Server 2022
         shell: bash
