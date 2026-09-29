@@ -152,6 +152,17 @@ async function main() {
       assert.strictEqual((await txPrepared.one({ id: 2 })).name, 'committed');
     });
 
+    await db.transaction(async function (tx) {
+      await tx.execute(sql`INSERT INTO ${table} (id, name) VALUES (${20}, ${'savepoint-kept'})`);
+      await tx.savepoint('before_optional');
+      await tx.execute(sql`INSERT INTO ${table} (id, name) VALUES (${21}, ${'savepoint-removed'})`);
+      await tx.rollbackTo('before_optional');
+      await tx.releaseSavepoint('before_optional');
+    }, { isolationLevel: 'read-committed', readOnly: false });
+
+    assert.strictEqual((await db.one(sql`SELECT name FROM ${table} WHERE id = ${20}`)).name, 'savepoint-kept');
+    assert.strictEqual((await db.all(sql`SELECT id FROM ${table} WHERE id = ${21}`)).length, 0);
+
     try {
       await db.transaction(async function (tx) {
         await tx.execute(sql`INSERT INTO ${table} (id, name) VALUES (${3}, ${'rolled-back'})`);
