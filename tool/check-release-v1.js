@@ -13,9 +13,10 @@ function fail(message) { failures.push(message); }
 
 var platform = json('package.json');
 if (platform.name !== 'nubloxsql') fail('package.json must expose the nubloxsql package');
-if (platform.version !== '1.0.0') fail('package.json must be version 1.0.0');
+if (!/^1\.\d+\.\d+$/.test(platform.version)) fail('package.json must expose a stable NuBloxSQL 1.x version');
 if (platform.private === true) fail('nubloxsql must remain publishable');
 if (platform.license !== 'SEE LICENSE IN LICENSE') fail('package.json must point to the proprietary LICENSE');
+if (!platform.publishConfig || platform.publishConfig.access !== 'public') fail('nubloxsql publishConfig.access must be public');
 if (platform.workspaces) fail('NuBloxSQL must not expose internal runtime modules as npm workspaces');
 
 ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'].forEach(function (key) {
