@@ -1,7 +1,7 @@
 'use strict';
 
 var crypto = require('crypto');
-var mysql = require('../../packages/mysql');
+var mysql = require('../../lib/dialects/mysql');
 
 var iterations = Number(process.env.NUBLOX_FUZZ_ITERATIONS || 10000);
 var maxPayload = Number(process.env.NUBLOX_FUZZ_MAX_PAYLOAD || 2048);

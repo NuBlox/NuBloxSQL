@@ -26,5 +26,3 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: Verify SQL Core runtime and dialect contracts
         run: npm run test:sql-core
-      - name: Verify SQL Core publish surface
-        run: npm pack --dry-run --workspace @nublox/sql-core

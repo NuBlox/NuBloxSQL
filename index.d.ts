@@ -1,7 +1,7 @@
-import mysql = require('./packages/mysql');
-import postgresql = require('./packages/postgresql');
-import sqlite = require('./packages/sqlite');
-import sqlCore = require('./packages/sql-core');
+import mysql = require('./lib/dialects/mysql');
+import postgresql = require('./lib/dialects/postgresql');
+import sqlite = require('./lib/dialects/sqlite');
+import sqlCore = require('./lib/core');
 
 type Dialect = 'mysql' | 'postgresql' | 'sqlite';
 type DialectAlias = Dialect | 'postgres' | 'pg';

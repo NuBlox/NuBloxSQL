@@ -7,9 +7,9 @@ var DIALECTS = Object.freeze({
 });
 
 var loaders = Object.freeze({
-  mysql: function loadMySql() { return require('./packages/mysql'); },
-  postgresql: function loadPostgreSql() { return require('./packages/postgresql'); },
-  sqlite: function loadSqlite() { return require('./packages/sqlite'); }
+  mysql: function loadMySql() { return require('./lib/dialects/mysql'); },
+  postgresql: function loadPostgreSql() { return require('./lib/dialects/postgresql'); },
+  sqlite: function loadSqlite() { return require('./lib/dialects/sqlite'); }
 });
 
 var cache = Object.create(null);
@@ -78,11 +78,12 @@ function createPool(dialectOrConfig, maybeConfig) {
 }
 
 function supports(dialect, capability) {
-  var implementation = loadAdapter(dialect);
+  var normalized = normalizeDialect(dialect);
+  var implementation = loadAdapter(normalized);
   var dialectDescriptor = implementation.descriptor;
 
-  if (!dialectDescriptor && normalizeDialect(dialect) === 'mysql') {
-    dialectDescriptor = require('./packages/mysql/lib/SqlDialectDescriptor');
+  if (!dialectDescriptor && normalized === 'mysql') {
+    dialectDescriptor = require('./lib/dialects/mysql/lib/SqlDialectDescriptor');
   }
 
   return !!(dialectDescriptor && typeof dialectDescriptor.supports === 'function' && dialectDescriptor.supports(capability));
@@ -92,7 +93,7 @@ function descriptor(dialect) {
   var normalized = normalizeDialect(dialect);
   var implementation = loadAdapter(normalized);
   if (implementation.descriptor) return implementation.descriptor;
-  if (normalized === 'mysql') return require('./packages/mysql/lib/SqlDialectDescriptor');
+  if (normalized === 'mysql') return require('./lib/dialects/mysql/lib/SqlDialectDescriptor');
   return null;
 }
 
@@ -118,7 +119,7 @@ exports.supports = supports;
 exports.createConnection = createConnection;
 exports.createPool = createPool;
 
-defineLazy(exports, 'sqlCore', function () { return require('./packages/sql-core'); });
+defineLazy(exports, 'sqlCore', function () { return require('./lib/core'); });
 defineLazy(exports, 'mysql', function () { return loadAdapter('mysql'); });
 defineLazy(exports, 'postgresql', function () { return loadAdapter('postgresql'); });
 defineLazy(exports, 'sqlite', function () { return loadAdapter('sqlite'); });

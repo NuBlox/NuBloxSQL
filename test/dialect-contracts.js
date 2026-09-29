@@ -1,11 +1,11 @@
 'use strict';
 
 var assert = require('assert');
-var sqlCore = require('../packages/sql-core');
-var mysql = require('../packages/mysql/lib/SqlDialectDescriptor');
-var postgresqlPackage = require('../packages/postgresql');
+var sqlCore = require('../lib/core');
+var mysql = require('../lib/dialects/mysql/lib/SqlDialectDescriptor');
+var postgresqlPackage = require('../lib/dialects/postgresql');
 var postgresql = postgresqlPackage.descriptor || postgresqlPackage;
-var sqlitePackage = require('../packages/sqlite');
+var sqlitePackage = require('../lib/dialects/sqlite');
 var sqlite = sqlitePackage.descriptor || sqlitePackage;
 
 sqlCore.assertDialectDescriptor(mysql);

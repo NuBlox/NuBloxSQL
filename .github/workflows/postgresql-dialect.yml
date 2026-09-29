@@ -3,14 +3,14 @@ name: NuBloxSQL PostgreSQL Dialect
 on:
   pull_request:
     paths:
-      - 'packages/postgresql/**'
-      - 'packages/sql-core/**'
+      - 'lib/dialects/postgresql/**'
+      - 'lib/core/**'
       - '.github/workflows/postgresql-dialect.yml'
   push:
     branches: [main]
     paths:
-      - 'packages/postgresql/**'
-      - 'packages/sql-core/**'
+      - 'lib/dialects/postgresql/**'
+      - 'lib/core/**'
       - '.github/workflows/postgresql-dialect.yml'
   workflow_dispatch:
 
@@ -29,8 +29,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-      - run: npm run test --workspace @nublox/postgresql
-      - run: npm pack --dry-run --workspace @nublox/postgresql
+      - run: npm run test:postgresql
 
   live-postgresql:
     name: live PostgreSQL ${{ matrix.postgresql }}
@@ -66,13 +65,13 @@ jobs:
         with:
           node-version: 24
       - name: Native runtime, extended protocol, cancellation, pooling and portals
-        run: npm run test:live --workspace @nublox/postgresql
+        run: node lib/dialects/postgresql/test/live.js
       - name: Authentication and TLS failure paths
-        run: npm run test:live:failures --workspace @nublox/postgresql
+        run: node lib/dialects/postgresql/test/live-failure-paths.js
       - name: Result-limit connection and pool safety
-        run: npm run test:live:limits --workspace @nublox/postgresql
+        run: node lib/dialects/postgresql/test/live-result-limits.js
       - name: Deterministic lossless type policy
-        run: npm run test:live:types --workspace @nublox/postgresql
+        run: node lib/dialects/postgresql/test/live-type-decoding.js
       - name: Production performance and memory evidence
         if: matrix.postgresql == '15' || matrix.postgresql == '18'
-        run: npm run test:live:evidence --workspace @nublox/postgresql
+        run: node --expose-gc lib/dialects/postgresql/test/live-production-evidence.js

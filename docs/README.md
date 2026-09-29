@@ -10,14 +10,20 @@ NuBloxSQL documentation describes one product: **the single-entry, multi-dialect
 4. [Roadmap](../NUBLOX-SQL-ROADMAP.md) — current and planned engineering sequence.
 5. [Documentation standard](STYLE.md) — terminology and source-of-truth rules.
 
-## Internal runtime documentation
+## Runtime source layout
 
-These READMEs document implementation workspaces inside NuBloxSQL. They are not the normal developer installation path.
+NuBloxSQL is published and consumed as one package. Its internal source boundaries are implementation modules, not separately installed packages:
 
-- [SQL Core](../packages/sql-core/README.md)
-- [MySQL runtime](../packages/mysql/README.md)
-- [PostgreSQL runtime](../packages/postgresql/README.md)
-- [SQLite runtime](../packages/sqlite/README.md)
+```text
+lib/
+├── core/                  # shared, proven SQL contracts
+└── dialects/
+    ├── mysql/             # native MySQL runtime
+    ├── postgresql/        # native PostgreSQL runtime
+    └── sqlite/            # embedded SQLite runtime
+```
+
+Current runtime behavior is documented by the root README and architecture documents rather than duplicated per-dialect package READMEs.
 
 ## Stable v1 release record
 
@@ -30,4 +36,4 @@ The `docs/v1/` directory records the stable v1 historical baseline and qualifica
 - [SQL Core v1 contract](v1/SQL-CORE-V1-CONTRACT.md)
 - [Proprietary release gate](v1/PROPRIETARY-IP-RELEASE-GATE.md)
 
-Historical documents may describe the package boundaries used by that release. Current public design intent is owned by the root README and architecture documents above.
+Historical documents may describe package boundaries used during the v1 development and release process. Current architecture is owned by the root README and architecture documents above.
