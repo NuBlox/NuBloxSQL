@@ -66,8 +66,8 @@ jobs:
             -days 1
           cat > .ci/sqlserver/mssql.conf <<'EOF'
           [network]
-          tlscert = /etc/ssl/certs/mssql.pem
-          tlskey = /etc/ssl/private/mssql.key
+          tlscert = /var/opt/mssql/secrets/mssql.pem
+          tlskey = /var/opt/mssql/secrets/mssql.key
           tlsprotocols = 1.2
           forceencryption = 0
           EOF
@@ -83,8 +83,8 @@ jobs:
             --env MSSQL_PID=Developer \
             --env "MSSQL_SA_PASSWORD=$password" \
             --volume "$PWD/.ci/sqlserver/mssql.conf:/var/opt/mssql/mssql.conf:ro" \
-            --volume "$PWD/.ci/sqlserver/mssql.pem:/etc/ssl/certs/mssql.pem:ro" \
-            --volume "$PWD/.ci/sqlserver/mssql.key:/etc/ssl/private/mssql.key:ro" \
+            --volume "$PWD/.ci/sqlserver/mssql.pem:/var/opt/mssql/secrets/mssql.pem:ro" \
+            --volume "$PWD/.ci/sqlserver/mssql.key:/var/opt/mssql/secrets/mssql.key:ro" \
             mcr.microsoft.com/mssql/server:2022-latest
       - name: Wait for SQL Server engine readiness
         shell: bash
