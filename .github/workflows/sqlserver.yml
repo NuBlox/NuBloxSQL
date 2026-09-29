@@ -41,6 +41,51 @@ jobs:
       - name: Verify SQL Server protocol and connection contracts
         run: npm run test:sqlserver
 
+  live-tds74:
+    name: live SQL Server 2022 encrypted TDS 7.4
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Start disposable SQL Server 2022
+        shell: bash
+        run: |
+          password="Nbx_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_Aa1!"
+          echo "MSSQL_SA_PASSWORD=$password" >> "$GITHUB_ENV"
+          docker run --detach --name nublox-sqlserver-2022 \
+            --publish 1434:1433 \
+            --env ACCEPT_EULA=Y \
+            --env MSSQL_PID=Developer \
+            --env "MSSQL_SA_PASSWORD=$password" \
+            mcr.microsoft.com/mssql/server:2022-latest
+      - name: Wait for SQL Server 2022 engine readiness
+        shell: bash
+        run: |
+          for attempt in $(seq 1 90); do
+            if docker logs nublox-sqlserver-2022 2>&1 | grep -q 'SQL Server is now ready for client connections'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs nublox-sqlserver-2022
+          echo 'SQL Server 2022 did not report engine readiness within 90 seconds' >&2
+          exit 1
+      - name: Encrypted public-client TDS 7.4 qualification
+        env:
+          MSSQL_HOST: 127.0.0.1
+          MSSQL_PORT: 1434
+        run: node lib/dialects/sqlserver/test/live-tds74.js
+      - name: Show SQL Server 2022 logs on failure
+        if: failure()
+        run: docker logs nublox-sqlserver-2022 || true
+      - name: Stop SQL Server 2022
+        if: always()
+        run: docker rm --force nublox-sqlserver-2022 || true
+
   live-tds8:
     name: live SQL Server 2025 TDS 8
     runs-on: ubuntu-latest
