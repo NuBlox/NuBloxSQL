@@ -14,6 +14,7 @@ function configFor(dialect) {
       password: process.env.MYSQL_PASSWORD,
       database: process.env.MYSQL_DATABASE,
       ssl: 'disable',
+      getServerPublicKey: true,
       pool: { max: 4 }
     };
   }
