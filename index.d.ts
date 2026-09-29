@@ -71,6 +71,18 @@ interface ClientPrepareOptions extends Record<string, unknown> {
   acquire?: Record<string, unknown>;
 }
 
+interface ClientStreamOptions extends Record<string, unknown> {
+  batchSize?: number;
+  highWaterMark?: number;
+  timeout?: number;
+  deadline?: number | Date;
+  signal?: AbortSignal;
+  maxRows?: number;
+  maxResultBytes?: number;
+  maxRowBytes?: number;
+  acquire?: Record<string, unknown>;
+}
+
 declare class NuBloxSqlError extends Error {
   readonly code: string;
   readonly category: ErrorCategory;
@@ -103,6 +115,21 @@ declare const ERROR_CATEGORIES: Readonly<{
   UNKNOWN: 'unknown';
 }>;
 
+declare class ClientRowStream<Row = Record<string, unknown>> implements AsyncIterable<Row>, AsyncIterator<Row> {
+  readonly client: Client;
+  readonly dialect: Dialect;
+  readonly compiled: CompiledSql;
+  readonly options: ClientStreamOptions;
+  native: unknown;
+  fields: unknown[] | null;
+  closed: boolean;
+  next(): Promise<IteratorResult<Row>>;
+  return(): Promise<IteratorResult<Row>>;
+  throw(error: unknown): Promise<IteratorResult<Row>>;
+  close(): Promise<void>;
+  [Symbol.asyncIterator](): AsyncIterator<Row>;
+}
+
 declare class PreparedClientStatement {
   readonly client: Client;
   readonly dialect: Dialect;
@@ -133,6 +160,7 @@ declare class Client {
   one<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<Row>;
   execute<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<ClientResult<Row>>;
   prepare(statement: SqlFragment | string, options?: ClientPrepareOptions): Promise<PreparedClientStatement>;
+  stream<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: ClientStreamOptions): ClientRowStream<Row>;
   transaction<T>(fn: (transaction: Client) => T | Promise<T>, options?: Record<string, unknown>): Promise<T>;
   close(): Promise<void>;
 }
@@ -184,6 +212,7 @@ export {
   ClientConfig,
   ClientPoolOptions,
   ClientPrepareOptions,
+  ClientStreamOptions,
   SqlFragment,
   SqlIdentifier,
   SqlParameter,
@@ -192,6 +221,7 @@ export {
   ClientResult,
   NuBloxSqlError,
   ERROR_CATEGORIES,
+  ClientRowStream,
   PreparedClientStatement,
   Client,
   sql,
