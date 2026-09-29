@@ -24,6 +24,8 @@ type ErrorCategory =
   | 'unsupported'
   | 'unknown';
 
+type TelemetryEventType = 'query' | 'execute' | 'prepare' | 'prepared' | 'transaction' | 'stream' | 'connection' | 'error';
+
 type MySqlConfig = ConstructorParameters<typeof mysql.Connection>[0] & { dialect: 'mysql' };
 type PostgreSqlConfig = ConstructorParameters<typeof postgresql.Connection>[0] & { dialect: 'postgresql' | 'postgres' | 'pg' };
 type SqliteConfig = ConstructorParameters<typeof sqlite.Connection>[0] & { dialect: 'sqlite' };
@@ -39,7 +41,48 @@ interface ClientPoolOptions {
   resetOnRelease?: boolean;
 }
 
-type ClientConfig = ConnectionConfig & { pool?: boolean | ClientPoolOptions };
+interface TelemetryPoolSnapshot {
+  readonly total?: number;
+  readonly idle?: number;
+  readonly borrowed?: number;
+  readonly waiting?: number;
+}
+
+interface TelemetryEvent {
+  readonly id: number;
+  readonly type: TelemetryEventType;
+  readonly dialect: Dialect;
+  readonly timestamp: number;
+  readonly phase?: 'start' | 'finish';
+  readonly operation?: string;
+  readonly durationMs?: number;
+  readonly success?: boolean;
+  readonly slow?: boolean;
+  readonly rowCount?: number;
+  readonly affectedRows?: number | bigint;
+  readonly command?: string;
+  readonly errorCategory?: ErrorCategory | null;
+  readonly errorCode?: string | number | null;
+  readonly retryable?: boolean;
+  readonly sql?: string;
+  readonly pool?: TelemetryPoolSnapshot;
+}
+
+interface TelemetryOptions {
+  includeSql?: boolean;
+  slowQueryThresholdMs?: number;
+  onEvent?: (event: TelemetryEvent) => void;
+  onQuery?: (event: TelemetryEvent) => void;
+  onExecute?: (event: TelemetryEvent) => void;
+  onPrepare?: (event: TelemetryEvent) => void;
+  onPrepared?: (event: TelemetryEvent) => void;
+  onTransaction?: (event: TelemetryEvent) => void;
+  onStream?: (event: TelemetryEvent) => void;
+  onConnection?: (event: TelemetryEvent) => void;
+  onError?: (event: TelemetryEvent) => void;
+}
+
+type ClientConfig = ConnectionConfig & { pool?: boolean | ClientPoolOptions; telemetry?: TelemetryOptions };
 
 interface SqlFragment {}
 interface SqlIdentifier {}
@@ -223,6 +266,15 @@ declare const ERROR_CATEGORIES: Readonly<{
   UNKNOWN: 'unknown';
 }>;
 
+declare class Observer {
+  readonly client: Client;
+  readonly config: TelemetryOptions | null;
+  readonly sequence: number;
+  enabled(): boolean;
+  emit(type: TelemetryEventType, details?: Record<string, unknown>): TelemetryEvent | null;
+  start(type: TelemetryEventType, details?: Record<string, unknown>): (extra?: Record<string, unknown>) => void;
+}
+
 declare class ClientRowStream<Row = Record<string, unknown>> implements AsyncIterable<Row>, AsyncIterator<Row> {
   readonly client: Client;
   readonly dialect: Dialect;
@@ -309,14 +361,18 @@ declare function createPool(dialect: 'mysql', config?: ConstructorParameters<typ
 declare function createPool(dialect: 'postgresql' | 'postgres' | 'pg', config?: ConstructorParameters<typeof postgresql.Pool>[0]): InstanceType<typeof postgresql.Pool>;
 
 declare function createClient(config: ClientConfig): Client;
-declare function createClient(dialect: 'mysql', config: ConstructorParameters<typeof mysql.Connection>[0] & { pool?: boolean | ClientPoolOptions }): Client;
-declare function createClient(dialect: 'postgresql' | 'postgres' | 'pg', config: ConstructorParameters<typeof postgresql.Connection>[0] & { pool?: boolean | ClientPoolOptions }): Client;
-declare function createClient(dialect: 'sqlite', config?: ConstructorParameters<typeof sqlite.Connection>[0] & { pool?: false }): Client;
+declare function createClient(dialect: 'mysql', config: ConstructorParameters<typeof mysql.Connection>[0] & { pool?: boolean | ClientPoolOptions; telemetry?: TelemetryOptions }): Client;
+declare function createClient(dialect: 'postgresql' | 'postgres' | 'pg', config: ConstructorParameters<typeof postgresql.Connection>[0] & { pool?: boolean | ClientPoolOptions; telemetry?: TelemetryOptions }): Client;
+declare function createClient(dialect: 'sqlite', config?: ConstructorParameters<typeof sqlite.Connection>[0] & { pool?: false; telemetry?: TelemetryOptions }): Client;
 
 export {
   Dialect,
   DialectAlias,
   ErrorCategory,
+  TelemetryEventType,
+  TelemetryPoolSnapshot,
+  TelemetryEvent,
+  TelemetryOptions,
   ConnectionConfig,
   ClientConfig,
   ClientPoolOptions,
@@ -341,6 +397,7 @@ export {
   ClientResult,
   NuBloxSqlError,
   ERROR_CATEGORIES,
+  Observer,
   ClientRowStream,
   PreparedClientStatement,
   Client,
