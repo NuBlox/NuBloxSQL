@@ -4,7 +4,7 @@
 
 NuBloxSQL presents **one public developer entry point** over multiple SQL dialect runtimes.
 
-The developer-facing dependency is `nubloxsql`. Dialect workspaces exist inside the repository to isolate implementation, testing and database-specific behaviour; they are not the intended installation model for application developers.
+The developer-facing dependency is `nubloxsql`. Internally, shared contracts and native dialect runtimes live in one consolidated runtime tree; they are implementation modules, not separate packages that application developers install or manage.
 
 ```text
                       application
@@ -23,6 +23,19 @@ The developer-facing dependency is `nubloxsql`. Dialect workspaces exist inside 
     native runtime    native runtime   embedded runtime
 ```
 
+## Runtime layout
+
+```text
+lib/
+├── core/
+└── dialects/
+    ├── mysql/
+    ├── postgresql/
+    └── sqlite/
+```
+
+`lib/core` contains only portable contracts proven across dialects. `lib/dialects/*` contains database-native runtime behavior. There are no nested npm package boundaries inside this runtime tree.
+
 ## Public facade responsibility
 
 The root facade owns the common developer entry points:
@@ -33,6 +46,8 @@ The root facade owns the common developer entry points:
 - `descriptor(...)` and `supports(...)` for capability discovery;
 - shared SQL contract access;
 - dialect namespaces from the same installation.
+
+Dialect runtimes are lazy-loaded. Importing `nubloxsql` does not initialize every supported database runtime; a dialect is loaded when it is selected or explicitly accessed.
 
 Dialect selection is explicit. The facade does not guess silently when doing so could change semantics.
 
@@ -88,19 +103,15 @@ Shared core is a contract layer, not the developer entry point and not a replace
 
 ## One-install packaging rule
 
-The published NuBloxSQL package must contain the supported dialect runtimes required by the public facade.
+The published NuBloxSQL package contains the supported runtimes required by the public facade.
 
-Developers should not need to install:
+Developers install only:
 
 ```text
-@nublox/mysql
-@nublox/postgresql
-@nublox/sqlite
+nubloxsql
 ```
 
-in order to use those dialects through NuBloxSQL.
-
-Those names may continue to exist as repository/workspace boundaries and may remain useful for internal testing or specialist packaging decisions, but the default public integration contract is the root NuBloxSQL package.
+They do not install separate MySQL, PostgreSQL, SQLite or SQL Core NuBlox packages to use those capabilities.
 
 ## Native escape hatches
 
