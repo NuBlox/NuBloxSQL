@@ -10,6 +10,7 @@ on:
       - 'lib/client/**'
       - 'test/client-api.js'
       - 'test/client-live.js'
+      - 'test/client-types-live.js'
       - 'test/client-operation-live.js'
       - 'test/operation-control.js'
       - 'lib/dialects/mysql/**'
@@ -22,6 +23,7 @@ on:
       - 'lib/client/**'
       - 'test/client-api.js'
       - 'test/client-live.js'
+      - 'test/client-types-live.js'
       - 'test/client-operation-live.js'
       - 'test/operation-control.js'
       - 'lib/dialects/mysql/**'
@@ -86,6 +88,8 @@ jobs:
           node-version: 24
       - name: Unified NuBloxSQL client contract
         run: node test/client-live.js
+      - name: Portable type codec contract
+        run: node test/client-types-live.js
       - name: Portable operation control contract
         run: node test/client-operation-live.js
       - name: Direct streaming with backpressure
