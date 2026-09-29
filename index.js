@@ -17,23 +17,26 @@ require('./lib/client/TransactionIntegration').install(clientApi);
 var DIALECTS = Object.freeze({
   mysql: 'mysql',
   postgresql: 'postgresql',
-  sqlite: 'sqlite'
+  sqlite: 'sqlite',
+  sqlserver: 'sqlserver'
 });
 
 var loaders = Object.freeze({
   mysql: function loadMySql() { return require('./lib/dialects/mysql'); },
   postgresql: function loadPostgreSql() { return require('./lib/dialects/postgresql'); },
-  sqlite: function loadSqlite() { return require('./lib/dialects/sqlite'); }
+  sqlite: function loadSqlite() { return require('./lib/dialects/sqlite'); },
+  sqlserver: function loadSqlServer() { return require('./lib/dialects/sqlserver'); }
 });
 
 var cache = Object.create(null);
 
 function normalizeDialect(value) {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new TypeError('NuBloxSQL requires a dialect: mysql, postgresql or sqlite');
+    throw new TypeError('NuBloxSQL requires a dialect: mysql, postgresql, sqlite or sqlserver');
   }
   var dialect = value.trim().toLowerCase();
   if (dialect === 'postgres' || dialect === 'pg') dialect = 'postgresql';
+  if (dialect === 'mssql' || dialect === 'sql-server') dialect = 'sqlserver';
   if (!Object.prototype.hasOwnProperty.call(loaders, dialect)) throw new RangeError('Unsupported NuBloxSQL dialect: ' + value);
   return dialect;
 }
@@ -117,6 +120,7 @@ var dialects = {};
 defineLazy(dialects, 'mysql', function () { return loadAdapter('mysql'); });
 defineLazy(dialects, 'postgresql', function () { return loadAdapter('postgresql'); });
 defineLazy(dialects, 'sqlite', function () { return loadAdapter('sqlite'); });
+defineLazy(dialects, 'sqlserver', function () { return loadAdapter('sqlserver'); });
 Object.freeze(dialects);
 
 exports.DIALECTS = DIALECTS;
@@ -140,3 +144,4 @@ defineLazy(exports, 'sqlCore', function () { return require('./lib/core'); });
 defineLazy(exports, 'mysql', function () { return loadAdapter('mysql'); });
 defineLazy(exports, 'postgresql', function () { return loadAdapter('postgresql'); });
 defineLazy(exports, 'sqlite', function () { return loadAdapter('sqlite'); });
+defineLazy(exports, 'sqlserver', function () { return loadAdapter('sqlserver'); });
