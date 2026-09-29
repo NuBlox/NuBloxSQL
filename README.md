@@ -160,7 +160,7 @@ NuBloxSQL has three internal layers:
    implementation    implementation   implementation
 ```
 
-Internal workspace/package boundaries exist for maintainability, testing and independent engineering. They are **not** the intended developer installation model.
+The implementation is one runtime tree: shared contracts live under `lib/core`, and native database runtimes live under `lib/dialects/<dialect>`. These are internal code boundaries, not independently installed or published packages.
 
 See [Design intent](docs/architecture/design-intent.md) and [Multi-dialect architecture](docs/architecture/multi-dialect.md).
 
