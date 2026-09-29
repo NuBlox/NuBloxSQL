@@ -5,6 +5,24 @@ import sqlCore = require('./lib/core');
 
 type Dialect = 'mysql' | 'postgresql' | 'sqlite';
 type DialectAlias = Dialect | 'postgres' | 'pg';
+type ErrorCategory =
+  | 'authentication'
+  | 'authorization'
+  | 'connection'
+  | 'timeout'
+  | 'cancelled'
+  | 'constraint'
+  | 'unique_violation'
+  | 'foreign_key_violation'
+  | 'not_null_violation'
+  | 'syntax'
+  | 'deadlock'
+  | 'serialization'
+  | 'resource_limit'
+  | 'state'
+  | 'cardinality'
+  | 'unsupported'
+  | 'unknown';
 
 type MySqlConfig = ConstructorParameters<typeof mysql.Connection>[0] & { dialect: 'mysql' };
 type PostgreSqlConfig = ConstructorParameters<typeof postgresql.Connection>[0] & { dialect: 'postgresql' | 'postgres' | 'pg' };
@@ -52,6 +70,38 @@ interface ClientResult<Row = Record<string, unknown>> {
 interface ClientPrepareOptions extends Record<string, unknown> {
   acquire?: Record<string, unknown>;
 }
+
+declare class NuBloxSqlError extends Error {
+  readonly code: string;
+  readonly category: ErrorCategory;
+  readonly dialect: Dialect | null;
+  readonly operation: string | null;
+  readonly retryable: boolean;
+  readonly sqlState: string | null;
+  readonly nativeCode: string | number | null;
+  readonly native: unknown;
+  readonly cause?: unknown;
+}
+
+declare const ERROR_CATEGORIES: Readonly<{
+  AUTHENTICATION: 'authentication';
+  AUTHORIZATION: 'authorization';
+  CONNECTION: 'connection';
+  TIMEOUT: 'timeout';
+  CANCELLED: 'cancelled';
+  CONSTRAINT: 'constraint';
+  UNIQUE_VIOLATION: 'unique_violation';
+  FOREIGN_KEY_VIOLATION: 'foreign_key_violation';
+  NOT_NULL_VIOLATION: 'not_null_violation';
+  SYNTAX: 'syntax';
+  DEADLOCK: 'deadlock';
+  SERIALIZATION: 'serialization';
+  RESOURCE_LIMIT: 'resource_limit';
+  STATE: 'state';
+  CARDINALITY: 'cardinality';
+  UNSUPPORTED: 'unsupported';
+  UNKNOWN: 'unknown';
+}>;
 
 declare class PreparedClientStatement {
   readonly client: Client;
@@ -129,6 +179,7 @@ declare function createClient(dialect: 'sqlite', config?: ConstructorParameters<
 export {
   Dialect,
   DialectAlias,
+  ErrorCategory,
   ConnectionConfig,
   ClientConfig,
   ClientPoolOptions,
@@ -139,6 +190,8 @@ export {
   CompiledSql,
   SqlTag,
   ClientResult,
+  NuBloxSqlError,
+  ERROR_CATEGORIES,
   PreparedClientStatement,
   Client,
   sql,
