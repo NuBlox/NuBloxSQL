@@ -41,8 +41,8 @@ jobs:
       - name: Verify SQL Server protocol and connection contracts
         run: npm run test:sqlserver
 
-  live:
-    name: live SQL Server 2022
+  live-tds8:
+    name: live SQL Server 2025 TDS 8
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -87,9 +87,10 @@ jobs:
           tlskey = /var/opt/mssql/secrets/mssql.key
           tlsprotocols = 1.2
           forceencryption = 0
+          forcestrict = 1
           EOF
           cat > .ci/sqlserver/Dockerfile <<'EOF'
-          FROM mcr.microsoft.com/mssql/server:2022-latest
+          FROM mcr.microsoft.com/mssql/server:2025-latest
           USER root
           COPY ca.pem /usr/local/share/ca-certificates/nubloxsql-ci-root.crt
           COPY mssql.pem /var/opt/mssql/secrets/mssql.pem
@@ -102,7 +103,7 @@ jobs:
           USER mssql
           EOF
           docker build --tag nublox-sqlserver-ci .ci/sqlserver
-      - name: Start disposable SQL Server 2022
+      - name: Start disposable SQL Server 2025
         shell: bash
         run: |
           password="Nbx_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_Aa1!"
