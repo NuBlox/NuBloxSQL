@@ -63,14 +63,14 @@ jobs:
             -out .ci/sqlserver/ca.pem \
             -days 1
           openssl req -nodes -newkey rsa:2048 \
-            -subj '/CN=localhost' \
+            -subj '/CN=sqlserver.nublox.test' \
             -keyout .ci/sqlserver/mssql.key \
             -out .ci/sqlserver/mssql.csr
           cat > .ci/sqlserver/server.ext <<'EOF'
           basicConstraints=critical,CA:FALSE
           keyUsage=critical,digitalSignature,keyEncipherment
           extendedKeyUsage=serverAuth
-          subjectAltName=DNS:localhost,IP:127.0.0.1
+          subjectAltName=DNS:sqlserver.nublox.test,DNS:localhost,IP:127.0.0.1
           EOF
           openssl x509 -req \
             -in .ci/sqlserver/mssql.csr \
@@ -109,6 +109,7 @@ jobs:
           echo "MSSQL_SA_PASSWORD=$password" >> "$GITHUB_ENV"
           echo "MSSQL_CA_PATH=$PWD/.ci/sqlserver/ca.pem" >> "$GITHUB_ENV"
           docker run --detach --name nublox-sqlserver \
+            --hostname sqlserver.nublox.test \
             --publish 1433:1433 \
             --env ACCEPT_EULA=Y \
             --env MSSQL_PID=Developer \
@@ -128,7 +129,8 @@ jobs:
           exit 1
       - name: Native TDS 8 TLS, PRELOGIN and LOGIN7 qualification
         env:
-          MSSQL_HOST: localhost
+          MSSQL_HOST: 127.0.0.1
+          MSSQL_SERVER_NAME: sqlserver.nublox.test
           MSSQL_PORT: 1433
         run: node lib/dialects/sqlserver/test/live-connection.js
       - name: Show SQL Server logs on failure
