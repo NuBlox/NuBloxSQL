@@ -13,6 +13,7 @@ function configFor(dialect) {
       user: process.env.MYSQL_USER,
       password: process.env.MYSQL_PASSWORD,
       database: process.env.MYSQL_DATABASE,
+      ssl: 'disable',
       pool: { max: 4 }
     };
   }
