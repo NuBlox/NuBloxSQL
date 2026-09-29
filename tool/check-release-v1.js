@@ -5,12 +5,6 @@ var path = require('path');
 
 var root = path.resolve(__dirname, '..');
 var failures = [];
-var internal = [
-  ['packages/mysql/package.json', '@nublox/mysql', '1.0.0'],
-  ['packages/sql-core/package.json', '@nublox/sql-core', '1.0.0'],
-  ['packages/postgresql/package.json', '@nublox/postgresql', '1.0.0'],
-  ['packages/sqlite/package.json', '@nublox/sqlite', '0.1.0']
-];
 var licenceMarker = 'NuBloxSQL Proprietary Software Licence';
 
 function read(file) { return fs.readFileSync(path.join(root, file), 'utf8'); }
@@ -22,21 +16,38 @@ if (platform.name !== 'nubloxsql') fail('package.json must expose the nubloxsql 
 if (platform.version !== '1.0.0') fail('package.json must be version 1.0.0');
 if (platform.private === true) fail('nubloxsql must remain publishable');
 if (platform.license !== 'SEE LICENSE IN LICENSE') fail('package.json must point to the proprietary LICENSE');
+if (platform.workspaces) fail('NuBloxSQL must not expose internal runtime modules as npm workspaces');
 
-if (read('LICENSE').indexOf(licenceMarker) === -1) fail('root LICENSE is not the NuBloxSQL proprietary licence');
+['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'].forEach(function (key) {
+  if (platform[key] && Object.keys(platform[key]).length) fail('nubloxsql must not declare ' + key);
+});
 
-internal.forEach(function (entry) {
-  var file = entry[0];
-  var name = entry[1];
-  var version = entry[2];
-  var manifest = json(file);
-  if (manifest.name !== name) fail(file + ' has unexpected workspace name');
-  if (manifest.version !== version) fail(name + ' has unexpected internal version');
-  if (manifest.private !== true) fail(name + ' must remain an internal/private NuBloxSQL workspace');
-  ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'].forEach(function (key) {
-    if (manifest[key] && Object.keys(manifest[key]).length) fail(name + ' must not declare ' + key);
+if (fs.existsSync(path.join(root, 'packages'))) fail('legacy packages/ runtime tree must not exist');
+
+[
+  'lib/core/index.js',
+  'lib/core/index.d.ts',
+  'lib/dialects/mysql/index.js',
+  'lib/dialects/mysql/index.d.ts',
+  'lib/dialects/postgresql/index.js',
+  'lib/dialects/postgresql/index.d.ts',
+  'lib/dialects/sqlite/index.js',
+  'lib/dialects/sqlite/index.d.ts'
+].forEach(function (file) {
+  if (!fs.existsSync(path.join(root, file))) fail('missing consolidated runtime file: ' + file);
+});
+
+['mysql', 'postgresql', 'sqlite'].forEach(function (dialect) {
+  var runtimeRoot = path.join(root, 'lib', 'dialects', dialect);
+  ['package.json', 'README.md', 'LICENSE', 'NOTICE'].forEach(function (file) {
+    if (fs.existsSync(path.join(runtimeRoot, file))) fail('dialect runtime must not contain nested package metadata: lib/dialects/' + dialect + '/' + file);
   });
 });
+['package.json', 'README.md', 'LICENSE', 'NOTICE'].forEach(function (file) {
+  if (fs.existsSync(path.join(root, 'lib', 'core', file))) fail('SQL Core runtime must not contain nested package metadata: lib/core/' + file);
+});
+
+if (read('LICENSE').indexOf(licenceMarker) === -1) fail('root LICENSE is not the NuBloxSQL proprietary licence');
 
 [
   'docs/v1/SQL-CORE-V1-CONTRACT.md',
@@ -54,7 +65,7 @@ internal.forEach(function (entry) {
   if (fs.existsSync(path.join(root, file))) fail('third-party dependency lockfile must not exist: ' + file);
 });
 
-var sqlCore = require(path.join(root, 'packages/sql-core'));
+var sqlCore = require(path.join(root, 'lib/core'));
 if (sqlCore.CONTRACT_VERSION !== '1.0') fail('SQL Core CONTRACT_VERSION must be 1.0');
 
 if (failures.length) {
@@ -63,5 +74,5 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   console.log('NuBloxSQL release architecture audit: PASS');
-  console.log('One public package surface, private internal dialect workspaces, proprietary licence and zero third-party package dependencies are enforced.');
+  console.log('One public package, one consolidated runtime tree, proprietary licence and zero third-party package dependencies are enforced.');
 }
