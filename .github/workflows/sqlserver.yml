@@ -1,0 +1,142 @@
+name: NuBloxSQL SQL Server
+
+on:
+  pull_request:
+    paths:
+      - 'index.js'
+      - 'index.d.ts'
+      - 'package.json'
+      - 'lib/client/**'
+      - 'lib/dialects/sqlserver/**'
+      - '.github/workflows/sqlserver.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'index.js'
+      - 'index.d.ts'
+      - 'package.json'
+      - 'lib/client/**'
+      - 'lib/dialects/sqlserver/**'
+      - '.github/workflows/sqlserver.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: SQL Server contracts (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Verify SQL Server protocol and connection contracts
+        run: npm run test:sqlserver
+
+  live-tds8:
+    name: live SQL Server 2025 TDS 8
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Provision ephemeral SQL Server TLS identity
+        shell: bash
+        run: |
+          mkdir -p .ci/sqlserver
+          openssl req -x509 -nodes -newkey rsa:3072 \
+            -subj '/CN=NuBloxSQL CI Root CA' \
+            -addext 'basicConstraints=critical,CA:TRUE,pathlen:0' \
+            -addext 'keyUsage=critical,keyCertSign,cRLSign' \
+            -keyout .ci/sqlserver/ca.key \
+            -out .ci/sqlserver/ca.pem \
+            -days 1
+          openssl req -nodes -newkey rsa:2048 \
+            -subj '/CN=sqlserver' \
+            -keyout .ci/sqlserver/mssql.key \
+            -out .ci/sqlserver/mssql.csr
+          cat > .ci/sqlserver/server.ext <<'EOF'
+          basicConstraints=critical,CA:FALSE
+          keyUsage=critical,digitalSignature,keyEncipherment
+          extendedKeyUsage=serverAuth
+          subjectAltName=DNS:sqlserver,DNS:sqlserver.nublox.test,DNS:localhost,IP:127.0.0.1
+          EOF
+          openssl x509 -req \
+            -in .ci/sqlserver/mssql.csr \
+            -CA .ci/sqlserver/ca.pem \
+            -CAkey .ci/sqlserver/ca.key \
+            -CAcreateserial \
+            -out .ci/sqlserver/mssql.pem \
+            -days 1 \
+            -sha256 \
+            -extfile .ci/sqlserver/server.ext
+          cat > .ci/sqlserver/mssql.conf <<'EOF'
+          [network]
+          tlscert = /var/opt/mssql/secrets/mssql.pem
+          tlskey = /var/opt/mssql/secrets/mssql.key
+          tlsprotocols = 1.2
+          forceencryption = 0
+          forcestrict = 1
+          EOF
+          cat > .ci/sqlserver/Dockerfile <<'EOF'
+          FROM mcr.microsoft.com/mssql/server:2025-latest
+          USER root
+          COPY ca.pem /usr/local/share/ca-certificates/nubloxsql-ci-root.crt
+          COPY mssql.pem /var/opt/mssql/secrets/mssql.pem
+          COPY mssql.key /var/opt/mssql/secrets/mssql.key
+          COPY mssql.conf /var/opt/mssql/mssql.conf
+          RUN update-ca-certificates \
+              && chown mssql:root /var/opt/mssql/secrets/mssql.pem /var/opt/mssql/secrets/mssql.key /var/opt/mssql/mssql.conf \
+              && chmod 600 /var/opt/mssql/secrets/mssql.pem /var/opt/mssql/secrets/mssql.key \
+              && chmod 644 /var/opt/mssql/mssql.conf
+          USER mssql
+          EOF
+          docker build --tag nublox-sqlserver-ci .ci/sqlserver
+      - name: Start disposable SQL Server 2025
+        shell: bash
+        run: |
+          password="Nbx_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_Aa1!"
+          echo "MSSQL_SA_PASSWORD=$password" >> "$GITHUB_ENV"
+          echo "MSSQL_CA_PATH=$PWD/.ci/sqlserver/ca.pem" >> "$GITHUB_ENV"
+          docker run --detach --name nublox-sqlserver \
+            --hostname sqlserver.nublox.test \
+            --publish 1433:1433 \
+            --env ACCEPT_EULA=Y \
+            --env MSSQL_PID=Developer \
+            --env "MSSQL_SA_PASSWORD=$password" \
+            nublox-sqlserver-ci
+      - name: Wait for SQL Server engine readiness
+        shell: bash
+        run: |
+          for attempt in $(seq 1 90); do
+            if docker logs nublox-sqlserver 2>&1 | grep -q 'SQL Server is now ready for client connections'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs nublox-sqlserver
+          echo 'SQL Server did not report engine readiness within 90 seconds' >&2
+          exit 1
+      - name: Native TDS 8 TLS, PRELOGIN and LOGIN7 qualification
+        env:
+          MSSQL_HOST: 127.0.0.1
+          MSSQL_SERVER_NAME: sqlserver
+          MSSQL_PORT: 1433
+        run: node lib/dialects/sqlserver/test/live-connection.js
+      - name: Show SQL Server logs on failure
+        if: failure()
+        run: docker logs nublox-sqlserver || true
+      - name: Stop SQL Server
+        if: always()
+        run: docker rm --force nublox-sqlserver || true
