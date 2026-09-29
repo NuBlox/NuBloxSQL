@@ -6,6 +6,7 @@ var errorApi = require('./lib/client/Error');
 var streamApi = require('./lib/client/Stream');
 var metadataApi = require('./lib/client/Metadata');
 streamApi.install(clientApi);
+require('./lib/client/OperationControlIntegration').install(clientApi);
 require('./lib/client/ErrorIntegration').install(clientApi);
 
 var DIALECTS = Object.freeze({
