@@ -11,6 +11,7 @@ on:
       - 'test/client-api.js'
       - 'test/client-live.js'
       - 'test/client-types-live.js'
+      - 'test/client-transaction-live.js'
       - 'test/client-operation-live.js'
       - 'test/operation-control.js'
       - 'lib/dialects/mysql/**'
@@ -24,6 +25,7 @@ on:
       - 'test/client-api.js'
       - 'test/client-live.js'
       - 'test/client-types-live.js'
+      - 'test/client-transaction-live.js'
       - 'test/client-operation-live.js'
       - 'test/operation-control.js'
       - 'lib/dialects/mysql/**'
@@ -90,6 +92,8 @@ jobs:
         run: node test/client-live.js
       - name: Portable type codec contract
         run: node test/client-types-live.js
+      - name: Advanced transaction contract
+        run: node test/client-transaction-live.js
       - name: Portable operation control contract
         run: node test/client-operation-live.js
       - name: Direct streaming with backpressure
