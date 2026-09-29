@@ -140,6 +140,12 @@ jobs:
           MSSQL_SERVER_NAME: sqlserver
           MSSQL_PORT: 1433
         run: node lib/dialects/sqlserver/test/live-metadata.js
+      - name: Portable SQL Server streaming qualification
+        env:
+          MSSQL_HOST: 127.0.0.1
+          MSSQL_SERVER_NAME: sqlserver
+          MSSQL_PORT: 1433
+        run: node lib/dialects/sqlserver/test/live-streaming.js
       - name: Show SQL Server logs on failure
         if: failure()
         run: docker logs nublox-sqlserver || true
