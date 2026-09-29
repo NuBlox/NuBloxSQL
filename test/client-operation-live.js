@@ -38,7 +38,13 @@ async function expectCategory(promise, category) {
 async function main() {
   var dialect = process.env.NUBLOX_DIALECT;
   if (!dialect) throw new Error('NUBLOX_DIALECT is required');
-  var db = nublox.createClient(configFor(dialect));
+  var events = [];
+  var config = configFor(dialect);
+  config.telemetry = {
+    slowQueryThresholdMs: 50,
+    onEvent: function (event) { events.push(event); }
+  };
+  var db = nublox.createClient(config);
   var slowSql = dialect === 'mysql' ? 'SELECT SLEEP(2)' : 'SELECT pg_sleep(2)';
 
   try {
@@ -54,7 +60,15 @@ async function main() {
 
     var healthy = await db.query('SELECT 1 AS value');
     assert.strictEqual(Number(healthy.rows[0].value), 1);
-    console.log('NuBloxSQL live portable operation control passed for ' + dialect);
+
+    var queryFinishes = events.filter(function (event) { return event.type === 'query' && event.phase === 'finish'; });
+    assert.ok(queryFinishes.some(function (event) { return event.success === false && event.errorCategory === 'timeout' && event.slow === true; }));
+    assert.ok(queryFinishes.some(function (event) { return event.success === false && event.errorCategory === 'cancelled' && event.slow === true; }));
+    assert.ok(queryFinishes.some(function (event) { return event.success === true && event.rowCount === 1; }));
+    assert.ok(events.some(function (event) { return event.type === 'error' && event.errorCategory === 'timeout'; }));
+    assert.ok(events.some(function (event) { return event.type === 'error' && event.errorCategory === 'cancelled'; }));
+
+    console.log('NuBloxSQL live portable operation control + observability passed for ' + dialect);
   } finally {
     await db.close();
   }
