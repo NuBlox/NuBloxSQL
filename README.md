@@ -2,34 +2,42 @@
 
 **NuBloxSQL is a single-entry, multi-dialect SQL database integration platform for Node.js.**
 
-Its design goal is simple: developers install and import NuBloxSQL once, select a database dialect, and use one coherent platform across SQL engines without having to assemble or manage a separate driver package for every database family.
+Install one package, import one API, select a dialect through configuration, and use the same developer contract across SQL engines.
 
 ```bash
 npm install nubloxsql
 ```
 
 ```js
-const sql = require('nubloxsql');
+const { createClient, sql } = require('nubloxsql');
 
-const db = sql.createConnection({
+const db = createClient({
   dialect: 'postgresql',
   host: '127.0.0.1',
   user: 'app',
   password: process.env.DB_PASSWORD,
-  database: 'app'
+  database: 'app',
+  pool: { max: 20 }
 });
 
-await db.connect();
-const result = await db.query('SELECT 1 AS ok');
-await db.end();
+const user = await db.one(sql`
+  SELECT id, name, email
+  FROM ${sql.identifier('users')}
+  WHERE id = ${42}
+`);
+
+await db.close();
 ```
+
+The tagged SQL is compiled through the selected dialect. Values become native placeholders and identifiers are quoted by the dialect runtime. Application code does not need to know whether the engine uses `?`, `$1`, or another placeholder form.
 
 ## The NuBloxSQL model
 
-NuBloxSQL provides **one developer-facing entry point** over multiple native SQL runtimes.
-
 ```text
                     application code
+                          │
+                          ▼
+                 createClient() + sql
                           │
                           ▼
                        NuBloxSQL
@@ -44,17 +52,18 @@ NuBloxSQL provides **one developer-facing entry point** over multiple native SQL
 
 The public platform owns:
 
+- one installation and one import;
 - dialect selection;
-- connection creation;
-- pooling where supported;
+- portable SQL value placeholders and identifier quoting;
+- a unified query/result contract;
+- connection and pool ownership;
+- transactions;
 - capability discovery;
-- shared execution/result vocabulary;
-- transaction and resource-limit policy;
-- access to dialect-native extensions when required.
+- direct access to the selected native runtime when required.
 
-The internal dialect runtimes own the details that genuinely differ between engines: wire protocols, authentication, storage lifecycle, locking, type systems, cancellation, cursors and database-specific metadata semantics.
+The native dialect runtimes own wire protocols, authentication, storage lifecycle, locking, database type systems, cancellation, cursor mechanics and genuinely database-specific behavior.
 
-The governing principle is **one entry point, honest dialect semantics**.
+The governing principle is **one developer API, honest dialect semantics**.
 
 ## Supported dialects
 
@@ -68,88 +77,141 @@ The governing principle is **one entry point, honest dialect semantics**.
 
 Stable v1 qualification currently covers Node.js 22/24/26, MySQL 8.4/9.7 and PostgreSQL 15/16/17/18. SQLite is active post-v1 development.
 
-## Single-entry API
+## Preferred client API
 
-### Create a connection
+### Portable SQL
 
 ```js
-const sql = require('nubloxsql');
+const result = await db.query(sql`
+  SELECT id, name
+  FROM ${sql.identifier('users')}
+  WHERE email = ${email}
+`);
+```
 
-const mysql = sql.createConnection({
-  dialect: 'mysql',
-  host: '127.0.0.1',
-  user: 'app',
-  password: process.env.DB_PASSWORD,
-  database: 'app'
+For MySQL this compiles to `WHERE email = ?`. For PostgreSQL it compiles to `WHERE email = $1`. Parameters remain separate from SQL text.
+
+Nested fragments and safe identifier composition are supported:
+
+```js
+const columns = sql.join([
+  sql`${sql.identifier('id')}`,
+  sql`${sql.identifier('name')}`
+]);
+
+const rows = await db.all(sql`
+  SELECT ${columns}
+  FROM ${sql.identifier('app', 'users')}
+`);
+```
+
+### Unified result contract
+
+`query()` and `execute()` return a portable result envelope:
+
+```js
+{
+  rows,
+  fields,
+  rowCount,
+  affectedRows,
+  insertId,
+  command,
+  dialect,
+  native
+}
+```
+
+`native` retains the original dialect result so NuBloxSQL does not discard engine-specific information.
+
+Convenience methods:
+
+```js
+const rows = await db.all(sql`SELECT * FROM ${sql.identifier('users')}`);
+const user = await db.one(sql`SELECT * FROM ${sql.identifier('users')} WHERE id = ${id}`);
+```
+
+`one()` requires exactly one row and rejects otherwise.
+
+### Transactions
+
+```js
+await db.transaction(async tx => {
+  await tx.execute(sql`
+    UPDATE accounts
+    SET balance = balance - ${100}
+    WHERE id = ${sourceId}
+  `);
+
+  await tx.execute(sql`
+    UPDATE accounts
+    SET balance = balance + ${100}
+    WHERE id = ${destinationId}
+  `);
 });
+```
 
-const postgres = sql.createConnection({
+NuBloxSQL owns acquisition, commit, rollback and release. The dialect runtime owns the native transaction semantics.
+
+### Capabilities
+
+```js
+if (db.supports('serverSideCursors')) {
+  // use an advanced native capability
+}
+
+console.log(db.capabilities);
+```
+
+Unsupported database features are represented honestly rather than silently emulated.
+
+### Native escape hatch
+
+The portable client does not hide the underlying runtime:
+
+```js
+const nativeResource = db.native;
+const nativeAdapter = db.adapter;
+```
+
+The package-level dialect APIs remain available from the same installation:
+
+```js
+const nublox = require('nubloxsql');
+
+nublox.mysql;
+nublox.postgresql;
+nublox.sqlite;
+```
+
+## Low-level APIs
+
+`createConnection()` and `createPool()` remain available for developers who intentionally want direct dialect-runtime control:
+
+```js
+const nublox = require('nubloxsql');
+
+const connection = nublox.createConnection({
   dialect: 'postgresql',
   host: '127.0.0.1',
   user: 'app',
-  password: process.env.DB_PASSWORD,
   database: 'app'
 });
-
-const sqlite = sql.createConnection({
-  dialect: 'sqlite',
-  filename: './app.db'
-});
 ```
 
-The two-argument form is also available:
-
-```js
-const db = sql.createConnection('postgresql', config);
-```
-
-### Create a pool
-
-```js
-const pool = sql.createPool({
-  dialect: 'mysql',
-  host: '127.0.0.1',
-  user: 'app',
-  password: process.env.DB_PASSWORD,
-  database: 'app',
-  connectionLimit: 20
-});
-```
-
-Pooling is available only where the selected dialect runtime supports it. Unsupported capabilities fail explicitly rather than being emulated silently.
-
-### Capability discovery
-
-```js
-sql.supports('postgresql', 'serverSideCursors'); // true
-sql.supports('sqlite', 'queryCancellation');     // false
-```
-
-### Native power without another install
-
-The same NuBloxSQL installation exposes advanced native runtimes when a developer needs database-specific features:
-
-```js
-const sql = require('nubloxsql');
-
-const pg = sql.postgresql;
-const mysql = sql.mysql;
-const sqlite = sql.sqlite;
-```
-
-This is an escape hatch within NuBloxSQL, not a requirement to install separate packages.
+These are advanced primitives. `createClient()` is the primary developer-facing API.
 
 ## Architecture
 
 NuBloxSQL has three internal layers:
 
-1. **Platform facade** — the public single entry point developers use.
-2. **Shared SQL contracts** — portable concepts proven across multiple dialects.
-3. **Native dialect runtimes** — database-specific implementation and semantics.
+1. **Developer client** — portable SQL compilation, result normalization, transactions and lifecycle.
+2. **Shared SQL contracts** — capabilities and semantics proven across dialects.
+3. **Native dialect runtimes** — database-specific implementation and native behavior.
 
 ```text
                        nubloxsql
-                 public platform facade
+                  developer client API
                          │
                          ▼
                   shared SQL contracts
@@ -160,7 +222,7 @@ NuBloxSQL has three internal layers:
    implementation    implementation   implementation
 ```
 
-The implementation is one runtime tree: shared contracts live under `lib/core`, and native database runtimes live under `lib/dialects/<dialect>`. These are internal code boundaries, not independently installed or published packages.
+The implementation is one runtime tree: shared contracts live under `lib/core`, the developer client under `lib/client`, and native database runtimes under `lib/dialects/<dialect>`.
 
 See [Design intent](docs/architecture/design-intent.md) and [Multi-dialect architecture](docs/architecture/multi-dialect.md).
 
@@ -169,7 +231,7 @@ See [Design intent](docs/architecture/design-intent.md) and [Multi-dialect archi
 NuBloxSQL must:
 
 - provide one install and one import for developers;
-- keep common APIs coherent across dialects where semantics are genuinely portable;
+- keep common APIs coherent where semantics are genuinely portable;
 - preserve database-specific semantics where they are not portable;
 - expose capability discovery instead of pretending every engine supports the same features;
 - preserve type fidelity and native diagnostics;
@@ -177,7 +239,7 @@ NuBloxSQL must:
 - keep native escape hatches accessible from the same NuBloxSQL entry point;
 - qualify supported runtime/database versions with executable CI and live-server evidence.
 
-NuBloxSQL is not an ORM and is not intended to erase SQL dialect differences.
+NuBloxSQL is not an ORM and is not intended to erase legitimate SQL dialect differences.
 
 ## Verification
 
