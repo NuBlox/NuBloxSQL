@@ -9,8 +9,63 @@ type DialectAlias = Dialect | 'postgres' | 'pg';
 type MySqlConfig = ConstructorParameters<typeof mysql.Connection>[0] & { dialect: 'mysql' };
 type PostgreSqlConfig = ConstructorParameters<typeof postgresql.Connection>[0] & { dialect: 'postgresql' | 'postgres' | 'pg' };
 type SqliteConfig = ConstructorParameters<typeof sqlite.Connection>[0] & { dialect: 'sqlite' };
-
 type ConnectionConfig = MySqlConfig | PostgreSqlConfig | SqliteConfig;
+
+interface ClientPoolOptions {
+  max?: number;
+  connectionLimit?: number;
+  maxIdle?: number;
+  idleTimeout?: number;
+  acquireTimeout?: number;
+  queueLimit?: number;
+  resetOnRelease?: boolean;
+}
+
+type ClientConfig = ConnectionConfig & { pool?: boolean | ClientPoolOptions };
+
+interface SqlFragment {}
+interface SqlIdentifier {}
+interface CompiledSql {
+  readonly text: string;
+  readonly parameters: readonly unknown[];
+}
+
+interface SqlTag {
+  (strings: TemplateStringsArray, ...values: unknown[]): SqlFragment;
+  identifier(...parts: string[]): SqlIdentifier;
+  join(fragments: readonly SqlFragment[], separator?: string): SqlFragment;
+}
+
+interface ClientResult<Row = Record<string, unknown>> {
+  readonly rows: Row[];
+  readonly fields: unknown[];
+  readonly rowCount: number;
+  readonly affectedRows: number | bigint | null;
+  readonly insertId: number | bigint | null;
+  readonly command: string;
+  readonly dialect: Dialect;
+  readonly native: unknown;
+}
+
+declare class Client {
+  readonly dialect: Dialect;
+  readonly config: Record<string, unknown>;
+  readonly descriptor: unknown;
+  readonly capabilities: Readonly<Record<string, boolean>>;
+  readonly adapter: unknown;
+  readonly native: unknown;
+
+  supports(capability: string): boolean;
+  compile(statement: SqlFragment | string): CompiledSql;
+  query<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<ClientResult<Row>>;
+  all<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<Row[]>;
+  one<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<Row>;
+  execute<Row = Record<string, unknown>>(statement: SqlFragment | string, options?: Record<string, unknown>): Promise<ClientResult<Row>>;
+  transaction<T>(fn: (transaction: Client) => T | Promise<T>, options?: Record<string, unknown>): Promise<T>;
+  close(): Promise<void>;
+}
+
+declare const sql: SqlTag;
 
 declare const DIALECTS: Readonly<{
   mysql: 'mysql';
@@ -44,10 +99,24 @@ declare function createPool(config: PostgreSqlConfig): InstanceType<typeof postg
 declare function createPool(dialect: 'mysql', config?: ConstructorParameters<typeof mysql.Pool>[0]): InstanceType<typeof mysql.Pool>;
 declare function createPool(dialect: 'postgresql' | 'postgres' | 'pg', config?: ConstructorParameters<typeof postgresql.Pool>[0]): InstanceType<typeof postgresql.Pool>;
 
+declare function createClient(config: ClientConfig): Client;
+declare function createClient(dialect: 'mysql', config: ConstructorParameters<typeof mysql.Connection>[0] & { pool?: boolean | ClientPoolOptions }): Client;
+declare function createClient(dialect: 'postgresql' | 'postgres' | 'pg', config: ConstructorParameters<typeof postgresql.Connection>[0] & { pool?: boolean | ClientPoolOptions }): Client;
+declare function createClient(dialect: 'sqlite', config?: ConstructorParameters<typeof sqlite.Connection>[0] & { pool?: false }): Client;
+
 export {
   Dialect,
   DialectAlias,
   ConnectionConfig,
+  ClientConfig,
+  ClientPoolOptions,
+  SqlFragment,
+  SqlIdentifier,
+  CompiledSql,
+  SqlTag,
+  ClientResult,
+  Client,
+  sql,
   DIALECTS,
   dialects,
   sqlCore,
@@ -58,5 +127,6 @@ export {
   descriptor,
   supports,
   createConnection,
-  createPool
+  createPool,
+  createClient
 };
