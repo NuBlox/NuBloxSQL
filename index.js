@@ -25,6 +25,7 @@ require('./lib/client/SqlServerMetadataIntegration').install(metadataApi);
 metadataIntegrationApi.install(clientApi, metadataApi);
 lifecycleApi.install(clientApi);
 capabilitiesApi.install(clientApi);
+observabilityApi.install(clientApi, streamApi);
 
 var DIALECTS = Object.freeze({ mysql: 'mysql', postgresql: 'postgresql', sqlite: 'sqlite', sqlserver: 'sqlserver' });
 var loaders = Object.freeze({
@@ -102,6 +103,8 @@ exports.DIALECTS = DIALECTS;
 exports.CLIENT_LIFECYCLE_STATES = lifecycleApi.STATES;
 exports.TRANSACTION_ISOLATION_LEVELS = transactionPolicyApi.ISOLATION_LEVELS;
 exports.SQLITE_TRANSACTION_MODES = transactionPolicyApi.SQLITE_MODES;
+exports.OBSERVABILITY_SCHEMA_VERSION = observabilityApi.EVENT_SCHEMA_VERSION;
+exports.OBSERVABILITY_EVENT_TYPES = observabilityApi.EVENT_TYPES;
 exports.ERROR_CODES = publicErrorApi.CODES;
 exports.dialects = dialects;
 exports.adapter = adapter;
