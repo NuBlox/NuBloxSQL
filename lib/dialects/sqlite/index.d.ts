@@ -1,6 +1,10 @@
 export type SQLiteValue = null | number | bigint | string | Uint8Array;
 export type SQLiteParameters = readonly SQLiteValue[] | Record<string, SQLiteValue>;
 export type SQLiteOpenMode = 'readonly' | 'readwrite' | 'readwrite-create';
+export type SQLiteJournalMode = 'delete' | 'truncate' | 'persist' | 'memory' | 'wal' | 'off';
+export type SQLiteSynchronousMode = 'off' | 'normal' | 'full' | 'extra';
+export type SQLiteLockingMode = 'normal' | 'exclusive';
+export type SQLiteCheckpointMode = 'passive' | 'full' | 'restart' | 'truncate';
 
 export interface SQLiteCapabilities {
   readonly preparedStatements: true;
@@ -24,6 +28,12 @@ export interface SQLiteConnectionOptions {
   readOnly?: boolean;
   queryOnly?: boolean;
   readBigInts?: boolean;
+  productionDefaults?: boolean;
+  journalMode?: SQLiteJournalMode;
+  synchronous?: SQLiteSynchronousMode;
+  lockingMode?: SQLiteLockingMode;
+  walAutoCheckpoint?: number;
+  cacheSize?: number;
 }
 export interface SQLiteQueryOptions { readBigInts?: boolean; maxRows?: number; maxRowBytes?: number; maxResultBytes?: number; }
 export interface SQLiteFieldMetadata { readonly name: string; readonly nativeType?: string; readonly extension: Readonly<{ database: string | null; table: string | null; column: string | null; }>; }
@@ -37,6 +47,9 @@ export interface SQLiteSchemaObject { readonly name: string; readonly type: 'tab
 export interface SQLiteColumnInfo { readonly cid: number | bigint; readonly name: string; readonly type: string; readonly notnull: number | bigint; readonly dflt_value: SQLiteValue; readonly pk: number | bigint; readonly hidden: number | bigint; }
 export interface SQLiteBackupOptions { source?: string; target?: string; rate?: number; progress?: (status: { remainingPages: number; totalPages: number }) => void; }
 export interface SQLiteLifecycleCapabilities { readonly backup: boolean; readonly serialize: boolean; readonly deserialize: boolean; readonly attach: true; readonly detach: true; readonly explicitOpen: boolean; }
+export interface SQLiteStoragePolicy { readonly journalMode?: SQLiteJournalMode; readonly synchronous?: SQLiteSynchronousMode; readonly lockingMode?: SQLiteLockingMode; readonly busyTimeout: number; readonly walAutoCheckpoint?: number; readonly cacheSize?: number; }
+export interface SQLiteStorageState { readonly database: string; readonly journalMode: string; readonly synchronous: number; readonly lockingMode: string; readonly busyTimeout: number; readonly walAutoCheckpoint: number; readonly cacheSize: number; readonly pageSize: number; readonly pageCount: number; readonly freelistCount: number; }
+export interface SQLiteCheckpointResult { readonly database: string; readonly mode: SQLiteCheckpointMode; readonly busy: number; readonly logFrames: number; readonly checkpointedFrames: number; readonly native: Readonly<Record<string, number | bigint>> | null; }
 
 export class Connection {
   readonly filename: string | Buffer | URL;
@@ -67,6 +80,9 @@ export class Connection {
   serialize(database?: string): Uint8Array;
   deserialize(buffer: Uint8Array, options?: { database?: string; dbName?: string }): void;
   lifecycleCapabilities(): SQLiteLifecycleCapabilities;
+  storagePolicy(): SQLiteStoragePolicy;
+  storageState(database?: string): SQLiteStorageState;
+  checkpoint(mode?: SQLiteCheckpointMode, database?: string): SQLiteCheckpointResult;
 }
 
 export const capabilities: Readonly<SQLiteCapabilities>;
