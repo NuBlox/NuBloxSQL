@@ -34,6 +34,8 @@ export interface SQLiteConnectionOptions {
   lockingMode?: SQLiteLockingMode;
   walAutoCheckpoint?: number;
   cacheSize?: number;
+  allowExtension?: boolean;
+  extensionAllowlist?: readonly string[];
 }
 export interface SQLiteQueryOptions { readBigInts?: boolean; maxRows?: number; maxRowBytes?: number; maxResultBytes?: number; }
 export interface SQLiteFieldMetadata { readonly name: string; readonly nativeType?: string; readonly extension: Readonly<{ database: string | null; table: string | null; column: string | null; }>; }
@@ -75,6 +77,20 @@ export interface SQLiteOptimizeResult { readonly database: string; readonly mask
 export interface SQLiteVacuumOptions { database?: string; into?: string; }
 export interface SQLiteVacuumResult { readonly database: string; readonly into: string | null; }
 export interface SQLiteIncrementalVacuumResult { readonly database: string; readonly pages: number | null; }
+export interface SQLiteExtensibilityCapabilities { readonly scalarFunctions: boolean; readonly aggregates: boolean; readonly extensionLoading: boolean; readonly authorizer: boolean; readonly defensive: boolean; }
+export interface SQLiteExtensionPolicy { readonly enabled: boolean; readonly allowlist: readonly string[]; }
+export interface SQLiteFunctionOptions { deterministic?: boolean; directOnly?: boolean; useBigIntArguments?: boolean; varargs?: boolean; }
+export interface SQLiteAggregateOptions<State = unknown> {
+  start?: State | (() => State);
+  step: (state: State, ...values: SQLiteValue[]) => State;
+  result?: (state: State) => SQLiteValue;
+  inverse?: (state: State, ...values: SQLiteValue[]) => State;
+  deterministic?: boolean;
+  directOnly?: boolean;
+  useBigIntArguments?: boolean;
+  varargs?: boolean;
+}
+export type SQLiteAuthorizer = (actionCode: number, arg1: string | null, arg2: string | null, dbName: string | null, triggerOrView: string | null) => number;
 
 export class Connection {
   readonly filename: string | Buffer | URL;
@@ -115,6 +131,16 @@ export class Connection {
   optimize(options?: SQLiteOptimizeOptions): SQLiteOptimizeResult;
   vacuum(options?: SQLiteVacuumOptions): SQLiteVacuumResult;
   incrementalVacuum(pages?: number, database?: string): SQLiteIncrementalVacuumResult;
+  extensibilityCapabilities(): SQLiteExtensibilityCapabilities;
+  createFunction(name: string, fn: (...values: SQLiteValue[]) => SQLiteValue): Readonly<{ name: string; kind: 'scalar' }>;
+  createFunction(name: string, options: SQLiteFunctionOptions, fn: (...values: SQLiteValue[]) => SQLiteValue): Readonly<{ name: string; kind: 'scalar' }>;
+  createAggregate<State = unknown>(name: string, options: SQLiteAggregateOptions<State>): Readonly<{ name: string; kind: 'aggregate' }>;
+  enableExtensionLoading(active: boolean): boolean;
+  loadExtension(filename: string, entryPoint?: string): Readonly<{ path: string; entryPoint: string | null }>;
+  setAuthorizer(callback: SQLiteAuthorizer | null): boolean;
+  setDefensive(active: boolean): boolean;
+  authorizerConstants(): Readonly<Record<string, number>>;
+  extensionPolicy(): SQLiteExtensionPolicy;
 }
 
 export const capabilities: Readonly<SQLiteCapabilities>;
