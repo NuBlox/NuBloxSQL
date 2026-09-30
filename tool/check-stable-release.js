@@ -14,9 +14,7 @@ var api = require(root);
 var failures = [];
 
 function fail(message) { failures.push(message); }
-function diagnostic(error) {
-  return [error && error.message, error && error.stdout, error && error.stderr].filter(Boolean).join('\n');
-}
+function diagnostic(error) { return [error && error.message, error && error.stdout, error && error.stderr].filter(Boolean).join('\n'); }
 function run(command, args, options) {
   return childProcess.execFileSync(command, args, Object.assign({ cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }, options || {}));
 }
@@ -30,9 +28,7 @@ if (!pkg.engines || pkg.engines.node !== manifest.node) fail('Node support range
 var actualExports = Object.keys(api).sort();
 var expectedExports = manifest.exports.slice().sort();
 try { assert.deepStrictEqual(actualExports, expectedExports); }
-catch (_) {
-  fail('root public exports changed; update docs/releases/public-api-v1.json only as an intentional API decision\n   expected: ' + expectedExports.join(', ') + '\n   actual:   ' + actualExports.join(', '));
-}
+catch (_) { fail('root public exports changed; update docs/releases/public-api-v1.json only as an intentional API decision\n   expected: ' + expectedExports.join(', ') + '\n   actual:   ' + actualExports.join(', ')); }
 
 manifest.dialects.forEach(function (dialect) {
   if (!api.DIALECTS || api.DIALECTS[dialect] !== dialect) fail('DIALECTS is missing canonical dialect ' + dialect);
@@ -46,13 +42,9 @@ try { pack = JSON.parse(run(npm, ['pack', '--json', '--dry-run', '--ignore-scrip
 catch (error) { fail('npm pack --dry-run failed: ' + diagnostic(error)); }
 if (pack && pack[0]) {
   var files = pack[0].files.map(function (entry) { return entry.path; });
-  manifest.requiredPackageFiles.forEach(function (file) {
-    if (files.indexOf(file) === -1) fail('packed package is missing ' + file);
-  });
+  manifest.requiredPackageFiles.forEach(function (file) { if (files.indexOf(file) === -1) fail('packed package is missing ' + file); });
   manifest.forbiddenPackagePrefixes.forEach(function (prefix) {
-    files.forEach(function (file) {
-      if (file.indexOf(prefix) === 0) fail('packed package contains forbidden path ' + file);
-    });
+    files.forEach(function (file) { if (file.indexOf(prefix) === 0) fail('packed package contains forbidden path ' + file); });
   });
 }
 
@@ -73,6 +65,8 @@ try {
     "  await db.execute(sql.sql`INSERT INTO release_smoke (id, name) VALUES (${1}, ${'qualified'})`);",
     "  const row = await db.one(sql.sql`SELECT id, name FROM release_smoke WHERE id = ${1}`);",
     "  if (row.name !== 'qualified') throw new Error('consumer smoke query failed');",
+    "  const runtime = await sql.capabilityModel.qualifyClient(db);",
+    "  if (runtime.dialect !== 'sqlite' || !runtime.version) throw new Error('runtime capability qualification failed');",
     "  const snapshot = await db.introspect({ deep: true });",
     "  if (!snapshot.tables.some(t => t.name === 'release_smoke')) throw new Error('consumer introspection failed');",
     "  await db.close();",
@@ -84,7 +78,7 @@ try {
   run(npm, ['install', '--no-save', '--ignore-scripts', '--no-audit', '--no-fund', 'typescript@5.9.3', '@types/node@22'], { cwd: temp });
   var typeConsumer = [
     "import sql = require('nubloxsql');",
-    "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient } from 'nubloxsql';",
+    "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient, SqlRuntimeCapabilityReport } from 'nubloxsql';",
     "const mysql: MySqlClient = sql.createClient({ dialect: 'mysql', user: 'app', pool: false });",
     "const pg: PostgreSqlClient = sql.createClient({ dialect: 'pg', user: 'app', pool: false });",
     "const sqlite: SqliteClient = sql.createClient({ dialect: 'sqlite', filename: ':memory:', pool: false });",
@@ -96,7 +90,9 @@ try {
     "const governance = sqlite.native.resourceGovernanceCapabilities();",
     "const budget = sqlite.native.queryBudget({ profile: 'hardened' });",
     "sqlite.native.governedQuery('SELECT 1', undefined, budget);",
-    "void governance; void budget;",
+    "const staticRuntime: SqlRuntimeCapabilityReport = sql.capabilityModel.qualify('sqlite', { version: '3.49.1' });",
+    "const liveRuntime: Promise<SqlRuntimeCapabilityReport> = sql.capabilityModel.qualifyClient(sqlite);",
+    "void governance; void budget; void staticRuntime; void liveRuntime;",
     "sqlite.transaction(async tx => { const d: 'sqlite' = tx.dialect; void d; });",
     "sql.capabilityReport('pg').dialect satisfies 'postgresql';",
     "sql.transactionPolicy('mssql').dialect satisfies 'sqlserver';",
