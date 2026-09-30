@@ -74,7 +74,7 @@ Make the root `nubloxsql` package the canonical public product.
 4. ✅ stable public error surface for facade/routing failures;
 5. ✅ richer capability discovery, including server/runtime-specific capabilities;
 6. ✅ public metadata/introspection entry points;
-7. public transaction helper policy where genuinely portable;
+7. ✅ public transaction helper policy where genuinely portable;
 8. observability conventions across dialects;
 9. TypeScript discrimination and inference by dialect;
 10. stable release qualification for the single-entry package.
