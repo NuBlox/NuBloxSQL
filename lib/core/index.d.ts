@@ -21,13 +21,14 @@ export interface SqlDialectIdentity {
 }
 
 export type SqlCapabilityMap = Readonly<Record<string, boolean>>;
+export type SqlPortableTypeName = 'decimal' | 'numeric' | 'uuid' | 'guid' | 'date' | 'time' | 'timestamp' | 'datetime';
 
 export interface SqlDecimalTypeSpec { readonly type: 'decimal' | 'numeric'; readonly precision?: number; readonly scale?: number; }
 export interface SqlUuidTypeSpec { readonly type: 'uuid' | 'guid'; }
 export interface SqlDateTypeSpec { readonly type: 'date'; }
 export interface SqlTimeTypeSpec { readonly type: 'time'; readonly scale?: number; }
 export interface SqlTimestampTypeSpec { readonly type: 'timestamp' | 'datetime'; readonly scale?: number; }
-export type SqlPortableTypeSpec = SqlDecimalTypeSpec | SqlUuidTypeSpec | SqlDateTypeSpec | SqlTimeTypeSpec | SqlTimestampTypeSpec;
+export type SqlPortableTypeSpec = SqlPortableTypeName | SqlDecimalTypeSpec | SqlUuidTypeSpec | SqlDateTypeSpec | SqlTimeTypeSpec | SqlTimestampTypeSpec;
 
 export interface SqlNormalizedDecimalTypeSpec { readonly type: 'decimal'; readonly precision: number; readonly scale: number; }
 export interface SqlNormalizedUuidTypeSpec { readonly type: 'uuid'; }
@@ -35,17 +36,16 @@ export interface SqlNormalizedDateTypeSpec { readonly type: 'date'; }
 export interface SqlNormalizedTimeTypeSpec { readonly type: 'time'; readonly scale: number; }
 export interface SqlNormalizedTimestampTypeSpec { readonly type: 'timestamp'; readonly scale: number; }
 export type SqlNormalizedPortableTypeSpec = SqlNormalizedDecimalTypeSpec | SqlNormalizedUuidTypeSpec | SqlNormalizedDateTypeSpec | SqlNormalizedTimeTypeSpec | SqlNormalizedTimestampTypeSpec;
-export type SqlPortableTypeName = 'decimal' | 'numeric' | 'uuid' | 'guid' | 'date' | 'time' | 'timestamp' | 'datetime';
 
 export class TypedValue<T = unknown> {
   readonly value: T;
   readonly spec: Readonly<SqlNormalizedPortableTypeSpec>;
-  constructor(value: T, spec: SqlPortableTypeSpec | SqlPortableTypeName);
+  constructor(value: T, spec: SqlPortableTypeSpec);
 }
 
-export function typed<T>(value: T, spec: SqlPortableTypeSpec | SqlPortableTypeName): TypedValue<T>;
+export function typed<T>(value: T, spec: SqlPortableTypeSpec): TypedValue<T>;
 export function isTypedValue(value: unknown): value is TypedValue<unknown>;
-export function normalizeTypeSpec(spec: SqlPortableTypeSpec | SqlPortableTypeName): Readonly<SqlNormalizedPortableTypeSpec>;
+export function normalizeTypeSpec(spec: SqlPortableTypeSpec): Readonly<SqlNormalizedPortableTypeSpec>;
 export function unwrapTypedValue<T>(value: T | TypedValue<T>): T;
 
 export interface SqlDialectServices {
@@ -54,7 +54,6 @@ export interface SqlDialectServices {
   parameterTypeOid?(spec: Readonly<SqlNormalizedPortableTypeSpec>): number;
   bindParameter?(value: unknown, index?: number): unknown;
 }
-
 export interface SqlDialectDescriptor { readonly identity: Readonly<SqlDialectIdentity>; readonly capabilities: SqlCapabilityMap; readonly services: SqlDialectServices; supports(capability: string): boolean; }
 export interface SqlObjectName { catalog?: string; schema?: string; name: string; }
 export interface SqlOperationOptions { timeout?: number; signal?: SqlAbortSignal; }
@@ -76,7 +75,6 @@ export const DIALECT_FAMILIES: Readonly<{ MYSQL: 'mysql'; POSTGRESQL: 'postgresq
 export const CAPABILITIES: Readonly<{ PREPARED_STATEMENTS: 'preparedStatements'; SERVER_SIDE_CURSORS: 'serverSideCursors'; SAVEPOINTS: 'savepoints'; CATALOGS: 'catalogs'; SCHEMAS: 'schemas'; TRANSACTIONAL_DDL: 'transactionalDdl'; QUERY_CANCELLATION: 'queryCancellation'; NATIVE_JSON: 'nativeJson'; }>;
 export const ISOLATION_LEVELS: Readonly<{ READ_UNCOMMITTED: 'read-uncommitted'; READ_COMMITTED: 'read-committed'; REPEATABLE_READ: 'repeatable-read'; SERIALIZABLE: 'serializable'; }>;
 export const ERROR_CATEGORIES: Readonly<{ CONNECTION: 'connection'; AUTHENTICATION: 'authentication'; TIMEOUT: 'timeout'; CANCELLED: 'cancelled'; CONSTRAINT: 'constraint'; DEADLOCK: 'deadlock'; SERIALIZATION: 'serialization'; SYNTAX: 'syntax'; RESOURCE_LIMIT: 'resource-limit'; PROTOCOL: 'protocol'; STATE: 'state'; UNKNOWN: 'unknown'; }>;
-
 export function createDialectDescriptor(options: { identity: SqlDialectIdentity; capabilities?: Record<string, boolean>; services: SqlDialectServices; }): SqlDialectDescriptor;
 export function assertDialectDescriptor(descriptor: SqlDialectDescriptor): SqlDialectDescriptor;
 export function createObjectName(name: SqlObjectName): Readonly<SqlObjectName>;
