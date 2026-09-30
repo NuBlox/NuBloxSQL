@@ -75,6 +75,7 @@ jobs:
         run: |
           for attempt in $(seq 1 90); do
             if docker logs "nublox-sqlserver-${MSSQL_VERSION}" 2>&1 | grep -q 'SQL Server is now ready for client connections'; then
+              sleep 3
               exit 0
             fi
             sleep 1
