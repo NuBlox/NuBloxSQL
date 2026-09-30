@@ -14,6 +14,9 @@ var api = require(root);
 var failures = [];
 
 function fail(message) { failures.push(message); }
+function diagnostic(error) {
+  return [error && error.message, error && error.stdout, error && error.stderr].filter(Boolean).join('\n');
+}
 function run(command, args, options) {
   return childProcess.execFileSync(command, args, Object.assign({ cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }, options || {}));
 }
@@ -40,7 +43,7 @@ manifest.dialects.forEach(function (dialect) {
 
 var pack;
 try { pack = JSON.parse(run(npm, ['pack', '--json', '--dry-run', '--ignore-scripts'])); }
-catch (error) { fail('npm pack --dry-run failed: ' + String(error.stderr || error.message)); }
+catch (error) { fail('npm pack --dry-run failed: ' + diagnostic(error)); }
 if (pack && pack[0]) {
   var files = pack[0].files.map(function (entry) { return entry.path; });
   manifest.requiredPackageFiles.forEach(function (file) {
@@ -78,6 +81,7 @@ try {
   fs.writeFileSync(path.join(temp, 'smoke.js'), consumer);
   run(process.execPath, ['smoke.js'], { cwd: temp });
 
+  run(npm, ['install', '--no-save', '--ignore-scripts', '--no-audit', '--no-fund', 'typescript@5.9.3', '@types/node@22'], { cwd: temp });
   var typeConsumer = [
     "import sql = require('nubloxsql');",
     "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient } from 'nubloxsql';",
@@ -95,9 +99,10 @@ try {
     "void sqliteDialect; void pgDialect; void mysqlDialect; void sqlServerDialect;"
   ].join('\n');
   fs.writeFileSync(path.join(temp, 'consumer.ts'), typeConsumer);
-  run(npm, ['exec', '--yes', '--package=typescript@5.9.3', '--', 'tsc', '--strict', '--noEmit', '--target', 'ES2022', '--module', 'Node16', '--moduleResolution', 'Node16', 'consumer.ts'], { cwd: temp });
+  var tsc = path.join(temp, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
+  run(tsc, ['--strict', '--noEmit', '--target', 'ES2022', '--module', 'Node16', '--moduleResolution', 'Node16', 'consumer.ts'], { cwd: temp });
 } catch (error) {
-  fail('clean-install consumer qualification failed: ' + String(error.stderr || error.message));
+  fail('clean-install consumer qualification failed: ' + diagnostic(error));
 } finally {
   if (tarball) { try { fs.unlinkSync(path.join(root, tarball)); } catch (_) {} }
   try { fs.rmSync(temp, { recursive: true, force: true }); } catch (_) {}
