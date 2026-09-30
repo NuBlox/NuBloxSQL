@@ -3,6 +3,7 @@
 var clientApi = require('./lib/client/Client');
 var sqlApi = require('./lib/client/Sql');
 var errorApi = require('./lib/client/Error');
+var publicErrorApi = require('./lib/client/PublicError');
 var streamApi = require('./lib/client/Stream');
 var metadataApi = require('./lib/client/Metadata');
 var observabilityApi = require('./lib/client/Observability');
@@ -20,30 +21,23 @@ require('./lib/client/TransactionIntegration').install(clientApi);
 require('./lib/client/SqlServerMetadataIntegration').install(metadataApi);
 lifecycleApi.install(clientApi);
 
-var DIALECTS = Object.freeze({
-  mysql: 'mysql',
-  postgresql: 'postgresql',
-  sqlite: 'sqlite',
-  sqlserver: 'sqlserver'
-});
-
+var DIALECTS = Object.freeze({ mysql: 'mysql', postgresql: 'postgresql', sqlite: 'sqlite', sqlserver: 'sqlserver' });
 var loaders = Object.freeze({
-  mysql: function loadMySql() { return require('./lib/dialects/mysql'); },
-  postgresql: function loadPostgreSql() { return require('./lib/dialects/postgresql'); },
-  sqlite: function loadSqlite() { return require('./lib/dialects/sqlite'); },
-  sqlserver: function loadSqlServer() { return require('./lib/dialects/sqlserver'); }
+  mysql: function () { return require('./lib/dialects/mysql'); },
+  postgresql: function () { return require('./lib/dialects/postgresql'); },
+  sqlite: function () { return require('./lib/dialects/sqlite'); },
+  sqlserver: function () { return require('./lib/dialects/sqlserver'); }
 });
-
 var cache = Object.create(null);
 
 function normalizeDialect(value) {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new TypeError('NuBloxSQL requires a dialect: mysql, postgresql, sqlite or sqlserver');
+    throw publicErrorApi.routingError('NuBloxSQL requires a dialect: mysql, postgresql, sqlite or sqlserver');
   }
   var dialect = value.trim().toLowerCase();
   if (dialect === 'postgres' || dialect === 'pg') dialect = 'postgresql';
   if (dialect === 'mssql' || dialect === 'sql-server') dialect = 'sqlserver';
-  if (!Object.prototype.hasOwnProperty.call(loaders, dialect)) throw new RangeError('Unsupported NuBloxSQL dialect: ' + value);
+  if (!Object.prototype.hasOwnProperty.call(loaders, dialect)) throw publicErrorApi.unsupportedDialectError(value);
   return dialect;
 }
 
@@ -54,9 +48,7 @@ function loadAdapter(dialect) {
 }
 
 function copyConfig(source, target, excluded) {
-  Object.keys(source || {}).forEach(function copyConfigKey(key) {
-    if (!excluded || excluded.indexOf(key) === -1) target[key] = source[key];
-  });
+  Object.keys(source || {}).forEach(function (key) { if (!excluded || excluded.indexOf(key) === -1) target[key] = source[key]; });
   return target;
 }
 
@@ -74,12 +66,12 @@ function resolveInvocation(dialectOrConfig, maybeConfig) {
     config = maybeConfig || {};
   } else {
     config = dialectOrConfig || {};
-    if (!config || typeof config !== 'object' || Array.isArray(config)) throw new TypeError('NuBloxSQL connection configuration must be an object');
+    if (!config || typeof config !== 'object' || Array.isArray(config)) throw publicErrorApi.configurationError('connection configuration must be an object');
 
     if (config.url !== undefined) {
       parsed = connectionUrlApi.parse(config.url);
       if (config.dialect !== undefined && normalizeDialect(config.dialect) !== parsed.dialect) {
-        throw new RangeError('NuBloxSQL connection URL dialect does not match explicit dialect: ' + config.dialect);
+        throw publicErrorApi.routingError('NuBloxSQL connection URL dialect does not match explicit dialect: ' + config.dialect, { dialect: normalizeDialect(config.dialect) });
       }
       dialect = parsed.dialect;
       config = copyConfig(config, copyConfig(parsed.config, {}), ['dialect', 'url']);
@@ -88,12 +80,10 @@ function resolveInvocation(dialectOrConfig, maybeConfig) {
     }
   }
 
-  if (!config || typeof config !== 'object' || Array.isArray(config)) throw new TypeError('NuBloxSQL connection configuration must be an object');
+  if (!config || typeof config !== 'object' || Array.isArray(config)) throw publicErrorApi.configurationError('connection configuration must be an object', dialect);
 
   var adapterConfig = {};
-  Object.keys(config).forEach(function copyAdapterConfig(key) {
-    if (key !== 'dialect' && key !== 'url') adapterConfig[key] = config[key];
-  });
+  Object.keys(config).forEach(function (key) { if (key !== 'dialect' && key !== 'url') adapterConfig[key] = config[key]; });
   return { dialect: dialect, adapter: loadAdapter(dialect), config: adapterConfig };
 }
 
@@ -116,21 +106,16 @@ function hideClientOption(config, name, validate) {
   var value = config[name];
   if (value === undefined) return;
   if (validate) validate(value);
-  Object.defineProperty(config, name, {
-    value: value,
-    enumerable: false,
-    configurable: false,
-    writable: false
-  });
+  Object.defineProperty(config, name, { value: value, enumerable: false, configurable: false, writable: false });
 }
 
 function createClient(dialectOrConfig, maybeConfig) {
   var invocation = resolveInvocation(dialectOrConfig, maybeConfig);
   hideClientOption(invocation.config, 'telemetry', function (telemetry) {
-    if (telemetry === null || typeof telemetry !== 'object' || Array.isArray(telemetry)) throw new TypeError('NuBloxSQL telemetry must be an options object');
+    if (telemetry === null || typeof telemetry !== 'object' || Array.isArray(telemetry)) throw publicErrorApi.configurationError('telemetry must be an options object', invocation.dialect);
   });
   hideClientOption(invocation.config, 'types', function (types) {
-    if (types === null || typeof types !== 'object' || Array.isArray(types)) throw new TypeError('NuBloxSQL types must be an options object');
+    if (types === null || typeof types !== 'object' || Array.isArray(types)) throw publicErrorApi.configurationError('types must be an options object', invocation.dialect);
   });
   configurationApi.validateClientConfig(invocation.dialect, invocation.config, typeof invocation.adapter.createPool === 'function');
   return new clientApi.Client(invocation.adapter, invocation.dialect, invocation.config);
@@ -141,15 +126,8 @@ function supports(dialect, capability) {
   var dialectDescriptor = implementation.descriptor;
   return !!(dialectDescriptor && typeof dialectDescriptor.supports === 'function' && dialectDescriptor.supports(capability));
 }
-
-function descriptor(dialect) {
-  var implementation = loadAdapter(dialect);
-  return implementation.descriptor || null;
-}
-
-function defineLazy(target, name, loader) {
-  Object.defineProperty(target, name, { enumerable: true, configurable: false, get: loader });
-}
+function descriptor(dialect) { var implementation = loadAdapter(dialect); return implementation.descriptor || null; }
+function defineLazy(target, name, loader) { Object.defineProperty(target, name, { enumerable: true, configurable: false, get: loader }); }
 
 var dialects = {};
 defineLazy(dialects, 'mysql', function () { return loadAdapter('mysql'); });
@@ -160,6 +138,7 @@ Object.freeze(dialects);
 
 exports.DIALECTS = DIALECTS;
 exports.CLIENT_LIFECYCLE_STATES = lifecycleApi.STATES;
+exports.ERROR_CODES = publicErrorApi.CODES;
 exports.dialects = dialects;
 exports.adapter = adapter;
 exports.descriptor = descriptor;
