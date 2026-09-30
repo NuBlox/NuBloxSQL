@@ -15,13 +15,67 @@ export type ConnectionUrlInput = ConnectionUrl | URL;
 export type ClientLifecycleState = 'idle' | 'opening' | 'open' | 'closing' | 'closed';
 export type ObservabilityEventType = 'query' | 'execute' | 'prepare' | 'prepared' | 'transaction' | 'transaction_retry' | 'stream' | 'connection' | 'error';
 
+export type CanonicalDialect<D extends root.DialectAlias> =
+  D extends 'postgres' | 'pg' ? 'postgresql' :
+  D extends 'mssql' | 'sql-server' ? 'sqlserver' :
+  D;
+
+export type DialectAdapter<D extends root.DialectAlias> =
+  CanonicalDialect<D> extends 'mysql' ? typeof mysql :
+  CanonicalDialect<D> extends 'postgresql' ? typeof postgresql :
+  CanonicalDialect<D> extends 'sqlite' ? typeof sqlite :
+  CanonicalDialect<D> extends 'sqlserver' ? typeof sqlserver : never;
+
+export type DialectConnection<D extends root.DialectAlias> =
+  CanonicalDialect<D> extends 'mysql' ? mysql.Connection :
+  CanonicalDialect<D> extends 'postgresql' ? postgresql.Connection :
+  CanonicalDialect<D> extends 'sqlite' ? sqlite.Connection :
+  CanonicalDialect<D> extends 'sqlserver' ? sqlserver.Connection : never;
+
+export type DialectPool<D extends root.DialectAlias> =
+  CanonicalDialect<D> extends 'mysql' ? mysql.Pool :
+  CanonicalDialect<D> extends 'postgresql' ? postgresql.Pool :
+  CanonicalDialect<D> extends 'sqlite' ? never :
+  CanonicalDialect<D> extends 'sqlserver' ? sqlserver.Pool : never;
+
+export type DialectConnectionConfig<D extends root.DialectAlias> =
+  CanonicalDialect<D> extends 'mysql' ? mysql.ConnectionConfig :
+  CanonicalDialect<D> extends 'postgresql' ? postgresql.PostgreSqlConnectionOptions :
+  CanonicalDialect<D> extends 'sqlite' ? sqlite.SQLiteConnectionOptions :
+  CanonicalDialect<D> extends 'sqlserver' ? sqlserver.SqlServerConnectionConfig : never;
+
+export type DialectClientConfig<D extends root.DialectAlias> = DialectConnectionConfig<D> & {
+  dialect?: D;
+  pool?: CanonicalDialect<D> extends 'sqlite' ? false : boolean | root.ClientPoolOptions;
+  telemetry?: root.TelemetryOptions;
+  types?: root.TypeOptions;
+};
+
+export type DialectNative<D extends root.DialectAlias> =
+  CanonicalDialect<D> extends 'sqlite' ? DialectConnection<D> : DialectConnection<D> | DialectPool<D>;
+
+export type DialectClient<D extends root.DialectAlias> = Omit<root.Client,
+  'dialect' | 'config' | 'adapter' | 'native' | 'transaction'
+> & {
+  readonly dialect: CanonicalDialect<D>;
+  readonly config: DialectClientConfig<D>;
+  readonly adapter: DialectAdapter<D>;
+  readonly native: DialectNative<D>;
+  transaction<T>(fn: (transaction: DialectClient<D>) => T | Promise<T>, options?: root.ClientTransactionOptions): Promise<T>;
+};
+
+export type MySqlClient = DialectClient<'mysql'>;
+export type PostgreSqlClient = DialectClient<'postgresql'>;
+export type SqliteClient = DialectClient<'sqlite'>;
+export type SqlServerClient = DialectClient<'sqlserver'>;
+
 export interface CapabilitySupportEntry { readonly supported: boolean; readonly source: 'dialect'; }
 export interface CapabilityRuntimeInfo { readonly nodeVersion: string; readonly v8Version: string | null; readonly modules: string | null; readonly sqliteVersion: string | null; readonly platform: string; readonly arch: string; }
 export interface CapabilityServerInfo { readonly connected: boolean; readonly version: string | null; readonly protocolVersion: number | null; readonly [key: string]: unknown; }
-export interface CapabilityReport { readonly dialect: root.Dialect; readonly identity: unknown; readonly capabilities: Readonly<Record<string, boolean>>; readonly support: Readonly<Record<string, CapabilitySupportEntry>>; readonly plannedCapabilities: Readonly<Record<string, boolean>>; readonly runtime: CapabilityRuntimeInfo; readonly server: CapabilityServerInfo | null; readonly pool: boolean; }
+export interface CapabilityReport<D extends root.Dialect = root.Dialect> { readonly dialect: D; readonly identity: unknown; readonly capabilities: Readonly<Record<string, boolean>>; readonly support: Readonly<Record<string, CapabilitySupportEntry>>; readonly plannedCapabilities: Readonly<Record<string, boolean>>; readonly runtime: CapabilityRuntimeInfo; readonly server: CapabilityServerInfo | null; readonly pool: boolean; }
 
 export interface MetadataIntrospectionOptions extends root.MetadataScope { deep?: boolean; concurrency?: number; tables?: readonly string[]; }
-export interface MetadataSnapshot { readonly dialect: root.Dialect; readonly scope: Readonly<root.MetadataScope>; readonly databases: readonly root.DatabaseMetadata[]; readonly schemas: readonly root.SchemaMetadata[]; readonly tables: readonly root.TableMetadata[]; }
+export interface MetadataSnapshot<D extends root.Dialect = root.Dialect> { readonly dialect: D; readonly scope: Readonly<root.MetadataScope>; readonly databases: readonly root.DatabaseMetadata[]; readonly schemas: readonly root.SchemaMetadata[]; readonly tables: readonly root.TableMetadata[]; }
 
 export interface TransactionRetryPolicy {
   maxAttempts?: number;
@@ -29,8 +83,8 @@ export interface TransactionRetryPolicy {
   shouldRetry?: (error: unknown, attempt: number) => boolean;
   onRetry?: (error: unknown, completedAttempt: number, nextAttempt: number) => void | Promise<void>;
 }
-export interface PortableTransactionPolicy {
-  readonly dialect: root.Dialect;
+export interface PortableTransactionPolicy<D extends root.Dialect = root.Dialect> {
+  readonly dialect: D;
   readonly transactions: boolean;
   readonly nestedTransactions: boolean;
   readonly savepoints: boolean;
@@ -94,10 +148,10 @@ declare module '../index' {
     transactionPolicy(): PortableTransactionPolicy;
   }
 
-  function capabilityReport(dialect: root.DialectAlias): CapabilityReport;
-  function transactionPolicy(dialect: root.DialectAlias): PortableTransactionPolicy;
+  function capabilityReport<D extends root.DialectAlias>(dialect: D): CapabilityReport<CanonicalDialect<D>>;
+  function transactionPolicy<D extends root.DialectAlias>(dialect: D): PortableTransactionPolicy<CanonicalDialect<D>>;
+  function introspect<D extends root.DialectAlias>(dialect: D, config?: DialectClientConfig<D>, options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot<CanonicalDialect<D>>>;
   function introspect(config: root.ClientConfig | UrlConnectionConfig | ConnectionUrlInput, options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>;
-  function introspect(dialect: root.DialectAlias, config?: Record<string, unknown>, options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>;
 
   function createConnection(url: MySqlConnectionUrl, overrides?: Partial<mysql.ConnectionConfig>): mysql.Connection;
   function createConnection(url: PostgreSqlConnectionUrl, overrides?: Partial<postgresql.PostgreSqlConnectionOptions>): postgresql.Connection;
@@ -108,6 +162,7 @@ declare module '../index' {
   function createConnection(config: PostgreSqlUrlConfig): postgresql.Connection;
   function createConnection(config: SqlServerUrlConfig): sqlserver.Connection;
   function createConnection(config: SqliteUrlConfig): sqlite.Connection;
+  function createConnection<D extends root.DialectAlias>(dialect: D, config?: DialectConnectionConfig<D>): DialectConnection<D>;
 
   function createPool(url: MySqlConnectionUrl, overrides?: Partial<mysql.PoolConfig>): mysql.Pool;
   function createPool(url: PostgreSqlConnectionUrl, overrides?: Partial<postgresql.PostgreSqlPoolConfig>): postgresql.Pool;
@@ -116,11 +171,23 @@ declare module '../index' {
   function createPool(config: MySqlUrlConfig & Partial<mysql.PoolConfig>): mysql.Pool;
   function createPool(config: PostgreSqlUrlConfig & Partial<postgresql.PostgreSqlPoolConfig>): postgresql.Pool;
   function createPool(config: SqlServerUrlConfig & Partial<sqlserver.SqlServerPoolConfig>): sqlserver.Pool;
+  function createPool<D extends Exclude<root.DialectAlias, 'sqlite'>>(dialect: D, config?: DialectConnectionConfig<D> & root.ClientPoolOptions): DialectPool<D>;
 
-  function createClient(url: MySqlConnectionUrl, overrides?: Partial<mysql.ConnectionConfig> & { pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): root.Client;
-  function createClient(url: PostgreSqlConnectionUrl, overrides?: Partial<postgresql.PostgreSqlConnectionOptions> & { pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): root.Client;
-  function createClient(url: SqlServerConnectionUrl, overrides?: Partial<sqlserver.SqlServerConnectionConfig> & { pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): root.Client;
-  function createClient(url: SqliteConnectionUrl, overrides?: Partial<sqlite.SQLiteConnectionOptions> & { pool?: false; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): root.Client;
-  function createClient(url: URL, overrides?: Record<string, unknown>): root.Client;
-  function createClient(config: UrlConnectionConfig & { pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): root.Client;
+  function createClient(url: MySqlConnectionUrl, overrides?: Partial<mysql.ConnectionConfig> & { pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): MySqlClient;
+  function createClient(url: PostgreSqlConnectionUrl, overrides?: Partial<postgresql.PostgreSqlConnectionOptions> & { pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): PostgreSqlClient;
+  function createClient(url: SqlServerConnectionUrl, overrides?: Partial<sqlserver.SqlServerConnectionConfig> & { pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): SqlServerClient;
+  function createClient(url: SqliteConnectionUrl, overrides?: Partial<sqlite.SQLiteConnectionOptions> & { pool?: false; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): SqliteClient;
+  function createClient(url: URL, overrides?: Record<string, unknown>): MySqlClient | PostgreSqlClient | SqliteClient | SqlServerClient;
+
+  function createClient(config: MySqlUrlConfig & { pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): MySqlClient;
+  function createClient(config: PostgreSqlUrlConfig & { pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): PostgreSqlClient;
+  function createClient(config: SqlServerUrlConfig & { pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): SqlServerClient;
+  function createClient(config: SqliteUrlConfig & { pool?: false; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): SqliteClient;
+
+  function createClient(config: mysql.ConnectionConfig & { dialect: 'mysql'; pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): MySqlClient;
+  function createClient(config: postgresql.PostgreSqlConnectionOptions & { dialect: 'postgresql' | 'postgres' | 'pg'; pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): PostgreSqlClient;
+  function createClient(config: sqlite.SQLiteConnectionOptions & { dialect: 'sqlite'; pool?: false; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): SqliteClient;
+  function createClient(config: sqlserver.SqlServerConnectionConfig & { dialect: 'sqlserver' | 'mssql' | 'sql-server'; pool?: boolean | root.ClientPoolOptions; telemetry?: root.TelemetryOptions; types?: root.TypeOptions }): SqlServerClient;
+
+  function createClient<D extends root.DialectAlias>(dialect: D, config?: DialectClientConfig<D>): DialectClient<D>;
 }
