@@ -41,14 +41,13 @@ async function main() {
   assert.strictEqual(deep.tables[0].foreignKeys[0].referencedTable, 'roles');
   assert.ok(deep.tables[0].constraints.some(function (entry) { return entry.type === 'foreign-key'; }));
 
-  assert.throws(function () { client.introspect({ concurrency: 0 }); }, function (error) {
+  await assert.rejects(function () { return client.introspect({ concurrency: 0 }); }, function (error) {
     return error instanceof nublox.NuBloxSqlError && error.code === nublox.ERROR_CODES.CONFIGURATION;
   });
 
   await client.close();
 
-  var file = ':memory:';
-  var oneShot = await nublox.introspect({ dialect: 'sqlite', filename: file }, { deep: false });
+  var oneShot = await nublox.introspect({ dialect: 'sqlite', filename: ':memory:' }, { deep: false });
   assert.strictEqual(oneShot.dialect, 'sqlite');
   assert.ok(Array.isArray(oneShot.tables));
 
