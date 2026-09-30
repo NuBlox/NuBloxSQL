@@ -7,19 +7,22 @@ assert.strictEqual(sql.capabilityModel.compareVersion('3.45.0', '3.45.0'), 0);
 assert.strictEqual(sql.capabilityModel.compareVersion('3.46.0', '3.45.0'), 1);
 assert.strictEqual(sql.capabilityModel.compareVersion('3.44.2', '3.45.0'), -1);
 
-var sqliteOld = sql.capabilityModel.qualify('sqlite', { version: '3.34.1' });
-var oldReturning = sqliteOld.entries.find(function (entry) { return entry.path === 'syntax.returning'; });
-assert.ok(oldReturning);
-assert.strictEqual(oldReturning.resolved, true);
-assert.strictEqual(oldReturning.supported, false);
-assert.strictEqual(oldReturning.resolution, 'runtime-version');
+var sqliteOld = sql.capabilityModel.qualify('sqlite', { version: '3.38.5' });
+var oldRightJoin = sqliteOld.entries.find(function (entry) { return entry.path === 'queries.joins.right'; });
+assert.ok(oldRightJoin);
+assert.strictEqual(oldRightJoin.resolved, true);
+assert.strictEqual(oldRightJoin.supported, false);
+assert.strictEqual(oldRightJoin.resolution, 'runtime-version');
 
 var sqliteNew = sql.capabilityModel.qualify('sqlite', {
   version: '3.49.1',
   features: { 'expressions.json': true, 'extensions.fts5': false }
 });
+var rightJoin = sqliteNew.entries.find(function (entry) { return entry.path === 'queries.joins.right'; });
 var json = sqliteNew.entries.find(function (entry) { return entry.path === 'expressions.json'; });
 var fts5 = sqliteNew.entries.find(function (entry) { return entry.path === 'extensions.fts5'; });
+assert.strictEqual(rightJoin.supported, true);
+assert.strictEqual(rightJoin.resolution, 'runtime-version');
 assert.strictEqual(json.supported, true);
 assert.strictEqual(json.resolution, 'runtime-probe');
 assert.strictEqual(fts5.supported, false);
