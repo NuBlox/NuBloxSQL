@@ -70,7 +70,7 @@ async function main() {
       return error instanceof nublox.NuBloxSqlError && error.category === 'unsupported';
     });
 
-    assert.throws(function () {
+    await assert.rejects(function () {
       return db.transaction(function () {}, { retry: { maxAttempts: 2, onRetry: 'bad' } });
     }, /onRetry/);
 
