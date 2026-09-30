@@ -22,9 +22,46 @@ export interface SqlDialectIdentity {
 
 export type SqlCapabilityMap = Readonly<Record<string, boolean>>;
 
+export interface SqlDecimalTypeSpec {
+  readonly type: 'decimal' | 'numeric';
+  readonly precision?: number;
+  readonly scale?: number;
+}
+
+export interface SqlUuidTypeSpec {
+  readonly type: 'uuid' | 'guid';
+}
+
+export type SqlPortableTypeSpec = SqlDecimalTypeSpec | SqlUuidTypeSpec;
+
+export interface SqlNormalizedDecimalTypeSpec {
+  readonly type: 'decimal';
+  readonly precision: number;
+  readonly scale: number;
+}
+
+export interface SqlNormalizedUuidTypeSpec {
+  readonly type: 'uuid';
+}
+
+export type SqlNormalizedPortableTypeSpec = SqlNormalizedDecimalTypeSpec | SqlNormalizedUuidTypeSpec;
+
+export class TypedValue<T = unknown> {
+  readonly value: T;
+  readonly spec: Readonly<SqlNormalizedPortableTypeSpec>;
+  constructor(value: T, spec: SqlPortableTypeSpec | 'decimal' | 'numeric' | 'uuid' | 'guid');
+}
+
+export function typed<T>(value: T, spec: SqlPortableTypeSpec | 'decimal' | 'numeric' | 'uuid' | 'guid'): TypedValue<T>;
+export function isTypedValue(value: unknown): value is TypedValue<unknown>;
+export function normalizeTypeSpec(spec: SqlPortableTypeSpec | 'decimal' | 'numeric' | 'uuid' | 'guid'): Readonly<SqlNormalizedPortableTypeSpec>;
+export function unwrapTypedValue<T>(value: T | TypedValue<T>): T;
+
 export interface SqlDialectServices {
   quoteIdentifier(identifier: string): string;
   placeholder(index: number, name?: string): string;
+  parameterTypeOid?(spec: Readonly<SqlNormalizedPortableTypeSpec>): number;
+  bindParameter?(value: unknown, index?: number): unknown;
 }
 
 export interface SqlDialectDescriptor {

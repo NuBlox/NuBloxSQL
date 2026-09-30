@@ -28,6 +28,9 @@ type ErrorCategory =
 type TelemetryEventType = 'query' | 'execute' | 'prepare' | 'prepared' | 'transaction' | 'stream' | 'connection' | 'error';
 type TransactionIsolationLevel = 'read-uncommitted' | 'read-committed' | 'repeatable-read' | 'serializable';
 type SqliteTransactionMode = 'deferred' | 'immediate' | 'exclusive';
+type PortableTypeSpec = sqlCore.SqlPortableTypeSpec | 'decimal' | 'numeric' | 'uuid' | 'guid';
+type NormalizedPortableTypeSpec = sqlCore.SqlNormalizedPortableTypeSpec;
+type SqlTypedValue<T = unknown> = sqlCore.TypedValue<T>;
 
 type MySqlConfig = ConstructorParameters<typeof mysql.Connection>[0] & { dialect: 'mysql' };
 type PostgreSqlConfig = ConstructorParameters<typeof postgresql.Connection>[0] & { dialect: 'postgresql' | 'postgres' | 'pg' };
@@ -93,6 +96,7 @@ interface TypeCodecContext {
   readonly field?: unknown;
   readonly nativeType?: string | null;
   readonly parameterIndex?: number;
+  readonly type?: Readonly<NormalizedPortableTypeSpec>;
 }
 
 type TypeEncoder = (value: unknown, context: TypeCodecContext) => unknown;
@@ -114,7 +118,10 @@ type ClientConfig = ConnectionConfig & {
 
 interface SqlFragment {}
 interface SqlIdentifier {}
-interface SqlParameter {}
+interface SqlParameter {
+  readonly name: string;
+  readonly type: Readonly<NormalizedPortableTypeSpec> | null;
+}
 interface CompiledSql {
   readonly text: string;
   readonly parameters: readonly unknown[];
@@ -123,7 +130,8 @@ interface CompiledSql {
 interface SqlTag {
   (strings: TemplateStringsArray, ...values: unknown[]): SqlFragment;
   identifier(...parts: string[]): SqlIdentifier;
-  parameter(name: string): SqlParameter;
+  parameter(name: string, typeSpec?: PortableTypeSpec): SqlParameter;
+  typed<T>(value: T, typeSpec: PortableTypeSpec): SqlTypedValue<T>;
   join(fragments: readonly SqlFragment[], separator?: string): SqlFragment;
 }
 
@@ -434,6 +442,9 @@ export {
   TelemetryPoolSnapshot,
   TelemetryEvent,
   TelemetryOptions,
+  PortableTypeSpec,
+  NormalizedPortableTypeSpec,
+  SqlTypedValue,
   TypeCodecContext,
   TypeEncoder,
   TypeDecoder,
