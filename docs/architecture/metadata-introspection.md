@@ -37,8 +37,7 @@ The catalog supports:
 const snapshot = await db.introspect({
   schema: 'public',
   tables: ['customer', 'order'],
-  deep: true,
-  concurrency: 4
+  deep: true
 });
 ```
 
@@ -56,7 +55,7 @@ The snapshot contains:
 
 With `deep: true` (the default), each table contains its columns, indexes, foreign keys and constraints. With `deep: false`, the result contains table summaries only.
 
-`tables` may restrict deep inspection to a named subset. `concurrency` controls the maximum number of tables being expanded at once and defaults to 4.
+`tables` may restrict deep inspection to a named subset. Introspection is serial by default so it is safe for direct single-connection clients. `concurrency` may be raised explicitly for pooled clients or tooling that can safely execute independent catalog reads concurrently.
 
 ## One-shot introspection
 
