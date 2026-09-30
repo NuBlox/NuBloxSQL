@@ -75,6 +75,7 @@ jobs:
         run: |
           for attempt in $(seq 1 90); do
             if docker logs "nublox-sqlserver-${MSSQL_VERSION}" 2>&1 | grep -q 'SQL Server is now ready for client connections'; then
+              sleep 3
               exit 0
             fi
             sleep 1
@@ -205,6 +206,12 @@ jobs:
           MSSQL_SERVER_NAME: sqlserver
           MSSQL_PORT: 1433
         run: node lib/dialects/sqlserver/test/live-streaming.js
+      - name: SQL Server MAX parameter wire qualification
+        env:
+          MSSQL_HOST: 127.0.0.1
+          MSSQL_SERVER_NAME: sqlserver
+          MSSQL_PORT: 1433
+        run: node lib/dialects/sqlserver/test/live-max-parameters.js
       - name: Lossless SQL Server type fidelity qualification
         env:
           MSSQL_HOST: 127.0.0.1
