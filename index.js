@@ -8,6 +8,7 @@ var metadataApi = require('./lib/client/Metadata');
 var observabilityApi = require('./lib/client/Observability');
 var typesApi = require('./lib/client/Types');
 var connectionUrlApi = require('./lib/client/ConnectionUrl');
+var lifecycleApi = require('./lib/client/LifecycleIntegration');
 streamApi.install(clientApi);
 require('./lib/client/SqlServerStreamIntegration').install(streamApi);
 require('./lib/client/OperationControlIntegration').install(clientApi);
@@ -16,6 +17,7 @@ observabilityApi.install(clientApi, streamApi);
 require('./lib/client/TypesIntegration').install(clientApi, streamApi);
 require('./lib/client/TransactionIntegration').install(clientApi);
 require('./lib/client/SqlServerMetadataIntegration').install(metadataApi);
+lifecycleApi.install(clientApi);
 
 var DIALECTS = Object.freeze({
   mysql: 'mysql',
@@ -153,6 +155,7 @@ defineLazy(dialects, 'sqlserver', function () { return loadAdapter('sqlserver');
 Object.freeze(dialects);
 
 exports.DIALECTS = DIALECTS;
+exports.CLIENT_LIFECYCLE_STATES = lifecycleApi.STATES;
 exports.dialects = dialects;
 exports.adapter = adapter;
 exports.descriptor = descriptor;
