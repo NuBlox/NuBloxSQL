@@ -9,6 +9,7 @@ var observabilityApi = require('./lib/client/Observability');
 var typesApi = require('./lib/client/Types');
 var connectionUrlApi = require('./lib/client/ConnectionUrl');
 var lifecycleApi = require('./lib/client/LifecycleIntegration');
+var configurationApi = require('./lib/client/Configuration');
 streamApi.install(clientApi);
 require('./lib/client/SqlServerStreamIntegration').install(streamApi);
 require('./lib/client/OperationControlIntegration').install(clientApi);
@@ -100,12 +101,14 @@ function adapter(dialect) { return loadAdapter(dialect); }
 
 function createConnection(dialectOrConfig, maybeConfig) {
   var invocation = resolveInvocation(dialectOrConfig, maybeConfig);
+  configurationApi.validateConnectionConfig(invocation.dialect, invocation.config);
   return invocation.adapter.createConnection(invocation.config);
 }
 
 function createPool(dialectOrConfig, maybeConfig) {
   var invocation = resolveInvocation(dialectOrConfig, maybeConfig);
   if (typeof invocation.adapter.createPool !== 'function') throw errorApi.unsupportedError(invocation.dialect, 'connection pools');
+  configurationApi.validatePoolConfig(invocation.dialect, invocation.config);
   return invocation.adapter.createPool(invocation.config);
 }
 
@@ -129,6 +132,7 @@ function createClient(dialectOrConfig, maybeConfig) {
   hideClientOption(invocation.config, 'types', function (types) {
     if (types === null || typeof types !== 'object' || Array.isArray(types)) throw new TypeError('NuBloxSQL types must be an options object');
   });
+  configurationApi.validateClientConfig(invocation.dialect, invocation.config, typeof invocation.adapter.createPool === 'function');
   return new clientApi.Client(invocation.adapter, invocation.dialect, invocation.config);
 }
 
