@@ -60,6 +60,7 @@ try {
   var tarballPath = path.join(root, tarball);
   fs.writeFileSync(path.join(temp, 'package.json'), JSON.stringify({ name: 'nubloxsql-consumer-smoke', private: true }));
   run(npm, ['install', tarballPath, '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: temp });
+
   var consumer = [
     "const sql = require('nubloxsql');",
     "if (sql.OBSERVABILITY_SCHEMA_VERSION !== 1) throw new Error('observability schema mismatch');",
@@ -76,8 +77,27 @@ try {
   ].join('\n');
   fs.writeFileSync(path.join(temp, 'smoke.js'), consumer);
   run(process.execPath, ['smoke.js'], { cwd: temp });
+
+  var typeConsumer = [
+    "import sql = require('nubloxsql');",
+    "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient } from 'nubloxsql';",
+    "const mysql: MySqlClient = sql.createClient({ dialect: 'mysql', user: 'app', pool: false });",
+    "const pg: PostgreSqlClient = sql.createClient({ dialect: 'pg', user: 'app', pool: false });",
+    "const sqlite: SqliteClient = sql.createClient({ dialect: 'sqlite', filename: ':memory:', pool: false });",
+    "const mssql: SqlServerClient = sql.createClient({ dialect: 'mssql', user: 'app', pool: true });",
+    "const sqliteDialect: 'sqlite' = sqlite.dialect;",
+    "const pgDialect: 'postgresql' = pg.dialect;",
+    "const mysqlDialect: 'mysql' = mysql.dialect;",
+    "const sqlServerDialect: 'sqlserver' = mssql.dialect;",
+    "sqlite.transaction(async tx => { const d: 'sqlite' = tx.dialect; void d; });",
+    "sql.capabilityReport('pg').dialect satisfies 'postgresql';",
+    "sql.transactionPolicy('mssql').dialect satisfies 'sqlserver';",
+    "void sqliteDialect; void pgDialect; void mysqlDialect; void sqlServerDialect;"
+  ].join('\n');
+  fs.writeFileSync(path.join(temp, 'consumer.ts'), typeConsumer);
+  run(npm, ['exec', '--yes', '--package=typescript@5.9.3', '--', 'tsc', '--strict', '--noEmit', '--target', 'ES2022', '--module', 'Node16', '--moduleResolution', 'Node16', 'consumer.ts'], { cwd: temp });
 } catch (error) {
-  fail('clean-install consumer smoke failed: ' + String(error.stderr || error.message));
+  fail('clean-install consumer qualification failed: ' + String(error.stderr || error.message));
 } finally {
   if (tarball) { try { fs.unlinkSync(path.join(root, tarball)); } catch (_) {} }
   try { fs.rmSync(temp, { recursive: true, force: true }); } catch (_) {}
@@ -89,5 +109,5 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   console.log('NuBloxSQL stable release qualification: PASS');
-  console.log('Public API manifest, package surface and clean-install consumer smoke are qualified.');
+  console.log('Public API manifest, npm package surface, JavaScript consumer and strict TypeScript consumer are qualified.');
 }
