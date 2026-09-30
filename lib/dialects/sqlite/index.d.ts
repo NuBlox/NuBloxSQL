@@ -51,6 +51,31 @@ export interface SQLiteStoragePolicy { readonly journalMode?: SQLiteJournalMode;
 export interface SQLiteStorageState { readonly database: string; readonly journalMode: string; readonly synchronous: number; readonly lockingMode: string; readonly busyTimeout: number; readonly walAutoCheckpoint: number; readonly cacheSize: number; readonly pageSize: number; readonly pageCount: number; readonly freelistCount: number; }
 export interface SQLiteCheckpointResult { readonly database: string; readonly mode: SQLiteCheckpointMode; readonly busy: number; readonly logFrames: number; readonly checkpointedFrames: number; readonly native: Readonly<Record<string, number | bigint>> | null; }
 
+export interface SQLiteIntegrityCheckOptions { database?: string; maxErrors?: number; }
+export interface SQLiteIntegrityCheckResult {
+  readonly database: string;
+  readonly kind: 'integrity' | 'quick';
+  readonly ok: boolean;
+  readonly messages: readonly string[];
+  readonly native: readonly Readonly<Record<string, SQLiteValue>>[];
+}
+export interface SQLiteForeignKeyCheckOptions { database?: string; table?: string; }
+export interface SQLiteForeignKeyViolation {
+  readonly table: string | null;
+  readonly rowid: SQLiteValue;
+  readonly parent: string | null;
+  readonly foreignKeyId: number | null;
+  readonly native: Readonly<Record<string, SQLiteValue>>;
+}
+export interface SQLiteForeignKeyCheckResult { readonly database: string; readonly ok: boolean; readonly violations: readonly SQLiteForeignKeyViolation[]; }
+export interface SQLiteAnalyzeOptions { database?: string; target?: string; }
+export interface SQLiteAnalyzeResult { readonly database: string; readonly target: string | null; }
+export interface SQLiteOptimizeOptions { database?: string; mask?: number; }
+export interface SQLiteOptimizeResult { readonly database: string; readonly mask: number | null; readonly native: readonly Readonly<Record<string, SQLiteValue>>[]; }
+export interface SQLiteVacuumOptions { database?: string; into?: string; }
+export interface SQLiteVacuumResult { readonly database: string; readonly into: string | null; }
+export interface SQLiteIncrementalVacuumResult { readonly database: string; readonly pages: number | null; }
+
 export class Connection {
   readonly filename: string | Buffer | URL;
   readonly mode: SQLiteOpenMode;
@@ -83,6 +108,13 @@ export class Connection {
   storagePolicy(): SQLiteStoragePolicy;
   storageState(database?: string): SQLiteStorageState;
   checkpoint(mode?: SQLiteCheckpointMode, database?: string): SQLiteCheckpointResult;
+  integrityCheck(options?: SQLiteIntegrityCheckOptions): SQLiteIntegrityCheckResult;
+  quickCheck(options?: SQLiteIntegrityCheckOptions): SQLiteIntegrityCheckResult;
+  foreignKeyCheck(options?: SQLiteForeignKeyCheckOptions): SQLiteForeignKeyCheckResult;
+  analyze(options?: SQLiteAnalyzeOptions): SQLiteAnalyzeResult;
+  optimize(options?: SQLiteOptimizeOptions): SQLiteOptimizeResult;
+  vacuum(options?: SQLiteVacuumOptions): SQLiteVacuumResult;
+  incrementalVacuum(pages?: number, database?: string): SQLiteIncrementalVacuumResult;
 }
 
 export const capabilities: Readonly<SQLiteCapabilities>;
