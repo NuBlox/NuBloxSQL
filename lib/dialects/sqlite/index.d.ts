@@ -168,6 +168,36 @@ export interface SQLiteExplainResult { readonly opcodes: readonly SQLiteExplainO
 export interface SQLiteQueryDiagnosisOptions extends SQLiteStatementMetadataOptions { includeOpcodes?: boolean; }
 export interface SQLiteQueryDiagnosis { readonly statement: SQLiteStatementMetadata; readonly plan: SQLiteQueryPlan; readonly explain?: SQLiteExplainResult; }
 
+export interface SQLiteChangesetCapabilities {
+  readonly sessions: boolean;
+  readonly changesets: boolean;
+  readonly patchsets: boolean;
+  readonly applyChangeset: boolean;
+  readonly conflictConstants: boolean;
+}
+export interface SQLiteChangeSessionOptions { database?: string; db?: string; table?: string; }
+export type SQLiteChangesetConflictName = 'data' | 'notfound' | 'conflict' | 'constraint' | 'foreign-key' | 'unknown';
+export type SQLiteChangesetResolution = 'abort' | 'omit' | 'replace' | number;
+export interface SQLiteChangesetConflict { readonly code: number; readonly name: SQLiteChangesetConflictName; }
+export interface SQLiteAppliedConflict extends SQLiteChangesetConflict { readonly resolution: 'abort' | 'omit' | 'replace' | 'unknown'; }
+export interface SQLiteApplyChangesetOptions {
+  filter?: (table: string) => boolean;
+  onConflict?: (conflict: SQLiteChangesetConflict) => SQLiteChangesetResolution;
+}
+export interface SQLiteApplyChangesetResult {
+  readonly applied: boolean;
+  readonly conflicts: readonly SQLiteAppliedConflict[];
+  readonly filteredTables: readonly string[];
+}
+export class ChangeSession {
+  readonly database: string;
+  readonly table: string | null;
+  closed: boolean;
+  changeset(): Uint8Array;
+  patchset(): Uint8Array;
+  close(): void;
+}
+
 export class Connection {
   readonly filename: string | Buffer | URL;
   readonly mode: SQLiteOpenMode;
@@ -222,6 +252,10 @@ export class Connection {
   explainQueryPlan(sql: string, parameters?: SQLiteParameters): SQLiteQueryPlan;
   explain(sql: string, parameters?: SQLiteParameters): SQLiteExplainResult;
   diagnoseQuery(sql: string, parameters?: SQLiteParameters, options?: SQLiteQueryDiagnosisOptions): SQLiteQueryDiagnosis;
+  changesetCapabilities(): SQLiteChangesetCapabilities;
+  changesetConstants(): Readonly<Record<string, number>>;
+  createChangeSession(options?: SQLiteChangeSessionOptions): ChangeSession;
+  applyChangeset(changeset: Uint8Array, options?: SQLiteApplyChangesetOptions): SQLiteApplyChangesetResult;
 }
 
 export const capabilities: Readonly<SQLiteCapabilities>;
