@@ -12,24 +12,9 @@ export type SqlCapabilitySupportLevel =
   | 'not-applicable';
 export type SqlCapabilityCoverageLevel = 'foundation' | 'exhaustive-v1';
 export type SqlCapabilityCategory =
-  | 'statements'
-  | 'queries'
-  | 'schema'
-  | 'expressions'
-  | 'integrity'
-  | 'physical'
-  | 'security'
-  | 'transactions'
-  | 'programmability'
-  | 'administration'
-  | 'dataMovement'
-  | 'extensions'
-  | 'types'
-  | 'functions'
-  | 'operators'
-  | 'keywords'
-  | 'syntax'
-  | 'limits';
+  | 'statements' | 'queries' | 'schema' | 'expressions' | 'integrity' | 'physical'
+  | 'security' | 'transactions' | 'programmability' | 'administration' | 'dataMovement'
+  | 'extensions' | 'types' | 'functions' | 'operators' | 'keywords' | 'syntax' | 'limits';
 
 export interface SqlCapabilityFeature {
   readonly supported: boolean | null;
@@ -52,12 +37,7 @@ export interface SqlDialectCapabilityModel {
   readonly dialect: SqlCapabilityTier1Dialect;
   readonly tier: 1;
   readonly coverage: SqlCapabilityCoverageLevel;
-  readonly identity: Readonly<{
-    family: string;
-    name: string;
-    referenceVersion: string;
-    versionPolicy: string;
-  }>;
+  readonly identity: Readonly<{ family: string; name: string; referenceVersion: string; versionPolicy: string }>;
   readonly categories: readonly SqlCapabilityCategory[];
   readonly evidenceRegister: readonly string[];
   readonly statements: Readonly<Record<string, unknown>>;
@@ -87,22 +67,8 @@ export interface SqlCapabilityComparison {
   readonly determinate: boolean;
 }
 
-export type SqlCompatibilityLevel =
-  | 'exact'
-  | 'equivalent'
-  | 'emulated'
-  | 'partial'
-  | 'runtime-dependent'
-  | 'unsupported'
-  | 'not-applicable'
-  | 'source-unavailable'
-  | 'unknown';
-
-export interface SqlCompatibilityReason {
-  readonly code: string;
-  readonly message: string;
-}
-
+export type SqlCompatibilityLevel = 'exact' | 'equivalent' | 'emulated' | 'partial' | 'runtime-dependent' | 'unsupported' | 'not-applicable' | 'source-unavailable' | 'unknown';
+export interface SqlCompatibilityReason { readonly code: string; readonly message: string; }
 export interface SqlCapabilityCompatibility {
   readonly path: string;
   readonly from: SqlCapabilityTier1Dialect;
@@ -122,29 +88,34 @@ export interface SqlCategoryComparisonRow {
   readonly universallySupported: boolean;
   readonly determinate: boolean;
 }
-
 export interface SqlCategoryComparison {
   readonly category: SqlCapabilityCategory;
   readonly dialects: readonly SqlCapabilityTier1Dialect[];
   readonly paths: readonly string[];
   readonly rows: readonly SqlCategoryComparisonRow[];
 }
-
-export interface SqlMigrationSurfaceSummary {
-  readonly exact: number;
-  readonly equivalent: number;
-  readonly emulated: number;
-  readonly partial: number;
-  readonly runtimeDependent: number;
-  readonly unsupported: number;
-  readonly notApplicable: number;
-  readonly unknown: number;
+export interface SqlCapabilityMatrix {
+  readonly dialects: readonly SqlCapabilityTier1Dialect[];
+  readonly categories: readonly SqlCapabilityCategory[];
+  readonly rows: readonly SqlCategoryComparisonRow[];
+  readonly summary: Readonly<{ total: number; universallySupported: number; determinate: number; runtimeDependent: number }>;
 }
 
+export interface SqlMigrationSurfaceSummary {
+  readonly exact: number; readonly equivalent: number; readonly emulated: number; readonly partial: number;
+  readonly runtimeDependent: number; readonly unsupported: number; readonly notApplicable: number; readonly unknown: number;
+}
 export interface SqlMigrationSurface {
   readonly from: SqlCapabilityTier1Dialect;
   readonly to: SqlCapabilityTier1Dialect;
   readonly category: SqlCapabilityCategory | null;
+  readonly summary: SqlMigrationSurfaceSummary;
+  readonly capabilities: readonly SqlCapabilityCompatibility[];
+}
+export interface SqlDialectCompatibilityReport {
+  readonly from: SqlCapabilityTier1Dialect;
+  readonly to: SqlCapabilityTier1Dialect;
+  readonly categories: readonly SqlCapabilityCategory[];
   readonly summary: SqlMigrationSurfaceSummary;
   readonly capabilities: readonly SqlCapabilityCompatibility[];
 }
@@ -162,7 +133,9 @@ export interface SqlCapabilityModelApi {
   compatibility(from: SqlCapabilityTier1Dialect | 'postgres' | 'pg', to: SqlCapabilityTier1Dialect | 'postgres' | 'pg', path: string): SqlCapabilityCompatibility;
   paths(category: SqlCapabilityCategory): readonly string[];
   compareCategory(category: SqlCapabilityCategory, dialects?: readonly (SqlCapabilityTier1Dialect | 'postgres' | 'pg')[]): SqlCategoryComparison;
+  matrix(options?: { dialects?: readonly (SqlCapabilityTier1Dialect | 'postgres' | 'pg')[]; categories?: readonly SqlCapabilityCategory[] }): SqlCapabilityMatrix;
   migrationSurface(from: SqlCapabilityTier1Dialect | 'postgres' | 'pg', to: SqlCapabilityTier1Dialect | 'postgres' | 'pg', category?: SqlCapabilityCategory): SqlMigrationSurface;
+  compareDialects(from: SqlCapabilityTier1Dialect | 'postgres' | 'pg', to: SqlCapabilityTier1Dialect | 'postgres' | 'pg', options?: { categories?: readonly SqlCapabilityCategory[] }): SqlDialectCompatibilityReport;
 }
 
 export const SQL_CAPABILITY_MODEL_SCHEMA_VERSION: 1;
