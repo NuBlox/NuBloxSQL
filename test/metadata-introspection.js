@@ -88,6 +88,16 @@ async function main() {
   assert.ok(checks.some(function (entry) { return entry.expression === 'score >= 0'; }));
   assert.ok(deep.tables[0].constraints.some(function (entry) { return entry.type === 'foreign-key'; }));
 
+  client.native.attach(':memory:', 'archive');
+  await client.execute('CREATE TABLE archive.audit (id INTEGER PRIMARY KEY, note TEXT NOT NULL)');
+  var archiveTables = await client.catalog.tables({ database: 'archive' });
+  assert.ok(archiveTables.some(function (entry) { return entry.name === 'audit' && entry.database === 'archive'; }));
+  var archiveSnapshot = await client.catalog.snapshot({ database: 'archive', tables: ['audit'] });
+  assert.strictEqual(archiveSnapshot.tables.length, 1);
+  assert.strictEqual(archiveSnapshot.tables[0].database, 'archive');
+  assert.ok(archiveSnapshot.tables[0].columns.some(function (entry) { return entry.name === 'note'; }));
+  client.native.detach('archive');
+
   await assert.rejects(function () { return client.introspect({ concurrency: 0 }); }, function (error) {
     return error instanceof nublox.NuBloxSqlError && error.code === nublox.ERROR_CODES.CONFIGURATION;
   });
