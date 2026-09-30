@@ -29,27 +29,9 @@ Every Tier-1 model has the same required categories:
 - `syntax`
 - `limits`
 
-A category may be sparse during foundation work, but it may not be absent. This makes the shape stable while coverage deepens.
-
 ## Capability entries
 
-A leaf capability is not a boolean. Its stable foundation shape is:
-
-```js
-{
-  supported: true | false | null,
-  support: 'native' | 'equivalent' | 'emulated' | 'partial' |
-           'runtime-dependent' | 'unsupported' | 'unknown' | 'not-applicable',
-  nativeName: null,
-  since: null,
-  syntax: null,
-  evidence: 'documented',
-  restrictions: [],
-  aliases: [],
-  equivalentTo: [],
-  notes: null
-}
-```
+A leaf capability is not a boolean. Its stable schema-v1 shape records support level, native naming, version provenance, syntax, standards alignment, evidence references, restrictions, aliases, equivalents and notes.
 
 `null` support means the answer cannot be determined statically and must be established from runtime/server evidence.
 
@@ -64,19 +46,76 @@ const supported = sql.capabilityModel.supports('mysql', 'queries.joins.lateral')
 const comparison = sql.capabilityModel.compare('queries.joins.lateral');
 ```
 
-`compare()` defaults to all Tier-1 dialects and returns both `portable` and `determinate` flags. A runtime-dependent capability is not treated as portable until runtime evidence resolves it.
+`compare()` answers whether a capability is statically portable across a selected dialect set.
 
-## Foundation versus exhaustive coverage
+## Compatibility analysis
 
-Schema version 1 begins with `coverage: "foundation"`. This milestone defines and release-qualifies the semantic contract and seeds representative capabilities across every category. It does **not** claim exhaustive dialect coverage.
+M5 adds directional compatibility analysis. This is deliberately more conservative than a boolean feature comparison because migration and translation depend on source and target semantics.
 
-The planned sequence is:
+```js
+const result = sql.capabilityModel.compatibility(
+  'postgresql',
+  'sqlite',
+  'queries.joins.lateral'
+);
+```
 
-1. M1 — model schema and public API.
-2. M2 — exhaustive PostgreSQL map.
-3. M3 — exhaustive MySQL map.
-4. M4 — exhaustive SQLite map, including runtime/compile probes.
-5. M5 — comparison and compatibility analysis.
+A compatibility result includes:
+
+- `compatible`: `true`, `false` or `null` when runtime evidence is required.
+- `level`: `exact`, `equivalent`, `emulated`, `partial`, `runtime-dependent`, `unsupported`, `not-applicable`, `source-unavailable` or `unknown`.
+- `rewriteRequired`: whether syntax/semantic rewriting is expected.
+- `lossless`: `true`, `false` or `null` when it cannot yet be guaranteed.
+- `reasons`: machine-readable diagnostic reasons.
+- the complete source and target capability entries used as evidence.
+
+This does not yet rewrite SQL. It establishes whether a future rewrite engine has a sound semantic target.
+
+## Category comparison
+
+```js
+const schema = sql.capabilityModel.compareCategory('schema');
+```
+
+The result contains the union of modeled feature paths for the category and one row per path across PostgreSQL, MySQL and SQLite. Each row reports whether the feature is universally supported and whether the answer is statically determinate.
+
+Feature paths can also be enumerated directly:
+
+```js
+const paths = sql.capabilityModel.paths('queries');
+```
+
+## Migration surface
+
+`migrationSurface()` builds a directional inventory of every source capability that is actually available and classifies its target compatibility:
+
+```js
+const report = sql.capabilityModel.migrationSurface(
+  'postgresql',
+  'mysql',
+  'queries'
+);
+```
+
+The report includes counts for exact, equivalent, emulated, partial, runtime-dependent, unsupported, not-applicable and unknown target outcomes plus the full per-capability evidence.
+
+The report is an analysis primitive rather than an automatic migration verdict. It deliberately does not assign a simplistic compatibility percentage because unsupported capabilities differ greatly in business and semantic importance.
+
+## Coverage status
+
+Tier-1 capability coverage is now `exhaustive-v1` for:
+
+1. PostgreSQL.
+2. MySQL.
+3. SQLite, including version-, compile- and host-runtime-dependent capabilities.
+
+The programme sequence is:
+
+1. **M1 — complete:** model schema and public API.
+2. **M2 — complete:** exhaustive-v1 PostgreSQL map.
+3. **M3 — complete:** exhaustive-v1 MySQL map.
+4. **M4 — complete:** exhaustive-v1 SQLite map.
+5. **M5 — current:** comparison and directional compatibility analysis.
 6. M6 — version-aware runtime qualification.
 7. M7 — rewrite/compatibility engine.
 8. M8 — AST/parser/compiler architecture.
@@ -89,20 +128,11 @@ The planned sequence is:
 4. Prefer `partial` when a construct has material semantic restrictions.
 5. Use `not-applicable` for server concepts SQLite intentionally does not have, such as database users and grants.
 6. Unknown is preferable to an unverified claim.
-7. Capability data is deeply frozen and safe for shared use.
-8. Legacy `descriptor.supports()` remains intact. The SQL Capability Model is a richer layer, not a breaking replacement.
+7. Capability and compatibility data is deeply frozen and safe for shared use.
+8. Direction matters: PostgreSQL-to-SQLite compatibility is not assumed to equal SQLite-to-PostgreSQL compatibility.
+9. Compatibility analysis must not claim losslessness where the capability model has only equivalence, emulation or runtime-dependent evidence.
+10. Legacy `descriptor.supports()` remains intact. The SQL Capability Model is a richer layer, not a breaking replacement.
 
-## Initial authoritative references
+## Evidence policy
 
-The foundation map is based on vendor documentation, including:
-
-- PostgreSQL 18 `SELECT` / CTE / LATERAL documentation: https://www.postgresql.org/docs/18/sql-select.html
-- PostgreSQL materialized views: https://www.postgresql.org/docs/18/rules-materializedviews.html
-- PostgreSQL `COPY`: https://www.postgresql.org/docs/18/sql-copy.html
-- MySQL 9.7 common table expressions: https://dev.mysql.com/doc/refman/9.7/en/with.html
-- MySQL lateral derived tables: https://dev.mysql.com/doc/refman/8.4/en/lateral-derived-tables.html
-- MySQL window functions: https://dev.mysql.com/doc/refman/9.7/en/window-function-descriptions.html
-- SQLite common table expressions: https://www.sqlite.org/lang_with.html
-- SQLite generated columns: https://www.sqlite.org/gencol.html
-
-Each exhaustive dialect milestone must expand the evidence register and tests rather than relying only on the foundation references above.
+Each Tier-1 model carries a primary-source evidence register and each significant capability leaf includes references. Compatibility analysis consumes those modeled facts rather than introducing a second independent database knowledge base.
