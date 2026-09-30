@@ -10,6 +10,7 @@ export type SqlCapabilitySupportLevel =
   | 'unsupported'
   | 'unknown'
   | 'not-applicable';
+export type SqlCapabilityCoverageLevel = 'foundation' | 'exhaustive-v1';
 export type SqlCapabilityCategory =
   | 'statements'
   | 'queries'
@@ -35,8 +36,11 @@ export interface SqlCapabilityFeature {
   readonly support: SqlCapabilitySupportLevel;
   readonly nativeName: string | null;
   readonly since: string | null;
+  readonly deprecatedSince: string | null;
   readonly syntax: string | null;
+  readonly standard: string | null;
   readonly evidence: string;
+  readonly references: readonly string[];
   readonly restrictions: readonly string[];
   readonly aliases: readonly string[];
   readonly equivalentTo: readonly string[];
@@ -47,7 +51,7 @@ export interface SqlDialectCapabilityModel {
   readonly schemaVersion: 1;
   readonly dialect: SqlCapabilityTier1Dialect;
   readonly tier: 1;
-  readonly coverage: 'foundation';
+  readonly coverage: SqlCapabilityCoverageLevel;
   readonly identity: Readonly<{
     family: string;
     name: string;
@@ -55,6 +59,7 @@ export interface SqlDialectCapabilityModel {
     versionPolicy: string;
   }>;
   readonly categories: readonly SqlCapabilityCategory[];
+  readonly evidenceRegister: readonly string[];
   readonly statements: Readonly<Record<string, unknown>>;
   readonly queries: Readonly<Record<string, unknown>>;
   readonly schema: Readonly<Record<string, unknown>>;
