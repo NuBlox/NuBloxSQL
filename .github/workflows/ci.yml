@@ -30,5 +30,7 @@ jobs:
         run: npm run v1:proprietary-audit
       - name: Assert single release surface
         run: npm run v1:release-audit
+      - name: Qualify stable package and clean-install consumers
+        run: npm run release:qualify
       - name: Verify NuBloxSQL publish surface
         run: npm pack --dry-run
