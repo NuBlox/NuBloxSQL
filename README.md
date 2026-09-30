@@ -29,7 +29,7 @@ const user = await db.one(sql`
 await db.close();
 ```
 
-The tagged SQL is compiled through the selected dialect. Values become native placeholders and identifiers are quoted by the dialect runtime. Application code does not need to know whether the engine uses `?`, `$1`, or another placeholder form.
+The tagged SQL is compiled through the selected dialect. Values become native placeholders and identifiers are quoted by the dialect runtime. Application code does not need to know whether the engine uses `?`, `$1`, `@p1`, or another placeholder form.
 
 ## The NuBloxSQL model
 
@@ -44,10 +44,10 @@ The tagged SQL is compiled through the selected dialect. Values become native pl
                           │
                  dialect selection
                           │
-        ┌─────────────────┼─────────────────┐
-        ▼                 ▼                 ▼
-      MySQL           PostgreSQL          SQLite
-   native runtime     native runtime    embedded runtime
+       ┌──────────┬───────┼──────────┬───────────┐
+       ▼          ▼       ▼          ▼           ▼
+     MySQL   PostgreSQL SQLite   SQL Server   future dialects
+      native     native embedded      native
 ```
 
 The public platform owns:
@@ -55,6 +55,7 @@ The public platform owns:
 - one installation and one import;
 - dialect selection;
 - portable SQL value placeholders and identifier quoting;
+- exact portable typed binds where type intent matters;
 - a unified query/result contract;
 - portable prepared statements with named bindings;
 - async-iterable streaming with deterministic resource cleanup;
@@ -76,10 +77,10 @@ The governing principle is **one developer API, honest dialect semantics**.
 | MySQL | Stable | Native client/server protocol |
 | PostgreSQL | Stable | Native client/server protocol |
 | SQLite | Development | Embedded Node.js `node:sqlite` runtime |
-| SQL Server | Planned | Native client/server runtime |
+| SQL Server | Development | Native TDS 7.4 / TDS 8.0 client/server runtime |
 | Oracle | Planned | Native client/server runtime |
 
-Stable v1 qualification currently covers Node.js 22/24/26, MySQL 8.4/9.7 and PostgreSQL 15/16/17/18. SQLite is active post-v1 development.
+Current executable qualification covers Node.js 22/24/26, MySQL 8.4/9.7, PostgreSQL 15/16/17/18, SQL Server 2019/2022/2025, and the embedded SQLite runtime. Capability support remains explicit per dialect rather than inferred from the existence of an adapter.
 
 ## Preferred client API
 
@@ -93,7 +94,7 @@ const result = await db.query(sql`
 `);
 ```
 
-For MySQL this compiles to `WHERE email = ?`. For PostgreSQL it compiles to `WHERE email = $1`. Parameters remain separate from SQL text.
+For MySQL this compiles to `WHERE email = ?`. For PostgreSQL it compiles to `WHERE email = $1`. For SQL Server it compiles to a native RPC parameter such as `@p1`. Parameters remain separate from SQL text.
 
 Nested fragments and safe identifier composition are supported:
 
@@ -108,6 +109,51 @@ const rows = await db.all(sql`
   FROM ${sql.identifier('app', 'users')}
 `);
 ```
+
+### Portable exact typed binds
+
+Use `sql.typed()` when the database must receive explicit type intent rather than relying on generic JavaScript inference. The first portable exact types are `decimal`/`numeric` and `uuid`/`guid`:
+
+```js
+const row = await db.one(sql`
+  SELECT
+    ${sql.typed('12345678901234567890.123456', {
+      type: 'decimal',
+      precision: 26,
+      scale: 6
+    })} AS exact_amount,
+    ${sql.typed('00112233-4455-6677-8899-aabbccddeeff', 'uuid')} AS object_id
+`);
+```
+
+Exact decimals accept a decimal string, `bigint`, or `null`. JavaScript `Number` input is intentionally rejected for portable decimal binds so NuBloxSQL never introduces binary floating-point loss before the value reaches the database. Precision and scale are validated before execution.
+
+UUID/GUID input is validated and normalized to canonical lowercase hyphenated form.
+
+Prepared statements carry the same type contract:
+
+```js
+const statement = await db.prepare(sql`
+  SELECT
+    ${sql.parameter('amount', {
+      type: 'decimal',
+      precision: 26,
+      scale: 6
+    })} AS exact_amount,
+    ${sql.parameter('id', 'uuid')} AS object_id
+`);
+
+const row = await statement.one({
+  amount: '12345678901234567890.123456',
+  id: '00112233445566778899AABBCCDDEEFF'
+});
+
+await statement.close();
+```
+
+The API is portable while the wire representation remains native: PostgreSQL uses NUMERIC/UUID type OIDs, MySQL uses its prepared-protocol DECIMAL representation and canonical UUID text, SQL Server uses native DECIMAL precision/scale and UNIQUEIDENTIFIER encoding, and SQLite receives normalized exact values through its dynamic type system. Unsupported future portable types will fail explicitly rather than being silently degraded.
+
+Typed values also work through `stream()` and remain visible to custom encode codecs through `context.type` before dialect-specific binding occurs.
 
 ### Portable prepared statements
 
@@ -170,6 +216,7 @@ NuBloxSQL does not buffer the complete result to simulate streaming:
 - **MySQL** uses the native row stream and socket backpressure. Parameterised streams use prepared execution and binary row decoding rather than SQL literal interpolation.
 - **PostgreSQL** uses a transaction-scoped server portal and batched fetches. NuBloxSQL owns the temporary transaction and pooled connection lifecycle when necessary.
 - **SQLite** uses lazy prepared-statement iteration.
+- **SQL Server** incrementally decodes native TDS result tokens and rows while retaining TDS flow and connection lifecycle semantics.
 
 Early termination is explicit and deterministic:
 
@@ -213,6 +260,7 @@ The implementation remains database-native:
 - **MySQL** uses `information_schema`.
 - **PostgreSQL** combines `information_schema` with `pg_catalog` for richer index, constraint and composite foreign-key metadata.
 - **SQLite** uses `sqlite_schema` and PRAGMA metadata including `table_xinfo`, `index_list`, `index_xinfo` and `foreign_key_list`.
+- **SQL Server** uses its native catalog and information-schema surfaces through the SQL Server runtime.
 
 `metadata.table(name)` returns the table summary plus its columns, indexes, foreign keys and constraints. A missing table returns `null` rather than fabricating an empty object.
 
@@ -269,7 +317,7 @@ try {
 
 Portable categories currently include authentication, authorization, connection, timeout, cancellation, constraint violations, unique/foreign-key/not-null violations, syntax, deadlock, serialization, resource limits, state, cardinality and unsupported capabilities.
 
-NuBloxSQL preserves native diagnostics such as PostgreSQL SQLSTATE, MySQL error numbers and SQLite result codes. Ordinary application exceptions thrown from callbacks such as `transaction()` remain ordinary application exceptions rather than being misclassified as database errors.
+NuBloxSQL preserves native diagnostics such as PostgreSQL SQLSTATE, MySQL error numbers, SQLite result codes and SQL Server native error metadata. Ordinary application exceptions thrown from callbacks such as `transaction()` remain ordinary application exceptions rather than being misclassified as database errors.
 
 ### Transactions
 
@@ -320,6 +368,7 @@ const nublox = require('nubloxsql');
 nublox.mysql;
 nublox.postgresql;
 nublox.sqlite;
+nublox.sqlserver;
 ```
 
 ## Low-level APIs
@@ -343,7 +392,7 @@ These are advanced primitives. `createClient()` is the primary developer-facing 
 
 NuBloxSQL has three internal layers:
 
-1. **Developer client** — portable SQL compilation, prepared statements, streaming, metadata, error normalization, result normalization, transactions and lifecycle.
+1. **Developer client** — portable SQL compilation, exact typed binds, prepared statements, streaming, metadata, error normalization, result normalization, transactions and lifecycle.
 2. **Shared SQL contracts** — capabilities and semantics proven across dialects.
 3. **Native dialect runtimes** — database-specific implementation and native behavior.
 
@@ -354,10 +403,10 @@ NuBloxSQL has three internal layers:
                          ▼
                   shared SQL contracts
                          │
-        ┌────────────────┼────────────────┐
-        ▼                ▼                ▼
-      MySQL          PostgreSQL         SQLite
-   implementation    implementation   implementation
+        ┌────────────────┼────────────────┬────────────────┐
+        ▼                ▼                ▼                ▼
+      MySQL          PostgreSQL         SQLite        SQL Server
+   implementation    implementation   implementation  implementation
 ```
 
 The implementation is one runtime tree: shared contracts live under `lib/core`, the developer client under `lib/client`, and native database runtimes under `lib/dialects/<dialect>`.
@@ -372,7 +421,7 @@ NuBloxSQL must:
 - keep common APIs coherent where semantics are genuinely portable;
 - preserve database-specific semantics where they are not portable;
 - expose capability discovery instead of pretending every engine supports the same features;
-- preserve type fidelity and native diagnostics;
+- preserve exact type fidelity and native diagnostics;
 - avoid silent semantic emulation;
 - keep native escape hatches accessible from the same NuBloxSQL entry point;
 - qualify supported runtime/database versions with executable CI and live-server evidence.
