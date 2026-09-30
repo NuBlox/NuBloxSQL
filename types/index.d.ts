@@ -22,6 +22,15 @@ export const CLIENT_LIFECYCLE_STATES: Readonly<{
   CLOSED: 'closed';
 }>;
 
+export const ERROR_CODES: Readonly<{
+  CONFIGURATION: 'NUBLOXSQL_CONFIGURATION';
+  ROUTING: 'NUBLOXSQL_ROUTING';
+  UNSUPPORTED_DIALECT: 'NUBLOXSQL_UNSUPPORTED_DIALECT';
+  UNSUPPORTED_URL_SCHEME: 'NUBLOXSQL_UNSUPPORTED_URL_SCHEME';
+  CLIENT_LIFECYCLE: 'NUBLOXSQL_CLIENT_LIFECYCLE';
+  UNSUPPORTED: 'NUBLOXSQL_UNSUPPORTED';
+}>;
+
 export type MySqlUrlConfig = Partial<mysql.ConnectionConfig> & { url: MySqlConnectionUrl | URL; dialect?: 'mysql' };
 export type PostgreSqlUrlConfig = Partial<postgresql.PostgreSqlConnectionOptions> & { url: PostgreSqlConnectionUrl | URL; dialect?: 'postgresql' | 'postgres' | 'pg' };
 export type SqlServerUrlConfig = Partial<sqlserver.SqlServerConnectionConfig> & { url: SqlServerConnectionUrl | URL; dialect?: 'sqlserver' | 'mssql' | 'sql-server' };
