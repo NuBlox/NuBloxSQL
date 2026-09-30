@@ -1,5 +1,6 @@
 export type SQLiteValue = null | number | bigint | string | Uint8Array;
 export type SQLiteParameters = readonly SQLiteValue[] | Record<string, SQLiteValue>;
+export type SQLiteOpenMode = 'readonly' | 'readwrite' | 'readwrite-create';
 
 export interface SQLiteCapabilities {
   readonly preparedStatements: true;
@@ -16,95 +17,34 @@ export interface SQLiteCapabilities {
 
 export interface SQLiteConnectionOptions {
   filename?: string | Buffer | URL;
+  mode?: SQLiteOpenMode;
+  open?: boolean;
   busyTimeout?: number;
   foreignKeys?: boolean;
   readOnly?: boolean;
+  queryOnly?: boolean;
   readBigInts?: boolean;
 }
-
-export interface SQLiteQueryOptions {
-  readBigInts?: boolean;
-  maxRows?: number;
-  maxRowBytes?: number;
-  maxResultBytes?: number;
-}
-
-export interface SQLiteFieldMetadata {
-  readonly name: string;
-  readonly nativeType?: string;
-  readonly extension: Readonly<{
-    database: string | null;
-    table: string | null;
-    column: string | null;
-  }>;
-}
-
-export interface SQLiteCommandResult {
-  readonly kind: 'command';
-  readonly affectedRows?: number | bigint;
-  readonly rowCount?: number;
-  readonly insertId?: number | bigint;
-  readonly extension?: unknown;
-}
-
-export interface SQLiteRowsResult<Row = Record<string, SQLiteValue>> {
-  readonly kind: 'rows';
-  readonly rows: readonly Row[];
-  readonly fields: readonly SQLiteFieldMetadata[];
-  readonly rowCount: number;
-  readonly extension: Readonly<{ resultBytes: number }>;
-}
-
-export class SqliteError extends Error {
-  readonly code?: string;
-  readonly sqliteCode?: number;
-  readonly category: string;
-  readonly retryable: boolean;
-  readonly cause?: unknown;
-}
-
-export class SqliteResultLimitError extends SqliteError {
-  readonly limit?: number;
-  readonly observed?: number;
-}
-
-export class PreparedStatement<Row = Record<string, SQLiteValue>> {
-  columns(): SQLiteFieldMetadata[];
-  get(parameters?: SQLiteParameters): Row | undefined;
-  run(parameters?: SQLiteParameters): SQLiteCommandResult;
-  iterate(parameters?: SQLiteParameters): IterableIterator<Row>;
-  all(parameters?: SQLiteParameters, options?: SQLiteQueryOptions): SQLiteRowsResult<Row>;
-}
-
-export interface SQLiteDatabaseInfo {
-  readonly sequence: number | bigint;
-  readonly name: string;
-  readonly file: string | null;
-}
-
-export interface SQLiteSchemaObject {
-  readonly name: string;
-  readonly type: 'table' | 'view';
-  readonly tableName: string;
-  readonly rootpage: number | bigint;
-  readonly sql: string | null;
-}
-
-export interface SQLiteColumnInfo {
-  readonly cid: number | bigint;
-  readonly name: string;
-  readonly type: string;
-  readonly notnull: number | bigint;
-  readonly dflt_value: SQLiteValue;
-  readonly pk: number | bigint;
-  readonly hidden: number | bigint;
-}
+export interface SQLiteQueryOptions { readBigInts?: boolean; maxRows?: number; maxRowBytes?: number; maxResultBytes?: number; }
+export interface SQLiteFieldMetadata { readonly name: string; readonly nativeType?: string; readonly extension: Readonly<{ database: string | null; table: string | null; column: string | null; }>; }
+export interface SQLiteCommandResult { readonly kind: 'command'; readonly affectedRows?: number | bigint; readonly rowCount?: number; readonly insertId?: number | bigint; readonly extension?: unknown; }
+export interface SQLiteRowsResult<Row = Record<string, SQLiteValue>> { readonly kind: 'rows'; readonly rows: readonly Row[]; readonly fields: readonly SQLiteFieldMetadata[]; readonly rowCount: number; readonly extension: Readonly<{ resultBytes: number }>; }
+export class SqliteError extends Error { readonly code?: string; readonly sqliteCode?: number; readonly category: string; readonly retryable: boolean; readonly cause?: unknown; }
+export class SqliteResultLimitError extends SqliteError { readonly limit?: number; readonly observed?: number; }
+export class PreparedStatement<Row = Record<string, SQLiteValue>> { columns(): SQLiteFieldMetadata[]; get(parameters?: SQLiteParameters): Row | undefined; run(parameters?: SQLiteParameters): SQLiteCommandResult; iterate(parameters?: SQLiteParameters): IterableIterator<Row>; all(parameters?: SQLiteParameters, options?: SQLiteQueryOptions): SQLiteRowsResult<Row>; }
+export interface SQLiteDatabaseInfo { readonly sequence: number | bigint; readonly name: string; readonly file: string | null; }
+export interface SQLiteSchemaObject { readonly name: string; readonly type: 'table' | 'view'; readonly tableName: string; readonly rootpage: number | bigint; readonly sql: string | null; }
+export interface SQLiteColumnInfo { readonly cid: number | bigint; readonly name: string; readonly type: string; readonly notnull: number | bigint; readonly dflt_value: SQLiteValue; readonly pk: number | bigint; readonly hidden: number | bigint; }
+export interface SQLiteBackupOptions { source?: string; target?: string; rate?: number; progress?: (status: { remainingPages: number; totalPages: number }) => void; }
+export interface SQLiteLifecycleCapabilities { readonly backup: boolean; readonly serialize: boolean; readonly deserialize: boolean; readonly attach: true; readonly detach: true; readonly explicitOpen: boolean; }
 
 export class Connection {
   readonly filename: string | Buffer | URL;
+  readonly mode: SQLiteOpenMode;
   readonly readBigInts: boolean;
   closed: boolean;
   constructor(config?: SQLiteConnectionOptions);
+  open(): void;
   close(): void;
   exec(sql: string): SQLiteCommandResult;
   prepare<Row = Record<string, SQLiteValue>>(sql: string, options?: SQLiteQueryOptions): PreparedStatement<Row>;
@@ -121,18 +61,16 @@ export class Connection {
   listDatabases(): SQLiteDatabaseInfo[];
   listTables(database?: string): readonly SQLiteSchemaObject[];
   tableInfo(name: string, database?: string): readonly SQLiteColumnInfo[];
+  attach(filename: string | URL, name: string): Readonly<{ name: string; file: string }>;
+  detach(name: string): void;
+  backup(destination: string | Buffer | URL, options?: SQLiteBackupOptions): Promise<number>;
+  serialize(database?: string): Uint8Array;
+  deserialize(buffer: Uint8Array, options?: { database?: string; dbName?: string }): void;
+  lifecycleCapabilities(): SQLiteLifecycleCapabilities;
 }
 
 export const capabilities: Readonly<SQLiteCapabilities>;
-export const services: Readonly<{
-  quoteIdentifier(identifier: string): string;
-  placeholder(index: number): '?';
-}>;
-export const descriptor: Readonly<{
-  identity: Readonly<{ family: 'sqlite'; name: 'SQLite' }>;
-  capabilities: Readonly<SQLiteCapabilities>;
-  services: typeof services;
-  supports(capability: string): boolean;
-}>;
+export const services: Readonly<{ quoteIdentifier(identifier: string): string; placeholder(index: number): '?'; }>;
+export const descriptor: Readonly<{ identity: Readonly<{ family: 'sqlite'; name: 'SQLite' }>; capabilities: Readonly<SQLiteCapabilities>; services: typeof services; supports(capability: string): boolean; }>;
 export function createObjectName(name: { catalog?: string; schema?: string; name: string }): Readonly<{ catalog?: string; schema?: string; name: string }>;
 export function createConnection(config?: SQLiteConnectionOptions): Connection;
