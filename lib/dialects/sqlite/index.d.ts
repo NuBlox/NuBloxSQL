@@ -92,6 +92,35 @@ export interface SQLiteAggregateOptions<State = unknown> {
 }
 export type SQLiteAuthorizer = (actionCode: number, arg1: string | null, arg2: string | null, dbName: string | null, triggerOrView: string | null) => number;
 
+export interface SQLiteFeatureFlags {
+  readonly commonTableExpressions: boolean;
+  readonly windowFunctions: boolean;
+  readonly returning: boolean;
+  readonly upsert: boolean;
+  readonly json: boolean;
+  readonly jsonb: boolean;
+  readonly strictTables: boolean;
+  readonly fts5: boolean;
+  readonly builtInCollations: boolean;
+  readonly customCollations: boolean;
+}
+export interface SQLiteValueConventions {
+  readonly null: 'null';
+  readonly integer: 'bigint' | 'number-safe-integer';
+  readonly real: 'number';
+  readonly text: 'string';
+  readonly blob: 'Uint8Array';
+  readonly boolean: 'integer-0-or-1-by-convention';
+  readonly dateTime: 'ISO-8601-UTC-text-by-convention';
+  readonly json: 'JSON-text-or-JSONB-blob' | 'JSON-text' | 'text-only';
+}
+export interface SQLiteFeatureMatrix {
+  readonly sqliteVersion: string;
+  readonly features: Readonly<SQLiteFeatureFlags>;
+  readonly compileOptions: readonly string[];
+  readonly valueConventions: Readonly<SQLiteValueConventions>;
+}
+
 export class Connection {
   readonly filename: string | Buffer | URL;
   readonly mode: SQLiteOpenMode;
@@ -141,6 +170,8 @@ export class Connection {
   setDefensive(active: boolean): boolean;
   authorizerConstants(): Readonly<Record<string, number>>;
   extensionPolicy(): SQLiteExtensionPolicy;
+  featureMatrix(): SQLiteFeatureMatrix;
+  valueConventions(): Readonly<SQLiteValueConventions>;
 }
 
 export const capabilities: Readonly<SQLiteCapabilities>;
