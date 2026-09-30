@@ -49,7 +49,7 @@ The first stable baseline established:
 - PostgreSQL 15/16/17/18 live qualification;
 - proprietary release gates, fuzzing and CodeQL.
 
-## Phase 1 — Single-entry NuBloxSQL facade — active
+## Phase 1 — Single-entry NuBloxSQL facade — complete
 
 Make the root `nubloxsql` package the canonical public product.
 
@@ -77,7 +77,9 @@ Make the root `nubloxsql` package the canonical public product.
 7. ✅ public transaction helper policy where genuinely portable;
 8. ✅ observability conventions across dialects;
 9. ✅ TypeScript discrimination and inference by dialect;
-10. stable release qualification for the single-entry package.
+10. ✅ stable release qualification for the single-entry package.
+
+The Phase 1 release contract is machine-enforced through `docs/releases/public-api-v1.json` and `npm run release:qualify`. Stable or release-candidate publication must use the exact commit that passes the complete release and CI qualification gates.
 
 ## Phase 2 — Shared contracts — continuous
 
