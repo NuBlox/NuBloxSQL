@@ -43,7 +43,24 @@ export interface SQLiteCommandResult { readonly kind: 'command'; readonly affect
 export interface SQLiteRowsResult<Row = Record<string, SQLiteValue>> { readonly kind: 'rows'; readonly rows: readonly Row[]; readonly fields: readonly SQLiteFieldMetadata[]; readonly rowCount: number; readonly extension: Readonly<{ resultBytes: number }>; }
 export class SqliteError extends Error { readonly code?: string; readonly sqliteCode?: number; readonly category: string; readonly retryable: boolean; readonly cause?: unknown; }
 export class SqliteResultLimitError extends SqliteError { readonly limit?: number; readonly observed?: number; }
-export class PreparedStatement<Row = Record<string, SQLiteValue>> { columns(): SQLiteFieldMetadata[]; get(parameters?: SQLiteParameters): Row | undefined; run(parameters?: SQLiteParameters): SQLiteCommandResult; iterate(parameters?: SQLiteParameters): IterableIterator<Row>; all(parameters?: SQLiteParameters, options?: SQLiteQueryOptions): SQLiteRowsResult<Row>; }
+
+export interface SQLiteStatementMetadataOptions { includeSql?: boolean; includeExpandedSql?: boolean; }
+export interface SQLiteStatementMetadata {
+  readonly columns: readonly SQLiteFieldMetadata[];
+  readonly readBigInts: boolean;
+  readonly native: Readonly<{ sourceSql: boolean; expandedSql: boolean }>;
+  readonly sourceSql?: string;
+  readonly expandedSql?: string;
+}
+export class PreparedStatement<Row = Record<string, SQLiteValue>> {
+  columns(): SQLiteFieldMetadata[];
+  metadata(options?: SQLiteStatementMetadataOptions): SQLiteStatementMetadata;
+  get(parameters?: SQLiteParameters): Row | undefined;
+  run(parameters?: SQLiteParameters): SQLiteCommandResult;
+  iterate(parameters?: SQLiteParameters): IterableIterator<Row>;
+  all(parameters?: SQLiteParameters, options?: SQLiteQueryOptions): SQLiteRowsResult<Row>;
+}
+
 export interface SQLiteDatabaseInfo { readonly sequence: number | bigint; readonly name: string; readonly file: string | null; }
 export interface SQLiteSchemaObject { readonly name: string; readonly type: 'table' | 'view'; readonly tableName: string; readonly rootpage: number | bigint; readonly sql: string | null; }
 export interface SQLiteColumnInfo { readonly cid: number | bigint; readonly name: string; readonly type: string; readonly notnull: number | bigint; readonly dflt_value: SQLiteValue; readonly pk: number | bigint; readonly hidden: number | bigint; }
@@ -121,6 +138,36 @@ export interface SQLiteFeatureMatrix {
   readonly valueConventions: Readonly<SQLiteValueConventions>;
 }
 
+export type SQLiteQueryPlanNodeKind = 'scan' | 'search' | 'temp-btree' | 'multi-index' | 'subquery' | 'other';
+export interface SQLiteQueryPlanNode {
+  readonly id: number;
+  readonly parentId: number;
+  readonly auxiliary: number;
+  readonly detail: string;
+  readonly kind: SQLiteQueryPlanNodeKind;
+  readonly table: string | null;
+  readonly index: string | null;
+  readonly covering: boolean;
+  readonly automaticIndex: boolean;
+  readonly tempBtree: boolean;
+}
+export interface SQLiteQueryPlanSummary {
+  readonly nodeCount: number;
+  readonly scans: number;
+  readonly searches: number;
+  readonly usesIndex: boolean;
+  readonly usesCoveringIndex: boolean;
+  readonly usesAutomaticIndex: boolean;
+  readonly hasFullScan: boolean;
+  readonly usesTempBtree: boolean;
+}
+export interface SQLitePlannerWarning { readonly code: 'full-table-scan' | 'temporary-btree' | 'automatic-index'; readonly message: string; readonly nodeId: number | null; }
+export interface SQLiteQueryPlan { readonly nodes: readonly SQLiteQueryPlanNode[]; readonly summary: SQLiteQueryPlanSummary; readonly warnings: readonly SQLitePlannerWarning[]; }
+export interface SQLiteExplainOpcode { readonly address: number; readonly opcode: string; readonly p1: number; readonly p2: number; readonly p3: number; readonly p4: string | null; readonly p5: number; readonly comment: string | null; }
+export interface SQLiteExplainResult { readonly opcodes: readonly SQLiteExplainOpcode[]; readonly opcodeCount: number; readonly uniqueOpcodes: readonly string[]; }
+export interface SQLiteQueryDiagnosisOptions extends SQLiteStatementMetadataOptions { includeOpcodes?: boolean; }
+export interface SQLiteQueryDiagnosis { readonly statement: SQLiteStatementMetadata; readonly plan: SQLiteQueryPlan; readonly explain?: SQLiteExplainResult; }
+
 export class Connection {
   readonly filename: string | Buffer | URL;
   readonly mode: SQLiteOpenMode;
@@ -172,6 +219,9 @@ export class Connection {
   extensionPolicy(): SQLiteExtensionPolicy;
   featureMatrix(): SQLiteFeatureMatrix;
   valueConventions(): Readonly<SQLiteValueConventions>;
+  explainQueryPlan(sql: string, parameters?: SQLiteParameters): SQLiteQueryPlan;
+  explain(sql: string, parameters?: SQLiteParameters): SQLiteExplainResult;
+  diagnoseQuery(sql: string, parameters?: SQLiteParameters, options?: SQLiteQueryDiagnosisOptions): SQLiteQueryDiagnosis;
 }
 
 export const capabilities: Readonly<SQLiteCapabilities>;
