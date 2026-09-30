@@ -14,12 +14,40 @@ export type ConnectionUrl = MySqlConnectionUrl | PostgreSqlConnectionUrl | SqlSe
 export type ConnectionUrlInput = ConnectionUrl | URL;
 export type ClientLifecycleState = 'idle' | 'opening' | 'open' | 'closing' | 'closed';
 
+export interface CapabilitySupportEntry {
+  readonly supported: boolean;
+  readonly source: 'dialect';
+}
+
+export interface CapabilityRuntimeInfo {
+  readonly nodeVersion: string;
+  readonly v8Version: string | null;
+  readonly modules: string | null;
+  readonly sqliteVersion: string | null;
+  readonly platform: string;
+  readonly arch: string;
+}
+
+export interface CapabilityServerInfo {
+  readonly connected: boolean;
+  readonly version: string | null;
+  readonly protocolVersion: number | null;
+  readonly [key: string]: unknown;
+}
+
+export interface CapabilityReport {
+  readonly dialect: root.Dialect;
+  readonly identity: unknown;
+  readonly capabilities: Readonly<Record<string, boolean>>;
+  readonly support: Readonly<Record<string, CapabilitySupportEntry>>;
+  readonly plannedCapabilities: Readonly<Record<string, boolean>>;
+  readonly runtime: CapabilityRuntimeInfo;
+  readonly server: CapabilityServerInfo | null;
+  readonly pool: boolean;
+}
+
 export const CLIENT_LIFECYCLE_STATES: Readonly<{
-  IDLE: 'idle';
-  OPENING: 'opening';
-  OPEN: 'open';
-  CLOSING: 'closing';
-  CLOSED: 'closed';
+  IDLE: 'idle'; OPENING: 'opening'; OPEN: 'open'; CLOSING: 'closing'; CLOSED: 'closed';
 }>;
 
 export const ERROR_CODES: Readonly<{
@@ -46,7 +74,11 @@ declare module '../index' {
     open(): Promise<this>;
     close(): Promise<void>;
     end(): Promise<void>;
+    capabilityReport(): CapabilityReport;
+    discoverCapabilities(options?: { acquire?: root.ClientAcquireOptions }): Promise<CapabilityReport>;
   }
+
+  function capabilityReport(dialect: root.DialectAlias): CapabilityReport;
 
   function createConnection(url: MySqlConnectionUrl, overrides?: Partial<mysql.ConnectionConfig>): mysql.Connection;
   function createConnection(url: PostgreSqlConnectionUrl, overrides?: Partial<postgresql.PostgreSqlConnectionOptions>): postgresql.Connection;
