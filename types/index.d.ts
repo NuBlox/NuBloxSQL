@@ -14,64 +14,37 @@ export type ConnectionUrl = MySqlConnectionUrl | PostgreSqlConnectionUrl | SqlSe
 export type ConnectionUrlInput = ConnectionUrl | URL;
 export type ClientLifecycleState = 'idle' | 'opening' | 'open' | 'closing' | 'closed';
 
-export interface CapabilitySupportEntry {
-  readonly supported: boolean;
-  readonly source: 'dialect';
-}
+export interface CapabilitySupportEntry { readonly supported: boolean; readonly source: 'dialect'; }
+export interface CapabilityRuntimeInfo { readonly nodeVersion: string; readonly v8Version: string | null; readonly modules: string | null; readonly sqliteVersion: string | null; readonly platform: string; readonly arch: string; }
+export interface CapabilityServerInfo { readonly connected: boolean; readonly version: string | null; readonly protocolVersion: number | null; readonly [key: string]: unknown; }
+export interface CapabilityReport { readonly dialect: root.Dialect; readonly identity: unknown; readonly capabilities: Readonly<Record<string, boolean>>; readonly support: Readonly<Record<string, CapabilitySupportEntry>>; readonly plannedCapabilities: Readonly<Record<string, boolean>>; readonly runtime: CapabilityRuntimeInfo; readonly server: CapabilityServerInfo | null; readonly pool: boolean; }
 
-export interface CapabilityRuntimeInfo {
-  readonly nodeVersion: string;
-  readonly v8Version: string | null;
-  readonly modules: string | null;
-  readonly sqliteVersion: string | null;
-  readonly platform: string;
-  readonly arch: string;
-}
+export interface MetadataIntrospectionOptions extends root.MetadataScope { deep?: boolean; concurrency?: number; tables?: readonly string[]; }
+export interface MetadataSnapshot { readonly dialect: root.Dialect; readonly scope: Readonly<root.MetadataScope>; readonly databases: readonly root.DatabaseMetadata[]; readonly schemas: readonly root.SchemaMetadata[]; readonly tables: readonly root.TableMetadata[]; }
 
-export interface CapabilityServerInfo {
-  readonly connected: boolean;
-  readonly version: string | null;
-  readonly protocolVersion: number | null;
-  readonly [key: string]: unknown;
+export interface TransactionRetryPolicy {
+  maxAttempts?: number;
+  delayMs?: number | ((attempt: number) => number);
+  shouldRetry?: (error: unknown, attempt: number) => boolean;
+  onRetry?: (error: unknown, completedAttempt: number, nextAttempt: number) => void | Promise<void>;
 }
-
-export interface CapabilityReport {
+export interface PortableTransactionPolicy {
   readonly dialect: root.Dialect;
-  readonly identity: unknown;
-  readonly capabilities: Readonly<Record<string, boolean>>;
-  readonly support: Readonly<Record<string, CapabilitySupportEntry>>;
-  readonly plannedCapabilities: Readonly<Record<string, boolean>>;
-  readonly runtime: CapabilityRuntimeInfo;
-  readonly server: CapabilityServerInfo | null;
-  readonly pool: boolean;
+  readonly transactions: boolean;
+  readonly nestedTransactions: boolean;
+  readonly savepoints: boolean;
+  readonly isolationLevels: readonly root.TransactionIsolationLevel[];
+  readonly readOnly: boolean;
+  readonly deferrable: boolean;
+  readonly sqliteModes: readonly root.SqliteTransactionMode[];
+  readonly retries: Readonly<{ supported: true; defaultMaxAttempts: 1; automaticCategories: readonly ['deadlock', 'serialization']; requiresRollbackBeforeRetry: true; nested: false }>;
+  readonly guarantees: Readonly<{ callbackCommit: true; callbackFailureRollback: true; nestedSavepointRollback: boolean; cleanupFailuresAttachedToOriginalError: true }>;
 }
 
-export interface MetadataIntrospectionOptions extends root.MetadataScope {
-  deep?: boolean;
-  concurrency?: number;
-  tables?: readonly string[];
-}
-
-export interface MetadataSnapshot {
-  readonly dialect: root.Dialect;
-  readonly scope: Readonly<root.MetadataScope>;
-  readonly databases: readonly root.DatabaseMetadata[];
-  readonly schemas: readonly root.SchemaMetadata[];
-  readonly tables: readonly root.TableMetadata[];
-}
-
-export const CLIENT_LIFECYCLE_STATES: Readonly<{
-  IDLE: 'idle'; OPENING: 'opening'; OPEN: 'open'; CLOSING: 'closing'; CLOSED: 'closed';
-}>;
-
-export const ERROR_CODES: Readonly<{
-  CONFIGURATION: 'NUBLOXSQL_CONFIGURATION';
-  ROUTING: 'NUBLOXSQL_ROUTING';
-  UNSUPPORTED_DIALECT: 'NUBLOXSQL_UNSUPPORTED_DIALECT';
-  UNSUPPORTED_URL_SCHEME: 'NUBLOXSQL_UNSUPPORTED_URL_SCHEME';
-  CLIENT_LIFECYCLE: 'NUBLOXSQL_CLIENT_LIFECYCLE';
-  UNSUPPORTED: 'NUBLOXSQL_UNSUPPORTED';
-}>;
+export const CLIENT_LIFECYCLE_STATES: Readonly<{ IDLE: 'idle'; OPENING: 'opening'; OPEN: 'open'; CLOSING: 'closing'; CLOSED: 'closed'; }>;
+export const TRANSACTION_ISOLATION_LEVELS: readonly ['read-uncommitted', 'read-committed', 'repeatable-read', 'serializable'];
+export const SQLITE_TRANSACTION_MODES: readonly ['deferred', 'immediate', 'exclusive'];
+export const ERROR_CODES: Readonly<{ CONFIGURATION: 'NUBLOXSQL_CONFIGURATION'; ROUTING: 'NUBLOXSQL_ROUTING'; UNSUPPORTED_DIALECT: 'NUBLOXSQL_UNSUPPORTED_DIALECT'; UNSUPPORTED_URL_SCHEME: 'NUBLOXSQL_UNSUPPORTED_URL_SCHEME'; CLIENT_LIFECYCLE: 'NUBLOXSQL_CLIENT_LIFECYCLE'; UNSUPPORTED: 'NUBLOXSQL_UNSUPPORTED'; }>;
 
 export type MySqlUrlConfig = Partial<mysql.ConnectionConfig> & { url: MySqlConnectionUrl | URL; dialect?: 'mysql' };
 export type PostgreSqlUrlConfig = Partial<postgresql.PostgreSqlConnectionOptions> & { url: PostgreSqlConnectionUrl | URL; dialect?: 'postgresql' | 'postgres' | 'pg' };
@@ -80,15 +53,18 @@ export type SqliteUrlConfig = Partial<sqlite.SQLiteConnectionOptions> & { url: S
 export type UrlConnectionConfig = MySqlUrlConfig | PostgreSqlUrlConfig | SqlServerUrlConfig | SqliteUrlConfig;
 
 declare module '../index' {
-  interface MetadataCatalog {
-    snapshot(options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>;
+  interface MetadataCatalog { snapshot(options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>; }
+  interface ClientTransactionOptions {
+    retry?: boolean | TransactionRetryPolicy;
+    retries?: number;
+    retryDelayMs?: number;
   }
-
   interface Client {
     readonly lifecycleState: ClientLifecycleState;
     readonly isOpen: boolean;
     readonly isClosed: boolean;
     readonly catalog: MetadataCatalog;
+    readonly transactionAttempt?: number;
     connect(): Promise<this>;
     open(): Promise<this>;
     close(): Promise<void>;
@@ -96,9 +72,11 @@ declare module '../index' {
     capabilityReport(): CapabilityReport;
     discoverCapabilities(options?: { acquire?: root.ClientAcquireOptions }): Promise<CapabilityReport>;
     introspect(options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>;
+    transactionPolicy(): PortableTransactionPolicy;
   }
 
   function capabilityReport(dialect: root.DialectAlias): CapabilityReport;
+  function transactionPolicy(dialect: root.DialectAlias): PortableTransactionPolicy;
   function introspect(config: root.ClientConfig | UrlConnectionConfig | ConnectionUrlInput, options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>;
   function introspect(dialect: root.DialectAlias, config?: Record<string, unknown>, options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>;
 
