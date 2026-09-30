@@ -41,6 +41,9 @@ async function main() {
   var roleTableName = 'nublox_client_roles';
   var table = sql.identifier(tableName);
   var roleTable = sql.identifier(roleTableName);
+  var exactDecimal = '12345678901234567890.123456';
+  var typedUuid = '00112233-4455-6677-8899-aabbccddeeff';
+  var decimalSpec = { type: 'decimal', precision: 26, scale: 6 };
 
   try {
     await db.execute(sql`DROP TABLE IF EXISTS ${table}`);
@@ -91,6 +94,21 @@ async function main() {
     assert.strictEqual(rows.length, 1);
     assert.strictEqual(rows[0].name, 'portable');
 
+    var typedDirect = await db.one(sql`
+      SELECT
+        ${sql.typed(exactDecimal, decimalSpec)} AS exact_decimal,
+        ${sql.typed(typedUuid, 'uuid')} AS typed_uuid
+    `);
+    assert.strictEqual(String(typedDirect.exact_decimal), exactDecimal);
+    assert.strictEqual(String(typedDirect.typed_uuid).toLowerCase(), typedUuid);
+
+    var typedStream = [];
+    for await (var typedStreamRow of db.stream(sql`
+      SELECT ${sql.typed(exactDecimal, decimalSpec)} AS exact_decimal
+    `, { batchSize: 1, highWaterMark: 1 })) typedStream.push(typedStreamRow);
+    assert.strictEqual(typedStream.length, 1);
+    assert.strictEqual(String(typedStream[0].exact_decimal), exactDecimal);
+
     await assert.rejects(
       function () { return db.execute(sql`INSERT INTO ${table} (id, name) VALUES (${1}, ${'duplicate'})`); },
       function (error) {
@@ -129,6 +147,16 @@ async function main() {
     assert.strictEqual((await selectPrepared.one({ id: 10 })).name, 'prepared-one');
     assert.strictEqual((await selectPrepared.one({ id: 11 })).name, 'prepared-two');
     await selectPrepared.close();
+
+    var typedPrepared = await db.prepare(sql`
+      SELECT
+        ${sql.parameter('amount', decimalSpec)} AS exact_decimal,
+        ${sql.parameter('id', 'uuid')} AS typed_uuid
+    `);
+    var typedPreparedRow = await typedPrepared.one({ amount: exactDecimal, id: typedUuid });
+    assert.strictEqual(String(typedPreparedRow.exact_decimal), exactDecimal);
+    assert.strictEqual(String(typedPreparedRow.typed_uuid).toLowerCase(), typedUuid);
+    await typedPrepared.close();
 
     var streamed = [];
     var rowStream = db.stream(sql`
@@ -179,7 +207,7 @@ async function main() {
     var rolledBack = await db.all(sql`SELECT id FROM ${table} WHERE id = ${3}`);
     assert.strictEqual(rolledBack.length, 0);
 
-    console.log('NuBloxSQL live unified client contract passed for ' + dialect);
+    console.log('NuBloxSQL live unified client and portable typed-bind contract passed for ' + dialect);
   } finally {
     try { await db.execute(sql`DROP TABLE IF EXISTS ${table}`); } catch (_) {}
     try { await db.execute(sql`DROP TABLE IF EXISTS ${roleTable}`); } catch (_) {}
