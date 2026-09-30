@@ -12,6 +12,15 @@ export type SqlServerConnectionUrl = `mssql://${string}` | `sqlserver://${string
 export type SqliteConnectionUrl = `sqlite:${string}`;
 export type ConnectionUrl = MySqlConnectionUrl | PostgreSqlConnectionUrl | SqlServerConnectionUrl | SqliteConnectionUrl;
 export type ConnectionUrlInput = ConnectionUrl | URL;
+export type ClientLifecycleState = 'idle' | 'opening' | 'open' | 'closing' | 'closed';
+
+export const CLIENT_LIFECYCLE_STATES: Readonly<{
+  IDLE: 'idle';
+  OPENING: 'opening';
+  OPEN: 'open';
+  CLOSING: 'closing';
+  CLOSED: 'closed';
+}>;
 
 export type MySqlUrlConfig = Partial<mysql.ConnectionConfig> & { url: MySqlConnectionUrl | URL; dialect?: 'mysql' };
 export type PostgreSqlUrlConfig = Partial<postgresql.PostgreSqlConnectionOptions> & { url: PostgreSqlConnectionUrl | URL; dialect?: 'postgresql' | 'postgres' | 'pg' };
@@ -20,6 +29,16 @@ export type SqliteUrlConfig = Partial<sqlite.SQLiteConnectionOptions> & { url: S
 export type UrlConnectionConfig = MySqlUrlConfig | PostgreSqlUrlConfig | SqlServerUrlConfig | SqliteUrlConfig;
 
 declare module '../index' {
+  interface Client {
+    readonly lifecycleState: ClientLifecycleState;
+    readonly isOpen: boolean;
+    readonly isClosed: boolean;
+    connect(): Promise<this>;
+    open(): Promise<this>;
+    close(): Promise<void>;
+    end(): Promise<void>;
+  }
+
   function createConnection(url: MySqlConnectionUrl, overrides?: Partial<mysql.ConnectionConfig>): mysql.Connection;
   function createConnection(url: PostgreSqlConnectionUrl, overrides?: Partial<postgresql.PostgreSqlConnectionOptions>): postgresql.Connection;
   function createConnection(url: SqlServerConnectionUrl, overrides?: Partial<sqlserver.SqlServerConnectionConfig>): sqlserver.Connection;
