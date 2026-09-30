@@ -5,7 +5,7 @@ var fs = require('fs');
 var path = require('path');
 
 var packageJson = require('../package.json');
-assert.strictEqual(packageJson.types, 'types/index.d.ts');
+assert.strictEqual(packageJson.types, 'types/public.d.ts');
 
 var declarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'index.d.ts'), 'utf8');
 [
@@ -44,4 +44,18 @@ assert.ok(/transaction<T>\(fn: \(transaction: DialectClient<D>\)/.test(declarati
 assert.ok(/SqlServerConnectionConfig[\s\S]*pool\?: boolean \| root\.ClientPoolOptions/.test(declarations));
 assert.ok(/CanonicalDialect<D> extends 'sqlite' \? false : boolean \| root\.ClientPoolOptions/.test(declarations));
 
-console.log('NuBloxSQL TypeScript dialect discrimination surface contract passed');
+var publicDeclarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'public.d.ts'), 'utf8');
+[
+  'export type SqlCapabilityTier1Dialect',
+  'export type SqlCapabilitySupportLevel',
+  'export interface SqlCapabilityFeature',
+  'export interface SqlDialectCapabilityModel',
+  'export interface SqlCapabilityModelApi',
+  'export const SQL_CAPABILITY_MODEL_SCHEMA_VERSION',
+  'export const TIER1_DIALECTS',
+  'export const capabilityModel'
+].forEach(function (needle) {
+  assert.ok(publicDeclarations.indexOf(needle) >= 0, 'missing capability model TypeScript contract: ' + needle);
+});
+
+console.log('NuBloxSQL TypeScript dialect discrimination and capability-model surface contract passed');
