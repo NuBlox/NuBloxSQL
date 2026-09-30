@@ -66,14 +66,14 @@ Make the root `nubloxsql` package the canonical public product.
 - root packaging that contains supported runtimes;
 - facade contract tests and package dry-run validation.
 
-### Next facade slices
+### Facade slices
 
-1. connection-string/URL dialect selection where semantics are unambiguous;
-2. consistent async lifecycle conventions across networked and embedded engines;
-3. platform-level connection and pool configuration validation;
-4. stable public error surface for facade/routing failures;
-5. richer capability discovery, including server/runtime-specific capabilities;
-6. public metadata/introspection entry points;
+1. ✅ connection-string/URL dialect selection where semantics are unambiguous;
+2. ✅ consistent async lifecycle conventions across networked and embedded engines;
+3. ✅ platform-level connection and pool configuration validation;
+4. ✅ stable public error surface for facade/routing failures;
+5. ✅ richer capability discovery, including server/runtime-specific capabilities;
+6. ✅ public metadata/introspection entry points;
 7. public transaction helper policy where genuinely portable;
 8. observability conventions across dialects;
 9. TypeScript discrimination and inference by dialect;

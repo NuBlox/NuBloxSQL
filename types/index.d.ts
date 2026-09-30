@@ -46,6 +46,20 @@ export interface CapabilityReport {
   readonly pool: boolean;
 }
 
+export interface MetadataIntrospectionOptions extends root.MetadataScope {
+  deep?: boolean;
+  concurrency?: number;
+  tables?: readonly string[];
+}
+
+export interface MetadataSnapshot {
+  readonly dialect: root.Dialect;
+  readonly scope: Readonly<root.MetadataScope>;
+  readonly databases: readonly root.DatabaseMetadata[];
+  readonly schemas: readonly root.SchemaMetadata[];
+  readonly tables: readonly root.TableMetadata[];
+}
+
 export const CLIENT_LIFECYCLE_STATES: Readonly<{
   IDLE: 'idle'; OPENING: 'opening'; OPEN: 'open'; CLOSING: 'closing'; CLOSED: 'closed';
 }>;
@@ -66,19 +80,27 @@ export type SqliteUrlConfig = Partial<sqlite.SQLiteConnectionOptions> & { url: S
 export type UrlConnectionConfig = MySqlUrlConfig | PostgreSqlUrlConfig | SqlServerUrlConfig | SqliteUrlConfig;
 
 declare module '../index' {
+  interface MetadataCatalog {
+    snapshot(options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>;
+  }
+
   interface Client {
     readonly lifecycleState: ClientLifecycleState;
     readonly isOpen: boolean;
     readonly isClosed: boolean;
+    readonly catalog: MetadataCatalog;
     connect(): Promise<this>;
     open(): Promise<this>;
     close(): Promise<void>;
     end(): Promise<void>;
     capabilityReport(): CapabilityReport;
     discoverCapabilities(options?: { acquire?: root.ClientAcquireOptions }): Promise<CapabilityReport>;
+    introspect(options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>;
   }
 
   function capabilityReport(dialect: root.DialectAlias): CapabilityReport;
+  function introspect(config: root.ClientConfig | UrlConnectionConfig | ConnectionUrlInput, options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>;
+  function introspect(dialect: root.DialectAlias, config?: Record<string, unknown>, options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>;
 
   function createConnection(url: MySqlConnectionUrl, overrides?: Partial<mysql.ConnectionConfig>): mysql.Connection;
   function createConnection(url: PostgreSqlConnectionUrl, overrides?: Partial<postgresql.PostgreSqlConnectionOptions>): postgresql.Connection;
