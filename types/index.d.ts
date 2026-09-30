@@ -13,6 +13,7 @@ export type SqliteConnectionUrl = `sqlite:${string}`;
 export type ConnectionUrl = MySqlConnectionUrl | PostgreSqlConnectionUrl | SqlServerConnectionUrl | SqliteConnectionUrl;
 export type ConnectionUrlInput = ConnectionUrl | URL;
 export type ClientLifecycleState = 'idle' | 'opening' | 'open' | 'closing' | 'closed';
+export type ObservabilityEventType = 'query' | 'execute' | 'prepare' | 'prepared' | 'transaction' | 'transaction_retry' | 'stream' | 'connection' | 'error';
 
 export interface CapabilitySupportEntry { readonly supported: boolean; readonly source: 'dialect'; }
 export interface CapabilityRuntimeInfo { readonly nodeVersion: string; readonly v8Version: string | null; readonly modules: string | null; readonly sqliteVersion: string | null; readonly platform: string; readonly arch: string; }
@@ -44,6 +45,10 @@ export interface PortableTransactionPolicy {
 export const CLIENT_LIFECYCLE_STATES: Readonly<{ IDLE: 'idle'; OPENING: 'opening'; OPEN: 'open'; CLOSING: 'closing'; CLOSED: 'closed'; }>;
 export const TRANSACTION_ISOLATION_LEVELS: readonly ['read-uncommitted', 'read-committed', 'repeatable-read', 'serializable'];
 export const SQLITE_TRANSACTION_MODES: readonly ['deferred', 'immediate', 'exclusive'];
+export const OBSERVABILITY_SCHEMA_VERSION: 1;
+export const OBSERVABILITY_EVENT_TYPES: Readonly<{
+  QUERY: 'query'; EXECUTE: 'execute'; PREPARE: 'prepare'; PREPARED: 'prepared'; TRANSACTION: 'transaction'; TRANSACTION_RETRY: 'transaction_retry'; STREAM: 'stream'; CONNECTION: 'connection'; ERROR: 'error';
+}>;
 export const ERROR_CODES: Readonly<{ CONFIGURATION: 'NUBLOXSQL_CONFIGURATION'; ROUTING: 'NUBLOXSQL_ROUTING'; UNSUPPORTED_DIALECT: 'NUBLOXSQL_UNSUPPORTED_DIALECT'; UNSUPPORTED_URL_SCHEME: 'NUBLOXSQL_UNSUPPORTED_URL_SCHEME'; CLIENT_LIFECYCLE: 'NUBLOXSQL_CLIENT_LIFECYCLE'; UNSUPPORTED: 'NUBLOXSQL_UNSUPPORTED'; }>;
 
 export type MySqlUrlConfig = Partial<mysql.ConnectionConfig> & { url: MySqlConnectionUrl | URL; dialect?: 'mysql' };
@@ -53,6 +58,20 @@ export type SqliteUrlConfig = Partial<sqlite.SQLiteConnectionOptions> & { url: S
 export type UrlConnectionConfig = MySqlUrlConfig | PostgreSqlUrlConfig | SqlServerUrlConfig | SqliteUrlConfig;
 
 declare module '../index' {
+  interface TelemetryEvent {
+    readonly schemaVersion: 1;
+    readonly eventId: number;
+    readonly clientId: string;
+    readonly operationId?: string;
+    readonly errorName?: string | null;
+    readonly transactionAttempt?: number;
+    readonly completedAttempt?: number;
+    readonly nextAttempt?: number;
+  }
+  interface TelemetryOptions {
+    slowOperationThresholdMs?: number;
+    onTransactionRetry?: (event: TelemetryEvent) => void;
+  }
   interface MetadataCatalog { snapshot(options?: MetadataIntrospectionOptions): Promise<MetadataSnapshot>; }
   interface ClientTransactionOptions {
     retry?: boolean | TransactionRetryPolicy;
