@@ -13,6 +13,7 @@ var lifecycleApi = require('./lib/client/LifecycleIntegration');
 var configurationApi = require('./lib/client/Configuration');
 var capabilitiesApi = require('./lib/client/Capabilities');
 var metadataIntegrationApi = require('./lib/client/MetadataIntegration');
+var transactionPolicyApi = require('./lib/client/TransactionPolicy');
 streamApi.install(clientApi);
 require('./lib/client/SqlServerStreamIntegration').install(streamApi);
 require('./lib/client/OperationControlIntegration').install(clientApi);
@@ -79,22 +80,15 @@ function createClient(dialectOrConfig, maybeConfig) {
 }
 async function introspect(dialectOrConfig, maybeConfig, maybeOptions) {
   var client, options;
-  if (typeof dialectOrConfig === 'string' && !connectionUrlApi.isUrlLike(dialectOrConfig)) {
-    client = createClient(dialectOrConfig, maybeConfig);
-    options = maybeOptions || {};
-  } else {
-    client = createClient(dialectOrConfig);
-    options = maybeConfig || {};
-  }
-  try {
-    return await client.introspect(options);
-  } finally {
-    await client.close();
-  }
+  if (typeof dialectOrConfig === 'string' && !connectionUrlApi.isUrlLike(dialectOrConfig)) { client = createClient(dialectOrConfig, maybeConfig); options = maybeOptions || {}; }
+  else { client = createClient(dialectOrConfig); options = maybeConfig || {}; }
+  try { return await client.introspect(options); }
+  finally { await client.close(); }
 }
 function supports(dialect, capability) { var implementation = loadAdapter(dialect); var dialectDescriptor = implementation.descriptor; return !!(dialectDescriptor && typeof dialectDescriptor.supports === 'function' && dialectDescriptor.supports(capability)); }
 function descriptor(dialect) { var implementation = loadAdapter(dialect); return implementation.descriptor || null; }
 function capabilityReport(dialect) { var normalized = normalizeDialect(dialect); var implementation = loadAdapter(normalized); return capabilitiesApi.buildReport(normalized, implementation.descriptor || null, null, false); }
+function transactionPolicy(dialect) { var normalized = normalizeDialect(dialect); var implementation = loadAdapter(normalized); return transactionPolicyApi.describe(normalized, implementation.descriptor || null); }
 function defineLazy(target, name, loader) { Object.defineProperty(target, name, { enumerable: true, configurable: false, get: loader }); }
 
 var dialects = {};
@@ -106,12 +100,15 @@ Object.freeze(dialects);
 
 exports.DIALECTS = DIALECTS;
 exports.CLIENT_LIFECYCLE_STATES = lifecycleApi.STATES;
+exports.TRANSACTION_ISOLATION_LEVELS = transactionPolicyApi.ISOLATION_LEVELS;
+exports.SQLITE_TRANSACTION_MODES = transactionPolicyApi.SQLITE_MODES;
 exports.ERROR_CODES = publicErrorApi.CODES;
 exports.dialects = dialects;
 exports.adapter = adapter;
 exports.descriptor = descriptor;
 exports.supports = supports;
 exports.capabilityReport = capabilityReport;
+exports.transactionPolicy = transactionPolicy;
 exports.createConnection = createConnection;
 exports.createPool = createPool;
 exports.createClient = createClient;
