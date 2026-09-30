@@ -7,6 +7,7 @@ var streamApi = require('./lib/client/Stream');
 var metadataApi = require('./lib/client/Metadata');
 var observabilityApi = require('./lib/client/Observability');
 var typesApi = require('./lib/client/Types');
+var connectionUrlApi = require('./lib/client/ConnectionUrl');
 streamApi.install(clientApi);
 require('./lib/client/SqlServerStreamIntegration').install(streamApi);
 require('./lib/client/OperationControlIntegration').install(clientApi);
@@ -49,20 +50,46 @@ function loadAdapter(dialect) {
   return cache[normalized];
 }
 
+function copyConfig(source, target, excluded) {
+  Object.keys(source || {}).forEach(function copyConfigKey(key) {
+    if (!excluded || excluded.indexOf(key) === -1) target[key] = source[key];
+  });
+  return target;
+}
+
 function resolveInvocation(dialectOrConfig, maybeConfig) {
   var dialect;
   var config;
-  if (typeof dialectOrConfig === 'string') {
+  var parsed;
+
+  if (connectionUrlApi.isUrlLike(dialectOrConfig)) {
+    parsed = connectionUrlApi.parse(dialectOrConfig);
+    dialect = parsed.dialect;
+    config = copyConfig(maybeConfig || {}, copyConfig(parsed.config, {}));
+  } else if (typeof dialectOrConfig === 'string') {
     dialect = normalizeDialect(dialectOrConfig);
     config = maybeConfig || {};
   } else {
     config = dialectOrConfig || {};
     if (!config || typeof config !== 'object' || Array.isArray(config)) throw new TypeError('NuBloxSQL connection configuration must be an object');
-    dialect = normalizeDialect(config.dialect);
+
+    if (config.url !== undefined) {
+      parsed = connectionUrlApi.parse(config.url);
+      if (config.dialect !== undefined && normalizeDialect(config.dialect) !== parsed.dialect) {
+        throw new RangeError('NuBloxSQL connection URL dialect does not match explicit dialect: ' + config.dialect);
+      }
+      dialect = parsed.dialect;
+      config = copyConfig(config, copyConfig(parsed.config, {}), ['dialect', 'url']);
+    } else {
+      dialect = normalizeDialect(config.dialect);
+    }
   }
+
+  if (!config || typeof config !== 'object' || Array.isArray(config)) throw new TypeError('NuBloxSQL connection configuration must be an object');
+
   var adapterConfig = {};
-  Object.keys(config).forEach(function copyConfig(key) {
-    if (key !== 'dialect') adapterConfig[key] = config[key];
+  Object.keys(config).forEach(function copyAdapterConfig(key) {
+    if (key !== 'dialect' && key !== 'url') adapterConfig[key] = config[key];
   });
   return { dialect: dialect, adapter: loadAdapter(dialect), config: adapterConfig };
 }
