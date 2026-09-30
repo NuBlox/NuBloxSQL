@@ -20,9 +20,10 @@
     "test:sqlserver":"node lib/dialects/sqlserver/test/protocol.js && node lib/dialects/sqlserver/test/login-token.js && node lib/dialects/sqlserver/test/connection.js && node lib/dialects/sqlserver/test/result-stream.js && node lib/dialects/sqlserver/test/type-fidelity.js && node lib/dialects/sqlserver/test/typed-bind.js && node lib/dialects/sqlserver/test/plp-max.js && node lib/dialects/sqlserver/test/collation-codepages.js && node lib/dialects/sqlserver/test/sql-variant.js && node lib/dialects/sqlserver/test/incremental-stream.js && node lib/dialects/sqlserver/test/rpc.js && node lib/dialects/sqlserver/test/legacy-tls-bridge.js && node lib/dialects/sqlserver/test/capability-honesty.js",
     "v1:proprietary-audit":"node tool/check-proprietary-v1.js",
     "v1:release-audit":"node tool/check-release-v1.js",
+    "release:qualify":"node tool/check-stable-release.js",
     "verify":"npm run test:platform && npm run test:mysql && npm run test:sql-core && npm run test:postgresql && npm run test:sqlite && npm run test:sqlserver",
     "verify:proprietary":"npm run verify && npm run v1:proprietary-audit && npm run v1:release-audit",
-    "release:check":"npm run verify:proprietary && npm pack --dry-run",
+    "release:check":"npm run verify:proprietary && npm run release:qualify && npm pack --dry-run",
     "prepublishOnly":"npm run release:check"
   }
 }
