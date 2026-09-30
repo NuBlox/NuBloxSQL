@@ -198,6 +198,29 @@ export class ChangeSession {
   close(): void;
 }
 
+export type SQLiteRuntimeLimitName = 'length' | 'sqlLength' | 'column' | 'exprDepth' | 'compoundSelect' | 'vdbeOp' | 'functionArg' | 'attach' | 'likePatternLength' | 'variableNumber' | 'triggerDepth';
+export type SQLiteRuntimeLimits = Readonly<Partial<Record<SQLiteRuntimeLimitName, number>>>;
+export interface SQLiteResourceGovernanceCapabilities {
+  readonly mutableRuntimeLimits: boolean;
+  readonly pageCountLimit: true;
+  readonly queryResultBudgets: true;
+  readonly hardenedProfile: true;
+}
+export interface SQLiteQueryBudgetOptions extends SQLiteQueryOptions { profile?: 'hardened'; }
+export interface SQLiteHardenedProfileOptions {
+  limits?: Partial<Record<SQLiteRuntimeLimitName, number>>;
+  queryBudget?: SQLiteQueryOptions;
+  maxPageCount?: number;
+  database?: string;
+}
+export interface SQLiteHardenedProfileResult {
+  readonly profile: 'hardened';
+  readonly mutableRuntimeLimits: boolean;
+  readonly limits: SQLiteRuntimeLimits;
+  readonly queryBudget: Readonly<SQLiteQueryOptions>;
+  readonly maxPageCount: number | null;
+}
+
 export class Connection {
   readonly filename: string | Buffer | URL;
   readonly mode: SQLiteOpenMode;
@@ -256,10 +279,21 @@ export class Connection {
   changesetConstants(): Readonly<Record<string, number>>;
   createChangeSession(options?: SQLiteChangeSessionOptions): ChangeSession;
   applyChangeset(changeset: Uint8Array, options?: SQLiteApplyChangesetOptions): SQLiteApplyChangesetResult;
+  resourceGovernanceCapabilities(): SQLiteResourceGovernanceCapabilities;
+  runtimeLimits(): SQLiteRuntimeLimits;
+  setRuntimeLimit(name: SQLiteRuntimeLimitName, value: number): number;
+  applyRuntimeLimits(limits: Partial<Record<SQLiteRuntimeLimitName, number>>): SQLiteRuntimeLimits;
+  pageCountLimit(value?: number, database?: string): number;
+  queryBudget(options?: SQLiteQueryBudgetOptions): Readonly<SQLiteQueryOptions>;
+  governedQuery<Row = Record<string, SQLiteValue>>(sql: string, parameters?: SQLiteParameters, options?: SQLiteQueryBudgetOptions): SQLiteRowsResult<Row>;
+  applyHardenedProfile(options?: SQLiteHardenedProfileOptions): SQLiteHardenedProfileResult;
 }
 
 export const capabilities: Readonly<SQLiteCapabilities>;
 export const services: Readonly<{ quoteIdentifier(identifier: string): string; placeholder(index: number): '?'; }>;
 export const descriptor: Readonly<{ identity: Readonly<{ family: 'sqlite'; name: 'SQLite' }>; capabilities: Readonly<SQLiteCapabilities>; services: typeof services; supports(capability: string): boolean; }>;
+export const SQLITE_LIMIT_KEYS: readonly SQLiteRuntimeLimitName[];
+export const SQLITE_HARDENED_LIMITS: Readonly<Record<SQLiteRuntimeLimitName, number>>;
+export const SQLITE_HARDENED_QUERY_BUDGET: Readonly<Required<Pick<SQLiteQueryOptions, 'maxRows' | 'maxRowBytes' | 'maxResultBytes'>>>;
 export function createObjectName(name: { catalog?: string; schema?: string; name: string }): Readonly<{ catalog?: string; schema?: string; name: string }>;
 export function createConnection(config?: SQLiteConnectionOptions): Connection;
