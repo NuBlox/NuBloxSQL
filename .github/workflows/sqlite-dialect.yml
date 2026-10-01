@@ -41,5 +41,7 @@ jobs:
         run: npm run test:sqlite
       - name: SQLite production performance and memory evidence
         run: npm run test:sqlite-production
+      - name: SQLite corruption error classification
+        run: node lib/dialects/sqlite/test/corruption-error-classification.js
       - name: SQLite corruption and hostile-metadata hardening
         run: node lib/dialects/sqlite/test/production-corruption.js
