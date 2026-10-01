@@ -64,4 +64,16 @@ var publicDeclarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'pu
   assert.ok(publicDeclarations.indexOf(needle) >= 0, 'missing capability model TypeScript contract: ' + needle);
 });
 
+var postgresqlDeclarations = fs.readFileSync(path.join(__dirname, '..', 'lib', 'dialects', 'postgresql', 'index.d.ts'), 'utf8');
+[
+  'export interface PostgreSqlExplainOptions',
+  'export interface PostgreSqlExplainSummary',
+  'export interface PostgreSqlExplainReport',
+  'explain(sql: string',
+  'explainAnalyze(sql: string',
+  'diagnoseQuery(sql: string'
+].forEach(function (needle) {
+  assert.ok(postgresqlDeclarations.indexOf(needle) >= 0, 'missing PostgreSQL diagnostics TypeScript contract: ' + needle);
+});
+
 console.log('NuBloxSQL TypeScript dialect discrimination and capability-model surface contract passed');

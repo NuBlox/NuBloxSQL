@@ -51,6 +51,44 @@ export type PostgreSqlCopySink = ((chunk: Buffer) => void | Promise<void>) | Nod
 export interface PostgreSqlCopyOptions extends PostgreSqlQueryOptions { maxBytes?: number; sink?: PostgreSqlCopySink; acquire?: PostgreSqlPoolAcquireOptions; }
 export interface PostgreSqlCopyResult { readonly direction: 'from' | 'to'; readonly format: 'text' | 'binary'; readonly columnFormats: readonly ('text' | 'binary')[]; readonly bytes: number; readonly command: string; readonly rowCount: number | null; readonly data?: Buffer; }
 export interface PostgreSqlNotificationOptions extends PostgreSqlQueryOptions { acquire?: PostgreSqlPoolAcquireOptions; }
+export type PostgreSqlExplainSerialize = 'none' | 'text' | 'binary';
+export interface PostgreSqlExplainOptions extends PostgreSqlQueryOptions {
+  analyze?: boolean;
+  verbose?: boolean;
+  costs?: boolean;
+  settings?: boolean;
+  genericPlan?: boolean;
+  buffers?: boolean;
+  wal?: boolean;
+  timing?: boolean;
+  summary?: boolean;
+  serialize?: PostgreSqlExplainSerialize;
+  memory?: boolean;
+  acquire?: PostgreSqlPoolAcquireOptions;
+}
+export interface PostgreSqlExplainSummary {
+  readonly rootNodeType: string | null;
+  readonly totalCost: number | null;
+  readonly planRows: number | null;
+  readonly actualRows: number | null;
+  readonly actualTotalTime: number | null;
+  readonly planningTime: number | null;
+  readonly executionTime: number | null;
+  readonly nodeCount: number;
+  readonly maxDepth: number;
+  readonly nodeTypes: Readonly<Record<string, number>>;
+}
+export interface PostgreSqlExplainReport {
+  readonly format: 'json';
+  readonly analyzed: boolean;
+  readonly statementExecuted: boolean;
+  readonly plan: readonly Record<string, unknown>[];
+  readonly root: Readonly<Record<string, unknown>>;
+  readonly summary: PostgreSqlExplainSummary;
+  readonly settings: Readonly<Record<string, unknown>> | null;
+  readonly triggers: readonly unknown[] | null;
+  readonly jit: Readonly<Record<string, unknown>> | null;
+}
 export type PostgreSqlIsolationLevel = 'read-uncommitted' | 'read-committed' | 'repeatable-read' | 'serializable';
 export interface PostgreSqlTransactionOptions extends PostgreSqlQueryOptions { isolationLevel?: PostgreSqlIsolationLevel; readOnly?: boolean; deferrable?: boolean; acquire?: PostgreSqlPoolAcquireOptions; }
 export interface PostgreSqlPoolAcquireOptions { timeout?: number; signal?: AbortSignal; }
@@ -109,6 +147,12 @@ export class Connection extends EventEmitter {
   unlisten(channel: string, options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
   unlistenAll(options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
   notify(channel: string, payload?: string, options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
+  explain(sql: string, parameters?: PostgreSqlParameter[], options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
+  explain(sql: string, options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
+  explainAnalyze(sql: string, parameters?: PostgreSqlParameter[], options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
+  explainAnalyze(sql: string, options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
+  diagnoseQuery(sql: string, parameters?: PostgreSqlParameter[], options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
+  diagnoseQuery(sql: string, options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
   on(event: 'notification', listener: (notification: PostgreSqlNotification) => void): this;
   once(event: 'notification', listener: (notification: PostgreSqlNotification) => void): this;
   cancel(options?: PostgreSqlCancelOptions): Promise<void>;
@@ -154,6 +198,12 @@ export class Pool extends EventEmitter {
   copyTo(sql: string, options?: PostgreSqlCopyOptions): Promise<PostgreSqlCopyResult>;
   listen(channel: string, options?: PostgreSqlNotificationOptions): Promise<NotificationSubscription>;
   notify(channel: string, payload?: string, options?: PostgreSqlNotificationOptions): Promise<PostgreSqlQueryResult>;
+  explain(sql: string, parameters?: PostgreSqlParameter[], options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
+  explain(sql: string, options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
+  explainAnalyze(sql: string, parameters?: PostgreSqlParameter[], options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
+  explainAnalyze(sql: string, options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
+  diagnoseQuery(sql: string, parameters?: PostgreSqlParameter[], options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
+  diagnoseQuery(sql: string, options?: PostgreSqlExplainOptions): Promise<PostgreSqlExplainReport>;
   withTransaction<T>(fn: (connection: Connection) => T | Promise<T>, options?: PostgreSqlTransactionOptions): Promise<T>;
   end(): Promise<void>;
 }
