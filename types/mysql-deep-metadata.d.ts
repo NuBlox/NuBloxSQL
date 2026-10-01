@@ -37,6 +37,15 @@ export interface MySqlRoutineDetails extends MySqlNativeMetadata { readonly sche
 export interface MySqlTriggerDetails extends MySqlNativeMetadata { readonly schema: string; readonly name: string; readonly table: string; readonly event: string; readonly timing: string; readonly statement: string | null; }
 export interface MySqlEventDetails extends MySqlNativeMetadata { readonly schema: string; readonly name: string; readonly status: string | null; readonly definition: string | null; }
 export interface MySqlPrivilegeDetails extends MySqlNativeMetadata { readonly schema: string | null; readonly objectKind: string; readonly object: string | null; readonly grantee: string; readonly privilege: string; readonly grantable: boolean; }
+export interface MySqlAccountDetails extends MySqlNativeMetadata {
+  readonly user: string; readonly host: string; readonly authenticationPlugin: string | null;
+  readonly accountLocked: boolean; readonly passwordExpired: boolean; readonly passwordLastChanged: unknown;
+  readonly passwordLifetime: number | null;
+}
+export interface MySqlRoleEdgeDetails extends MySqlNativeMetadata {
+  readonly roleUser: string; readonly roleHost: string; readonly granteeUser: string; readonly granteeHost: string;
+  readonly adminOption: boolean;
+}
 export interface MySqlDeepCatalog {
   readonly dialect: 'mysql'; readonly partitions: readonly MySqlPartitionDetails[]; readonly routines: readonly MySqlRoutineDetails[];
   readonly triggers: readonly MySqlTriggerDetails[]; readonly events: readonly MySqlEventDetails[]; readonly privileges: readonly MySqlPrivilegeDetails[];
@@ -53,6 +62,8 @@ declare module '../index' {
     triggers(options?: MySqlDeepMetadataScope): Promise<readonly MySqlTriggerDetails[]>;
     events(options?: MySqlDeepMetadataScope): Promise<readonly MySqlEventDetails[]>;
     privileges(options?: MySqlDeepMetadataScope): Promise<readonly MySqlPrivilegeDetails[]>;
+    accounts(): Promise<readonly MySqlAccountDetails[]>;
+    roleEdges(): Promise<readonly MySqlRoleEdgeDetails[]>;
     deepCatalog(options?: MySqlDeepMetadataScope): Promise<MySqlDeepCatalog | Readonly<Record<string, unknown>>>;
   }
 }
