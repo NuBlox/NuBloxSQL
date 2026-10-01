@@ -90,6 +90,8 @@ Chunk extremely large jobs into bounded transactions when one giant transaction 
 ## SQL Server prepared transaction batch
 
 ```js
+const { createPool } = require('nubloxsql');
+
 const pool = createPool('sqlserver', config);
 
 await pool.withTransaction(async (connection) => {
@@ -105,6 +107,8 @@ await pool.withTransaction(async (connection) => {
     await statement.close();
   }
 });
+
+await pool.end();
 ```
 
 This is a safe current runtime pattern, not a claim that repeated prepared RPC is the fastest SQL Server bulk-loader available in the wider SQL Server ecosystem.
