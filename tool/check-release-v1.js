@@ -10,6 +10,7 @@ var licenceMarker = 'NuBloxSQL Proprietary Software Licence';
 function read(file) { return fs.readFileSync(path.join(root, file), 'utf8'); }
 function json(file) { return JSON.parse(read(file)); }
 function fail(message) { failures.push(message); }
+function exists(file) { return fs.existsSync(path.join(root, file)); }
 
 var platform = json('package.json');
 if (platform.name !== 'nubloxsql') fail('package.json must expose the nubloxsql package');
@@ -23,7 +24,7 @@ if (platform.workspaces) fail('NuBloxSQL must not expose internal runtime module
   if (platform[key] && Object.keys(platform[key]).length) fail('nubloxsql must not declare ' + key);
 });
 
-if (fs.existsSync(path.join(root, 'packages'))) fail('legacy packages/ runtime tree must not exist');
+if (exists('packages')) fail('legacy packages/ runtime tree must not exist');
 
 [
   'lib/core/index.js',
@@ -37,7 +38,7 @@ if (fs.existsSync(path.join(root, 'packages'))) fail('legacy packages/ runtime t
   'lib/dialects/sqlserver/index.js',
   'lib/dialects/sqlserver/index.d.ts'
 ].forEach(function (file) {
-  if (!fs.existsSync(path.join(root, file))) fail('missing consolidated runtime file: ' + file);
+  if (!exists(file)) fail('missing consolidated runtime file: ' + file);
 });
 
 ['mysql', 'postgresql', 'sqlite', 'sqlserver'].forEach(function (dialect) {
@@ -47,25 +48,37 @@ if (fs.existsSync(path.join(root, 'packages'))) fail('legacy packages/ runtime t
   });
 });
 ['package.json', 'README.md', 'LICENSE', 'NOTICE'].forEach(function (file) {
-  if (fs.existsSync(path.join(root, 'lib', 'core', file))) fail('SQL Core runtime must not contain nested package metadata: lib/core/' + file);
+  if (exists(path.join('lib', 'core', file))) fail('SQL Core runtime must not contain nested package metadata: lib/core/' + file);
 });
 
 if (read('LICENSE').indexOf(licenceMarker) === -1) fail('root LICENSE is not the NuBloxSQL proprietary licence');
 
 [
-  'docs/v1/SQL-CORE-V1-CONTRACT.md',
-  'docs/v1/GATE-1-EVIDENCE.md',
-  'docs/v1/GATE-3-EVIDENCE.md',
-  'docs/v1/GATE-4-EVIDENCE.md',
-  'docs/v1/V1-MIGRATION.md',
-  'docs/v1/V1-SUPPORT-MATRIX.md',
-  'docs/v1/V1-RELEASE-NOTES.md'
+  'README.md',
+  'docs/README.md',
+  'docs/RELEASE.md',
+  'docs/SUPPORT.md',
+  'docs/API.md',
+  'docs/releases/1.1.0.md',
+  'docs/releases/public-api-v1.json',
+  'docs/releases/tier1-stable-evidence.json'
 ].forEach(function (file) {
-  if (!fs.existsSync(path.join(root, file))) fail('missing release evidence/document: ' + file);
+  if (!exists(file)) fail('missing authoritative release document/contract: ' + file);
 });
 
+[
+  'docs/architecture',
+  'docs/v1',
+  'NUBLOX-SQL-ROADMAP.md',
+  'lib/dialects/postgresql/docs'
+].forEach(function (file) {
+  if (exists(file)) fail('historical documentation must remain archived, not live: ' + file);
+});
+
+if (!exists('docs/archive/README.md')) fail('documentation archive must contain an archive status README');
+
 ['package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'pnpm-lock.yaml'].forEach(function (file) {
-  if (fs.existsSync(path.join(root, file))) fail('third-party dependency lockfile must not exist: ' + file);
+  if (exists(file)) fail('third-party dependency lockfile must not exist: ' + file);
 });
 
 var sqlCore = require(path.join(root, 'lib/core'));
@@ -77,5 +90,5 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   console.log('NuBloxSQL release architecture audit: PASS');
-  console.log('One public package, one consolidated runtime tree, proprietary licence and zero third-party package dependencies are enforced.');
+  console.log('One public package, concise current release documentation, archived history, proprietary licence and zero third-party package dependencies are enforced.');
 }

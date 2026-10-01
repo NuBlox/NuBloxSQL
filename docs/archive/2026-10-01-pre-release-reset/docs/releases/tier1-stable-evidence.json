@@ -60,11 +60,9 @@
     }
   },
   "sharedRequiredFiles": [
-    "docs/README.md",
-    "docs/RELEASE.md",
-    "docs/SUPPORT.md",
-    "docs/API.md",
     "docs/releases/public-api-v1.json",
+    "docs/architecture/tier1-world-class-gap-audit.md",
+    "docs/architecture/tier1-stable-evidence-register.md",
     "tool/check-stable-release.js",
     ".github/workflows/sqlite-dialect.yml"
   ]

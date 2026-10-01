@@ -1,0 +1,451 @@
+# NuBloxSQL
+
+**NuBloxSQL is a single-entry, multi-dialect SQL database integration platform for Node.js.**
+
+Install one package, import one API, select a dialect through configuration, and use the same developer contract across SQL engines.
+
+```bash
+npm install nubloxsql
+```
+
+```js
+const { createClient, sql } = require('nubloxsql');
+
+const db = createClient({
+  dialect: 'postgresql',
+  host: '127.0.0.1',
+  user: 'app',
+  password: process.env.DB_PASSWORD,
+  database: 'app',
+  pool: { max: 20 }
+});
+
+const user = await db.one(sql`
+  SELECT id, name, email
+  FROM ${sql.identifier('users')}
+  WHERE id = ${42}
+`);
+
+await db.close();
+```
+
+The tagged SQL is compiled through the selected dialect. Values become native placeholders and identifiers are quoted by the dialect runtime. Application code does not need to know whether the engine uses `?`, `$1`, `@p1`, or another placeholder form.
+
+## The NuBloxSQL model
+
+```text
+                    application code
+                          │
+                          ▼
+                 createClient() + sql
+                          │
+                          ▼
+                       NuBloxSQL
+                          │
+                 dialect selection
+                          │
+       ┌──────────┬───────┼──────────┬───────────┐
+       ▼          ▼       ▼          ▼           ▼
+     MySQL   PostgreSQL SQLite   SQL Server   future dialects
+      native     native embedded      native
+```
+
+The public platform owns:
+
+- one installation and one import;
+- dialect selection;
+- portable SQL value placeholders and identifier quoting;
+- exact portable typed binds where type intent matters;
+- a unified query/result contract;
+- portable prepared statements with named bindings;
+- async-iterable streaming with deterministic resource cleanup;
+- portable metadata and schema introspection;
+- a portable error taxonomy with native diagnostics retained;
+- connection and pool ownership;
+- transactions;
+- capability discovery;
+- direct access to the selected native runtime when required.
+
+The native dialect runtimes own wire protocols, authentication, storage lifecycle, locking, database type systems, cancellation, cursor mechanics and genuinely database-specific behavior.
+
+The governing principle is **one developer API, honest dialect semantics**.
+
+## Supported dialects
+
+| Dialect | Status | Runtime model |
+| --- | --- | --- |
+| MySQL | Stable | Native client/server protocol |
+| PostgreSQL | Stable | Native client/server protocol |
+| SQLite | Development | Embedded Node.js `node:sqlite` runtime |
+| SQL Server | Development | Native TDS 7.4 / TDS 8.0 client/server runtime |
+| Oracle | Planned | Native client/server runtime |
+
+Current executable qualification covers Node.js 22/24/26, MySQL 8.4/9.7, PostgreSQL 15/16/17/18, SQL Server 2019/2022/2025, and the embedded SQLite runtime. Capability support remains explicit per dialect rather than inferred from the existence of an adapter.
+
+## Preferred client API
+
+### Portable SQL
+
+```js
+const result = await db.query(sql`
+  SELECT id, name
+  FROM ${sql.identifier('users')}
+  WHERE email = ${email}
+`);
+```
+
+For MySQL this compiles to `WHERE email = ?`. For PostgreSQL it compiles to `WHERE email = $1`. For SQL Server it compiles to a native RPC parameter such as `@p1`. Parameters remain separate from SQL text.
+
+Nested fragments and safe identifier composition are supported:
+
+```js
+const columns = sql.join([
+  sql`${sql.identifier('id')}`,
+  sql`${sql.identifier('name')}`
+]);
+
+const rows = await db.all(sql`
+  SELECT ${columns}
+  FROM ${sql.identifier('app', 'users')}
+`);
+```
+
+### Portable exact typed binds
+
+Use `sql.typed()` when the database must receive explicit type intent rather than relying on generic JavaScript inference. The first portable exact types are `decimal`/`numeric` and `uuid`/`guid`:
+
+```js
+const row = await db.one(sql`
+  SELECT
+    ${sql.typed('12345678901234567890.123456', {
+      type: 'decimal',
+      precision: 26,
+      scale: 6
+    })} AS exact_amount,
+    ${sql.typed('00112233-4455-6677-8899-aabbccddeeff', 'uuid')} AS object_id
+`);
+```
+
+Exact decimals accept a decimal string, `bigint`, or `null`. JavaScript `Number` input is intentionally rejected for portable decimal binds so NuBloxSQL never introduces binary floating-point loss before the value reaches the database. Precision and scale are validated before execution.
+
+UUID/GUID input is validated and normalized to canonical lowercase hyphenated form.
+
+Prepared statements carry the same type contract:
+
+```js
+const statement = await db.prepare(sql`
+  SELECT
+    ${sql.parameter('amount', {
+      type: 'decimal',
+      precision: 26,
+      scale: 6
+    })} AS exact_amount,
+    ${sql.parameter('id', 'uuid')} AS object_id
+`);
+
+const row = await statement.one({
+  amount: '12345678901234567890.123456',
+  id: '00112233445566778899AABBCCDDEEFF'
+});
+
+await statement.close();
+```
+
+The API is portable while the wire representation remains native: PostgreSQL uses NUMERIC/UUID type OIDs, MySQL uses its prepared-protocol DECIMAL representation and canonical UUID text, SQL Server uses native DECIMAL precision/scale and UNIQUEIDENTIFIER encoding, and SQLite receives normalized exact values through its dynamic type system. Unsupported future portable types will fail explicitly rather than being silently degraded.
+
+Typed values also work through `stream()` and remain visible to custom encode codecs through `context.type` before dialect-specific binding occurs.
+
+### Portable prepared statements
+
+Prepare once and execute repeatedly with named bindings:
+
+```js
+const findUser = await db.prepare(sql`
+  SELECT id, name, email
+  FROM ${sql.identifier('users')}
+  WHERE id = ${sql.parameter('id')}
+`);
+
+const first = await findUser.one({ id: 42 });
+const second = await findUser.one({ id: 84 });
+
+await findUser.close();
+```
+
+`sql.parameter()` is compiled to the selected dialect's native placeholder form. The statement keeps the underlying prepared resource and, when created from a pooled client, leases exactly one native connection until `close()`. NuBloxSQL releases that connection automatically when the statement closes. Statements created inside `transaction()` are also closed before the transaction connection returns to the pool.
+
+Prepared writes use the same contract:
+
+```js
+const insertUser = await db.prepare(sql`
+  INSERT INTO ${sql.identifier('users')} (id, name)
+  VALUES (${sql.parameter('id')}, ${sql.parameter('name')})
+`);
+
+await insertUser.execute({ id: 1, name: 'Stephen' });
+await insertUser.execute({ id: 2, name: 'Alice' });
+await insertUser.close();
+```
+
+Missing named bindings fail explicitly. `sql.parameter()` is intentionally rejected by ordinary `query()`/`execute()` calls so unresolved parameters cannot accidentally reach a database.
+
+### Portable streaming
+
+`stream()` exposes one async-iterable row contract while retaining each database's native streaming implementation:
+
+```js
+const rows = db.stream(sql`
+  SELECT id, event_type, created_at
+  FROM ${sql.identifier('audit_log')}
+  WHERE created_at >= ${startDate}
+  ORDER BY created_at
+`, {
+  batchSize: 128,
+  highWaterMark: 16,
+  timeout: 30_000,
+  signal
+});
+
+for await (const row of rows) {
+  processRow(row);
+}
+```
+
+NuBloxSQL does not buffer the complete result to simulate streaming:
+
+- **MySQL** uses the native row stream and socket backpressure. Parameterised streams use prepared execution and binary row decoding rather than SQL literal interpolation.
+- **PostgreSQL** uses a transaction-scoped server portal and batched fetches. NuBloxSQL owns the temporary transaction and pooled connection lifecycle when necessary.
+- **SQLite** uses lazy prepared-statement iteration.
+- **SQL Server** incrementally decodes native TDS result tokens and rows while retaining TDS flow and connection lifecycle semantics.
+
+Early termination is explicit and deterministic:
+
+```js
+const rows = db.stream(sql`SELECT * FROM ${sql.identifier('events')}`);
+
+for await (const row of rows) {
+  if (shouldStop(row)) break;
+}
+```
+
+Breaking from async iteration invokes the stream's iterator cleanup. `await rows.close()` is also available when explicit shutdown is preferred. Outstanding public streams are closed before `db.close()` releases client resources.
+
+### Portable metadata and introspection
+
+`db.metadata` provides one catalog API across supported engines:
+
+```js
+const databases = await db.metadata.databases();
+const schemas = await db.metadata.schemas();
+const tables = await db.metadata.tables();
+const columns = await db.metadata.columns('users');
+const indexes = await db.metadata.indexes('users');
+const foreignKeys = await db.metadata.foreignKeys('users');
+const constraints = await db.metadata.constraints('users');
+const table = await db.metadata.table('users');
+```
+
+Scope can be made explicit when required:
+
+```js
+await db.metadata.tables({ schema: 'app' });
+await db.metadata.columns('users', { schema: 'app' });
+await db.metadata.tables({ database: 'main' });
+```
+
+NuBloxSQL normalizes portable concepts such as names, ordinals, nullability, primary keys, uniqueness, referenced columns and referential actions while retaining the original catalog rows in `native`.
+
+The implementation remains database-native:
+
+- **MySQL** uses `information_schema`.
+- **PostgreSQL** combines `information_schema` with `pg_catalog` for richer index, constraint and composite foreign-key metadata.
+- **SQLite** uses `sqlite_schema` and PRAGMA metadata including `table_xinfo`, `index_list`, `index_xinfo` and `foreign_key_list`.
+- **SQL Server** uses its native catalog and information-schema surfaces through the SQL Server runtime.
+
+`metadata.table(name)` returns the table summary plus its columns, indexes, foreign keys and constraints. A missing table returns `null` rather than fabricating an empty object.
+
+### Unified result contract
+
+`query()` and `execute()` return a portable result envelope:
+
+```js
+{
+  rows,
+  fields,
+  rowCount,
+  affectedRows,
+  insertId,
+  command,
+  dialect,
+  native
+}
+```
+
+`native` retains the original dialect result so NuBloxSQL does not discard engine-specific information.
+
+Convenience methods:
+
+```js
+const rows = await db.all(sql`SELECT * FROM ${sql.identifier('users')}`);
+const user = await db.one(sql`SELECT * FROM ${sql.identifier('users')} WHERE id = ${id}`);
+```
+
+`one()` requires exactly one row and rejects otherwise.
+
+### Portable errors
+
+Public client operations expose `NuBloxSqlError` with stable categories while retaining the original engine error:
+
+```js
+const { NuBloxSqlError } = require('nubloxsql');
+
+try {
+  await db.execute(sql`
+    INSERT INTO ${sql.identifier('users')} (email)
+    VALUES (${email})
+  `);
+} catch (error) {
+  if (error instanceof NuBloxSqlError && error.category === 'unique_violation') {
+    // portable application behavior
+  }
+
+  console.log(error.sqlState);
+  console.log(error.nativeCode);
+  console.log(error.native);
+}
+```
+
+Portable categories currently include authentication, authorization, connection, timeout, cancellation, constraint violations, unique/foreign-key/not-null violations, syntax, deadlock, serialization, resource limits, state, cardinality and unsupported capabilities.
+
+NuBloxSQL preserves native diagnostics such as PostgreSQL SQLSTATE, MySQL error numbers, SQLite result codes and SQL Server native error metadata. Ordinary application exceptions thrown from callbacks such as `transaction()` remain ordinary application exceptions rather than being misclassified as database errors.
+
+### Transactions
+
+```js
+await db.transaction(async tx => {
+  await tx.execute(sql`
+    UPDATE accounts
+    SET balance = balance - ${100}
+    WHERE id = ${sourceId}
+  `);
+
+  await tx.execute(sql`
+    UPDATE accounts
+    SET balance = balance + ${100}
+    WHERE id = ${destinationId}
+  `);
+});
+```
+
+NuBloxSQL owns acquisition, commit, rollback and release. The dialect runtime owns the native transaction semantics.
+
+### Capabilities
+
+```js
+if (db.supports('serverSideCursors')) {
+  // use an advanced native capability
+}
+
+console.log(db.capabilities);
+```
+
+Unsupported database features are represented honestly rather than silently emulated.
+
+### Native escape hatch
+
+The portable client does not hide the underlying runtime:
+
+```js
+const nativeResource = db.native;
+const nativeAdapter = db.adapter;
+```
+
+The package-level dialect APIs remain available from the same installation:
+
+```js
+const nublox = require('nubloxsql');
+
+nublox.mysql;
+nublox.postgresql;
+nublox.sqlite;
+nublox.sqlserver;
+```
+
+## Low-level APIs
+
+`createConnection()` and `createPool()` remain available for developers who intentionally want direct dialect-runtime control:
+
+```js
+const nublox = require('nubloxsql');
+
+const connection = nublox.createConnection({
+  dialect: 'postgresql',
+  host: '127.0.0.1',
+  user: 'app',
+  database: 'app'
+});
+```
+
+These are advanced primitives. `createClient()` is the primary developer-facing API.
+
+## Architecture
+
+NuBloxSQL has three internal layers:
+
+1. **Developer client** — portable SQL compilation, exact typed binds, prepared statements, streaming, metadata, error normalization, result normalization, transactions and lifecycle.
+2. **Shared SQL contracts** — capabilities and semantics proven across dialects.
+3. **Native dialect runtimes** — database-specific implementation and native behavior.
+
+```text
+                       nubloxsql
+                  developer client API
+                         │
+                         ▼
+                  shared SQL contracts
+                         │
+        ┌────────────────┼────────────────┬────────────────┐
+        ▼                ▼                ▼                ▼
+      MySQL          PostgreSQL         SQLite        SQL Server
+   implementation    implementation   implementation  implementation
+```
+
+The implementation is one runtime tree: shared contracts live under `lib/core`, the developer client under `lib/client`, and native database runtimes under `lib/dialects/<dialect>`.
+
+See [Design intent](docs/architecture/design-intent.md) and [Multi-dialect architecture](docs/architecture/multi-dialect.md).
+
+## Platform design rules
+
+NuBloxSQL must:
+
+- provide one install and one import for developers;
+- keep common APIs coherent where semantics are genuinely portable;
+- preserve database-specific semantics where they are not portable;
+- expose capability discovery instead of pretending every engine supports the same features;
+- preserve exact type fidelity and native diagnostics;
+- avoid silent semantic emulation;
+- keep native escape hatches accessible from the same NuBloxSQL entry point;
+- qualify supported runtime/database versions with executable CI and live-server evidence.
+
+NuBloxSQL is not an ORM and is not intended to erase legitimate SQL dialect differences.
+
+## Verification
+
+```bash
+npm run verify
+npm run v1:proprietary-audit
+npm run v1:release-audit
+npm pack --dry-run
+```
+
+## Documentation
+
+- [Design intent](docs/architecture/design-intent.md)
+- [Multi-dialect architecture](docs/architecture/multi-dialect.md)
+- [Roadmap](NUBLOX-SQL-ROADMAP.md)
+- [Documentation standard](docs/STYLE.md)
+- [v1 support matrix](docs/v1/V1-SUPPORT-MATRIX.md)
+- [SQL Core v1 contract](docs/v1/SQL-CORE-V1-CONTRACT.md)
+
+## Licence
+
+NuBloxSQL is proprietary software. Copyright (c) 2026 Stephen J T Spittal. All rights reserved. See [LICENSE](LICENSE).
