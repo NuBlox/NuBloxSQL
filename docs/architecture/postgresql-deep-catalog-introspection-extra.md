@@ -1,0 +1,1 @@
+PostgreSQL deep catalog introspection remains additive to the portable metadata contract.
