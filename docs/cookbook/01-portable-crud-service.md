@@ -1,6 +1,6 @@
 # Portable CRUD service
 
-**Scope:** portable unified-client pattern. The example runs directly with SQLite and uses only APIs that are also exposed by the unified MySQL and PostgreSQL clients. Adjust the connection configuration and DDL for engine-specific type choices when moving between databases.
+**Scope:** portable unified-client pattern for PostgreSQL, MySQL and SQLite. The example uses an application-supplied integer key so it does not depend on engine-specific generated-ID behaviour.
 
 ## Goal
 
@@ -26,11 +26,11 @@ async function main() {
     `);
 
     async function createCustomer(input) {
-      const result = await db.execute(sql`
-        INSERT INTO customers (email, display_name, active)
-        VALUES (${input.email}, ${input.displayName}, ${input.active ? 1 : 0})
+      await db.execute(sql`
+        INSERT INTO customers (id, email, display_name, active)
+        VALUES (${input.id}, ${input.email}, ${input.displayName}, ${input.active ? 1 : 0})
       `);
-      return result.insertId;
+      return input.id;
     }
 
     async function getCustomer(id) {
@@ -69,6 +69,7 @@ async function main() {
     }
 
     const id = await createCustomer({
+      id: 1001,
       email: 'stephen@example.com',
       displayName: 'Stephen',
       active: true
@@ -88,6 +89,8 @@ main().catch((error) => {
   process.exitCode = 1;
 });
 ```
+
+Generated identity/sequence handling is deliberately omitted because PostgreSQL, MySQL and SQLite expose different native mechanisms. If your application relies on generated IDs, keep that detail in a small dialect-aware repository function or use the database's native `RETURNING`/identity mechanism where appropriate.
 
 ## Dynamic table names
 
