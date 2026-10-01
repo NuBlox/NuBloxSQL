@@ -2,7 +2,7 @@
   "packageName": "nubloxsql",
   "version": "1.1.0",
   "main": "index.js",
-  "types": "types/public.d.ts",
+  "types": "types/root.d.ts",
   "node": ">=22",
   "dialects": ["mysql", "postgresql", "sqlite", "sqlserver"],
   "exports": [
@@ -47,6 +47,8 @@
     "index.d.ts",
     "types/index.d.ts",
     "types/public.d.ts",
+    "types/root.d.ts",
+    "types/portable-metadata.d.ts",
     "LICENSE",
     "NOTICE",
     "README.md",

@@ -17,6 +17,12 @@ const sql = require('nubloxsql');
 - `transactionPolicy()` — portable transaction-policy description.
 - `capabilityModel` — Tier-1 SQL capability, compatibility, rewrite and current compiler/transpilation surfaces.
 
+## Metadata
+
+Metadata snapshots retain the native-rich database, schema, table, column, index, foreign-key and constraint evidence supplied by each dialect.
+
+Snapshots also expose `snapshot.portable`, an immutable **portable metadata vocabulary v1**. It normalizes common object kinds, nullability, identity/auto-increment, generated columns, index key parts, referential actions and common constraint types while retaining native payloads. Engine-specific metadata remains authoritative where semantics cannot be represented portably.
+
 ## Public classes and contracts
 
 The public surface also includes `Client`, `ClientRowStream`, `MetadataCatalog`, `NuBloxSqlError`, `Observer`, `TypeRegistry`, dialect adapters and SQL Core.
@@ -31,6 +37,6 @@ Canonical dialect names are `mysql`, `postgresql`, `sqlite` and `sqlserver`. Sup
 
 This guide is intentionally concise. The exact exported JavaScript surface, package files, version and Node.js floor are machine-defined in `docs/releases/public-api-v1.json`.
 
-The TypeScript source of truth is `types/public.d.ts`.
+The TypeScript package entry point is `types/root.d.ts`; the portable metadata declarations are `types/portable-metadata.d.ts`.
 
 Release qualification checks both JavaScript and strict TypeScript consumer installation from the packed npm artifact.

@@ -65,6 +65,10 @@
     "docs/SUPPORT.md",
     "docs/API.md",
     "docs/releases/public-api-v1.json",
+    "lib/client/PortableMetadata.js",
+    "test/portable-metadata-vocabulary.js",
+    "types/root.d.ts",
+    "types/portable-metadata.d.ts",
     "tool/check-stable-release.js",
     ".github/workflows/sqlite-dialect.yml"
   ]
