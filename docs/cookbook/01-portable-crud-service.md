@@ -57,7 +57,7 @@ async function main() {
         SET display_name = ${displayName}
         WHERE id = ${id}
       `);
-      return Number(result.affectedRows) === 1;
+      return result.rowCount === 1;
     }
 
     async function deleteCustomer(id) {
@@ -65,7 +65,7 @@ async function main() {
         DELETE FROM customers
         WHERE id = ${id}
       `);
-      return Number(result.affectedRows) === 1;
+      return result.rowCount === 1;
     }
 
     const id = await createCustomer({
