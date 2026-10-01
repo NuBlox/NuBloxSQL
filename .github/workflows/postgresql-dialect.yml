@@ -95,6 +95,8 @@ jobs:
         run: node test/client-operation-live.js
       - name: Native runtime, extended protocol, cancellation, pooling and portals
         run: node lib/dialects/postgresql/test/live.js
+      - name: Native COPY FROM/TO streaming and pool qualification
+        run: node lib/dialects/postgresql/test/live-copy.js
       - name: Authentication and TLS failure paths
         run: node lib/dialects/postgresql/test/live-failure-paths.js
       - name: Result-limit connection and pool safety
