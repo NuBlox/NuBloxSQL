@@ -4,25 +4,21 @@
 
 This register is the authoritative development-direction document for NuBloxSQL Tier-1 dialects: PostgreSQL, MySQL and SQLite.
 
-The objective is not merely to expose the SQL language features each engine supports. NuBloxSQL must provide a production-quality runtime around those engines: connection lifecycle, authentication/transport, prepared execution, transactions, streaming, cancellation, resource governance, metadata, type fidelity, diagnostics, observability, failure recovery, engine-native workflows and live qualification.
-
-The SQL capability model remains valuable, but it describes what the database engine can do. This audit separately records what NuBloxSQL itself currently implements and qualifies.
-
-NuBloxSQL is a standalone, application-agnostic SQL/database platform. This audit therefore evaluates database/runtime capability only and does not depend on, reference requirements from, or assume any consuming application.
+NuBloxSQL is a standalone, application-agnostic SQL/database platform. The audit evaluates runtime/database capability: connection lifecycle, authentication and transport, prepared execution, transactions, streaming, cancellation, resource governance, metadata, type fidelity, diagnostics, observability, failure recovery, engine-native workflows and live qualification.
 
 Status vocabulary:
 
 - **qualified** — implemented and covered by repository/live qualification appropriate to the feature;
-- **implemented** — code exists, but production/live qualification is not yet complete enough to call the area qualified;
-- **partial** — useful support exists, but important engine-native behaviour is still missing;
-- **missing** — no first-class NuBloxSQL runtime implementation was found in the current repository;
+- **implemented** — code exists but qualification is not yet sufficient to call the area qualified;
+- **partial** — useful support exists but important native behaviour remains;
+- **missing** — no first-class NuBloxSQL runtime implementation is present;
 - **not applicable** — the concept does not apply to the engine/runtime model.
 
 Priority vocabulary:
 
-- **P0** — required before the dialect should be described as world-class;
+- **P0** — required for the current world-class Tier-1 baseline;
 - **P1** — important first-class engine depth;
-- **P2** — advanced/specialist functionality that can follow the world-class baseline.
+- **P2** — advanced/specialist functionality that can follow the baseline.
 
 ## Executive position
 
@@ -36,31 +32,32 @@ Priority vocabulary:
 | Streaming/backpressure | qualified | qualified | partial |
 | Cancellation/deadlines | qualified | qualified | host-limited/partial |
 | Result/resource limits | qualified | qualified | qualified |
-| Portable metadata/introspection | qualified baseline | qualified baseline | qualified deep |
+| Portable metadata/introspection | qualified | qualified baseline | qualified deep |
+| Native deep metadata | qualified | partial | qualified deep |
 | Type fidelity | qualified core | qualified core | qualified core |
 | Structured errors | qualified | qualified | qualified |
 | Observability | qualified baseline | qualified baseline | qualified baseline |
 | Native query diagnostics | qualified | partial | qualified deep |
 | Bulk data movement | qualified COPY streaming | missing | engine-specific alternatives qualified |
-| Event/notification integration | qualified LISTEN/NOTIFY | not applicable as direct analogue | not applicable |
+| Event/notification integration | qualified LISTEN/NOTIFY | no direct analogue | not applicable |
 | Replication/CDC-native integration | missing | missing | session changesets implemented, not CDC |
-| Engine-native administrative workflows | strong/partial | partial | qualified deep |
 | Performance/memory evidence | qualified baseline | qualified baseline | partial |
 | Failure/adversarial qualification | qualified baseline | qualified baseline | strong, further stress desirable |
 
-The immediate programme should therefore continue runtime-depth work in this order:
+## Current direction
 
-1. Finish PostgreSQL P0 runtime depth with deep catalog introspection.
-2. Close MySQL P0 runtime gaps: LOCAL INFILE/bulk movement, structured diagnostics, deep metadata and authentication-plugin qualification.
-3. Complete SQLite production qualification: stress, memory/performance, malformed-schema/input and concurrency evidence.
-4. Build shared Tier-1 metadata/diagnostic/stability evidence where common contracts are justified without erasing native semantics.
-5. Re-run formal stable qualification against this register and only then expand compiler grammar again.
+PostgreSQL has now completed every **current P0 runtime-depth item** in this register. Development priority therefore moves to MySQL P0 closure, then SQLite production qualification, then shared Tier-1 evidence/contracts.
+
+1. MySQL P0: LOCAL INFILE/bulk movement, structured EXPLAIN, deep metadata, authentication-plugin qualification.
+2. SQLite P0: benchmark/performance, memory, concurrency and malformed-schema/input evidence.
+3. Shared Tier-1: richer metadata parity, diagnostics parity and stable evidence register.
+4. Re-run formal stable qualification against this register before expanding compiler grammar again.
 
 ---
 
 # PostgreSQL
 
-## Strong/qualified foundation
+## Qualified P0 baseline
 
 Current repository evidence demonstrates a substantial native PostgreSQL runtime:
 
@@ -73,163 +70,126 @@ Current repository evidence demonstrates a substantial native PostgreSQL runtime
 - CancelRequest-based cancellation and deadline handling;
 - transaction/savepoint helpers;
 - result/resource limits;
-- portable metadata/introspection;
 - deterministic type decoding/fidelity policy;
-- native `COPY FROM STDIN` and `COPY TO STDOUT` streaming with backpressure, cancellation, limits, pool safety and failure recovery;
-- native `LISTEN`/`NOTIFY` asynchronous notifications with session-correct pooled subscriptions;
-- structured `EXPLAIN` / `EXPLAIN ANALYZE` JSON diagnostics with version-aware PostgreSQL 15–18 options;
+- native `COPY FROM STDIN` and `COPY TO STDOUT` streaming;
+- native `LISTEN`/`NOTIFY` asynchronous notifications;
+- structured `EXPLAIN` / `EXPLAIN ANALYZE` JSON diagnostics;
+- deep PostgreSQL catalog introspection;
 - PostgreSQL 15, 16, 17 and 18 live qualification;
 - Node 22/24/26 contract qualification;
 - security/fuzz/release gates.
 
-These are genuine strengths and should remain regression-gated.
-
-## Completed P0 runtime-depth slices
+### Completed P0 slices
 
 | Area | Status | Evidence/outcome |
 | --- | --- | --- |
 | COPY FROM STDIN | qualified | Streaming producer API with backpressure, cancellation, byte limits, failure recovery and pool qualification across PostgreSQL 15–18. |
 | COPY TO STDOUT | qualified | Bounded collection or streaming sink, backpressure, byte accounting, cancellation and pool qualification across PostgreSQL 15–18. |
-| LISTEN/NOTIFY | qualified | Protocol-level NotificationResponse handling, connection APIs and a dedicated pooled subscription that pins one physical session until close. |
-| Rich EXPLAIN API | qualified | JSON plans, parameterized diagnostics, normalized factual metrics, pooled operation and version gates for PostgreSQL 16/17/18 additions. |
+| LISTEN/NOTIFY | qualified | Protocol-level notifications, connection APIs and session-correct pooled subscriptions. |
+| Structured EXPLAIN | qualified | JSON plans, parameterized diagnostics, normalized factual metrics and version-aware PostgreSQL 15–18 options. |
+| Deep catalog introspection | qualified | Table/column/index/constraint internals, partition topology, RLS policies, routines, custom types/domains/enums/ranges, sequences and visible privileges qualified on PostgreSQL 15–18. |
 
-## Remaining gaps
+## Remaining PostgreSQL depth
+
+These are P1/P2 enhancements, not blockers for the current P0 baseline:
 
 | Area | Status | Priority | Required outcome |
 | --- | --- | --- | --- |
-| Deep catalog introspection | partial | P0 | Index expressions/predicates, generated/identity details, partitions, policies, routines, types/domains/enums, sequences and privileges. |
 | Logical replication protocol | missing | P1 | Replication-mode startup, WAL/LSN primitives and explicit slot/publication workflow boundaries. |
-| Server/session diagnostics | partial | P1 | pg_stat_activity/locks/waits/query-state helpers without pretending they are portable SQL. |
-| Binary format breadth | partial | P1 | Expand binary encode/decode support for high-value PostgreSQL native types where it improves fidelity/performance. |
-| Arrays/ranges/composites/domain fidelity | partial | P1 | Deterministic decoding/encoding contracts and explicit fallback behaviour. |
-| Large objects | missing | P2 | Large-object API only if justified separately from bytea/COPY workflows. |
-| Prepared statement/cache policy | partial | P1 | Explicit lifecycle/cache limits, invalidation behaviour and observability. |
-| Failover/topology policy | missing | P2 | Only after a portable topology abstraction is justified across networked dialects. |
+| Server/session diagnostics | partial | P1 | `pg_stat_activity`, locks, waits and query-state helpers without pretending they are portable SQL. |
+| Binary format breadth | partial | P1 | Expand binary encode/decode support for high-value native types where it improves fidelity/performance. |
+| Arrays/ranges/composites/domain fidelity | partial | P1 | Deterministic codecs and explicit fallback behaviour. |
+| Prepared statement/cache policy | partial | P1 | Explicit cache limits, invalidation behaviour and observability. |
+| Large objects | missing | P2 | Add only if justified separately from `bytea` and COPY workflows. |
+| Failover/topology policy | missing | P2 | Add after shared network-topology semantics are justified across dialects. |
 
-## PostgreSQL completion gate
+### PostgreSQL completion gate
 
-PostgreSQL should not receive a new “world-class Tier-1” declaration until the remaining P0 item is implemented, live-qualified on supported server versions where relevant, and included in failure-path/security tests. The next P0 deliverable is deep catalog introspection.
+**Current P0 gate: complete.** PostgreSQL remains regression-gated across supported Node and PostgreSQL versions. P1/P2 work can proceed without reopening the completed P0 declaration unless a regression or new baseline requirement is identified.
 
 ---
 
 # MySQL
 
-## Strong/qualified foundation
+## Strong foundation
 
-Current repository evidence demonstrates a mature native MySQL runtime:
+NuBloxSQL already provides native protocol framing/authentication, prepared statements, typed binds, direct/prepared streaming with backpressure, pooling/reset contracts, transactions/savepoints, operation deadlines/cancellation, result limits, observability/error modelling, portable metadata, MySQL 8.4/9.7 live qualification, Node 22/24/26 contracts and security/release gates.
 
-- native protocol framing and authentication;
-- prepared statements and typed binds;
-- direct and prepared streaming with backpressure;
-- connection pooling and reuse/reset contracts;
-- transactions/savepoints;
-- operation deadlines/cancellation safety;
-- result limits and connection safety after limit failures;
-- observability and deterministic error modelling;
-- portable metadata/introspection baseline;
-- MySQL 8.4 and 9.7 live qualification;
-- Node 22/24/26 contract qualification;
-- security/fuzz/release gates.
-
-## Gaps
+## Remaining gaps
 
 | Area | Status | Priority | Required outcome |
 | --- | --- | --- | --- |
 | LOAD DATA LOCAL INFILE | missing | P0 | Explicit opt-in local infile API, stream/path policy, security boundaries, cancellation and server capability checks. |
-| Bulk export helpers | missing | P1 | Safe engine-native export workflow where server/filesystem semantics permit it. |
-| Rich EXPLAIN API | partial | P0 | EXPLAIN FORMAT=JSON / EXPLAIN ANALYZE capture with structured diagnostics and version qualification. |
+| Rich EXPLAIN API | partial | P0 | `EXPLAIN FORMAT=JSON` / `EXPLAIN ANALYZE` capture with structured diagnostics and version qualification. |
 | Deep INFORMATION_SCHEMA metadata | partial | P0 | Functional/invisible/full-text/spatial indexes, generated columns, partitions, routines, triggers/events, users/roles/privileges and engine options. |
-| Server/session diagnostics | partial | P1 | Performance Schema/sys-backed helpers with explicit privilege requirements. |
-| Replication/binlog protocol | missing | P1 | Optional dedicated replication client boundary, GTID/binlog-position primitives and event framing; do not label this portable CDC. |
 | Authentication plugin breadth | partial | P0 | Explicit supported-plugin matrix and failure tests for modern server defaults and TLS-dependent auth paths. |
-| Compression | missing/unclear | P1 | Either implement and qualify negotiated protocol compression or explicitly declare unsupported and remove ambiguity. |
-| Multi-result/stored program depth | partial | P1 | Multiple-result sequencing, OUT parameter/routine workflows and cleanup guarantees. |
-| Session-state/reset depth | qualified baseline | P1 | Extend reset verification to more server/session variables and temporary/prepared state. |
-| Native JSON/spatial fidelity | partial | P1 | Explicit codecs/metadata for high-value native values instead of generic text/binary fallback where feasible. |
-| Failover/topology/routing | missing | P2 | Add only after shared topology semantics are justified with PostgreSQL. |
+| Bulk export helpers | missing | P1 | Safe engine-native export workflow where filesystem/server semantics permit it. |
+| Server/session diagnostics | partial | P1 | Performance Schema/sys-backed helpers with explicit privilege requirements. |
+| Replication/binlog protocol | missing | P1 | Optional replication-client boundary, GTID/binlog-position primitives and event framing. |
+| Compression | missing/unclear | P1 | Implement and qualify protocol compression or explicitly declare unsupported. |
+| Multi-result/stored program depth | partial | P1 | Multiple-result sequencing, OUT parameters/routine workflows and cleanup guarantees. |
+| Native JSON/spatial fidelity | partial | P1 | Explicit codecs/metadata for high-value native values where feasible. |
+| Failover/topology/routing | missing | P2 | Add only after shared topology semantics are justified. |
 
-## MySQL completion gate
+### MySQL completion gate
 
-MySQL is already strong enough to remain Stable, but “world-class Tier-1” should require P0 gaps above to be closed and the supported authentication/transport matrix to be explicit and live-tested.
+MySQL remains Stable, but the four P0 items above must be closed before its current world-class Tier-1 runtime-depth gate is complete.
 
 ---
 
 # SQLite
 
-## Strong/qualified foundation
+## Strong foundation
 
-SQLite currently has the broadest engine-native management surface in NuBloxSQL:
+SQLite has the broadest engine-native management surface in NuBloxSQL: embedded `node:sqlite`, lifecycle modes, prepared execution, transactions/savepoints, attached databases, backup/serialization, deep schema introspection, WAL/storage policy, integrity/maintenance APIs, extension/security policy, feature probes, query diagnostics, changesets and resource governance.
 
-- embedded `node:sqlite` integration;
-- read/write/open modes and query-only policy;
-- prepared execution and BigInt-safe reads;
-- transactions/savepoints;
-- attached databases;
-- backup and serialization/deserialization capability detection;
-- deep schema introspection;
-- generated/STRICT/WITHOUT ROWID metadata;
-- WAL/journal/synchronous/busy/cache/page policy;
-- checkpointing and storage diagnostics;
-- integrity/foreign-key checks, ANALYZE, optimize, VACUUM and incremental vacuum;
-- scalar functions and aggregate registration;
-- extension loading policy and allowlisting;
-- authorizer/defensive-mode capability detection;
-- JSON/JSONB/FTS/SQL feature runtime probes;
-- query plans, opcode EXPLAIN and statement diagnostics;
-- session changesets/patchsets and conflict handling;
-- runtime/resource limits and hardened profiles;
-- Node 22/24/26 qualification.
-
-## Gaps
+## Remaining gaps
 
 | Area | Status | Priority | Required outcome |
 | --- | --- | --- | --- |
-| Production performance evidence | partial | P0 | Repeatable benchmark suite for prepared/unprepared reads/writes, transactions, streaming/materialization and metadata operations. |
-| Memory evidence | partial | P0 | Large-result and long-lived-connection memory ceilings with regression thresholds. |
-| Concurrency stress | partial | P0 | Multi-connection WAL/rollback-journal contention, busy-timeout, checkpoint and writer-starvation tests. |
+| Production performance evidence | partial | P0 | Repeatable prepared/unprepared read/write, transaction, materialization and metadata benchmarks. |
+| Memory evidence | partial | P0 | Large-result and long-lived connection memory ceilings with regression thresholds. |
+| Concurrency stress | partial | P0 | WAL/rollback-journal contention, busy-timeout, checkpoint and writer-starvation tests. |
 | Malformed database/schema hardening | partial | P0 | Corrupt/malformed schema and hostile metadata cases with deterministic failures/no crashes. |
-| Interrupt/cancellation surface | partial | P1 | Expose host-supported interrupt semantics if `node:sqlite` provides a stable capability; otherwise document the hard limitation explicitly. |
-| Incremental/streaming row consumption | partial | P1 | Avoid mandatory full materialization for large reads where the host API permits iterator-based consumption. |
-| Backup/restore stress | implemented | P1 | Large-file, attached-db and failure/recovery qualification. |
-| Extension sandbox expectations | qualified policy | P1 | Continue explicit documentation that native extensions are trusted code, not sandboxed plugins. |
+| Interrupt/cancellation surface | partial | P1 | Expose stable host interrupt semantics if available; otherwise document the limitation. |
+| Incremental row consumption | partial | P1 | Avoid mandatory full materialization where the host iterator API permits streaming consumption. |
+| Backup/restore stress | implemented | P1 | Large-file, attached-database and failure/recovery qualification. |
 | Session changeset stress | implemented | P1 | Larger changesets, conflict storms, filters and transactional failure tests. |
-| FTS/RTree helper APIs | missing | P2 | Add first-class helpers only if they improve the standalone SQL/database API beyond raw SQL and capability discovery. |
+| FTS/RTree helper APIs | missing | P2 | Add only where first-class helpers improve the standalone API beyond raw SQL/capability discovery. |
 
-## SQLite completion gate
+### SQLite completion gate
 
-SQLite should move from Development to Stable only after the P0 production-qualification work is complete. Feature breadth alone is no longer the blocker; operational evidence is.
+SQLite should move from Development to Stable only after the four P0 operational-evidence items above are complete.
 
 ---
 
 # Cross-dialect gaps
 
-These are shared platform gaps that matter more than adding another SQL syntax feature.
-
 | Area | Priority | Required outcome |
 | --- | --- | --- |
-| Metadata parity | P0 | Define a richer portable catalog vocabulary and prove it against PostgreSQL/MySQL/SQLite without hiding native detail. |
-| Explain/diagnostics contract | P0 | Common entry point with native plan payloads and conservative normalized fields; never erase vendor semantics. PostgreSQL and SQLite now provide qualified native diagnostic surfaces; MySQL remains to be completed. |
+| Metadata parity | P0 | Define a richer portable catalog vocabulary and prove it across PostgreSQL/MySQL/SQLite without hiding native detail. PostgreSQL and SQLite now provide deep native surfaces; MySQL remains the primary gap. |
+| Explain/diagnostics parity | P0 | Common entry point with native plan payloads and conservative normalized fields. PostgreSQL and SQLite are qualified; MySQL remains. |
 | Benchmark harness | P0 | Reproducible latency/throughput/memory scenarios with machine-readable evidence and regression thresholds. |
 | Failure matrix | P0 | Authentication, TLS, timeout, cancellation, malformed protocol/input, resource exhaustion and cleanup invariants. |
 | Stability evidence register | P0 | Per-dialect checklist linking each stable criterion to tests/workflows/docs. |
 | Native extension convention | P1 | Consistent discoverability of engine-specific APIs without bloating the portable interface. |
-| Capability-to-runtime coverage | P1 | Identify capability-model leaves that describe engine features but have no corresponding NuBloxSQL helper/runtime contract. |
+| Capability-to-runtime coverage | P1 | Identify capability-model leaves that describe engine features but have no corresponding runtime/helper contract. |
 
 ---
 
 # Build order
 
-## Wave 1 — PostgreSQL native workflows
+## Wave 1 — PostgreSQL native workflows — COMPLETE CURRENT P0
 
-1. ~~COPY FROM STDIN.~~ **qualified**
-2. ~~COPY TO STDOUT.~~ **qualified**
-3. ~~LISTEN/NOTIFY.~~ **qualified**
-4. ~~Structured EXPLAIN/EXPLAIN ANALYZE.~~ **qualified**
-5. **Deep catalog introspection — NEXT.**
+1. ~~COPY FROM STDIN~~ — **qualified**
+2. ~~COPY TO STDOUT~~ — **qualified**
+3. ~~LISTEN/NOTIFY~~ — **qualified**
+4. ~~Structured EXPLAIN/EXPLAIN ANALYZE~~ — **qualified**
+5. ~~Deep catalog introspection~~ — **qualified**
 
-## Wave 2 — MySQL native workflows
+## Wave 2 — MySQL native workflows — NEXT
 
-1. LOAD DATA LOCAL INFILE with a strict security policy.
+1. LOAD DATA LOCAL INFILE with strict security policy.
 2. Structured EXPLAIN/EXPLAIN ANALYZE.
 3. Deep INFORMATION_SCHEMA/Performance Schema metadata.
 4. Authentication-plugin support matrix closure.
@@ -246,10 +206,10 @@ These are shared platform gaps that matter more than adding another SQL syntax f
 ## Wave 4 — Shared Tier-1 stable evidence
 
 1. Rich metadata contract.
-2. Cross-dialect explain/diagnostics contract.
+2. Cross-dialect diagnostics contract.
 3. Stable evidence register.
 4. Final release qualification and documentation reconciliation.
 
-## Deferred while Waves 1–4 are active
+## Deferred while Waves 2–4 are active
 
-The SQL AST/compiler foundation remains in NuBloxSQL and continues to be regression-tested, but grammar expansion is paused. CTE/subquery/DML/DDL transpilation work resumes only after the Tier-1 runtime P0 gaps above are closed.
+The SQL AST/compiler foundation remains regression-tested, but grammar expansion is paused. CTE/subquery/DML/DDL transpilation work resumes only after the current Tier-1 runtime P0 programme is complete.
