@@ -67,6 +67,10 @@ export interface LocalInfileOptions extends OperationOptions {
   chunkBytes?: number;
 }
 
+export interface ExplainOptions extends QueryOptions {
+  allowMutation?: boolean;
+}
+
 export interface PoolAcquireOptions {
   timeout?: number;
   deadline?: number | Date;
@@ -86,6 +90,10 @@ export interface PoolStreamQueryOptions extends StreamQueryOptions {
 }
 
 export interface PoolLocalInfileOptions extends LocalInfileOptions {
+  acquire?: PoolAcquireOptions;
+}
+
+export interface PoolExplainOptions extends ExplainOptions {
   acquire?: PoolAcquireOptions;
 }
 
@@ -137,6 +145,32 @@ export interface LocalInfileResult extends QueryResult {
     filename: string;
     bytes: number;
   }>;
+}
+
+export interface MySqlExplainSummary {
+  readonly nodeCount: number;
+  readonly maxDepth: number;
+  readonly tables: readonly string[];
+  readonly accessTypes: readonly string[];
+  readonly operations: readonly string[];
+  readonly queryType: string | null;
+  readonly jsonSchemaVersion: string | null;
+  readonly estimatedRows: number | null;
+  readonly estimatedTotalCost: number | null;
+  readonly actualRows: number | null;
+  readonly actualLoops: number | null;
+  readonly actualFirstRowMs: number | null;
+  readonly actualLastRowMs: number | null;
+}
+
+export interface MySqlExplainReport {
+  readonly format: 'json';
+  readonly analyzed: boolean;
+  readonly statementExecuted: boolean;
+  readonly jsonFormatVersion: number | null;
+  readonly plan: Readonly<Record<string, unknown>>;
+  readonly root: Readonly<Record<string, unknown>>;
+  readonly summary: Readonly<MySqlExplainSummary>;
 }
 
 export interface StreamCommandResult {
@@ -239,6 +273,12 @@ export class Connection {
     source: LocalInfileSource,
     options: LocalInfileOptions
   ): Promise<LocalInfileResult>;
+  explain(sql: string, parameters?: readonly unknown[], options?: ExplainOptions): Promise<MySqlExplainReport>;
+  explain(sql: string, options?: ExplainOptions): Promise<MySqlExplainReport>;
+  explainAnalyze(sql: string, parameters?: readonly unknown[], options?: ExplainOptions): Promise<MySqlExplainReport>;
+  explainAnalyze(sql: string, options?: ExplainOptions): Promise<MySqlExplainReport>;
+  diagnoseQuery(sql: string, parameters?: readonly unknown[], options?: ExplainOptions): Promise<MySqlExplainReport>;
+  diagnoseQuery(sql: string, options?: ExplainOptions): Promise<MySqlExplainReport>;
   prepare(sql: string, options?: OperationOptions): Promise<PreparedStatement>;
   resetSession(options?: OperationOptions): Promise<QueryResult>;
 
@@ -292,6 +332,12 @@ export class Pool {
     source: LocalInfileSource,
     options: PoolLocalInfileOptions
   ): Promise<LocalInfileResult>;
+  explain(sql: string, parameters?: readonly unknown[], options?: PoolExplainOptions): Promise<MySqlExplainReport>;
+  explain(sql: string, options?: PoolExplainOptions): Promise<MySqlExplainReport>;
+  explainAnalyze(sql: string, parameters?: readonly unknown[], options?: PoolExplainOptions): Promise<MySqlExplainReport>;
+  explainAnalyze(sql: string, options?: PoolExplainOptions): Promise<MySqlExplainReport>;
+  diagnoseQuery(sql: string, parameters?: readonly unknown[], options?: PoolExplainOptions): Promise<MySqlExplainReport>;
+  diagnoseQuery(sql: string, options?: PoolExplainOptions): Promise<MySqlExplainReport>;
   execute<Row = Record<string, unknown>>(
     sql: string,
     params?: readonly unknown[],
