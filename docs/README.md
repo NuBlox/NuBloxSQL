@@ -6,6 +6,12 @@ This directory contains the **authoritative release documentation** for the curr
 
 The [NuBloxSQL User Guides](guides/README.md) are the detailed task-oriented documentation for application developers. They cover installation, connections and pooling, SQL and binding, prepared statements, transactions, streaming and cancellation, metadata/introspection, errors and recovery, observability/type codecs, dialect-specific behaviour, capability/portability tooling, TypeScript and production troubleshooting.
 
+## Worked cookbook
+
+The [NuBloxSQL Cookbook](cookbook/README.md) contains worked application recipes. It covers portable CRUD, joins/CTEs/reporting, transactions/retries, large-result streaming, metadata tools, query diagnostics, PostgreSQL/MySQL/SQLite/SQL Server service patterns, bulk data movement, observability and migration analysis.
+
+Use guides to understand the contract; use cookbook recipes to see several APIs combined into realistic flows.
+
 ## Release documents
 
 - [Release status](RELEASE.md) — current release line, qualification and release gates.
@@ -22,7 +28,7 @@ These contracts are consumed by repository release tooling and are not informal 
 
 ## Documentation validity
 
-The root README, this directory's current documents, `docs/guides/`, the public TypeScript declarations and release-check tooling describe the current release. User guides are checked by the release audit for presence and valid relative links.
+The root README, this directory's current documents, `docs/guides/`, `docs/cookbook/`, the public TypeScript declarations and release-check tooling describe the current release. Guides and cookbook recipes are checked by the release audit for presence and valid relative links.
 
 ## Archive
 
