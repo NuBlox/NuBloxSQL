@@ -59,6 +59,8 @@ try {
   var consumer = [
     "const sql = require('nubloxsql');",
     "if (sql.OBSERVABILITY_SCHEMA_VERSION !== 1) throw new Error('observability schema mismatch');",
+    "const rewrite = sql.capabilityModel.rewriteSql('postgresql', 'sqlite', 'SELECT $2, $1');",
+    "if (rewrite.sql !== 'SELECT ?2, ?1') throw new Error('rewrite qualification failed');",
     "const db = sql.createClient({ dialect: 'sqlite', filename: ':memory:', pool: false });",
     "(async () => {",
     "  await db.execute('CREATE TABLE release_smoke (id INTEGER PRIMARY KEY, name TEXT NOT NULL)');",
@@ -78,7 +80,7 @@ try {
   run(npm, ['install', '--no-save', '--ignore-scripts', '--no-audit', '--no-fund', 'typescript@5.9.3', '@types/node@22'], { cwd: temp });
   var typeConsumer = [
     "import sql = require('nubloxsql');",
-    "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient, SqlRuntimeCapabilityReport } from 'nubloxsql';",
+    "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient, SqlRuntimeCapabilityReport, SqlRewritePlan, SqlRewriteResult } from 'nubloxsql';",
     "const mysql: MySqlClient = sql.createClient({ dialect: 'mysql', user: 'app', pool: false });",
     "const pg: PostgreSqlClient = sql.createClient({ dialect: 'pg', user: 'app', pool: false });",
     "const sqlite: SqliteClient = sql.createClient({ dialect: 'sqlite', filename: ':memory:', pool: false });",
@@ -92,7 +94,9 @@ try {
     "sqlite.native.governedQuery('SELECT 1', undefined, budget);",
     "const staticRuntime: SqlRuntimeCapabilityReport = sql.capabilityModel.qualify('sqlite', { version: '3.49.1' });",
     "const liveRuntime: Promise<SqlRuntimeCapabilityReport> = sql.capabilityModel.qualifyClient(sqlite);",
-    "void governance; void budget; void staticRuntime; void liveRuntime;",
+    "const rewritePlan: SqlRewritePlan = sql.capabilityModel.planRewrite('postgresql', 'sqlite', ['queries.joins.inner']);",
+    "const rewritten: SqlRewriteResult = sql.capabilityModel.rewriteSql('postgresql', 'sqlite', 'SELECT $1');",
+    "void governance; void budget; void staticRuntime; void liveRuntime; void rewritePlan; void rewritten;",
     "sqlite.transaction(async tx => { const d: 'sqlite' = tx.dialect; void d; });",
     "sql.capabilityReport('pg').dialect satisfies 'postgresql';",
     "sql.transactionPolicy('mssql').dialect satisfies 'sqlserver';",
