@@ -99,12 +99,14 @@ PostgreSQL can now progress through high-value P1/P2 depth—native type fidelit
 ### Wave 2 — MySQL native workflows — active
 
 1. ~~LOAD DATA LOCAL INFILE with explicit security policy~~ — **qualified**
-2. **structured EXPLAIN / EXPLAIN ANALYZE — NEXT**
-3. deep INFORMATION_SCHEMA / Performance Schema metadata;
+2. ~~structured EXPLAIN / EXPLAIN ANALYZE~~ — **qualified**
+3. **deep INFORMATION_SCHEMA / Performance Schema metadata — NEXT**
 4. authentication-plugin support-matrix closure;
 5. explicit protocol-compression decision and qualification.
 
 The LOCAL INFILE implementation is explicit opt-in, streams caller-supplied content only, refuses server-directed filesystem reads, validates the requested filename exactly, applies byte limits/backpressure/deadlines, and is qualified on MySQL 8.4 and 9.7.
+
+Structured MySQL diagnostics now expose immutable native JSON plans, parameterized prepared execution, JSON-v2 `EXPLAIN ANALYZE`, conservative factual summaries, explicit execution semantics, mutation opt-in and session-safe format restoration across MySQL 8.4 and 9.7.
 
 Then expand stored-program/multi-result depth, JSON/spatial fidelity and optional binlog/replication foundations.
 

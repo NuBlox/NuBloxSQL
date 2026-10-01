@@ -107,5 +107,7 @@ jobs:
         run: node lib/dialects/mysql/test/live-operation-control.js
       - name: Secure LOAD DATA LOCAL INFILE qualification
         run: node lib/dialects/mysql/test/live-local-infile.js
+      - name: Structured EXPLAIN and EXPLAIN ANALYZE diagnostics
+        run: node lib/dialects/mysql/test/live-diagnostics.js
       - name: Full MySQL connection, prepared, transaction and pool smoke
         run: node lib/dialects/mysql/test/live.js
