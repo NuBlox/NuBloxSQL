@@ -34,6 +34,9 @@ export interface ConnectionConfig {
   maxResultBytes?: number;
   maxRowBytes?: number;
   streamHighWaterMark?: number;
+  localInfile?: boolean;
+  localInfileMaxBytes?: number;
+  localInfileChunkBytes?: number;
   serverPublicKey?: string;
   getServerPublicKey?: boolean;
   signal?: AbortSignalLike;
@@ -55,6 +58,15 @@ export interface StreamQueryOptions extends QueryOptions {
   highWaterMark?: number;
 }
 
+export type LocalInfileChunk = string | Buffer | Uint8Array;
+export type LocalInfileSource = LocalInfileChunk | Iterable<LocalInfileChunk> | AsyncIterable<LocalInfileChunk>;
+
+export interface LocalInfileOptions extends OperationOptions {
+  filename: string;
+  maxBytes?: number;
+  chunkBytes?: number;
+}
+
 export interface PoolAcquireOptions {
   timeout?: number;
   deadline?: number | Date;
@@ -70,6 +82,10 @@ export interface PoolQueryOptions extends QueryOptions {
 }
 
 export interface PoolStreamQueryOptions extends StreamQueryOptions {
+  acquire?: PoolAcquireOptions;
+}
+
+export interface PoolLocalInfileOptions extends LocalInfileOptions {
   acquire?: PoolAcquireOptions;
 }
 
@@ -114,6 +130,13 @@ export interface QueryResult<Row = Record<string, unknown>> {
   insertId: number | bigint;
   serverStatus: number;
   warningCount: number;
+}
+
+export interface LocalInfileResult extends QueryResult {
+  readonly localInfile: Readonly<{
+    filename: string;
+    bytes: number;
+  }>;
 }
 
 export interface StreamCommandResult {
@@ -211,6 +234,11 @@ export class Connection {
     sql: string,
     options?: StreamQueryOptions
   ): ResultStream<Row>;
+  loadDataLocal(
+    sql: string,
+    source: LocalInfileSource,
+    options: LocalInfileOptions
+  ): Promise<LocalInfileResult>;
   prepare(sql: string, options?: OperationOptions): Promise<PreparedStatement>;
   resetSession(options?: OperationOptions): Promise<QueryResult>;
 
@@ -259,6 +287,11 @@ export class Pool {
     sql: string,
     options?: PoolStreamQueryOptions
   ): Promise<ResultStream<Row>>;
+  loadDataLocal(
+    sql: string,
+    source: LocalInfileSource,
+    options: PoolLocalInfileOptions
+  ): Promise<LocalInfileResult>;
   execute<Row = Record<string, unknown>>(
     sql: string,
     params?: readonly unknown[],
@@ -283,5 +316,8 @@ export const DEFAULT_LIMITS: Readonly<{
   maxRowBytes: number;
   streamHighWaterMark: number;
 }>;
+
+export const DEFAULT_LOCAL_INFILE_MAX_BYTES: number;
+export const DEFAULT_LOCAL_INFILE_CHUNK_BYTES: number;
 
 export const protocol: Readonly<Record<string, unknown>>;
