@@ -51,7 +51,9 @@ The design rule is: **one developer API, honest dialect semantics**.
 
 ## User documentation
 
-Start with the [NuBloxSQL User Guides](docs/guides/README.md). They cover installation, connection configuration, pooling, SQL binding, prepared statements, transactions, streaming, metadata, errors, observability, type codecs, dialect-specific behaviour, capability/portability tooling, TypeScript and production operation.
+Start with the [NuBloxSQL User Guides](docs/guides/README.md) for detailed API and operational guidance.
+
+Use the [NuBloxSQL Cookbook](docs/cookbook/README.md) for worked applications and recipes covering CRUD, joins and CTEs, reporting, transactions, streaming, metadata tooling, diagnostics, PostgreSQL/MySQL/SQLite/SQL Server service patterns, bulk movement, observability and migration analysis.
 
 Other authoritative release documents are:
 
