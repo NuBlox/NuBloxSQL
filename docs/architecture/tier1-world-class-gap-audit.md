@@ -41,16 +41,19 @@ Priority vocabulary:
 | Bulk data movement | qualified COPY streaming | qualified LOCAL INFILE import | engine-specific alternatives qualified |
 | Event/notification integration | qualified LISTEN/NOTIFY | no direct analogue | not applicable |
 | Replication/CDC-native integration | missing | missing | session changesets implemented, not CDC |
-| Performance/memory evidence | qualified baseline | qualified baseline | partial |
+| Performance evidence | qualified baseline | qualified baseline | qualified |
+| Memory evidence | qualified baseline | qualified baseline | partial |
 | Failure/adversarial qualification | qualified baseline | qualified baseline | strong, further stress desirable |
 
 ## Current direction
 
-PostgreSQL and MySQL have completed every **current P0 runtime-depth item** in this register. Development priority now moves to SQLite production qualification, then shared Tier-1 evidence/contracts.
+PostgreSQL and MySQL have completed every **current P0 runtime-depth item** in this register. SQLite has now completed its production performance evidence slice. Development priority moves to SQLite memory qualification, then contention/concurrency and malformed-input hardening, followed by shared Tier-1 evidence/contracts.
 
-1. SQLite P0: benchmark/performance, memory, concurrency and malformed-schema/input evidence.
-2. Shared Tier-1: richer metadata parity, diagnostics parity and stable evidence register.
-3. Re-run formal stable qualification against this register before expanding compiler grammar again.
+1. SQLite P0: memory qualification and regression ceilings.
+2. SQLite P0: WAL/rollback-journal concurrency stress.
+3. SQLite P0: malformed-schema/input evidence.
+4. Shared Tier-1: richer metadata parity, diagnostics parity and stable evidence register.
+5. Re-run formal stable qualification against this register before expanding compiler grammar again.
 
 ---
 
@@ -149,11 +152,16 @@ These are P1/P2 enhancements, not blockers for the current P0 baseline:
 
 SQLite has the broadest engine-native management surface in NuBloxSQL: embedded `node:sqlite`, lifecycle modes, prepared execution, transactions/savepoints, attached databases, backup/serialization, deep schema introspection, WAL/storage policy, integrity/maintenance APIs, extension/security policy, feature probes, query diagnostics, changesets and resource governance.
 
+## Completed P0 slices
+
+| Area | Status | Evidence/outcome |
+| --- | --- | --- |
+| Production performance evidence | qualified | File-backed WAL qualification across Node 22/24/26 covering unprepared/prepared reads, autocommit and transactional writes, large-result materialization, incremental iteration and repeated metadata access. Emits machine-readable performance evidence with generous regression ceilings. |
+
 ## Remaining gaps
 
 | Area | Status | Priority | Required outcome |
 | --- | --- | --- | --- |
-| Production performance evidence | partial | P0 | Repeatable prepared/unprepared read/write, transaction, materialization and metadata benchmarks. |
 | Memory evidence | partial | P0 | Large-result and long-lived connection memory ceilings with regression thresholds. |
 | Concurrency stress | partial | P0 | WAL/rollback-journal contention, busy-timeout, checkpoint and writer-starvation tests. |
 | Malformed database/schema hardening | partial | P0 | Corrupt/malformed schema and hostile metadata cases with deterministic failures/no crashes. |
@@ -165,7 +173,7 @@ SQLite has the broadest engine-native management surface in NuBloxSQL: embedded 
 
 ### SQLite completion gate
 
-SQLite should move from Development to Stable only after the four P0 operational-evidence items above are complete.
+SQLite should move from Development to Stable only after the three remaining P0 operational-evidence items above are complete: memory, concurrency and malformed/corrupt input hardening.
 
 ---
 
@@ -175,7 +183,7 @@ SQLite should move from Development to Stable only after the four P0 operational
 | --- | --- | --- |
 | Metadata parity | P0 | Define a richer portable catalog vocabulary and prove it across PostgreSQL/MySQL/SQLite without hiding native detail. All three now provide deep native surfaces; Wave 4 should consolidate the shared vocabulary. |
 | Explain/diagnostics parity | P0 | Native structured diagnostics are qualified for PostgreSQL, MySQL and SQLite. Wave 4 should define the shared entry point and conservative normalized vocabulary without erasing native payloads. |
-| Benchmark harness | P0 | Reproducible latency/throughput/memory scenarios with machine-readable evidence and regression thresholds. |
+| Benchmark harness | P0 | Reproducible latency/throughput/memory scenarios with machine-readable evidence and regression thresholds. SQLite now contributes a qualified runtime-performance harness; memory evidence remains. |
 | Failure matrix | P0 | Authentication, TLS, timeout, cancellation, malformed protocol/input, resource exhaustion and cleanup invariants. |
 | Stability evidence register | P0 | Per-dialect checklist linking each stable criterion to tests/workflows/docs. |
 | Native extension convention | P1 | Consistent discoverability of engine-specific APIs without bloating the portable interface. |
@@ -204,8 +212,8 @@ Protocol compression and the remaining engine-specific depth are P1/P2 work rath
 
 ## Wave 3 — SQLite stable qualification — ACTIVE
 
-1. **Benchmark/performance harness — NEXT.**
-2. Memory qualification.
+1. ~~Benchmark/performance harness~~ — **qualified**
+2. **Memory qualification — NEXT.**
 3. WAL/contention stress.
 4. Malformed-schema/input hardening.
 5. Backup/changeset stress.

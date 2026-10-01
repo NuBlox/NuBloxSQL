@@ -111,15 +111,17 @@ Future MySQL work is P1/P2 unless a new baseline requirement or regression is id
 
 ### Wave 3 — SQLite stable qualification — active P0
 
-SQLite feature breadth is no longer the main blocker. The remaining P0 work is operational evidence:
+SQLite feature breadth is no longer the main blocker. The remaining work is operational evidence:
 
-1. repeatable performance benchmarks;
-2. memory qualification and regression ceilings;
+1. ~~repeatable performance benchmarks~~ — **qualified across Node 22/24/26**;
+2. **memory qualification and regression ceilings — NEXT**;
 3. WAL/rollback-journal concurrency stress;
 4. malformed/corrupt schema/input hardening;
 5. backup and changeset stress/failure recovery.
 
-SQLite moves from Development to Stable only after this production qualification is complete.
+The performance qualification uses a temporary file-backed WAL database and correctness-checked workloads for unprepared/prepared reads, autocommit and transactional writes, large-result materialization, iterator consumption and repeated metadata access. It emits machine-readable evidence and uses deliberately generous CI ceilings to detect severe regressions without turning shared-runner performance into a product claim.
+
+SQLite moves from Development to Stable only after its remaining production qualification is complete.
 
 ### Wave 4 — Shared Tier-1 evidence
 
