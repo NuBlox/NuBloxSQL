@@ -101,6 +101,8 @@ jobs:
         run: node lib/dialects/postgresql/test/live-notifications.js
       - name: Structured EXPLAIN and EXPLAIN ANALYZE diagnostics
         run: node lib/dialects/postgresql/test/live-diagnostics.js
+      - name: Deep catalog introspection qualification
+        run: node lib/dialects/postgresql/test/live-deep-metadata.js
       - name: Authentication and TLS failure paths
         run: node lib/dialects/postgresql/test/live-failure-paths.js
       - name: Result-limit connection and pool safety

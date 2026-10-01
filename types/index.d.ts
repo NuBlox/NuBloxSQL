@@ -5,6 +5,7 @@ import sqlserver = require('../lib/dialects/sqlserver');
 import type * as root from '../index';
 
 export * from '../index';
+export * from './postgresql-deep-metadata';
 
 export type MySqlConnectionUrl = `mysql://${string}` | `mysql2://${string}`;
 export type PostgreSqlConnectionUrl = `postgres://${string}` | `postgresql://${string}`;
