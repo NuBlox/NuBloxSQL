@@ -30,7 +30,7 @@ The comparison reports compatibility evidence. It is not a promise that arbitrar
 const comparison = capabilityModel.compatibility(
   'postgresql',
   'mysql',
-  'queries.select.limitOffset'
+  'queries.select'
 );
 
 console.dir(comparison, { depth: null });
@@ -66,9 +66,8 @@ const plan = capabilityModel.planRewrite(
   'postgresql',
   'mysql',
   [
-    'queries.select.limitOffset',
-    'expressions.cast',
-    'transactions.savepoints'
+    'queries.select',
+    'expressions.limit'
   ]
 );
 
@@ -89,7 +88,7 @@ const rewritten = capabilityModel.rewriteSql(
   'mysql',
   'SELECT id, name FROM users WHERE id = $1 LIMIT 10',
   {
-    capabilities: ['queries.select.limitOffset']
+    capabilities: ['queries.select', 'expressions.limit']
   }
 );
 
