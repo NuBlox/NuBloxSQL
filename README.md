@@ -49,14 +49,16 @@ NuBloxSQL provides one package and one public entry point for:
 
 The design rule is: **one developer API, honest dialect semantics**.
 
-## Authoritative documentation
+## User documentation
 
-Only the following documents are current release information:
+Start with the [NuBloxSQL User Guides](docs/guides/README.md). They cover installation, connection configuration, pooling, SQL binding, prepared statements, transactions, streaming, metadata, errors, observability, type codecs, dialect-specific behaviour, capability/portability tooling, TypeScript and production operation.
+
+Other authoritative release documents are:
 
 - [Documentation index](docs/README.md)
 - [Release status](docs/RELEASE.md)
 - [Support matrix](docs/SUPPORT.md)
-- [Public API guide](docs/API.md)
+- [Public API summary](docs/API.md)
 - [1.1.0 release notes](docs/releases/1.1.0.md)
 
 Machine-readable release contracts are kept in `docs/releases/` and are enforced by `npm run release:check`.

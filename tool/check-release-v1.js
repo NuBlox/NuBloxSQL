@@ -53,7 +53,7 @@ if (exists('packages')) fail('legacy packages/ runtime tree must not exist');
 
 if (read('LICENSE').indexOf(licenceMarker) === -1) fail('root LICENSE is not the NuBloxSQL proprietary licence');
 
-[
+var releaseDocuments = [
   'README.md',
   'docs/README.md',
   'docs/RELEASE.md',
@@ -62,8 +62,52 @@ if (read('LICENSE').indexOf(licenceMarker) === -1) fail('root LICENSE is not the
   'docs/releases/1.1.0.md',
   'docs/releases/public-api-v1.json',
   'docs/releases/tier1-stable-evidence.json'
-].forEach(function (file) {
-  if (!exists(file)) fail('missing authoritative release document/contract: ' + file);
+];
+
+var userGuides = [
+  'docs/guides/README.md',
+  'docs/guides/01-getting-started.md',
+  'docs/guides/02-connections-and-pooling.md',
+  'docs/guides/03-sql-parameters-and-types.md',
+  'docs/guides/04-prepared-and-results.md',
+  'docs/guides/05-transactions.md',
+  'docs/guides/06-streaming-and-operation-control.md',
+  'docs/guides/07-metadata-and-introspection.md',
+  'docs/guides/08-errors-retries-and-recovery.md',
+  'docs/guides/09-observability-and-type-codecs.md',
+  'docs/guides/10-dialects.md',
+  'docs/guides/11-capabilities-and-portability.md',
+  'docs/guides/12-typescript.md',
+  'docs/guides/13-production-and-troubleshooting.md'
+];
+
+releaseDocuments.concat(userGuides).forEach(function (file) {
+  if (!exists(file)) fail('missing authoritative release document/guide: ' + file);
+});
+
+function validateRelativeLinks(file) {
+  if (!exists(file)) return;
+  var text = read(file);
+  var re = /\[[^\]]+\]\(([^)]+)\)/g;
+  var match;
+  while ((match = re.exec(text))) {
+    var target = match[1].trim();
+    if (!target || target[0] === '#' || /^(?:https?:|mailto:)/i.test(target)) continue;
+    target = target.split('#')[0].split('?')[0];
+    if (!target) continue;
+    var resolved = path.normalize(path.join(path.dirname(file), target));
+    if (!exists(resolved)) fail('broken documentation link in ' + file + ': ' + match[1]);
+  }
+}
+
+releaseDocuments.filter(function (file) { return /\.md$/.test(file); }).concat(userGuides).forEach(validateRelativeLinks);
+
+userGuides.forEach(function (file) {
+  if (!exists(file)) return;
+  var text = read(file);
+  if (text.indexOf('docs/architecture/') !== -1 || text.indexOf('docs/v1/') !== -1) {
+    fail('current user guide references archived documentation location: ' + file);
+  }
 });
 
 [
@@ -90,5 +134,5 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   console.log('NuBloxSQL release architecture audit: PASS');
-  console.log('One public package, concise current release documentation, archived history, proprietary licence and zero third-party package dependencies are enforced.');
+  console.log('One public package, validated current user guides, archived history, proprietary licence and zero third-party package dependencies are enforced.');
 }

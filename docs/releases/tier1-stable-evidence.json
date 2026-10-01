@@ -64,6 +64,7 @@
     "docs/RELEASE.md",
     "docs/SUPPORT.md",
     "docs/API.md",
+    "docs/guides/README.md",
     "docs/releases/public-api-v1.json",
     "lib/client/PortableMetadata.js",
     "test/portable-metadata-vocabulary.js",

@@ -6,6 +6,8 @@ NuBloxSQL exposes one package entry point:
 const sql = require('nubloxsql');
 ```
 
+For detailed, task-oriented usage see the [NuBloxSQL User Guides](guides/README.md).
+
 ## Primary entry points
 
 - `createClient()` — create the unified client for a configured dialect.
@@ -35,7 +37,7 @@ Canonical dialect names are `mysql`, `postgresql`, `sqlite` and `sqlserver`. Sup
 
 ## Exact release contract
 
-This guide is intentionally concise. The exact exported JavaScript surface, package files, version and Node.js floor are machine-defined in `docs/releases/public-api-v1.json`.
+The exact exported JavaScript surface, package files, version and Node.js floor are machine-defined in `docs/releases/public-api-v1.json`.
 
 The TypeScript package entry point is `types/root.d.ts`; the portable metadata declarations are `types/portable-metadata.d.ts`.
 
