@@ -5,7 +5,11 @@ var fs = require('fs');
 var path = require('path');
 
 var packageJson = require('../package.json');
-assert.strictEqual(packageJson.types, 'types/public.d.ts');
+assert.strictEqual(packageJson.types, 'types/root.d.ts');
+
+var rootDeclarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'root.d.ts'), 'utf8');
+assert.ok(rootDeclarations.indexOf("export * from './public';") >= 0);
+assert.ok(rootDeclarations.indexOf("export * from './portable-metadata';") >= 0);
 
 var declarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'index.d.ts'), 'utf8');
 [
@@ -64,6 +68,22 @@ var publicDeclarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'pu
   assert.ok(publicDeclarations.indexOf(needle) >= 0, 'missing capability model TypeScript contract: ' + needle);
 });
 
+var portableDeclarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'portable-metadata.d.ts'), 'utf8');
+[
+  'export type PortableMetadataDialect',
+  'export type PortableNullability',
+  'export interface PortableColumnMetadata',
+  'export interface PortableIndexMetadata',
+  'export interface PortableForeignKeyMetadata',
+  'export interface PortableConstraintMetadata',
+  'export interface PortableTableMetadata',
+  'export interface PortableMetadataSnapshot',
+  'readonly vocabularyVersion: 1',
+  'readonly portable: PortableMetadataSnapshot<D>'
+].forEach(function (needle) {
+  assert.ok(portableDeclarations.indexOf(needle) >= 0, 'missing portable metadata TypeScript contract: ' + needle);
+});
+
 var mysqlDeclarations = fs.readFileSync(path.join(__dirname, '..', 'lib', 'dialects', 'mysql', 'index.d.ts'), 'utf8');
 [
   'export interface ExplainOptions',
@@ -88,4 +108,4 @@ var postgresqlDeclarations = fs.readFileSync(path.join(__dirname, '..', 'lib', '
   assert.ok(postgresqlDeclarations.indexOf(needle) >= 0, 'missing PostgreSQL diagnostics TypeScript contract: ' + needle);
 });
 
-console.log('NuBloxSQL TypeScript dialect discrimination and capability-model surface contract passed');
+console.log('NuBloxSQL TypeScript dialect discrimination, portable metadata and capability-model surface contract passed');
