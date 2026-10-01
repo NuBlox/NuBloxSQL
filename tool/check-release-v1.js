@@ -81,8 +81,25 @@ var userGuides = [
   'docs/guides/13-production-and-troubleshooting.md'
 ];
 
-releaseDocuments.concat(userGuides).forEach(function (file) {
-  if (!exists(file)) fail('missing authoritative release document/guide: ' + file);
+var cookbook = [
+  'docs/cookbook/README.md',
+  'docs/cookbook/01-portable-crud-service.md',
+  'docs/cookbook/02-joins-ctes-and-reporting.md',
+  'docs/cookbook/03-transactions-savepoints-retries.md',
+  'docs/cookbook/04-streaming-large-results.md',
+  'docs/cookbook/05-metadata-schema-browser.md',
+  'docs/cookbook/06-query-diagnostics.md',
+  'docs/cookbook/07-postgresql-service.md',
+  'docs/cookbook/08-mysql-service.md',
+  'docs/cookbook/09-sqlite-production-service.md',
+  'docs/cookbook/10-sqlserver-service.md',
+  'docs/cookbook/11-bulk-data-movement.md',
+  'docs/cookbook/12-errors-and-observability.md',
+  'docs/cookbook/13-capability-and-migration.md'
+];
+
+releaseDocuments.concat(userGuides, cookbook).forEach(function (file) {
+  if (!exists(file)) fail('missing authoritative release document/guide/recipe: ' + file);
 });
 
 function validateRelativeLinks(file) {
@@ -100,13 +117,15 @@ function validateRelativeLinks(file) {
   }
 }
 
-releaseDocuments.filter(function (file) { return /\.md$/.test(file); }).concat(userGuides).forEach(validateRelativeLinks);
+releaseDocuments.filter(function (file) { return /\.md$/.test(file); })
+  .concat(userGuides, cookbook)
+  .forEach(validateRelativeLinks);
 
-userGuides.forEach(function (file) {
+userGuides.concat(cookbook).forEach(function (file) {
   if (!exists(file)) return;
   var text = read(file);
   if (text.indexOf('docs/architecture/') !== -1 || text.indexOf('docs/v1/') !== -1) {
-    fail('current user guide references archived documentation location: ' + file);
+    fail('current user documentation references archived documentation location: ' + file);
   }
 });
 
@@ -134,5 +153,5 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   console.log('NuBloxSQL release architecture audit: PASS');
-  console.log('One public package, validated current user guides, archived history, proprietary licence and zero third-party package dependencies are enforced.');
+  console.log('One public package, validated current guides/cookbook, archived history, proprietary licence and zero third-party package dependencies are enforced.');
 }
