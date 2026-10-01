@@ -96,6 +96,59 @@ export interface SqlRuntimeQualifiableClient {
   one<Row = Record<string, unknown>>(statement: string): Promise<Row>;
 }
 
+export type SqlRewriteAction = 'preserve' | 'rewrite' | 'emulate' | 'qualify' | 'reject';
+export interface SqlRewritePlanOptions {
+  readonly sourceQualification?: SqlRuntimeCapabilityReport;
+  readonly targetQualification?: SqlRuntimeCapabilityReport;
+}
+export interface SqlRewriteDecision {
+  readonly path: string;
+  readonly from: SqlCapabilityTier1Dialect;
+  readonly to: SqlCapabilityTier1Dialect;
+  readonly action: SqlRewriteAction;
+  readonly level: SqlCompatibilityLevel;
+  readonly lossless: boolean | null;
+  readonly reason: string;
+  readonly source: SqlCapabilityFeature | null;
+  readonly target: SqlCapabilityFeature | null;
+  readonly sourceResolution: string;
+  readonly targetResolution: string;
+}
+export interface SqlRewritePlan {
+  readonly from: SqlCapabilityTier1Dialect;
+  readonly to: SqlCapabilityTier1Dialect;
+  readonly decisions: readonly SqlRewriteDecision[];
+  readonly summary: Readonly<{ preserve: number; rewrite: number; emulate: number; qualify: number; reject: number }>;
+  readonly blocked: boolean;
+  readonly requiresQualification: boolean;
+  readonly requiresTransformation: boolean;
+  readonly safeToProceed: boolean;
+}
+export interface SqlRewriteSqlOptions extends SqlRewritePlanOptions {
+  readonly capabilities?: readonly string[];
+  readonly allowBlocked?: boolean;
+  readonly allowUnqualified?: boolean;
+}
+export interface SqlRewriteRuleApplication {
+  readonly id: string;
+  readonly lossless: boolean;
+}
+export interface SqlRewriteResult {
+  readonly from: SqlCapabilityTier1Dialect;
+  readonly to: SqlCapabilityTier1Dialect;
+  readonly input: string;
+  readonly sql: string;
+  readonly changed: boolean;
+  readonly lossless: boolean;
+  readonly rules: readonly SqlRewriteRuleApplication[];
+  readonly parameters: Readonly<{
+    sourceStyle: string;
+    targetStyle: string;
+    targetToSource: readonly (number | string)[];
+  }>;
+  readonly plan: SqlRewritePlan | null;
+}
+
 export interface SqlCapabilityModelApi {
   readonly schemaVersion: 1; readonly tier1Dialects: readonly ['postgresql', 'mysql', 'sqlite'];
   readonly categories: readonly SqlCapabilityCategory[]; readonly supportLevels: readonly SqlCapabilitySupportLevel[];
@@ -113,6 +166,9 @@ export interface SqlCapabilityModelApi {
   qualify(dialect: SqlCapabilityTier1Dialect | 'postgres' | 'pg', evidence?: SqlRuntimeCapabilityEvidence): SqlRuntimeCapabilityReport;
   qualifyClient(client: SqlRuntimeQualifiableClient): Promise<SqlRuntimeCapabilityReport>;
   compareVersion(left: string, right: string): -1 | 0 | 1 | null;
+  rewriteDecision(from: SqlCapabilityTier1Dialect | 'postgres' | 'pg', to: SqlCapabilityTier1Dialect | 'postgres' | 'pg', path: string, options?: SqlRewritePlanOptions): SqlRewriteDecision;
+  planRewrite(from: SqlCapabilityTier1Dialect | 'postgres' | 'pg', to: SqlCapabilityTier1Dialect | 'postgres' | 'pg', paths: readonly string[], options?: SqlRewritePlanOptions): SqlRewritePlan;
+  rewriteSql(from: SqlCapabilityTier1Dialect | 'postgres' | 'pg', to: SqlCapabilityTier1Dialect | 'postgres' | 'pg', sql: string, options?: SqlRewriteSqlOptions): SqlRewriteResult;
 }
 
 export const SQL_CAPABILITY_MODEL_SCHEMA_VERSION: 1;
