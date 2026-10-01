@@ -33,7 +33,7 @@ Priority vocabulary:
 | Cancellation/deadlines | qualified | qualified | host-limited/partial |
 | Result/resource limits | qualified | qualified | qualified |
 | Portable metadata/introspection | qualified | qualified baseline | qualified deep |
-| Native deep metadata | qualified | partial | qualified deep |
+| Native deep metadata | qualified | qualified | qualified deep |
 | Type fidelity | qualified core | qualified core | qualified core |
 | Structured errors | qualified | qualified | qualified |
 | Observability | qualified baseline | qualified baseline | qualified baseline |
@@ -46,12 +46,11 @@ Priority vocabulary:
 
 ## Current direction
 
-PostgreSQL has completed every **current P0 runtime-depth item** in this register. MySQL has now closed both its P0 LOCAL INFILE/bulk-import gap and its structured EXPLAIN/EXPLAIN ANALYZE diagnostics gap. Development priority moves to MySQL deep metadata, then authentication-plugin qualification, then SQLite production qualification and shared Tier-1 evidence/contracts.
+PostgreSQL and MySQL have completed every **current P0 runtime-depth item** in this register. Development priority now moves to SQLite production qualification, then shared Tier-1 evidence/contracts.
 
-1. MySQL P0: deep metadata and authentication-plugin qualification.
-2. SQLite P0: benchmark/performance, memory, concurrency and malformed-schema/input evidence.
-3. Shared Tier-1: richer metadata parity, diagnostics parity and stable evidence register.
-4. Re-run formal stable qualification against this register before expanding compiler grammar again.
+1. SQLite P0: benchmark/performance, memory, concurrency and malformed-schema/input evidence.
+2. Shared Tier-1: richer metadata parity, diagnostics parity and stable evidence register.
+3. Re-run formal stable qualification against this register before expanding compiler grammar again.
 
 ---
 
@@ -111,9 +110,9 @@ These are P1/P2 enhancements, not blockers for the current P0 baseline:
 
 # MySQL
 
-## Strong foundation
+## Qualified P0 baseline
 
-NuBloxSQL already provides native protocol framing/authentication, prepared statements, typed binds, direct/prepared streaming with backpressure, pooling/reset contracts, transactions/savepoints, operation deadlines/cancellation, result limits, observability/error modelling, portable metadata, secure LOCAL INFILE imports, structured native query diagnostics, MySQL 8.4/9.7 live qualification, Node 22/24/26 contracts and security/release gates.
+NuBloxSQL provides native protocol framing/authentication, prepared statements, typed binds, direct/prepared streaming with backpressure, pooling/reset contracts, transactions/savepoints, operation deadlines/cancellation, result limits, observability/error modelling, secure LOCAL INFILE imports, structured native query diagnostics, deep engine/security metadata, a version-aware authentication-plugin support matrix, MySQL 8.4/9.7 live qualification, Node 22/24/26 contracts and security/release gates.
 
 ### Completed P0 slices
 
@@ -121,13 +120,15 @@ NuBloxSQL already provides native protocol framing/authentication, prepared stat
 | --- | --- | --- |
 | LOAD DATA LOCAL INFILE | qualified | Explicit opt-in `CLIENT_LOCAL_FILES`, caller-supplied streaming sources only, exact server filename validation, byte ceilings, backpressure, timeout/abort safety, pooled operation and live MySQL 8.4/9.7 qualification. |
 | Structured EXPLAIN | qualified | Native `EXPLAIN FORMAT=JSON`, JSON-v2 `EXPLAIN ANALYZE`, parameterized prepared execution, immutable native payloads, conservative factual summaries, mutating-analyze opt-in, session-format restoration and live MySQL 8.4/9.7 qualification. |
+| Deep INFORMATION_SCHEMA metadata | qualified | Engine/table options, generated columns, invisible/functional/FULLTEXT/SPATIAL-capable indexes, constraints, partitions, routines, triggers/events, privileges, account/auth-plugin metadata and role-edge metadata with MySQL 8.4/9.7 qualification. |
+| Authentication plugin breadth | qualified | Version-aware matrix for modern, deprecated, legacy and guarded plugins; `caching_sha2_password` and deprecated `sha256_password` live-qualified over RSA/TLS on MySQL 8.4/9.7; `mysql_native_password` lifecycle reported honestly; cleartext plugin guarded by TLS plus explicit opt-in. |
 
-## Remaining gaps
+## Remaining MySQL depth
+
+These are P1/P2 enhancements, not blockers for the current P0 baseline:
 
 | Area | Status | Priority | Required outcome |
 | --- | --- | --- | --- |
-| Deep INFORMATION_SCHEMA metadata | partial | P0 | Functional/invisible/full-text/spatial indexes, generated columns, partitions, routines, triggers/events, users/roles/privileges and engine options. |
-| Authentication plugin breadth | partial | P0 | Explicit supported-plugin matrix and failure tests for modern server defaults and TLS-dependent auth paths. |
 | Bulk export helpers | missing | P1 | Safe engine-native export workflow where filesystem/server semantics permit it. |
 | Server/session diagnostics | partial | P1 | Performance Schema/sys-backed helpers with explicit privilege requirements. |
 | Replication/binlog protocol | missing | P1 | Optional replication-client boundary, GTID/binlog-position primitives and event framing. |
@@ -138,7 +139,7 @@ NuBloxSQL already provides native protocol framing/authentication, prepared stat
 
 ### MySQL completion gate
 
-MySQL remains Stable. Two current P0 items remain before its world-class Tier-1 runtime-depth gate is complete: deep metadata and authentication-plugin matrix closure.
+**Current P0 gate: complete.** MySQL remains regression-gated across supported Node and MySQL versions. P1/P2 work can proceed without reopening the completed P0 declaration unless a regression or new baseline requirement is identified.
 
 ---
 
@@ -172,8 +173,8 @@ SQLite should move from Development to Stable only after the four P0 operational
 
 | Area | Priority | Required outcome |
 | --- | --- | --- |
-| Metadata parity | P0 | Define a richer portable catalog vocabulary and prove it across PostgreSQL/MySQL/SQLite without hiding native detail. PostgreSQL and SQLite now provide deep native surfaces; MySQL remains the primary gap. |
-| Explain/diagnostics parity | P0 | Native structured diagnostics are now qualified for PostgreSQL, MySQL and SQLite. Wave 4 should define the shared entry point and conservative normalized vocabulary without erasing native payloads. |
+| Metadata parity | P0 | Define a richer portable catalog vocabulary and prove it across PostgreSQL/MySQL/SQLite without hiding native detail. All three now provide deep native surfaces; Wave 4 should consolidate the shared vocabulary. |
+| Explain/diagnostics parity | P0 | Native structured diagnostics are qualified for PostgreSQL, MySQL and SQLite. Wave 4 should define the shared entry point and conservative normalized vocabulary without erasing native payloads. |
 | Benchmark harness | P0 | Reproducible latency/throughput/memory scenarios with machine-readable evidence and regression thresholds. |
 | Failure matrix | P0 | Authentication, TLS, timeout, cancellation, malformed protocol/input, resource exhaustion and cleanup invariants. |
 | Stability evidence register | P0 | Per-dialect checklist linking each stable criterion to tests/workflows/docs. |
@@ -192,17 +193,18 @@ SQLite should move from Development to Stable only after the four P0 operational
 4. ~~Structured EXPLAIN/EXPLAIN ANALYZE~~ — **qualified**
 5. ~~Deep catalog introspection~~ — **qualified**
 
-## Wave 2 — MySQL native workflows — IN PROGRESS
+## Wave 2 — MySQL native workflows — COMPLETE CURRENT P0
 
 1. ~~LOAD DATA LOCAL INFILE with strict security policy~~ — **qualified**
 2. ~~Structured EXPLAIN/EXPLAIN ANALYZE~~ — **qualified**
-3. **Deep INFORMATION_SCHEMA/Performance Schema metadata — NEXT.**
-4. Authentication-plugin support matrix closure.
-5. Decide and document protocol compression support.
+3. ~~Deep INFORMATION_SCHEMA/Performance Schema metadata~~ — **qualified**
+4. ~~Authentication-plugin support matrix closure~~ — **qualified**
 
-## Wave 3 — SQLite stable qualification
+Protocol compression and the remaining engine-specific depth are P1/P2 work rather than current P0 blockers.
 
-1. Benchmark/performance harness.
+## Wave 3 — SQLite stable qualification — ACTIVE
+
+1. **Benchmark/performance harness — NEXT.**
 2. Memory qualification.
 3. WAL/contention stress.
 4. Malformed-schema/input hardening.
@@ -215,6 +217,6 @@ SQLite should move from Development to Stable only after the four P0 operational
 3. Stable evidence register.
 4. Final release qualification and documentation reconciliation.
 
-## Deferred while Waves 2–4 are active
+## Deferred while Waves 3–4 are active
 
 The SQL AST/compiler foundation remains regression-tested, but grammar expansion is paused. CTE/subquery/DML/DDL transpilation work resumes only after the current Tier-1 runtime P0 programme is complete.

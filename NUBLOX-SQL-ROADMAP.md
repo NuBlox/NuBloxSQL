@@ -29,8 +29,8 @@ Developers should not need a separate third-party driver package for each suppor
 | Dialect | Product tier | Current state | Runtime model |
 | --- | --- | --- | --- |
 | PostgreSQL | Tier 1 | Current P0 world-class runtime-depth gate complete; P1/P2 depth continues | Native client/server runtime |
-| MySQL | Tier 1 | Stable baseline; world-class depth programme active | Native client/server runtime |
-| SQLite | Tier 1 | Deep implementation; production/stable qualification active | Embedded runtime |
+| MySQL | Tier 1 | Current P0 world-class runtime-depth gate complete; P1/P2 depth continues | Native client/server runtime |
+| SQLite | Tier 1 | Deep implementation; production/stable qualification is the active P0 wave | Embedded runtime |
 | SQL Server | Tier 2 | Production-supported native implementation; maintained while Tier-1 work is prioritised | Native client/server runtime |
 | Oracle | Planned | Not implemented | Native client/server runtime |
 
@@ -96,21 +96,20 @@ The compiler foundation remains regression-tested, but **grammar expansion is pa
 
 PostgreSQL can now progress through high-value P1/P2 depth—native type fidelity, prepared-statement/cache policy, server diagnostics and logical-replication foundations—without reopening the completed current P0 gate.
 
-### Wave 2 — MySQL native workflows — active
+### Wave 2 — MySQL native workflows — current P0 complete
 
 1. ~~LOAD DATA LOCAL INFILE with explicit security policy~~ — **qualified**
 2. ~~structured EXPLAIN / EXPLAIN ANALYZE~~ — **qualified**
-3. **deep INFORMATION_SCHEMA / Performance Schema metadata — NEXT**
-4. authentication-plugin support-matrix closure;
-5. explicit protocol-compression decision and qualification.
+3. ~~deep INFORMATION_SCHEMA / Performance Schema metadata~~ — **qualified**
+4. ~~authentication-plugin support-matrix closure~~ — **qualified**
 
-The LOCAL INFILE implementation is explicit opt-in, streams caller-supplied content only, refuses server-directed filesystem reads, validates the requested filename exactly, applies byte limits/backpressure/deadlines, and is qualified on MySQL 8.4 and 9.7.
+MySQL now has the current P0 runtime-depth baseline: secure bulk import, structured native query diagnostics, deep engine/security metadata, and a version-aware authentication-plugin matrix qualified on MySQL 8.4 and 9.7.
 
-Structured MySQL diagnostics now expose immutable native JSON plans, parameterized prepared execution, JSON-v2 `EXPLAIN ANALYZE`, conservative factual summaries, explicit execution semantics, mutation opt-in and session-safe format restoration across MySQL 8.4 and 9.7.
+The authentication matrix treats `caching_sha2_password` as the preferred modern path, supports deprecated `sha256_password` over TLS/RSA for migration compatibility, retains honest legacy client handling for `mysql_native_password`, and guards cleartext-plugin use behind TLS plus explicit opt-in.
 
-Then expand stored-program/multi-result depth, JSON/spatial fidelity and optional binlog/replication foundations.
+Future MySQL work is P1/P2 unless a new baseline requirement or regression is identified. High-value candidates include protocol compression, server/session diagnostics, multi-result/stored-program depth, JSON/spatial fidelity and optional binlog/replication foundations.
 
-### Wave 3 — SQLite stable qualification
+### Wave 3 — SQLite stable qualification — active P0
 
 SQLite feature breadth is no longer the main blocker. The remaining P0 work is operational evidence:
 

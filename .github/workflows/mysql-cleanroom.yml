@@ -111,5 +111,7 @@ jobs:
         run: node lib/dialects/mysql/test/live-diagnostics.js
       - name: Deep INFORMATION_SCHEMA metadata qualification
         run: node lib/dialects/mysql/test/live-deep-metadata.js
+      - name: Authentication plugin matrix qualification
+        run: node lib/dialects/mysql/test/live-auth-plugins.js
       - name: Full MySQL connection, prepared, transaction and pool smoke
         run: node lib/dialects/mysql/test/live.js

@@ -39,6 +39,7 @@ export interface ConnectionConfig {
   localInfileChunkBytes?: number;
   serverPublicKey?: string;
   getServerPublicKey?: boolean;
+  allowCleartextAuth?: boolean;
   signal?: AbortSignalLike;
 }
 
@@ -171,6 +172,28 @@ export interface MySqlExplainReport {
   readonly plan: Readonly<Record<string, unknown>>;
   readonly root: Readonly<Record<string, unknown>>;
   readonly summary: Readonly<MySqlExplainSummary>;
+}
+
+export type MySqlAuthenticationClientSupport =
+  | 'qualified'
+  | 'qualified-deprecated'
+  | 'legacy'
+  | 'guarded'
+  | 'unsupported';
+
+export interface MySqlAuthenticationPluginInfo {
+  readonly name: string;
+  readonly clientSupport: MySqlAuthenticationClientSupport;
+  readonly serverAvailability: string;
+  readonly recommended?: boolean;
+  readonly deprecated?: boolean;
+  readonly passwordExchange?: string;
+  readonly secureTransportRequired?: boolean;
+  readonly rsaSupported?: boolean;
+  readonly publicKeyRetrievalSupported?: boolean;
+  readonly explicitOptInRequired?: boolean;
+  readonly notes?: string;
+  readonly reason?: string;
 }
 
 export interface StreamCommandResult {
@@ -355,6 +378,10 @@ export class Pool {
 
 export function createConnection(config: ConnectionConfig): Connection;
 export function createPool(config: PoolConfig): Pool;
+export function authenticationPlugin(name: string, serverVersion?: string): Readonly<MySqlAuthenticationPluginInfo>;
+export function authenticationPluginReport(serverVersion?: string): readonly Readonly<MySqlAuthenticationPluginInfo>[];
+
+export const AUTHENTICATION_PLUGINS: Readonly<Record<string, Readonly<Omit<MySqlAuthenticationPluginInfo, 'name' | 'serverAvailability'>>>>;
 
 export const DEFAULT_LIMITS: Readonly<{
   maxRows: number;
