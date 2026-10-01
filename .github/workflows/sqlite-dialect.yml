@@ -1,0 +1,43 @@
+name: NuBloxSQL SQLite
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.js'
+      - 'index.d.ts'
+      - 'package.json'
+      - 'lib/client/**'
+      - 'lib/dialects/sqlite/**'
+      - '.github/workflows/sqlite-dialect.yml'
+  pull_request:
+    paths:
+      - 'index.js'
+      - 'index.d.ts'
+      - 'package.json'
+      - 'lib/client/**'
+      - 'lib/dialects/sqlite/**'
+      - '.github/workflows/sqlite-dialect.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  qualification:
+    name: SQLite production qualification (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - name: SQLite runtime contracts
+        run: npm run test:sqlite
+      - name: SQLite production performance evidence
+        run: npm run test:sqlite-production
