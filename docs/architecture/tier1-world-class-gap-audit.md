@@ -38,7 +38,7 @@ Priority vocabulary:
 | Structured errors | qualified | qualified | qualified |
 | Observability | qualified baseline | qualified baseline | qualified baseline |
 | Native query diagnostics | qualified | partial | qualified deep |
-| Bulk data movement | qualified COPY streaming | missing | engine-specific alternatives qualified |
+| Bulk data movement | qualified COPY streaming | qualified LOCAL INFILE import | engine-specific alternatives qualified |
 | Event/notification integration | qualified LISTEN/NOTIFY | no direct analogue | not applicable |
 | Replication/CDC-native integration | missing | missing | session changesets implemented, not CDC |
 | Performance/memory evidence | qualified baseline | qualified baseline | partial |
@@ -46,9 +46,9 @@ Priority vocabulary:
 
 ## Current direction
 
-PostgreSQL has now completed every **current P0 runtime-depth item** in this register. Development priority therefore moves to MySQL P0 closure, then SQLite production qualification, then shared Tier-1 evidence/contracts.
+PostgreSQL has completed every **current P0 runtime-depth item** in this register. MySQL has now closed its P0 LOCAL INFILE/bulk-import gap. Development priority moves to the remaining MySQL P0 items, then SQLite production qualification, then shared Tier-1 evidence/contracts.
 
-1. MySQL P0: LOCAL INFILE/bulk movement, structured EXPLAIN, deep metadata, authentication-plugin qualification.
+1. MySQL P0: structured EXPLAIN, deep metadata, authentication-plugin qualification.
 2. SQLite P0: benchmark/performance, memory, concurrency and malformed-schema/input evidence.
 3. Shared Tier-1: richer metadata parity, diagnostics parity and stable evidence register.
 4. Re-run formal stable qualification against this register before expanding compiler grammar again.
@@ -115,11 +115,16 @@ These are P1/P2 enhancements, not blockers for the current P0 baseline:
 
 NuBloxSQL already provides native protocol framing/authentication, prepared statements, typed binds, direct/prepared streaming with backpressure, pooling/reset contracts, transactions/savepoints, operation deadlines/cancellation, result limits, observability/error modelling, portable metadata, MySQL 8.4/9.7 live qualification, Node 22/24/26 contracts and security/release gates.
 
+### Completed P0 slices
+
+| Area | Status | Evidence/outcome |
+| --- | --- | --- |
+| LOAD DATA LOCAL INFILE | qualified | Explicit opt-in `CLIENT_LOCAL_FILES`, caller-supplied streaming sources only, exact server filename validation, byte ceilings, backpressure, timeout/abort safety, pooled operation and live MySQL 8.4/9.7 qualification. |
+
 ## Remaining gaps
 
 | Area | Status | Priority | Required outcome |
 | --- | --- | --- | --- |
-| LOAD DATA LOCAL INFILE | missing | P0 | Explicit opt-in local infile API, stream/path policy, security boundaries, cancellation and server capability checks. |
 | Rich EXPLAIN API | partial | P0 | `EXPLAIN FORMAT=JSON` / `EXPLAIN ANALYZE` capture with structured diagnostics and version qualification. |
 | Deep INFORMATION_SCHEMA metadata | partial | P0 | Functional/invisible/full-text/spatial indexes, generated columns, partitions, routines, triggers/events, users/roles/privileges and engine options. |
 | Authentication plugin breadth | partial | P0 | Explicit supported-plugin matrix and failure tests for modern server defaults and TLS-dependent auth paths. |
@@ -133,7 +138,7 @@ NuBloxSQL already provides native protocol framing/authentication, prepared stat
 
 ### MySQL completion gate
 
-MySQL remains Stable, but the four P0 items above must be closed before its current world-class Tier-1 runtime-depth gate is complete.
+MySQL remains Stable. Three current P0 items remain before its world-class Tier-1 runtime-depth gate is complete: structured EXPLAIN, deep metadata and authentication-plugin matrix closure.
 
 ---
 
@@ -187,10 +192,10 @@ SQLite should move from Development to Stable only after the four P0 operational
 4. ~~Structured EXPLAIN/EXPLAIN ANALYZE~~ — **qualified**
 5. ~~Deep catalog introspection~~ — **qualified**
 
-## Wave 2 — MySQL native workflows — NEXT
+## Wave 2 — MySQL native workflows — IN PROGRESS
 
-1. LOAD DATA LOCAL INFILE with strict security policy.
-2. Structured EXPLAIN/EXPLAIN ANALYZE.
+1. ~~LOAD DATA LOCAL INFILE with strict security policy~~ — **qualified**
+2. **Structured EXPLAIN/EXPLAIN ANALYZE — NEXT.**
 3. Deep INFORMATION_SCHEMA/Performance Schema metadata.
 4. Authentication-plugin support matrix closure.
 5. Decide and document protocol compression support.

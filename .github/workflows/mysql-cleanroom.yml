@@ -80,6 +80,7 @@ jobs:
       MYSQL_PORT: 3306
       MYSQL_USER: nublox
       MYSQL_PASSWORD: nublox_ci_password
+      MYSQL_ROOT_PASSWORD: nublox_root_password
       MYSQL_DATABASE: nublox_ci
     steps:
       - name: Checkout
@@ -104,5 +105,7 @@ jobs:
         run: node lib/dialects/mysql/test/live-streaming.js limits
       - name: Deadline and cancellation safety
         run: node lib/dialects/mysql/test/live-operation-control.js
+      - name: Secure LOAD DATA LOCAL INFILE qualification
+        run: node lib/dialects/mysql/test/live-local-infile.js
       - name: Full MySQL connection, prepared, transaction and pool smoke
         run: node lib/dialects/mysql/test/live.js

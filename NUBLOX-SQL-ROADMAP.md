@@ -28,7 +28,7 @@ Developers should not need a separate third-party driver package for each suppor
 
 | Dialect | Product tier | Current state | Runtime model |
 | --- | --- | --- | --- |
-| PostgreSQL | Tier 1 | Stable baseline; world-class depth programme active | Native client/server runtime |
+| PostgreSQL | Tier 1 | Current P0 world-class runtime-depth gate complete; P1/P2 depth continues | Native client/server runtime |
 | MySQL | Tier 1 | Stable baseline; world-class depth programme active | Native client/server runtime |
 | SQLite | Tier 1 | Deep implementation; production/stable qualification active | Embedded runtime |
 | SQL Server | Tier 2 | Production-supported native implementation; maintained while Tier-1 work is prioritised | Native client/server runtime |
@@ -86,27 +86,25 @@ The compiler foundation remains regression-tested, but **grammar expansion is pa
 
 ## Phase 3 — Tier-1 world-class runtime depth — active
 
-### Wave 1 — PostgreSQL native workflows
+### Wave 1 — PostgreSQL native workflows — current P0 complete
 
-Priority order:
+1. ~~COPY FROM STDIN~~ — **qualified**
+2. ~~COPY TO STDOUT~~ — **qualified**
+3. ~~LISTEN/NOTIFY~~ — **qualified**
+4. ~~structured EXPLAIN / EXPLAIN ANALYZE~~ — **qualified**
+5. ~~deep catalog introspection~~ — **qualified**
 
-1. COPY FROM STDIN;
-2. COPY TO STDOUT;
-3. LISTEN/NOTIFY;
-4. structured EXPLAIN / EXPLAIN ANALYZE;
-5. deep catalog introspection.
+PostgreSQL can now progress through high-value P1/P2 depth—native type fidelity, prepared-statement/cache policy, server diagnostics and logical-replication foundations—without reopening the completed current P0 gate.
 
-Then expand high-value native type fidelity, prepared-statement/cache policy, server diagnostics and logical-replication foundations.
+### Wave 2 — MySQL native workflows — active
 
-### Wave 2 — MySQL native workflows
-
-Priority order:
-
-1. LOAD DATA LOCAL INFILE with explicit security policy;
-2. structured EXPLAIN / EXPLAIN ANALYZE;
+1. ~~LOAD DATA LOCAL INFILE with explicit security policy~~ — **qualified**
+2. **structured EXPLAIN / EXPLAIN ANALYZE — NEXT**
 3. deep INFORMATION_SCHEMA / Performance Schema metadata;
 4. authentication-plugin support-matrix closure;
 5. explicit protocol-compression decision and qualification.
+
+The LOCAL INFILE implementation is explicit opt-in, streams caller-supplied content only, refuses server-directed filesystem reads, validates the requested filename exactly, applies byte limits/backpressure/deadlines, and is qualified on MySQL 8.4 and 9.7.
 
 Then expand stored-program/multi-result depth, JSON/spatial fidelity and optional binlog/replication foundations.
 
