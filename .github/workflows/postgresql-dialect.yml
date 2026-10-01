@@ -97,6 +97,8 @@ jobs:
         run: node lib/dialects/postgresql/test/live.js
       - name: Native COPY FROM/TO streaming and pool qualification
         run: node lib/dialects/postgresql/test/live-copy.js
+      - name: Native LISTEN/NOTIFY asynchronous notification qualification
+        run: node lib/dialects/postgresql/test/live-notifications.js
       - name: Authentication and TLS failure paths
         run: node lib/dialects/postgresql/test/live-failure-paths.js
       - name: Result-limit connection and pool safety

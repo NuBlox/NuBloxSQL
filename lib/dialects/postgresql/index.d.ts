@@ -11,6 +11,8 @@ export type PostgreSqlTransactionStatus = 'I' | 'T' | 'E';
 export interface PostgreSqlAuthenticationMessage { type: 'authentication'; code: number; salt?: Buffer; mechanisms?: string[]; data?: Buffer; }
 export interface PostgreSqlParameterStatusMessage { type: 'parameterStatus'; name: string; value: string; }
 export interface PostgreSqlBackendKeyDataMessage { type: 'backendKeyData'; processId: number; secretKey: Buffer; }
+export interface PostgreSqlNotificationResponseMessage { type: 'notificationResponse'; processId: number; channel: string; payload: string; }
+export interface PostgreSqlNotification { readonly processId: number; readonly channel: string; readonly payload: string; }
 export interface PostgreSqlReadyForQueryMessage { type: 'readyForQuery'; transactionStatus: PostgreSqlTransactionStatus; }
 export interface PostgreSqlFieldResponseMessage { type: 'errorResponse' | 'noticeResponse'; fields: Record<string, string>; }
 export interface PostgreSqlFieldDescription { name: string; tableOid: number; columnId: number; dataTypeOid: number; dataTypeSize: number; typeModifier: number; format: number; }
@@ -28,7 +30,7 @@ export interface PostgreSqlCopyResponseMessage { type: 'copyInResponse' | 'copyO
 export interface PostgreSqlCopyDataMessage { type: 'copyData'; data: Buffer; }
 export interface PostgreSqlCopyDoneMessage { type: 'copyDone'; }
 export interface PostgreSqlUnknownBackendMessage { type: 'unknown'; messageType: string; payload: Buffer; }
-export type PostgreSqlBackendMessage = PostgreSqlAuthenticationMessage | PostgreSqlParameterStatusMessage | PostgreSqlBackendKeyDataMessage | PostgreSqlReadyForQueryMessage | PostgreSqlFieldResponseMessage | PostgreSqlRowDescriptionMessage | PostgreSqlDataRowMessage | PostgreSqlCommandCompleteMessage | PostgreSqlEmptyQueryResponseMessage | PostgreSqlParseCompleteMessage | PostgreSqlBindCompleteMessage | PostgreSqlCloseCompleteMessage | PostgreSqlNoDataMessage | PostgreSqlPortalSuspendedMessage | PostgreSqlParameterDescriptionMessage | PostgreSqlCopyResponseMessage | PostgreSqlCopyDataMessage | PostgreSqlCopyDoneMessage | PostgreSqlUnknownBackendMessage;
+export type PostgreSqlBackendMessage = PostgreSqlAuthenticationMessage | PostgreSqlParameterStatusMessage | PostgreSqlBackendKeyDataMessage | PostgreSqlNotificationResponseMessage | PostgreSqlReadyForQueryMessage | PostgreSqlFieldResponseMessage | PostgreSqlRowDescriptionMessage | PostgreSqlDataRowMessage | PostgreSqlCommandCompleteMessage | PostgreSqlEmptyQueryResponseMessage | PostgreSqlParseCompleteMessage | PostgreSqlBindCompleteMessage | PostgreSqlCloseCompleteMessage | PostgreSqlNoDataMessage | PostgreSqlPortalSuspendedMessage | PostgreSqlParameterDescriptionMessage | PostgreSqlCopyResponseMessage | PostgreSqlCopyDataMessage | PostgreSqlCopyDoneMessage | PostgreSqlUnknownBackendMessage;
 export interface PostgreSqlBackendMessageParserOptions { maxMessageSize?: number; }
 export interface PostgreSqlBackendMessageParser { push(chunk: Buffer | Uint8Array): PostgreSqlBackendMessage[]; reset(): void; }
 export interface PostgreSqlBackendMessageParserConstructor { new(options?: PostgreSqlBackendMessageParserOptions): PostgreSqlBackendMessageParser; }
@@ -48,6 +50,7 @@ export type PostgreSqlCopySource = PostgreSqlCopyChunk | Iterable<PostgreSqlCopy
 export type PostgreSqlCopySink = ((chunk: Buffer) => void | Promise<void>) | NodeJS.WritableStream;
 export interface PostgreSqlCopyOptions extends PostgreSqlQueryOptions { maxBytes?: number; sink?: PostgreSqlCopySink; acquire?: PostgreSqlPoolAcquireOptions; }
 export interface PostgreSqlCopyResult { readonly direction: 'from' | 'to'; readonly format: 'text' | 'binary'; readonly columnFormats: readonly ('text' | 'binary')[]; readonly bytes: number; readonly command: string; readonly rowCount: number | null; readonly data?: Buffer; }
+export interface PostgreSqlNotificationOptions extends PostgreSqlQueryOptions { acquire?: PostgreSqlPoolAcquireOptions; }
 export type PostgreSqlIsolationLevel = 'read-uncommitted' | 'read-committed' | 'repeatable-read' | 'serializable';
 export interface PostgreSqlTransactionOptions extends PostgreSqlQueryOptions { isolationLevel?: PostgreSqlIsolationLevel; readOnly?: boolean; deferrable?: boolean; acquire?: PostgreSqlPoolAcquireOptions; }
 export interface PostgreSqlPoolAcquireOptions { timeout?: number; signal?: AbortSignal; }
@@ -102,6 +105,12 @@ export class Connection extends EventEmitter {
   execute<Row = Record<string, unknown>>(sql: string, parameters?: PostgreSqlParameter[], options?: PostgreSqlPrepareOptions): Promise<PostgreSqlQueryResult<Row>>;
   copyFrom(sql: string, source: PostgreSqlCopySource, options?: PostgreSqlCopyOptions): Promise<PostgreSqlCopyResult>;
   copyTo(sql: string, options?: PostgreSqlCopyOptions): Promise<PostgreSqlCopyResult>;
+  listen(channel: string, options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
+  unlisten(channel: string, options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
+  unlistenAll(options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
+  notify(channel: string, payload?: string, options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
+  on(event: 'notification', listener: (notification: PostgreSqlNotification) => void): this;
+  once(event: 'notification', listener: (notification: PostgreSqlNotification) => void): this;
   cancel(options?: PostgreSqlCancelOptions): Promise<void>;
   beginTransaction(options?: PostgreSqlTransactionOptions): Promise<PostgreSqlQueryResult>;
   commit(options?: PostgreSqlQueryOptions): Promise<PostgreSqlQueryResult>;
@@ -113,6 +122,15 @@ export class Connection extends EventEmitter {
   resetSession(options?: PostgreSqlQueryOptions): Promise<this>;
   end(): Promise<void>;
   destroy(error?: Error): void;
+}
+export class NotificationSubscription extends EventEmitter {
+  readonly pool: Pool;
+  readonly connection: Connection;
+  readonly channel: string;
+  readonly closed: boolean;
+  on(event: 'notification', listener: (notification: PostgreSqlNotification) => void): this;
+  once(event: 'notification', listener: (notification: PostgreSqlNotification) => void): this;
+  close(options?: PostgreSqlQueryOptions): Promise<void>;
 }
 export class Pool extends EventEmitter {
   readonly config: PostgreSqlPoolConfig;
@@ -134,6 +152,8 @@ export class Pool extends EventEmitter {
   execute<Row = Record<string, unknown>>(sql: string, parameters?: PostgreSqlParameter[], options?: PostgreSqlPoolQueryOptions): Promise<PostgreSqlQueryResult<Row>>;
   copyFrom(sql: string, source: PostgreSqlCopySource, options?: PostgreSqlCopyOptions): Promise<PostgreSqlCopyResult>;
   copyTo(sql: string, options?: PostgreSqlCopyOptions): Promise<PostgreSqlCopyResult>;
+  listen(channel: string, options?: PostgreSqlNotificationOptions): Promise<NotificationSubscription>;
+  notify(channel: string, payload?: string, options?: PostgreSqlNotificationOptions): Promise<PostgreSqlQueryResult>;
   withTransaction<T>(fn: (connection: Connection) => T | Promise<T>, options?: PostgreSqlTransactionOptions): Promise<T>;
   end(): Promise<void>;
 }
