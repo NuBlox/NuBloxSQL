@@ -64,6 +64,18 @@ var publicDeclarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'pu
   assert.ok(publicDeclarations.indexOf(needle) >= 0, 'missing capability model TypeScript contract: ' + needle);
 });
 
+var mysqlDeclarations = fs.readFileSync(path.join(__dirname, '..', 'lib', 'dialects', 'mysql', 'index.d.ts'), 'utf8');
+[
+  'export interface ExplainOptions',
+  'export interface MySqlExplainSummary',
+  'export interface MySqlExplainReport',
+  'explain(sql: string',
+  'explainAnalyze(sql: string',
+  'diagnoseQuery(sql: string'
+].forEach(function (needle) {
+  assert.ok(mysqlDeclarations.indexOf(needle) >= 0, 'missing MySQL diagnostics TypeScript contract: ' + needle);
+});
+
 var postgresqlDeclarations = fs.readFileSync(path.join(__dirname, '..', 'lib', 'dialects', 'postgresql', 'index.d.ts'), 'utf8');
 [
   'export interface PostgreSqlExplainOptions',
