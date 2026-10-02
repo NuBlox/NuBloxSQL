@@ -101,6 +101,23 @@ async function main() {
     );
     var cteSetRows = await db.all(cteSetSql);
     assert.deepStrictEqual(cteSetRows.map(function (row) { return Number(row.id); }), [1, 2]);
+
+    var trueRecursiveSql = compile(dialect,
+      'WITH RECURSIVE seq(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < 3) SELECT n FROM seq ORDER BY n',
+      'select-query-v3'
+    );
+    var trueRecursiveRows = await db.all(trueRecursiveSql);
+    assert.deepStrictEqual(trueRecursiveRows.map(function (row) { return Number(row.n); }), [1, 2, 3]);
+
+    if (dialect !== 'sqlite') {
+      var intersectAllSql = compile(dialect, 'SELECT 1 AS n INTERSECT ALL SELECT 1', 'select-query-v3');
+      var intersectAllRows = await db.all(intersectAllSql);
+      assert.deepStrictEqual(intersectAllRows.map(function (row) { return Number(row.n); }), [1]);
+
+      var exceptAllSql = compile(dialect, 'SELECT 1 AS n EXCEPT ALL SELECT 2', 'select-query-v3');
+      var exceptAllRows = await db.all(exceptAllSql);
+      assert.deepStrictEqual(exceptAllRows.map(function (row) { return Number(row.n); }), [1]);
+    }
   } finally {
     try { await db.execute('DROP TABLE IF EXISTS ' + table); } catch (_) {}
     await db.close();
