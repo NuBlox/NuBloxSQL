@@ -71,9 +71,12 @@
     "test/portable-metadata-vocabulary.js",
     "lib/client/Diagnostics.js",
     "test/client-diagnostics.js",
+    "lib/capabilities/Ontology.js",
+    "test/sql-capability-ontology.js",
     "types/root.d.ts",
     "types/portable-metadata.d.ts",
     "types/diagnostics.d.ts",
+    "types/capability-ontology.d.ts",
     "tool/check-stable-release.js",
     ".github/workflows/sqlite-dialect.yml"
   ]

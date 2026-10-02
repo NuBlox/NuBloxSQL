@@ -17,7 +17,38 @@ For detailed, task-oriented usage see the [NuBloxSQL User Guides](guides/README.
 - `introspect()` — one-shot metadata/schema introspection.
 - `capabilityReport()` — static platform capability report.
 - `transactionPolicy()` — portable transaction-policy description.
-- `capabilityModel` — Tier-1 SQL capability, compatibility, rewrite and current compiler/transpilation surfaces.
+- `capabilityModel` — Tier-1 SQL compatibility, rewrite and compiler/transpilation surfaces.
+- `capabilityOntology` — versioned atomic SQL capability definitions, engine observations and NuBlox implementation coverage.
+
+## Capability ontology
+
+`capabilityOntology` (`SQL_CAPABILITY_ONTOLOGY_SCHEMA_VERSION === 1`) projects the existing exhaustive Tier-1 feature inventory into a formal registry without breaking the legacy capability API.
+
+Every capability has a stable ID and definition. Engine observations keep separate axes for:
+
+- support: `native`, `partial`, `emulated`, `unsupported`, `unknown` or `not-applicable`;
+- availability: unconditional, version-, edition-, deployment-, engine-, connector-, extension-, component- or configuration-dependent;
+- maturity: stable, preview, experimental, deprecated or removed;
+- evidence: source documentation and legacy classification retained from the dialect profile.
+
+NuBlox implementation coverage is separate from engine support and reports parser, AST, validator, renderer, rewrite and runtime stages. This prevents a database feature from being treated as compiler support merely because the target engine implements it.
+
+```js
+const { capabilityOntology } = require('nubloxsql');
+
+const definition = capabilityOntology.definition('queries.cte.recursive');
+const engine = capabilityOntology.observation('postgresql', 'queries.cte.recursive');
+const nublox = capabilityOntology.implementation('queries.cte.recursive');
+const resolved = capabilityOntology.resolve(
+  'sqlite',
+  'queries.joins.right',
+  { version: '3.39.0' }
+);
+```
+
+`profile(dialect)` returns the complete engine inventory. `inventory({ dialect, family, kind })` supports tooling and filtered capability browsers. `validate()` checks referential and state integrity of the generated ontology.
+
+The original `capabilityModel.status()`, `compare()`, compatibility, runtime qualification, rewrite and compiler APIs remain supported. The ontology is an additive control-plane layer above them.
 
 ## Query diagnostics
 
@@ -53,12 +84,12 @@ Client operations cover queries, execution, prepared statements, streaming, tran
 
 ## Dialects
 
-Canonical dialect names are `mysql`, `postgresql`, `sqlite` and `sqlserver`. Supported aliases are defined by the public type declarations and routing implementation.
+Canonical runtime dialect names are `mysql`, `postgresql`, `sqlite` and `sqlserver`. The current exhaustive ontology observations are generated from the Tier-1 PostgreSQL, MySQL and SQLite capability profiles; additional dialect profiles can be added without changing the ontology schema.
 
 ## Exact release contract
 
 The exact exported JavaScript surface, package files, version and Node.js floor are machine-defined in `docs/releases/public-api-v1.json`.
 
-The TypeScript package entry point is `types/root.d.ts`; portable metadata is declared in `types/portable-metadata.d.ts` and portable query diagnostics in `types/diagnostics.d.ts`.
+The TypeScript package entry point is `types/root.d.ts`; portable metadata is declared in `types/portable-metadata.d.ts`, portable query diagnostics in `types/diagnostics.d.ts`, and the SQL capability ontology in `types/capability-ontology.d.ts`.
 
 Release qualification checks both JavaScript and strict TypeScript consumer installation from the packed npm artifact.

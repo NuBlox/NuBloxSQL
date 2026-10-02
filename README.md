@@ -46,6 +46,7 @@ NuBloxSQL provides one package and one public entry point for:
 - portable query diagnostics with complete native plan retention;
 - portable errors with native diagnostics retained;
 - runtime capability discovery;
+- an executable atomic SQL capability ontology separating engine support from NuBlox compiler coverage;
 - direct native-dialect access where portability would hide important engine behaviour.
 
 The design rule is: **one developer API, honest dialect semantics**.
