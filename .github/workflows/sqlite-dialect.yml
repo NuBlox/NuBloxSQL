@@ -45,7 +45,7 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: SQLite runtime contracts
         run: npm run test:sqlite
-      - name: CTE and subquery compiler live qualification
+      - name: SQL compiler live qualification
         run: node test/compiler-query-live.js
         env:
           NUBLOX_DIALECT: sqlite
