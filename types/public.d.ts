@@ -158,15 +158,15 @@ export interface SqlAstUnaryExpression { readonly type: 'UnaryExpression'; reado
 export interface SqlAstBinaryExpression { readonly type: 'BinaryExpression'; readonly operator: string; readonly left: SqlAstExpression; readonly right: SqlAstExpression; }
 export interface SqlAstListExpression { readonly type: 'ListExpression'; readonly items: readonly SqlAstExpression[]; }
 export interface SqlAstAliasedExpression { readonly type: 'AliasedExpression'; readonly expression: SqlAstExpression; readonly alias: SqlAstIdentifier; }
-export interface SqlAstSubqueryExpression { readonly type: 'SubqueryExpression'; readonly query: SqlSelectStatementAst; }
-export interface SqlAstExistsExpression { readonly type: 'ExistsExpression'; readonly query: SqlSelectStatementAst; }
+export interface SqlAstSubqueryExpression { readonly type: 'SubqueryExpression'; readonly query: SqlQueryAst; }
+export interface SqlAstExistsExpression { readonly type: 'ExistsExpression'; readonly query: SqlQueryAst; }
 export type SqlAstExpression = SqlAstIdentifier | SqlAstLiteral | SqlAstParameter | SqlAstWildcard | SqlAstCallExpression | SqlAstUnaryExpression | SqlAstBinaryExpression | SqlAstListExpression | SqlAstAliasedExpression | SqlAstSubqueryExpression | SqlAstExistsExpression;
 export interface SqlAstTableReference { readonly type: 'TableReference'; readonly name: SqlAstIdentifier; readonly alias: SqlAstIdentifier | null; }
-export interface SqlAstDerivedTable { readonly type: 'DerivedTable'; readonly query: SqlSelectStatementAst; readonly alias: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; }
+export interface SqlAstDerivedTable { readonly type: 'DerivedTable'; readonly query: SqlQueryAst; readonly alias: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; }
 export type SqlAstRelation = SqlAstTableReference | SqlAstDerivedTable;
 export interface SqlAstJoin { readonly type: 'Join'; readonly kind: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL' | 'CROSS'; readonly source: SqlAstRelation; readonly condition: SqlAstExpression | null; }
 export interface SqlAstOrderExpression { readonly type: 'OrderExpression'; readonly expression: SqlAstExpression; readonly direction: 'ASC' | 'DESC' | null; }
-export interface SqlAstCommonTableExpression { readonly type: 'CommonTableExpression'; readonly name: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; readonly query: SqlSelectStatementAst; }
+export interface SqlAstCommonTableExpression { readonly type: 'CommonTableExpression'; readonly name: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; readonly query: SqlQueryAst; }
 export interface SqlAstWithClause { readonly type: 'WithClause'; readonly recursive: boolean; readonly entries: readonly SqlAstCommonTableExpression[]; }
 export interface SqlSelectStatementAst {
   readonly type: 'SelectStatement'; readonly with: SqlAstWithClause | null; readonly distinct: boolean; readonly columns: readonly SqlAstExpression[];
@@ -174,15 +174,22 @@ export interface SqlSelectStatementAst {
   readonly groupBy: readonly SqlAstExpression[]; readonly having: SqlAstExpression | null;
   readonly orderBy: readonly SqlAstOrderExpression[]; readonly limit: SqlAstExpression | null; readonly offset: SqlAstExpression | null;
 }
-export type SqlCompilerScope = 'select-foundation-v1' | 'select-query-v2';
-export interface SqlAstAnalysis { readonly statementType: 'SelectStatement'; readonly scope: SqlCompilerScope; readonly capabilities: readonly string[]; }
+export type SqlSetOperator = 'UNION' | 'INTERSECT' | 'EXCEPT';
+export interface SqlSetOperationStatementAst {
+  readonly type: 'SetOperationStatement'; readonly with: SqlAstWithClause | null;
+  readonly left: SqlQueryAst; readonly operator: SqlSetOperator; readonly all: boolean; readonly right: SqlQueryAst;
+  readonly orderBy: readonly SqlAstOrderExpression[]; readonly limit: SqlAstExpression | null; readonly offset: SqlAstExpression | null;
+}
+export type SqlQueryAst = SqlSelectStatementAst | SqlSetOperationStatementAst;
+export type SqlCompilerScope = 'select-foundation-v1' | 'select-query-v2' | 'select-query-v3';
+export interface SqlAstAnalysis { readonly statementType: 'SelectStatement' | 'SetOperationStatement'; readonly scope: SqlCompilerScope; readonly capabilities: readonly string[]; }
 export interface SqlCompiledAst { readonly dialect: SqlCapabilityTier1Dialect; readonly sql: string; readonly targetToSource: readonly (number | string)[]; }
 export interface SqlTranspileOptions extends SqlRewritePlanOptions {
   readonly allowBlocked?: boolean; readonly allowUnqualified?: boolean; readonly allowEmulation?: boolean;
 }
 export interface SqlTranspileResult {
   readonly from: SqlCapabilityTier1Dialect; readonly to: SqlCapabilityTier1Dialect; readonly scope: SqlCompilerScope;
-  readonly ast: SqlSelectStatementAst; readonly capabilities: readonly string[]; readonly plan: SqlRewritePlan;
+  readonly ast: SqlQueryAst; readonly capabilities: readonly string[]; readonly plan: SqlRewritePlan;
   readonly sql: string; readonly targetToSource: readonly (number | string)[]; readonly lossless: boolean; readonly certified: boolean;
 }
 
@@ -206,9 +213,9 @@ export interface SqlCapabilityModelApi {
   rewriteDecision(from: SqlCapabilityTier1Dialect | 'postgres' | 'pg', to: SqlCapabilityTier1Dialect | 'postgres' | 'pg', path: string, options?: SqlRewritePlanOptions): SqlRewriteDecision;
   planRewrite(from: SqlCapabilityTier1Dialect | 'postgres' | 'pg', to: SqlCapabilityTier1Dialect | 'postgres' | 'pg', paths: readonly string[], options?: SqlRewritePlanOptions): SqlRewritePlan;
   rewriteSql(from: SqlCapabilityTier1Dialect | 'postgres' | 'pg', to: SqlCapabilityTier1Dialect | 'postgres' | 'pg', sql: string, options?: SqlRewriteSqlOptions): SqlRewriteResult;
-  parseSql(dialect: SqlCapabilityTier1Dialect | 'postgres' | 'pg', sql: string): SqlSelectStatementAst;
-  analyzeAst(ast: SqlSelectStatementAst): SqlAstAnalysis;
-  compileAst(dialect: SqlCapabilityTier1Dialect | 'postgres' | 'pg', ast: SqlSelectStatementAst): SqlCompiledAst;
+  parseSql(dialect: SqlCapabilityTier1Dialect | 'postgres' | 'pg', sql: string): SqlQueryAst;
+  analyzeAst(ast: SqlQueryAst): SqlAstAnalysis;
+  compileAst(dialect: SqlCapabilityTier1Dialect | 'postgres' | 'pg', ast: SqlQueryAst): SqlCompiledAst;
   transpileSql(from: SqlCapabilityTier1Dialect | 'postgres' | 'pg', to: SqlCapabilityTier1Dialect | 'postgres' | 'pg', sql: string, options?: SqlTranspileOptions): SqlTranspileResult;
 }
 
