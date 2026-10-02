@@ -71,7 +71,7 @@ export interface QueryDiagnosticsReport<D extends root.Dialect = root.Dialect> {
 
 export const QUERY_DIAGNOSTICS_SCHEMA_VERSION: 1;
 
-declare module './index' {
+declare module '../index' {
   interface Client {
     diagnose(statement: QueryDiagnosticsStatement, options?: QueryDiagnosticsOptions): Promise<QueryDiagnosticsReport>;
   }
