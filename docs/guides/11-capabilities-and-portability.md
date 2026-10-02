@@ -64,6 +64,8 @@ queries.joins.inner
 queries.joins.lateral
 queries.cte.recursive
 queries.cte.search
+queries.setOperators.union
+queries.setOperators.intersectAll
 schema.materializedView
 types.json
 security.rowLevelSecurity
@@ -86,7 +88,7 @@ console.log(definition.relationships.requires);
 
 Definitions classify capabilities as syntax, semantic, datatype, object, constraint, security, transaction, physical, operational, programmability, function, operator or extension capabilities.
 
-Relationships are explicit. For example, recursive-CTE `SEARCH` requires recursive CTE support; window-frame variants require the underlying window-function capability.
+Relationships are explicit. For example, recursive-CTE `SEARCH` requires recursive CTE support; `UNION ALL`, `INTERSECT ALL` and `EXCEPT ALL` require their corresponding base set operator; window-frame variants require the underlying window-function capability.
 
 ### Engine observations
 
@@ -159,20 +161,23 @@ If NuBloxSQL lacks enough evidence to resolve a conditional capability, `availab
 Database support and NuBlox compiler support are different facts.
 
 ```js
-const coverage = capabilityOntology.implementation('queries.cte.recursive');
-console.log(coverage.scope);       // select-query-v2
+const coverage = capabilityOntology.implementation('queries.setOperators.union');
+console.log(coverage.scope);       // select-query-v3
 console.log(coverage.stages);
 console.log(coverage.qualified);   // true
 ```
 
 The implementation record has independent stages for parser, AST, validator, renderer, rewrite/lowering and runtime. Each stage is `implemented`, `partial`, `unsupported` or `not-applicable`.
 
-The compiler now has two additive SELECT scopes:
+The compiler currently has three additive SELECT/query scopes:
 
 - `select-foundation-v1` — the original SELECT, join, grouping, ordering and pagination foundation;
-- `select-query-v2` — ordinary/recursive CTE declarations, scalar/`EXISTS`/`IN` subqueries, correlated-subquery detection and derived tables.
+- `select-query-v2` — ordinary/recursive CTE declarations, scalar/`EXISTS`/`IN` subqueries, correlated-subquery detection and derived tables;
+- `select-query-v3` — `UNION`, `UNION ALL`, `INTERSECT`, `INTERSECT ALL`, `EXCEPT` and `EXCEPT ALL`, including compound queries inside CTEs, subqueries and derived tables.
 
-`select-query-v2` does **not** imply that all SQL query grammar is implemented. Set operators, recursive `SEARCH`/`CYCLE`, CTE materialization hints, window syntax and later statement families remain separately capability-gated until their compiler waves land. The ontology continues to report those stages as unsupported where appropriate.
+A scope reports NuBlox compiler coverage, not universal database support. The target engine's capability observation still governs whether a particular operator is legal. For example, SQLite supports `UNION ALL` but does not support `INTERSECT ALL` or `EXCEPT ALL`; those targets are rejected rather than silently changing duplicate semantics.
+
+`select-query-v3` does **not** imply that all SQL query grammar is implemented. Recursive `SEARCH`/`CYCLE`, CTE materialization hints, window syntax, advanced expressions and later statement families remain separately capability-gated until their compiler waves land.
 
 ### Full profiles and filtered inventory
 
@@ -274,49 +279,52 @@ The result retains parameter mapping evidence (`targetToSource`) so callers can 
 
 ## AST/compiler scope
 
-The released AST/transpilation surface now models the SELECT foundation plus the first nested-query compiler wave. In addition to identifiers, literals, parameters, calls, joins, grouping, ordering and pagination, it has formal nodes for CTEs, subquery expressions, `EXISTS` expressions and derived tables.
+The released AST/transpilation surface models the SELECT foundation, nested-query constructs and compound set queries. Formal AST nodes cover CTEs, subquery expressions, `EXISTS`, derived tables and `SetOperationStatement`.
 
 ```js
 const ast = capabilityModel.parseSql(
   'postgresql',
-  `WITH scoped AS (
-     SELECT id FROM users WHERE tenant_id = $1
+  `WITH combined AS (
+     SELECT id FROM active_users
+     UNION ALL
+     SELECT id FROM archived_users
    )
-   SELECT s.id
-   FROM scoped s
-   WHERE EXISTS (
-     SELECT 1 FROM permissions p WHERE p.user_id = s.id
-   )`
+   SELECT id FROM combined`
 );
 
 const analysis = capabilityModel.analyzeAst(ast);
-console.log(analysis.scope); // select-query-v2
+console.log(analysis.scope); // select-query-v3
 console.log(analysis.capabilities);
 
 const compiled = capabilityModel.compileAst('mysql', ast);
 console.log(compiled.sql);
 ```
 
-The parser validates CTE structure before rendering. It rejects duplicate CTE names, illegal forward references and self-reference without `WITH RECURSIVE`. Derived tables require aliases. Capability analysis walks nested queries and records scalar, `EXISTS`, `IN`, derived-table and detectable correlated-subquery usage.
+### Set-operation semantics
 
-`transpileSql()` combines parse, semantic validation, capability analysis, rewrite planning and target compilation:
+NuBloxSQL parses a compound query according to the **source dialect's precedence rules** and stores that semantic tree in the AST. It does not assume that identical SQL text has identical grouping on every engine.
+
+PostgreSQL and MySQL bind `INTERSECT` more tightly than `UNION` and `EXCEPT`. SQLite compound SELECTs group left-to-right. During transpilation NuBloxSQL renders explicit grouping where the target's implicit precedence would otherwise change the AST.
 
 ```js
 const result = capabilityModel.transpileSql(
   'postgresql',
   'sqlite',
-  'SELECT d.id FROM (SELECT id FROM users) d WHERE d.id IN (SELECT user_id FROM audit)'
+  'SELECT 1 AS n UNION SELECT 2 INTERSECT SELECT 2 ORDER BY n'
 );
 
-console.log(result.scope);      // select-query-v2
-console.log(result.certified);
-console.log(result.lossless);
+console.log(result.scope);      // select-query-v3
+console.log(result.certified);  // true when all target capabilities are supported
 console.log(result.sql);
 ```
 
-A `WITH RECURSIVE` declaration is represented and rendered, but compound recursive bodies that require `UNION`/`UNION ALL` remain outside this wave until set-operator AST support lands. Capability honesty is compositional: recursive-CTE syntax can be implemented while set-operation capabilities remain unsupported by the compiler.
+Top-level `ORDER BY`, `LIMIT` and `OFFSET` bind to the complete compound query. Compound queries can also appear in CTE bodies, derived tables and subqueries. Parameter-marker mapping is preserved across all operands.
 
-Do not assume unsupported statement families are silently translated. A blocked/unsupported transformation remains a blocker until the capability/compiler surface explicitly supports it.
+`ALL` is capability-specific. PostgreSQL and the modeled MySQL profile support `INTERSECT ALL` and `EXCEPT ALL`; SQLite does not. A target lacking the requested quantifier is blocked by the capability planner instead of being degraded to DISTINCT semantics.
+
+The parser continues to validate CTE structure before rendering. It rejects duplicate CTE names, illegal forward references and self-reference without `WITH RECURSIVE`. Derived tables require aliases. Capability analysis walks nested and compound queries recursively.
+
+Do not assume unsupported constructs are silently translated. A blocked or unqualified transformation remains a blocker until the relevant capability/compiler surface explicitly supports it.
 
 ## Portability strategy
 
