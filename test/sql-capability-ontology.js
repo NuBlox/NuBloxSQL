@@ -72,6 +72,7 @@ var search = ontology.definition('queries.cte.search');
 assert.deepStrictEqual(Array.from(search.relationships.requires), ['queries.cte.recursive']);
 
 var implemented = ontology.implementation('statements.select');
+assert.strictEqual(implemented.scope, 'select-foundation-v1');
 assert.strictEqual(implemented.stages.parser, 'implemented');
 assert.strictEqual(implemented.stages.ast, 'implemented');
 assert.strictEqual(implemented.stages.validator, 'partial');
@@ -79,11 +80,32 @@ assert.strictEqual(implemented.stages.renderer, 'implemented');
 assert.strictEqual(implemented.stages.rewrite, 'partial');
 assert.strictEqual(implemented.qualified, true);
 
-var notYetCompiled = ontology.implementation('queries.cte.recursive');
-assert.strictEqual(notYetCompiled.stages.parser, 'unsupported');
-assert.strictEqual(notYetCompiled.stages.ast, 'unsupported');
-assert.strictEqual(notYetCompiled.stages.renderer, 'unsupported');
-assert.strictEqual(notYetCompiled.qualified, false);
+[
+  'queries.cte.ordinary',
+  'queries.cte.recursive',
+  'queries.subqueries.scalar',
+  'queries.subqueries.correlated',
+  'queries.subqueries.exists',
+  'queries.subqueries.in',
+  'queries.subqueries.derivedTables'
+].forEach(function (path) {
+  var queryWave = ontology.implementation(path);
+  assert.strictEqual(queryWave.scope, 'select-query-v2', path + ' scope');
+  assert.strictEqual(queryWave.stages.parser, 'implemented', path + ' parser');
+  assert.strictEqual(queryWave.stages.ast, 'implemented', path + ' ast');
+  assert.strictEqual(queryWave.stages.validator, 'partial', path + ' validator');
+  assert.strictEqual(queryWave.stages.renderer, 'implemented', path + ' renderer');
+  assert.strictEqual(queryWave.stages.rewrite, 'partial', path + ' rewrite');
+  assert.strictEqual(queryWave.qualified, true, path + ' qualification');
+});
+
+var notYetCompiled = ontology.implementation('queries.setOperators.union');
+if (notYetCompiled) {
+  assert.strictEqual(notYetCompiled.stages.parser, 'unsupported');
+  assert.strictEqual(notYetCompiled.stages.ast, 'unsupported');
+  assert.strictEqual(notYetCompiled.stages.renderer, 'unsupported');
+  assert.strictEqual(notYetCompiled.qualified, false);
+}
 
 ['postgresql', 'mysql', 'sqlite'].forEach(function (dialect) {
   var profile = ontology.profile(dialect);
