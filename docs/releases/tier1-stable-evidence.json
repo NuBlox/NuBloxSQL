@@ -79,12 +79,15 @@
     "lib/capabilities/Compiler.js",
     "lib/capabilities/AstPipeline.js",
     "test/sql-ast-compiler.js",
+    "test/compiler-query-live.js",
     "types/root.d.ts",
     "types/public.d.ts",
     "types/portable-metadata.d.ts",
     "types/diagnostics.d.ts",
     "types/capability-ontology.d.ts",
     "tool/check-stable-release.js",
+    ".github/workflows/postgresql-dialect.yml",
+    ".github/workflows/mysql-cleanroom.yml",
     ".github/workflows/sqlite-dialect.yml"
   ]
 }
