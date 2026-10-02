@@ -1,6 +1,6 @@
 # Capability analysis and migration
 
-**Scope:** Tier-1 capability-model and current SQL rewrite/transpilation surfaces. These tools inform migration decisions; they do not make all vendor SQL semantically identical.
+**Scope:** Tier-1 capability-model, executable capability ontology and current SQL rewrite/transpilation surfaces. These tools inform migration decisions; they do not make all vendor SQL semantically identical.
 
 ## Compare dialect capability coverage
 
@@ -30,13 +30,33 @@ The comparison reports compatibility evidence. It is not a promise that arbitrar
 const comparison = capabilityModel.compatibility(
   'postgresql',
   'mysql',
-  'queries.select'
+  'statements.select'
 );
 
 console.dir(comparison, { depth: null });
 ```
 
 Use this when a migration inventory has already identified which SQL features an application depends on.
+
+For the richer engine/implementation split, use the ontology:
+
+```js
+const { capabilityOntology } = require('nubloxsql');
+
+const engine = capabilityOntology.observation(
+  'postgresql',
+  'queries.cte.recursive'
+);
+
+const nublox = capabilityOntology.implementation(
+  'queries.cte.recursive'
+);
+
+console.log(engine.support);        // database capability
+console.log(nublox.stages.parser); // NuBlox compiler capability
+```
+
+This prevents a migration tool from assuming NuBlox can compile a construct merely because both engines support it.
 
 ## Build a migration surface
 
@@ -66,8 +86,8 @@ const plan = capabilityModel.planRewrite(
   'postgresql',
   'mysql',
   [
-    'queries.select',
-    'expressions.limit'
+    'statements.select',
+    'queries.pagination.limit'
   ]
 );
 
@@ -88,7 +108,7 @@ const rewritten = capabilityModel.rewriteSql(
   'mysql',
   'SELECT id, name FROM users WHERE id = $1 LIMIT 10',
   {
-    capabilities: ['queries.select', 'expressions.limit']
+    capabilities: ['statements.select', 'queries.pagination.limit']
   }
 );
 
@@ -125,12 +145,13 @@ A robust migration programme usually proceeds in this order:
 
 1. inventory statements, stored logic, schema objects and engine extensions;
 2. classify capabilities used by each item;
-3. compare source/target support;
-4. separate automatic rewrites from manual changes;
-5. qualify runtime-dependent behaviour against real server versions;
-6. execute tests against representative data;
-7. benchmark performance separately from semantic correctness;
-8. retain vendor-specific SQL when it is the clearer/safer choice.
+3. compare source/target engine support;
+4. check NuBlox parser/AST/renderer/rewrite coverage separately;
+5. separate automatic rewrites from manual changes;
+6. qualify runtime-dependent behaviour against real server versions;
+7. execute tests against representative data;
+8. benchmark performance separately from semantic correctness;
+9. retain vendor-specific SQL when it is the clearer/safer choice.
 
 ## Runtime qualification
 
@@ -146,6 +167,18 @@ console.log(staticReport.summary);
 ```
 
 When a connected client can supply runtime evidence, use `qualifyClient()`.
+
+The ontology can also resolve a versioned capability directly:
+
+```js
+const rightJoin = capabilityOntology.resolve(
+  'sqlite',
+  'queries.joins.right',
+  { version: '3.39.0' }
+);
+
+console.log(rightJoin.available);
+```
 
 ## Keep migration claims narrow
 
