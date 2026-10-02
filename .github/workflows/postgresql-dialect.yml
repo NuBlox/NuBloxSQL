@@ -7,11 +7,14 @@ on:
       - 'index.d.ts'
       - 'package.json'
       - 'lib/client/**'
+      - 'lib/capabilities/**'
       - 'test/client-api.js'
       - 'test/client-live.js'
       - 'test/client-types-live.js'
       - 'test/client-transaction-live.js'
       - 'test/client-operation-live.js'
+      - 'test/compiler-query-live.js'
+      - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
       - 'lib/core/**'
@@ -23,11 +26,14 @@ on:
       - 'index.d.ts'
       - 'package.json'
       - 'lib/client/**'
+      - 'lib/capabilities/**'
       - 'test/client-api.js'
       - 'test/client-live.js'
       - 'test/client-types-live.js'
       - 'test/client-transaction-live.js'
       - 'test/client-operation-live.js'
+      - 'test/compiler-query-live.js'
+      - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
       - 'lib/core/**'
@@ -93,6 +99,8 @@ jobs:
         run: node test/client-transaction-live.js
       - name: Portable operation control contract
         run: node test/client-operation-live.js
+      - name: CTE and subquery compiler live qualification
+        run: node test/compiler-query-live.js
       - name: Native runtime, extended protocol, cancellation, pooling and portals
         run: node lib/dialects/postgresql/test/live.js
       - name: Native COPY FROM/TO streaming and pool qualification
