@@ -43,6 +43,7 @@ NuBloxSQL provides one package and one public entry point for:
 - prepared statements and transactions;
 - streaming and operation control;
 - metadata and schema introspection;
+- portable query diagnostics with complete native plan retention;
 - portable errors with native diagnostics retained;
 - runtime capability discovery;
 - direct native-dialect access where portability would hide important engine behaviour.
