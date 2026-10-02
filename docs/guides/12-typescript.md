@@ -1,6 +1,6 @@
 # TypeScript guide
 
-NuBloxSQL publishes its TypeScript entry point through `types/root.d.ts`. The declarations discriminate clients by dialect and expose the portable metadata vocabulary.
+NuBloxSQL publishes its TypeScript entry point through `types/root.d.ts`. The declarations discriminate clients by dialect and expose portable metadata, query diagnostics and the executable SQL capability ontology.
 
 ## Typed client creation
 
@@ -105,13 +105,37 @@ The package exports typed interfaces for capability features, comparisons, matri
 const decision = capabilityModel.rewriteDecision(
   'postgresql',
   'mysql',
-  'queries.select'
+  'statements.select'
 );
 
 if (decision.action === 'reject') {
   // compiler can narrow the action discriminant
 }
 ```
+
+## Capability ontology types
+
+The ontology declaration adds typed capability definitions, engine observations, conditional availability, implementation coverage, resolutions and profiles.
+
+```ts
+import {
+  capabilityOntology,
+  type SqlCapabilityDefinition,
+  type SqlCapabilityObservation,
+  type SqlCapabilityImplementationCoverage
+} from 'nubloxsql';
+
+const definition: SqlCapabilityDefinition | null =
+  capabilityOntology.definition('queries.cte.recursive');
+
+const engine: SqlCapabilityObservation | null =
+  capabilityOntology.observation('postgresql', 'queries.cte.recursive');
+
+const compiler: SqlCapabilityImplementationCoverage | null =
+  capabilityOntology.implementation('queries.cte.recursive');
+```
+
+Use the engine observation to describe database support and the implementation record to describe NuBlox parser/AST/validator/renderer/rewrite coverage. They intentionally do not collapse into one boolean.
 
 ## Strictness recommendation
 
