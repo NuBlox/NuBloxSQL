@@ -32,9 +32,9 @@ function configFor(dialect) {
   throw new Error('Unsupported compiler live dialect: ' + dialect);
 }
 
-function compile(dialect, source) {
+function compile(dialect, source, expectedScope) {
   var result = nublox.capabilityModel.transpileSql('postgresql', dialect, source);
-  assert.strictEqual(result.scope, 'select-query-v2');
+  assert.strictEqual(result.scope, expectedScope || 'select-query-v2');
   assert.strictEqual(result.certified, true);
   return result.sql;
 }
@@ -72,6 +72,35 @@ async function main() {
     var recursiveRows = await db.all(recursiveDeclarationSql);
     assert.strictEqual(recursiveRows.length, 1);
     assert.strictEqual(Number(recursiveRows[0].id), 1);
+
+    var unionSql = compile(dialect,
+      'SELECT id FROM ' + table + ' WHERE id = 1 UNION ALL SELECT id FROM ' + table + ' WHERE id = 2 ORDER BY id',
+      'select-query-v3'
+    );
+    var unionRows = await db.all(unionSql);
+    assert.deepStrictEqual(unionRows.map(function (row) { return Number(row.id); }), [1, 2]);
+
+    var intersectSql = compile(dialect,
+      'SELECT 1 AS n UNION SELECT 2 INTERSECT SELECT 2 ORDER BY n',
+      'select-query-v3'
+    );
+    var intersectRows = await db.all(intersectSql);
+    assert.deepStrictEqual(intersectRows.map(function (row) { return Number(row.n); }), [1, 2]);
+
+    var exceptSql = compile(dialect,
+      'SELECT id FROM ' + table + ' EXCEPT SELECT id FROM ' + table + ' WHERE id = 2 ORDER BY id',
+      'select-query-v3'
+    );
+    var exceptRows = await db.all(exceptSql);
+    assert.deepStrictEqual(exceptRows.map(function (row) { return Number(row.id); }), [1]);
+
+    var cteSetSql = compile(dialect,
+      'WITH combined AS (SELECT id FROM ' + table + ' WHERE id = 1 UNION ALL SELECT id FROM ' + table + ' WHERE id = 2) ' +
+      'SELECT id FROM combined ORDER BY id',
+      'select-query-v3'
+    );
+    var cteSetRows = await db.all(cteSetSql);
+    assert.deepStrictEqual(cteSetRows.map(function (row) { return Number(row.id); }), [1, 2]);
   } finally {
     try { await db.execute('DROP TABLE IF EXISTS ' + table); } catch (_) {}
     await db.close();
