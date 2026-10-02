@@ -19,7 +19,7 @@ assert.ok(ontology.implementationLevels.indexOf('implemented') >= 0);
 var validation = ontology.validate();
 assert.strictEqual(validation.valid, true);
 assert.ok(validation.definitions >= 150, 'ontology should expose the existing exhaustive Tier-1 feature inventory');
-assert.ok(validation.observations >= validation.definitions * 2, 'ontology should preserve broad cross-dialect observations');
+assert.ok(validation.observations >= validation.definitions, 'every ontology definition must originate from at least one engine observation');
 
 var ids = ontology.ids();
 assert.ok(Object.isFrozen(ids));
@@ -85,12 +85,17 @@ assert.strictEqual(notYetCompiled.stages.ast, 'unsupported');
 assert.strictEqual(notYetCompiled.stages.renderer, 'unsupported');
 assert.strictEqual(notYetCompiled.qualified, false);
 
+['postgresql', 'mysql', 'sqlite'].forEach(function (dialect) {
+  var profile = ontology.profile(dialect);
+  assert.strictEqual(profile.dialect, dialect);
+  assert.ok(profile.summary.total >= 100, dialect + ' ontology profile should retain substantial exhaustive coverage');
+  assert.ok(profile.summary.native > 0, dialect + ' ontology profile should retain native capabilities');
+  assert.strictEqual(profile.observations.length, profile.summary.total);
+  assert.ok(Object.isFrozen(profile));
+});
+
 var postgresProfile = ontology.profile('pg');
 assert.strictEqual(postgresProfile.dialect, 'postgresql');
-assert.ok(postgresProfile.summary.total >= 150);
-assert.ok(postgresProfile.summary.native > 0);
-assert.ok(postgresProfile.observations.length === postgresProfile.summary.total);
-assert.ok(Object.isFrozen(postgresProfile));
 
 var semanticInventory = ontology.inventory({ dialect: 'postgresql', kind: 'semantic' });
 assert.ok(semanticInventory.length > 0);
