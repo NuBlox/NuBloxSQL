@@ -54,15 +54,13 @@ The original `capabilityModel.status()`, `compare()`, compatibility, runtime qua
 
 `capabilityModel.parseSql()`, `analyzeAst()`, `compileAst()` and `transpileSql()` expose the released Tier-1 compiler surface for PostgreSQL, MySQL and SQLite.
 
-The original `select-foundation-v1` scope covers SELECT, joins, grouping, ordering and pagination. The additive `select-query-v2` scope adds formal AST and compiler support for:
+Compiler scopes are additive:
 
-- ordinary and `WITH RECURSIVE` CTE declarations;
-- multiple CTEs and CTE column lists;
-- scalar subqueries;
-- `EXISTS` subqueries;
-- `IN (SELECT ...)` subqueries;
-- detectable correlated subqueries;
-- derived tables with required aliases.
+- `select-foundation-v1` — SELECT, joins, grouping, ordering and pagination;
+- `select-query-v2` — ordinary/recursive CTE declarations, scalar/`EXISTS`/`IN` subqueries, detectable correlated subqueries and derived tables;
+- `select-query-v3` — compound queries using `UNION`, `UNION ALL`, `INTERSECT`, `INTERSECT ALL`, `EXCEPT` and `EXCEPT ALL` where the target engine supports the requested capability.
+
+Wave 2 set-operation support includes nested compound queries, explicit grouping, CTE bodies and derived tables containing compound queries, top-level `ORDER BY`/`LIMIT`/`OFFSET`, and parameter mapping across operands.
 
 ```js
 const parsed = sql.capabilityModel.parseSql(
@@ -72,14 +70,19 @@ const parsed = sql.capabilityModel.parseSql(
 
 const analysis = sql.capabilityModel.analyzeAst(parsed);
 const compiled = sql.capabilityModel.compileAst('mysql', parsed);
-const migrated = sql.capabilityModel.transpileSql(
+
+const compound = sql.capabilityModel.transpileSql(
   'postgresql',
   'sqlite',
-  'SELECT d.id FROM (SELECT id FROM users) d WHERE EXISTS (SELECT 1 FROM audit a WHERE a.user_id = d.id)'
+  'SELECT 1 AS n UNION SELECT 2 INTERSECT SELECT 2 ORDER BY n'
 );
 ```
 
-CTE validation rejects duplicate names, forward references and self-reference without `WITH RECURSIVE`. Compiler support remains capability-compositional: set operations, CTE `SEARCH`/`CYCLE`, materialization hints, windows and later statement families remain unsupported until their own compiler waves are qualified.
+Set-operation parsing preserves **source-dialect semantics**, not merely source text. PostgreSQL and MySQL give `INTERSECT` tighter precedence than `UNION`/`EXCEPT`; SQLite compound SELECTs group left-to-right. NuBloxSQL records the resulting tree in the AST and renders explicit grouping where required so cross-dialect transpilation preserves that tree.
+
+Capability gating remains authoritative. For example, SQLite supports `UNION ALL` but does not support `INTERSECT ALL` or `EXCEPT ALL`; transpilation targeting SQLite therefore rejects those capabilities rather than silently changing duplicate semantics.
+
+CTE validation rejects duplicate names, forward references and self-reference without `WITH RECURSIVE`. Advanced recursive CTE clauses such as `SEARCH`/`CYCLE`, materialization hints, windows and later statement families remain separately capability-gated until their compiler waves are qualified.
 
 ## Query diagnostics
 
