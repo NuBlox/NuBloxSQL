@@ -40,8 +40,8 @@ The detailed legacy model currently covers PostgreSQL, MySQL and SQLite:
 const { capabilityModel } = require('nubloxsql');
 
 const pg = capabilityModel.dialect('postgresql');
-const feature = capabilityModel.status('postgresql', 'queries.select');
-const supported = capabilityModel.supports('mysql', 'queries.select');
+const feature = capabilityModel.status('postgresql', 'statements.select');
+const supported = capabilityModel.supports('mysql', 'statements.select');
 ```
 
 The legacy support vocabulary distinguishes `native`, `equivalent`, `emulated`, `partial`, `runtime-dependent`, `unsupported`, `unknown` and `not-applicable` states. These APIs remain supported for compatibility, migration analysis and the existing rewrite planner.
@@ -203,7 +203,7 @@ The existing compatibility model remains available:
 
 ```js
 const comparison = capabilityModel.compare(
-  'queries.select',
+  'statements.select',
   ['postgresql', 'mysql', 'sqlite']
 );
 
@@ -249,7 +249,7 @@ Runtime qualification resolves features whose answer depends on the actual engin
 const plan = capabilityModel.planRewrite(
   'postgresql',
   'mysql',
-  ['queries.select', 'expressions.limit']
+  ['statements.select', 'queries.pagination.limit']
 );
 
 if (!plan.safeToProceed) {
