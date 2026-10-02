@@ -1,8 +1,50 @@
 # Diagnose query plans
 
-**Scope:** native PostgreSQL/MySQL/SQLite diagnostics. Query-plan formats are engine-specific by design.
+**Scope:** unified Tier-1 diagnostics first, with native PostgreSQL/MySQL/SQLite reports retained for engine-specific tuning.
 
-## PostgreSQL
+## Unified client entry point
+
+Use `client.diagnose()` when application or tooling code needs one diagnostics contract across PostgreSQL, MySQL and SQLite.
+
+```js
+const { createClient, sql } = require('nubloxsql');
+
+async function diagnose(config) {
+  const db = createClient(config);
+
+  try {
+    const report = await db.diagnose(
+      sql`SELECT id, email FROM users WHERE email = ${'stephen@example.com'}`
+    );
+
+    console.log(report.dialect);
+    console.log(report.mode);
+    console.log(report.summary);
+    console.log(report.warnings);
+
+    // Never discarded: full engine-native evidence.
+    console.dir(report.native, { depth: null });
+  } finally {
+    await db.close();
+  }
+}
+```
+
+The portable summary intentionally normalizes only concepts with defensible cross-dialect meaning. Missing evidence stays `null`.
+
+## Runtime analysis
+
+PostgreSQL and MySQL can execute the target statement while collecting runtime plan evidence:
+
+```js
+const report = await db.diagnose(statement, {
+  analyze: true
+});
+```
+
+`analyze: true` **executes the statement**. Use it only when execution and any side effects are acceptable. MySQL protects non-SELECT/TABLE statements unless `allowMutation: true` is explicitly supplied. SQLite currently returns an unsupported error for portable execution analysis because its exposed diagnostics are EXPLAIN/EXPLAIN QUERY PLAN rather than an EXPLAIN ANALYZE equivalent.
+
+## PostgreSQL native depth
 
 ```js
 const { createConnection } = require('nubloxsql');
@@ -28,9 +70,9 @@ async function diagnosePostgres(config) {
 }
 ```
 
-Use `explainAnalyze()` only when executing the statement is acceptable. `ANALYZE` executes the query, so treat it differently from a plan-only inspection.
+Use native `explainAnalyze()` when PostgreSQL-specific options such as buffers, WAL, timing, serialization, generic plans or version-specific EXPLAIN features matter.
 
-## MySQL
+## MySQL native depth
 
 ```js
 const { createConnection } = require('nubloxsql');
@@ -55,11 +97,11 @@ async function diagnoseMySql(config) {
 }
 ```
 
-MySQL also exposes `explainAnalyze()` and `diagnoseQuery()`. Keep the returned native JSON plan because optimizer details are not fully portable.
+MySQL also exposes native `explainAnalyze()` and `diagnoseQuery()`. Keep the returned native JSON plan because optimizer details are not fully portable.
 
-## SQLite
+## SQLite native depth
 
-SQLite diagnostics are synchronous because the native embedded connection API is synchronous.
+SQLite native diagnostics are synchronous because the embedded connection API is synchronous.
 
 ```js
 const { createConnection } = require('nubloxsql');
@@ -85,7 +127,7 @@ try {
 }
 ```
 
-Planner warnings can surface full scans, temporary B-trees and automatic indexes. They are diagnostic evidence, not proof that a query is wrong; context such as table size and workload still matters.
+Through the unified client, the same SQLite warnings are copied into `report.warnings` while the complete native diagnosis remains in `report.native`.
 
 ## A repeatable tuning workflow
 
@@ -101,4 +143,4 @@ Planner warnings can surface full scans, temporary B-trees and automatic indexes
 
 A sequential/full scan can be the correct plan for a small table or a query that needs most rows. An index can make writes more expensive. Tune against actual workload goals, not a rule that every query must use an index.
 
-See the [dialect guide](../guides/10-dialects.md), [production guide](../guides/13-production-and-troubleshooting.md), and [capability guide](../guides/11-capabilities-and-portability.md).
+See the [public API](../API.md), [dialect guide](../guides/10-dialects.md), [production guide](../guides/13-production-and-troubleshooting.md), and [capability guide](../guides/11-capabilities-and-portability.md).
