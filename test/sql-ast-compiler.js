@@ -115,6 +115,89 @@ var model = sql.capabilityModel;
   }, /Duplicate CTE name/);
 })();
 
+(function setOperationsAndParameterOrder() {
+  var source = 'SELECT id FROM users WHERE tenant_id = $2 UNION ALL SELECT id FROM archive WHERE tenant_id = $1 ORDER BY id LIMIT 10 OFFSET 1';
+  var ast = model.parseSql('postgresql', source);
+  assert.strictEqual(ast.type, 'SetOperationStatement');
+  assert.strictEqual(ast.operator, 'UNION');
+  assert.strictEqual(ast.all, true);
+  assert.strictEqual(ast.orderBy.length, 1);
+  var analysis = model.analyzeAst(ast);
+  assert.strictEqual(analysis.statementType, 'SetOperationStatement');
+  assert.strictEqual(analysis.scope, 'select-query-v3');
+  assert.ok(analysis.capabilities.indexOf('queries.setOperators.unionAll') !== -1);
+  assert.ok(analysis.capabilities.indexOf('queries.ordering.orderBy') !== -1);
+  assert.ok(analysis.capabilities.indexOf('queries.pagination.limit') !== -1);
+  assert.ok(analysis.capabilities.indexOf('queries.pagination.offset') !== -1);
+  var mysql = model.transpileSql('postgresql', 'mysql', source);
+  assert.strictEqual(mysql.certified, true);
+  assert.strictEqual(mysql.scope, 'select-query-v3');
+  assert.deepStrictEqual(mysql.targetToSource, [2, 1]);
+  assert.ok(mysql.sql.indexOf('UNION ALL') !== -1);
+  assert.ok(mysql.sql.indexOf('ORDER BY `id` LIMIT 10 OFFSET 1') !== -1);
+})();
+
+(function sourceDialectSetPrecedenceIsPreserved() {
+  var text = 'SELECT 1 AS n UNION SELECT 2 INTERSECT SELECT 2 ORDER BY n';
+  var pgAst = model.parseSql('postgresql', text);
+  assert.strictEqual(pgAst.type, 'SetOperationStatement');
+  assert.strictEqual(pgAst.operator, 'UNION');
+  assert.strictEqual(pgAst.right.type, 'SetOperationStatement');
+  assert.strictEqual(pgAst.right.operator, 'INTERSECT');
+
+  var sqliteAst = model.parseSql('sqlite', text);
+  assert.strictEqual(sqliteAst.type, 'SetOperationStatement');
+  assert.strictEqual(sqliteAst.operator, 'INTERSECT');
+  assert.strictEqual(sqliteAst.left.type, 'SetOperationStatement');
+  assert.strictEqual(sqliteAst.left.operator, 'UNION');
+
+  var toSqlite = model.transpileSql('postgresql', 'sqlite', text);
+  assert.strictEqual(toSqlite.certified, true);
+  assert.ok(toSqlite.sql.indexOf('SELECT * FROM (SELECT 2 INTERSECT SELECT 2) AS "__nublox_set_') !== -1);
+
+  var toPostgres = model.transpileSql('sqlite', 'postgresql', text);
+  assert.strictEqual(toPostgres.certified, true);
+  assert.ok(toPostgres.sql.indexOf('(SELECT 1 AS "n" UNION SELECT 2) INTERSECT SELECT 2') === 0);
+})();
+
+(function cteAndDerivedTableCanContainSetQueries() {
+  var cte = model.parseSql('postgresql', 'WITH combined AS (SELECT id FROM users UNION ALL SELECT id FROM archive) SELECT id FROM combined');
+  assert.strictEqual(cte.with.entries[0].query.type, 'SetOperationStatement');
+  var cteAnalysis = model.analyzeAst(cte);
+  assert.strictEqual(cteAnalysis.scope, 'select-query-v3');
+  assert.ok(cteAnalysis.capabilities.indexOf('queries.cte.ordinary') !== -1);
+  assert.ok(cteAnalysis.capabilities.indexOf('queries.setOperators.unionAll') !== -1);
+
+  var derived = model.parseSql('postgresql', 'SELECT d.id FROM (SELECT id FROM users UNION SELECT id FROM archive) d ORDER BY d.id');
+  assert.strictEqual(derived.from.type, 'DerivedTable');
+  assert.strictEqual(derived.from.query.type, 'SetOperationStatement');
+  var mysql = model.transpileSql('postgresql', 'mysql', 'SELECT d.id FROM (SELECT id FROM users UNION SELECT id FROM archive) d ORDER BY d.id');
+  assert.strictEqual(mysql.certified, true);
+  assert.ok(mysql.sql.indexOf('FROM (SELECT `id` FROM `users` UNION SELECT `id` FROM `archive`) AS `d`') !== -1);
+})();
+
+(function explicitSetGroupingIsPreserved() {
+  var source = '(SELECT 1 AS n UNION SELECT 2) EXCEPT SELECT 2 ORDER BY n';
+  var ast = model.parseSql('postgresql', source);
+  assert.strictEqual(ast.operator, 'EXCEPT');
+  assert.strictEqual(ast.left.type, 'SetOperationStatement');
+  var sqlite = model.transpileSql('postgresql', 'sqlite', source);
+  assert.strictEqual(sqlite.certified, true);
+  assert.ok(sqlite.sql.indexOf('SELECT * FROM (SELECT 1 AS "n" UNION SELECT 2) AS "__nublox_set_') === 0);
+})();
+
+(function allQuantifierHonorsTargetCapabilities() {
+  var pg = model.transpileSql('postgresql', 'mysql', 'SELECT 1 INTERSECT ALL SELECT 1');
+  assert.strictEqual(pg.certified, true);
+  assert.ok(pg.sql.indexOf('INTERSECT ALL') !== -1);
+  assert.throws(function () {
+    model.transpileSql('postgresql', 'sqlite', 'SELECT 1 INTERSECT ALL SELECT 1');
+  }, /blocked by unsupported target capabilities/);
+  assert.throws(function () {
+    model.transpileSql('postgresql', 'sqlite', 'SELECT 1 EXCEPT ALL SELECT 1');
+  }, /blocked by unsupported target capabilities/);
+})();
+
 (function mysqlParametersToPostgres() {
   var result = model.transpileSql('mysql', 'postgresql', 'SELECT id FROM users WHERE tenant_id = ? AND id = ?');
   assert.ok(result.sql.indexOf('$1') !== -1);
@@ -153,7 +236,7 @@ var model = sql.capabilityModel;
 })();
 
 (function unsupportedGrammarFailsClosed() {
-  assert.throws(function () { model.parseSql('postgresql', 'SELECT * FROM users UNION SELECT * FROM archive'); }, /Unexpected trailing SQL/);
+  assert.throws(function () { model.parseSql('postgresql', 'SELECT DISTINCT ON (id) id FROM users'); }, /Unsupported SQL expression|Unexpected trailing SQL/);
 })();
 
 console.log('NuBloxSQL Tier-1 SQL AST/compiler contract: PASS');
