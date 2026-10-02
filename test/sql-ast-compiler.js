@@ -8,6 +8,7 @@ var model = sql.capabilityModel;
   var source = 'SELECT DISTINCT u.id, u.name AS label, count(*) AS total FROM public.users AS u LEFT JOIN orders o ON o.user_id = u.id WHERE u.tenant_id = $2 AND u.id = $1 GROUP BY u.id, u.name HAVING count(*) > 0 ORDER BY u.name DESC LIMIT 25 OFFSET 5';
   var ast = model.parseSql('postgresql', source);
   assert.strictEqual(ast.type, 'SelectStatement');
+  assert.strictEqual(ast.with, null);
   assert.strictEqual(ast.distinct, true);
   assert.strictEqual(ast.columns.length, 3);
   assert.strictEqual(ast.joins.length, 1);
@@ -15,6 +16,7 @@ var model = sql.capabilityModel;
   assert.ok(Object.isFrozen(ast));
 
   var analysis = model.analyzeAst(ast);
+  assert.strictEqual(analysis.scope, 'select-foundation-v1');
   assert.ok(analysis.capabilities.indexOf('statements.select') !== -1);
   assert.ok(analysis.capabilities.indexOf('queries.distinct.standard') !== -1);
   assert.ok(analysis.capabilities.indexOf('queries.joins.left') !== -1);
@@ -31,10 +33,86 @@ var model = sql.capabilityModel;
   assert.deepStrictEqual(mysql.targetToSource, [2, 1]);
 
   var transpiled = model.transpileSql('postgresql', 'mysql', source);
+  assert.strictEqual(transpiled.scope, 'select-foundation-v1');
   assert.strictEqual(transpiled.certified, true);
   assert.strictEqual(transpiled.lossless, true);
   assert.deepStrictEqual(transpiled.targetToSource, [2, 1]);
   assert.ok(transpiled.sql.indexOf('LIMIT 25 OFFSET 5') !== -1);
+})();
+
+(function ordinaryAndMultipleCtes() {
+  var source = 'WITH active AS (SELECT id, tenant_id FROM users WHERE active = TRUE), scoped AS (SELECT id FROM active WHERE tenant_id = $1) SELECT id FROM scoped';
+  var ast = model.parseSql('postgresql', source);
+  assert.ok(ast.with);
+  assert.strictEqual(ast.with.recursive, false);
+  assert.strictEqual(ast.with.entries.length, 2);
+  assert.strictEqual(ast.with.entries[0].name.parts[0], 'active');
+
+  var analysis = model.analyzeAst(ast);
+  assert.strictEqual(analysis.scope, 'select-query-v2');
+  assert.ok(analysis.capabilities.indexOf('queries.cte.ordinary') !== -1);
+
+  var mysql = model.transpileSql('postgresql', 'mysql', source);
+  assert.strictEqual(mysql.scope, 'select-query-v2');
+  assert.strictEqual(mysql.certified, true);
+  assert.ok(mysql.sql.indexOf('WITH `active` AS (SELECT') === 0);
+  assert.ok(mysql.sql.indexOf('`scoped` AS (SELECT') !== -1);
+  assert.deepStrictEqual(mysql.targetToSource, [1]);
+})();
+
+(function recursiveCteDeclarationAndSelfReference() {
+  var source = 'WITH RECURSIVE tree(id) AS (SELECT parent_id FROM tree WHERE parent_id = $1) SELECT id FROM tree';
+  var ast = model.parseSql('postgresql', source);
+  assert.strictEqual(ast.with.recursive, true);
+  assert.strictEqual(ast.with.entries[0].columns.length, 1);
+  var analysis = model.analyzeAst(ast);
+  assert.ok(analysis.capabilities.indexOf('queries.cte.ordinary') !== -1);
+  assert.ok(analysis.capabilities.indexOf('queries.cte.recursive') !== -1);
+  var sqlite = model.transpileSql('postgresql', 'sqlite', source);
+  assert.strictEqual(sqlite.scope, 'select-query-v2');
+  assert.ok(sqlite.sql.indexOf('WITH RECURSIVE "tree" ("id") AS') === 0);
+  assert.deepStrictEqual(sqlite.targetToSource, [1]);
+})();
+
+(function scalarExistsInAndCorrelation() {
+  var source = 'SELECT (SELECT max(o.id) FROM orders o WHERE o.user_id = u.id) AS latest FROM users u WHERE EXISTS (SELECT 1 FROM orders x WHERE x.user_id = u.id) AND u.id IN (SELECT y.user_id FROM orders y)';
+  var ast = model.parseSql('postgresql', source);
+  assert.strictEqual(ast.columns[0].type, 'AliasedExpression');
+  assert.strictEqual(ast.columns[0].expression.type, 'SubqueryExpression');
+  var analysis = model.analyzeAst(ast);
+  assert.strictEqual(analysis.scope, 'select-query-v2');
+  ['queries.subqueries.scalar', 'queries.subqueries.exists', 'queries.subqueries.in', 'queries.subqueries.correlated'].forEach(function (path) {
+    assert.ok(analysis.capabilities.indexOf(path) !== -1, 'missing ' + path);
+  });
+  var mysql = model.transpileSql('postgresql', 'mysql', source);
+  assert.strictEqual(mysql.certified, true);
+  assert.ok(mysql.sql.indexOf('EXISTS (SELECT 1 FROM `orders` AS `x`') !== -1);
+  assert.ok(mysql.sql.indexOf('IN (SELECT `y`.`user_id` FROM `orders` AS `y`)') !== -1);
+})();
+
+(function derivedTableAndNestedParameterOrder() {
+  var source = 'SELECT d.id FROM (SELECT id FROM users WHERE tenant_id = $2) d WHERE d.id = $1';
+  var ast = model.parseSql('postgresql', source);
+  assert.strictEqual(ast.from.type, 'DerivedTable');
+  assert.strictEqual(ast.from.alias.parts[0], 'd');
+  var analysis = model.analyzeAst(ast);
+  assert.ok(analysis.capabilities.indexOf('queries.subqueries.derivedTables') !== -1);
+  var mysql = model.transpileSql('postgresql', 'mysql', source);
+  assert.strictEqual(mysql.certified, true);
+  assert.ok(mysql.sql.indexOf('FROM (SELECT `id` FROM `users` WHERE (`tenant_id` = ?)) AS `d`') !== -1);
+  assert.deepStrictEqual(mysql.targetToSource, [2, 1]);
+})();
+
+(function cteValidationFailsClosed() {
+  assert.throws(function () {
+    model.parseSql('postgresql', 'WITH x AS (SELECT id FROM x) SELECT id FROM x');
+  }, /requires WITH RECURSIVE/);
+  assert.throws(function () {
+    model.parseSql('postgresql', 'WITH a AS (SELECT id FROM b), b AS (SELECT id FROM users) SELECT id FROM a');
+  }, /cannot reference later CTE/);
+  assert.throws(function () {
+    model.parseSql('postgresql', 'WITH a AS (SELECT id FROM users), a AS (SELECT id FROM users) SELECT id FROM a');
+  }, /Duplicate CTE name/);
 })();
 
 (function mysqlParametersToPostgres() {
@@ -75,7 +153,6 @@ var model = sql.capabilityModel;
 })();
 
 (function unsupportedGrammarFailsClosed() {
-  assert.throws(function () { model.parseSql('postgresql', 'WITH x AS (SELECT 1) SELECT * FROM x'); }, /Only SELECT statements are supported/);
   assert.throws(function () { model.parseSql('postgresql', 'SELECT * FROM users UNION SELECT * FROM archive'); }, /Unexpected trailing SQL/);
 })();
 
