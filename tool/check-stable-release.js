@@ -59,6 +59,7 @@ try {
   var consumer = [
     "const sql = require('nubloxsql');",
     "if (sql.OBSERVABILITY_SCHEMA_VERSION !== 1) throw new Error('observability schema mismatch');",
+    "if (sql.QUERY_DIAGNOSTICS_SCHEMA_VERSION !== 1) throw new Error('query diagnostics schema mismatch');",
     "const rewrite = sql.capabilityModel.rewriteSql('postgresql', 'sqlite', 'SELECT $2, $1');",
     "if (rewrite.sql !== 'SELECT ?2, ?1') throw new Error('rewrite qualification failed');",
     "const ast = sql.capabilityModel.parseSql('postgresql', 'SELECT id FROM users WHERE id = $1');",
@@ -76,6 +77,8 @@ try {
     "  if (runtime.dialect !== 'sqlite' || !runtime.version) throw new Error('runtime capability qualification failed');",
     "  const snapshot = await db.introspect({ deep: true });",
     "  if (!snapshot.tables.some(t => t.name === 'release_smoke')) throw new Error('consumer introspection failed');",
+    "  const diagnosis = await db.diagnose(sql.sql`SELECT id FROM release_smoke WHERE id = ${1}`, { includeOpcodes: true });",
+    "  if (diagnosis.dialect !== 'sqlite' || diagnosis.schemaVersion !== 1 || !diagnosis.native.plan || !diagnosis.native.explain) throw new Error('consumer diagnostics failed');",
     "  await db.close();",
     "})().catch(error => { console.error(error.stack || error); process.exit(1); });"
   ].join('\n');
@@ -85,7 +88,7 @@ try {
   run(npm, ['install', '--no-save', '--ignore-scripts', '--no-audit', '--no-fund', 'typescript@5.9.3', '@types/node@22'], { cwd: temp });
   var typeConsumer = [
     "import sql = require('nubloxsql');",
-    "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient, SqlRuntimeCapabilityReport, SqlRewritePlan, SqlRewriteResult, SqlSelectStatementAst, SqlCompiledAst, SqlTranspileResult } from 'nubloxsql';",
+    "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient, QueryDiagnosticsOptions, QueryDiagnosticsReport, SqlRuntimeCapabilityReport, SqlRewritePlan, SqlRewriteResult, SqlSelectStatementAst, SqlCompiledAst, SqlTranspileResult } from 'nubloxsql';",
     "const mysql: MySqlClient = sql.createClient({ dialect: 'mysql', user: 'app', pool: false });",
     "const pg: PostgreSqlClient = sql.createClient({ dialect: 'pg', user: 'app', pool: false });",
     "const sqlite: SqliteClient = sql.createClient({ dialect: 'sqlite', filename: ':memory:', pool: false });",
@@ -97,6 +100,10 @@ try {
     "const governance = sqlite.native.resourceGovernanceCapabilities();",
     "const budget = sqlite.native.queryBudget({ profile: 'hardened' });",
     "sqlite.native.governedQuery('SELECT 1', undefined, budget);",
+    "const diagnosticOptions: QueryDiagnosticsOptions = { includeOpcodes: true };",
+    "const diagnosticReport: Promise<QueryDiagnosticsReport> = sqlite.diagnose('SELECT 1', diagnosticOptions);",
+    "const pgDiagnostic: Promise<QueryDiagnosticsReport> = pg.diagnose('SELECT 1', { analyze: true, buffers: true });",
+    "const mysqlDiagnostic: Promise<QueryDiagnosticsReport> = mysql.diagnose('SELECT 1', { analyze: true });",
     "const staticRuntime: SqlRuntimeCapabilityReport = sql.capabilityModel.qualify('sqlite', { version: '3.49.1' });",
     "const liveRuntime: Promise<SqlRuntimeCapabilityReport> = sql.capabilityModel.qualifyClient(sqlite);",
     "const rewritePlan: SqlRewritePlan = sql.capabilityModel.planRewrite('postgresql', 'sqlite', ['queries.joins.inner']);",
@@ -104,8 +111,8 @@ try {
     "const ast: SqlSelectStatementAst = sql.capabilityModel.parseSql('postgresql', 'SELECT id FROM users WHERE id = $1');",
     "const compiled: SqlCompiledAst = sql.capabilityModel.compileAst('mysql', ast);",
     "const transpiled: SqlTranspileResult = sql.capabilityModel.transpileSql('postgresql', 'mysql', 'SELECT id FROM users WHERE id = $1');",
-    "void governance; void budget; void staticRuntime; void liveRuntime; void rewritePlan; void rewritten; void ast; void compiled; void transpiled;",
-    "sqlite.transaction(async tx => { const d: 'sqlite' = tx.dialect; void d; });",
+    "void governance; void budget; void diagnosticOptions; void diagnosticReport; void pgDiagnostic; void mysqlDiagnostic; void staticRuntime; void liveRuntime; void rewritePlan; void rewritten; void ast; void compiled; void transpiled;",
+    "sqlite.transaction(async tx => { const d: 'sqlite' = tx.dialect; void d; await tx.diagnose('SELECT 1'); });",
     "sql.capabilityReport('pg').dialect satisfies 'postgresql';",
     "sql.transactionPolicy('mssql').dialect satisfies 'sqlserver';",
     "void sqliteDialect; void pgDialect; void mysqlDialect; void sqlServerDialect;"

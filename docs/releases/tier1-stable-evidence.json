@@ -69,8 +69,11 @@
     "docs/releases/public-api-v1.json",
     "lib/client/PortableMetadata.js",
     "test/portable-metadata-vocabulary.js",
+    "lib/client/Diagnostics.js",
+    "test/client-diagnostics.js",
     "types/root.d.ts",
     "types/portable-metadata.d.ts",
+    "types/diagnostics.d.ts",
     "tool/check-stable-release.js",
     ".github/workflows/sqlite-dialect.yml"
   ]

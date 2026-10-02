@@ -12,6 +12,7 @@ assert.strictEqual(require.cache[postgresqlPath], undefined, 'PostgreSQL must no
 assert.strictEqual(require.cache[sqlitePath], undefined, 'SQLite must not load with the NuBloxSQL facade');
 assert.strictEqual(require.cache[sqlserverPath], undefined, 'SQL Server must not load with the NuBloxSQL facade');
 assert.strictEqual(require.cache[sqlCorePath], undefined, 'SQL Core must not load with the NuBloxSQL facade');
+assert.strictEqual(sql.QUERY_DIAGNOSTICS_SCHEMA_VERSION, 1);
 assert.deepStrictEqual(Object.keys(sql.DIALECTS).sort(), ['mysql', 'postgresql', 'sqlite', 'sqlserver']);
 var mysql = sql.adapter('mysql');
 assert.strictEqual(require.cache[mysqlPath].exports, mysql);
@@ -24,7 +25,7 @@ assert.strictEqual(sql.adapter('postgres'), postgresql);assert.strictEqual(sql.a
 var sqlite = sql.adapter('sqlite');assert.strictEqual(sql.sqlite, sqlite);assert.strictEqual(require.cache[sqlserverPath], undefined);
 var sqlserver = sql.adapter('sqlserver');assert.strictEqual(sql.adapter('mssql'), sqlserver);assert.strictEqual(sql.adapter('sql-server'), sqlserver);assert.strictEqual(sql.sqlserver, sqlserver);
 assert.strictEqual(sql.descriptor('mysql').identity.family, 'mysql');assert.strictEqual(sql.descriptor('postgresql').identity.family, 'postgresql');assert.strictEqual(sql.descriptor('sqlite').identity.family, 'sqlite');assert.strictEqual(sql.descriptor('sqlserver').identity.family, 'sqlserver');
-assert.strictEqual(sql.supports('mysql', 'preparedStatements'), true);assert.strictEqual(sql.supports('postgresql', 'serverSideCursors'), true);assert.strictEqual(sql.supports('sqlite', 'queryCancellation'), false);assert.strictEqual(sql.supports('sqlserver', 'rawQuery'), true);assert.strictEqual(sql.supports('sqlserver', 'queryCancellation'), true);assert.strictEqual(sql.supports('sqlserver', 'preparedStatements'), true);
+assert.strictEqual(sql.supports('mysql', 'preparedStatements'), true);assert.strictEqual(sql.supports('postgresql', 'serverSideCursors'), true);assert.strictEqual(sql.supports('sqlite', 'queryCancellation'), false);assert.strictEqual(sql.supports('sqlite', 'queryDiagnostics'), true);assert.strictEqual(sql.supports('sqlserver', 'rawQuery'), true);assert.strictEqual(sql.supports('sqlserver', 'queryCancellation'), true);assert.strictEqual(sql.supports('sqlserver', 'preparedStatements'), true);
 var mysqlConnection = sql.createConnection({ dialect: 'mysql', host: '127.0.0.1', user: 'test' });assert(mysqlConnection instanceof mysql.Connection);
 var postgresConnection = sql.createConnection('postgresql', { host: '127.0.0.1', user: 'test' });assert(postgresConnection instanceof postgresql.Connection);
 var sqliteConnection = sql.createConnection({ dialect: 'sqlite', filename: ':memory:' });assert(sqliteConnection instanceof sqlite.Connection);sqliteConnection.exec('CREATE TABLE sample(id INTEGER PRIMARY KEY, value TEXT NOT NULL)');sqliteConnection.run('INSERT INTO sample(value) VALUES(?)', ['ok']);assert.strictEqual(sqliteConnection.query('SELECT value FROM sample').rows[0].value, 'ok');sqliteConnection.close();

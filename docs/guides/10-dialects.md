@@ -2,6 +2,21 @@
 
 This guide summarises released configuration and native-depth features. The unified `Client` API is preferred for portable application code; native APIs remain available when engine semantics matter.
 
+## Unified query diagnostics
+
+PostgreSQL, MySQL and SQLite clients expose one shared diagnostics entry point:
+
+```js
+const report = await db.diagnose(
+  sql`SELECT * FROM users WHERE id = ${42}`
+);
+
+console.log(report.summary);
+console.dir(report.native, { depth: null });
+```
+
+The common summary is intentionally conservative; the complete engine-native report is always retained. PostgreSQL and MySQL also support `{ analyze: true }`, which executes the target statement while collecting runtime evidence. SQLite exposes plan/opcode diagnostics but not portable execution analysis. SQL Server is not yet in the qualified shared diagnostics contract and returns an explicit unsupported error.
+
 ## PostgreSQL
 
 Qualified Tier-1 server versions: PostgreSQL 15, 16, 17 and 18.
@@ -112,6 +127,6 @@ The native runtime exposes raw queries, typed parameter execution, prepared stat
 
 ## Choosing portable versus native APIs
 
-Use the unified client for connection routing, parameter binding, common result shapes, prepared statements, transactions, streaming, errors, metadata and telemetry. Drop to native APIs for capabilities that are genuinely engine-specific, such as PostgreSQL COPY/LISTEN, MySQL LOCAL INFILE, SQLite maintenance/changesets or SQL Server-specific TDS controls.
+Use the unified client for connection routing, parameter binding, common result shapes, prepared statements, transactions, streaming, errors, metadata, query diagnostics and telemetry. Drop to native APIs for capabilities that are genuinely engine-specific, such as PostgreSQL COPY/LISTEN, MySQL LOCAL INFILE, SQLite maintenance/changesets or SQL Server-specific TDS controls.
 
 Check `db.dialect` and capability evidence before entering native code paths.
