@@ -50,6 +50,37 @@ const resolved = capabilityOntology.resolve(
 
 The original `capabilityModel.status()`, `compare()`, compatibility, runtime qualification, rewrite and compiler APIs remain supported. The ontology is an additive control-plane layer above them.
 
+## SQL AST and transpilation
+
+`capabilityModel.parseSql()`, `analyzeAst()`, `compileAst()` and `transpileSql()` expose the released Tier-1 compiler surface for PostgreSQL, MySQL and SQLite.
+
+The original `select-foundation-v1` scope covers SELECT, joins, grouping, ordering and pagination. The additive `select-query-v2` scope adds formal AST and compiler support for:
+
+- ordinary and `WITH RECURSIVE` CTE declarations;
+- multiple CTEs and CTE column lists;
+- scalar subqueries;
+- `EXISTS` subqueries;
+- `IN (SELECT ...)` subqueries;
+- detectable correlated subqueries;
+- derived tables with required aliases.
+
+```js
+const parsed = sql.capabilityModel.parseSql(
+  'postgresql',
+  'WITH x AS (SELECT id FROM users WHERE tenant_id = $1) SELECT id FROM x'
+);
+
+const analysis = sql.capabilityModel.analyzeAst(parsed);
+const compiled = sql.capabilityModel.compileAst('mysql', parsed);
+const migrated = sql.capabilityModel.transpileSql(
+  'postgresql',
+  'sqlite',
+  'SELECT d.id FROM (SELECT id FROM users) d WHERE EXISTS (SELECT 1 FROM audit a WHERE a.user_id = d.id)'
+);
+```
+
+CTE validation rejects duplicate names, forward references and self-reference without `WITH RECURSIVE`. Compiler support remains capability-compositional: set operations, CTE `SEARCH`/`CYCLE`, materialization hints, windows and later statement families remain unsupported until their own compiler waves are qualified.
+
 ## Query diagnostics
 
 Unified Tier-1 clients expose `client.diagnose(statement, options)` for PostgreSQL, MySQL and SQLite.
@@ -84,7 +115,7 @@ Client operations cover queries, execution, prepared statements, streaming, tran
 
 ## Dialects
 
-Canonical runtime dialect names are `mysql`, `postgresql`, `sqlite` and `sqlserver`. The current exhaustive ontology observations are generated from the Tier-1 PostgreSQL, MySQL and SQLite capability profiles; additional dialect profiles can be added without changing the ontology schema.
+Canonical runtime dialect names are `mysql`, `postgresql`, `sqlite` and `sqlserver`. The current exhaustive ontology observations and AST/transpilation control plane are generated from the Tier-1 PostgreSQL, MySQL and SQLite capability profiles; additional dialect profiles can be added without changing the ontology schema.
 
 ## Exact release contract
 
