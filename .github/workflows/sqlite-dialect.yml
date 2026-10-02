@@ -8,6 +8,9 @@ on:
       - 'index.d.ts'
       - 'package.json'
       - 'lib/client/**'
+      - 'lib/capabilities/**'
+      - 'test/compiler-query-live.js'
+      - 'test/sql-ast-compiler.js'
       - 'lib/dialects/sqlite/**'
       - '.github/workflows/sqlite-dialect.yml'
   pull_request:
@@ -16,6 +19,9 @@ on:
       - 'index.d.ts'
       - 'package.json'
       - 'lib/client/**'
+      - 'lib/capabilities/**'
+      - 'test/compiler-query-live.js'
+      - 'test/sql-ast-compiler.js'
       - 'lib/dialects/sqlite/**'
       - '.github/workflows/sqlite-dialect.yml'
 
@@ -39,6 +45,10 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: SQLite runtime contracts
         run: npm run test:sqlite
+      - name: CTE and subquery compiler live qualification
+        run: node test/compiler-query-live.js
+        env:
+          NUBLOX_DIALECT: sqlite
       - name: SQLite production performance and memory evidence
         run: npm run test:sqlite-production
       - name: SQLite corruption error classification

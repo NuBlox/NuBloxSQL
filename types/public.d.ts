@@ -158,23 +158,30 @@ export interface SqlAstUnaryExpression { readonly type: 'UnaryExpression'; reado
 export interface SqlAstBinaryExpression { readonly type: 'BinaryExpression'; readonly operator: string; readonly left: SqlAstExpression; readonly right: SqlAstExpression; }
 export interface SqlAstListExpression { readonly type: 'ListExpression'; readonly items: readonly SqlAstExpression[]; }
 export interface SqlAstAliasedExpression { readonly type: 'AliasedExpression'; readonly expression: SqlAstExpression; readonly alias: SqlAstIdentifier; }
-export type SqlAstExpression = SqlAstIdentifier | SqlAstLiteral | SqlAstParameter | SqlAstWildcard | SqlAstCallExpression | SqlAstUnaryExpression | SqlAstBinaryExpression | SqlAstListExpression | SqlAstAliasedExpression;
+export interface SqlAstSubqueryExpression { readonly type: 'SubqueryExpression'; readonly query: SqlSelectStatementAst; }
+export interface SqlAstExistsExpression { readonly type: 'ExistsExpression'; readonly query: SqlSelectStatementAst; }
+export type SqlAstExpression = SqlAstIdentifier | SqlAstLiteral | SqlAstParameter | SqlAstWildcard | SqlAstCallExpression | SqlAstUnaryExpression | SqlAstBinaryExpression | SqlAstListExpression | SqlAstAliasedExpression | SqlAstSubqueryExpression | SqlAstExistsExpression;
 export interface SqlAstTableReference { readonly type: 'TableReference'; readonly name: SqlAstIdentifier; readonly alias: SqlAstIdentifier | null; }
-export interface SqlAstJoin { readonly type: 'Join'; readonly kind: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL' | 'CROSS'; readonly source: SqlAstTableReference; readonly condition: SqlAstExpression | null; }
+export interface SqlAstDerivedTable { readonly type: 'DerivedTable'; readonly query: SqlSelectStatementAst; readonly alias: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; }
+export type SqlAstRelation = SqlAstTableReference | SqlAstDerivedTable;
+export interface SqlAstJoin { readonly type: 'Join'; readonly kind: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL' | 'CROSS'; readonly source: SqlAstRelation; readonly condition: SqlAstExpression | null; }
 export interface SqlAstOrderExpression { readonly type: 'OrderExpression'; readonly expression: SqlAstExpression; readonly direction: 'ASC' | 'DESC' | null; }
+export interface SqlAstCommonTableExpression { readonly type: 'CommonTableExpression'; readonly name: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; readonly query: SqlSelectStatementAst; }
+export interface SqlAstWithClause { readonly type: 'WithClause'; readonly recursive: boolean; readonly entries: readonly SqlAstCommonTableExpression[]; }
 export interface SqlSelectStatementAst {
-  readonly type: 'SelectStatement'; readonly distinct: boolean; readonly columns: readonly SqlAstExpression[];
-  readonly from: SqlAstTableReference | null; readonly joins: readonly SqlAstJoin[]; readonly where: SqlAstExpression | null;
+  readonly type: 'SelectStatement'; readonly with: SqlAstWithClause | null; readonly distinct: boolean; readonly columns: readonly SqlAstExpression[];
+  readonly from: SqlAstRelation | null; readonly joins: readonly SqlAstJoin[]; readonly where: SqlAstExpression | null;
   readonly groupBy: readonly SqlAstExpression[]; readonly having: SqlAstExpression | null;
   readonly orderBy: readonly SqlAstOrderExpression[]; readonly limit: SqlAstExpression | null; readonly offset: SqlAstExpression | null;
 }
-export interface SqlAstAnalysis { readonly statementType: 'SelectStatement'; readonly capabilities: readonly string[]; }
+export type SqlCompilerScope = 'select-foundation-v1' | 'select-query-v2';
+export interface SqlAstAnalysis { readonly statementType: 'SelectStatement'; readonly scope: SqlCompilerScope; readonly capabilities: readonly string[]; }
 export interface SqlCompiledAst { readonly dialect: SqlCapabilityTier1Dialect; readonly sql: string; readonly targetToSource: readonly (number | string)[]; }
 export interface SqlTranspileOptions extends SqlRewritePlanOptions {
   readonly allowBlocked?: boolean; readonly allowUnqualified?: boolean; readonly allowEmulation?: boolean;
 }
 export interface SqlTranspileResult {
-  readonly from: SqlCapabilityTier1Dialect; readonly to: SqlCapabilityTier1Dialect; readonly scope: 'select-foundation-v1';
+  readonly from: SqlCapabilityTier1Dialect; readonly to: SqlCapabilityTier1Dialect; readonly scope: SqlCompilerScope;
   readonly ast: SqlSelectStatementAst; readonly capabilities: readonly string[]; readonly plan: SqlRewritePlan;
   readonly sql: string; readonly targetToSource: readonly (number | string)[]; readonly lossless: boolean; readonly certified: boolean;
 }

@@ -160,22 +160,19 @@ Database support and NuBlox compiler support are different facts.
 
 ```js
 const coverage = capabilityOntology.implementation('queries.cte.recursive');
+console.log(coverage.scope);       // select-query-v2
 console.log(coverage.stages);
-console.log(coverage.qualified);
+console.log(coverage.qualified);   // true
 ```
 
-The implementation record has independent stages for:
+The implementation record has independent stages for parser, AST, validator, renderer, rewrite/lowering and runtime. Each stage is `implemented`, `partial`, `unsupported` or `not-applicable`.
 
-- parser;
-- AST;
-- validator;
-- renderer;
-- rewrite/lowering;
-- runtime.
+The compiler now has two additive SELECT scopes:
 
-Each stage is `implemented`, `partial`, `unsupported` or `not-applicable`.
+- `select-foundation-v1` — the original SELECT, join, grouping, ordering and pagination foundation;
+- `select-query-v2` — ordinary/recursive CTE declarations, scalar/`EXISTS`/`IN` subqueries, correlated-subquery detection and derived tables.
 
-The current released compiler is still `select-foundation-v1`. Capabilities within that scope are marked explicitly; unimplemented CTE/window/DML/DDL compiler features remain `unsupported` even when PostgreSQL, MySQL or SQLite support them natively. This is intentional capability honesty.
+`select-query-v2` does **not** imply that all SQL query grammar is implemented. Set operators, recursive `SEARCH`/`CYCLE`, CTE materialization hints, window syntax and later statement families remain separately capability-gated until their compiler waves land. The ontology continues to report those stages as unsupported where appropriate.
 
 ### Full profiles and filtered inventory
 
@@ -277,27 +274,49 @@ The result retains parameter mapping evidence (`targetToSource`) so callers can 
 
 ## AST/compiler scope
 
-The released AST/transpilation surface is currently a **SELECT foundation**, not a complete SQL language compiler. It models identifiers, literals, parameters, wildcards, function calls, unary/binary/list/aliased expressions, table references, joins, grouping, ordering, limit and offset.
+The released AST/transpilation surface now models the SELECT foundation plus the first nested-query compiler wave. In addition to identifiers, literals, parameters, calls, joins, grouping, ordering and pagination, it has formal nodes for CTEs, subquery expressions, `EXISTS` expressions and derived tables.
 
 ```js
-const ast = capabilityModel.parseSql('postgresql', sqlText);
+const ast = capabilityModel.parseSql(
+  'postgresql',
+  `WITH scoped AS (
+     SELECT id FROM users WHERE tenant_id = $1
+   )
+   SELECT s.id
+   FROM scoped s
+   WHERE EXISTS (
+     SELECT 1 FROM permissions p WHERE p.user_id = s.id
+   )`
+);
+
 const analysis = capabilityModel.analyzeAst(ast);
+console.log(analysis.scope); // select-query-v2
+console.log(analysis.capabilities);
+
 const compiled = capabilityModel.compileAst('mysql', ast);
+console.log(compiled.sql);
 ```
 
-`transpileSql()` combines parse, capability analysis, rewrite planning and target compilation for the currently supported scope:
+The parser validates CTE structure before rendering. It rejects duplicate CTE names, illegal forward references and self-reference without `WITH RECURSIVE`. Derived tables require aliases. Capability analysis walks nested queries and records scalar, `EXISTS`, `IN`, derived-table and detectable correlated-subquery usage.
+
+`transpileSql()` combines parse, semantic validation, capability analysis, rewrite planning and target compilation:
 
 ```js
 const result = capabilityModel.transpileSql(
   'postgresql',
-  'mysql',
-  'SELECT id, name FROM users WHERE id = $1'
+  'sqlite',
+  'SELECT d.id FROM (SELECT id FROM users) d WHERE d.id IN (SELECT user_id FROM audit)'
 );
 
-console.log(result.certified, result.lossless, result.sql);
+console.log(result.scope);      // select-query-v2
+console.log(result.certified);
+console.log(result.lossless);
+console.log(result.sql);
 ```
 
-Do not assume unsupported statement families are silently translated. A blocked/unsupported transformation should remain a blocker until the capability/compiler surface explicitly supports it.
+A `WITH RECURSIVE` declaration is represented and rendered, but compound recursive bodies that require `UNION`/`UNION ALL` remain outside this wave until set-operator AST support lands. Capability honesty is compositional: recursive-CTE syntax can be implemented while set-operation capabilities remain unsupported by the compiler.
+
+Do not assume unsupported statement families are silently translated. A blocked/unsupported transformation remains a blocker until the capability/compiler surface explicitly supports it.
 
 ## Portability strategy
 
