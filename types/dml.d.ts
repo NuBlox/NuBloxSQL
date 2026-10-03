@@ -9,6 +9,7 @@ import type {
   SqlRewritePlan,
   SqlTranspileOptions
 } from './public';
+import type { SqlDdlAst, SqlDdlCompilerScope } from './ddl';
 
 export interface SqlAstAssignment {
   readonly type: 'Assignment';
@@ -80,9 +81,9 @@ export interface SqlMergeStatementAst {
 }
 
 export type SqlDmlAst = SqlInsertStatementAst | SqlUpdateStatementAst | SqlDeleteStatementAst | SqlUpsertStatementAst | SqlMergeStatementAst;
-export type SqlStatementAst = SqlQueryAst | SqlDmlAst;
+export type SqlStatementAst = SqlQueryAst | SqlDmlAst | SqlDdlAst;
 export type SqlDmlCompilerScope = 'dml-v1' | 'dml-v2';
-export type SqlStatementCompilerScope = SqlCompilerScope | SqlDmlCompilerScope;
+export type SqlStatementCompilerScope = SqlCompilerScope | SqlDmlCompilerScope | SqlDdlCompilerScope;
 export type SqlStatementType = SqlStatementAst['type'];
 
 export interface SqlStatementAstAnalysis {
