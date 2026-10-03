@@ -56,6 +56,10 @@ var ontology = sql.capabilityOntology;
   var sqlite = model.transpileSql('postgresql', 'sqlite', source, { targetQualification: qualification });
   assert.strictEqual(sqlite.certified, true);
   assert.ok(sqlite.sql.indexOf('FOREIGN KEY ("parent_id") REFERENCES "parent" ("id")') !== -1);
+
+  assert.throws(function () {
+    model.parseSql('postgresql', 'CREATE TABLE child_actions (id INTEGER, parent_id INTEGER REFERENCES parent (id) ON DELETE CASCADE)');
+  }, /foreign-key options beyond REFERENCES/);
 })();
 
 (function indexesAndPartialIndexGating() {
@@ -63,7 +67,17 @@ var ontology = sql.capabilityOntology;
   assert.strictEqual(basic.certified, true);
   assert.strictEqual(basic.sql, 'CREATE UNIQUE INDEX `ledger_name_uq` ON `ledger` (`name`)');
 
-  var partialPg = model.transpileSql('postgresql', 'sqlite', 'CREATE INDEX ledger_active_idx ON ledger (id) WHERE amount > 0');
+  assert.throws(function () {
+    model.transpileSql('postgresql', 'sqlite', 'CREATE INDEX ledger_active_idx ON ledger (id) WHERE amount > 0');
+  }, /requires runtime qualification/);
+  var partialQualification = model.qualify('sqlite', {
+    version: '3.49.1',
+    features: { 'schema.partialIndex': true },
+    source: 'wave5-static-test'
+  });
+  var partialPg = model.transpileSql('postgresql', 'sqlite', 'CREATE INDEX ledger_active_idx ON ledger (id) WHERE amount > 0', {
+    targetQualification: partialQualification
+  });
   assert.strictEqual(partialPg.certified, true);
   assert.ok(partialPg.sql.indexOf('WHERE ("amount" > 0)') !== -1);
 
@@ -96,6 +110,7 @@ var ontology = sql.capabilityOntology;
 
 (function dropsAndValidation() {
   assert.strictEqual(model.transpileSql('postgresql', 'mysql', 'DROP TABLE ledger').sql, 'DROP TABLE `ledger`');
+  assert.strictEqual(model.transpileSql('postgresql', 'mysql', 'DROP VIEW positive_ledger').sql, 'DROP VIEW `positive_ledger`');
   assert.strictEqual(model.transpileSql('postgresql', 'sqlite', 'DROP VIEW positive_ledger').sql, 'DROP VIEW "positive_ledger"');
 
   assert.throws(function () { model.parseSql('postgresql', 'CREATE TABLE broken (id INTEGER, id TEXT)'); }, /Duplicate CREATE TABLE column/);
@@ -119,6 +134,8 @@ var ontology = sql.capabilityOntology;
     assert.strictEqual(coverage.stages.renderer, 'implemented', path + ' renderer');
     assert.strictEqual(coverage.qualified, true, path + ' qualification');
   });
+  assert.strictEqual(ontology.resolve('postgresql', 'statements.dropView').available, true);
+  assert.strictEqual(ontology.resolve('mysql', 'statements.dropView').available, true);
 })();
 
 console.log('NuBloxSQL Compiler Wave 5 DDL contract: PASS');
