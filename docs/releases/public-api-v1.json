@@ -70,6 +70,7 @@
     "lib/capabilities/AstPipeline.js",
     "lib/capabilities/AstPolicy.js",
     "lib/capabilities/DmlPipeline.js",
+    "lib/capabilities/DmlSemanticPipeline.js",
     "lib/core/index.js",
     "lib/core/index.d.ts",
     "lib/dialects/mysql/index.js",
