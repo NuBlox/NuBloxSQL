@@ -150,12 +150,68 @@ async function main() {
     );
     var namedWindowRows = await db.all(namedWindowSql);
     assert.deepStrictEqual(namedWindowRows.map(function (row) { return Number(row.running); }), [1, 3]);
+
+    var insertSql = compile(dialect,
+      "INSERT INTO " + table + " (id, parent_id, name) VALUES (3, 2, 'leaf')",
+      'dml-v1', qualification
+    );
+    await db.execute(insertSql);
+    var inserted = await db.one('SELECT id, parent_id, name FROM ' + table + ' WHERE id = 3');
+    assert.strictEqual(Number(inserted.id), 3);
+    assert.strictEqual(Number(inserted.parent_id), 2);
+    assert.strictEqual(inserted.name, 'leaf');
+
+    var insertSelectSql = compile(dialect,
+      "INSERT INTO " + table + " (id, parent_id, name) SELECT 4, id, 'copy' FROM " + table + ' WHERE id = 1',
+      'dml-v1', qualification
+    );
+    await db.execute(insertSelectSql);
+    var insertedSelect = await db.one('SELECT id, parent_id, name FROM ' + table + ' WHERE id = 4');
+    assert.strictEqual(Number(insertedSelect.id), 4);
+    assert.strictEqual(Number(insertedSelect.parent_id), 1);
+    assert.strictEqual(insertedSelect.name, 'copy');
+
+    var updateSql = compile(dialect,
+      "UPDATE " + table + " SET parent_id = 1, name = CASE WHEN id = 3 THEN 'updated' ELSE name END WHERE id = 3",
+      'dml-v1', qualification
+    );
+    await db.execute(updateSql);
+    var updated = await db.one('SELECT parent_id, name FROM ' + table + ' WHERE id = 3');
+    assert.strictEqual(Number(updated.parent_id), 1);
+    assert.strictEqual(updated.name, 'updated');
+
+    if (dialect !== 'mysql') {
+      var returningUpdateSql = compile(dialect,
+        "UPDATE " + table + " SET name = 'returned' WHERE id = 3 RETURNING id, name",
+        'dml-v1', qualification
+      );
+      var returnedUpdate = await db.all(returningUpdateSql);
+      assert.strictEqual(returnedUpdate.length, 1);
+      assert.strictEqual(Number(returnedUpdate[0].id), 3);
+      assert.strictEqual(returnedUpdate[0].name, 'returned');
+
+      var returningDeleteSql = compile(dialect,
+        'DELETE FROM ' + table + ' WHERE id = 3 RETURNING id',
+        'dml-v1', qualification
+      );
+      var returnedDelete = await db.all(returningDeleteSql);
+      assert.strictEqual(returnedDelete.length, 1);
+      assert.strictEqual(Number(returnedDelete[0].id), 3);
+    } else {
+      var deleteSql = compile(dialect, 'DELETE FROM ' + table + ' WHERE id = 3', 'dml-v1', qualification);
+      await db.execute(deleteSql);
+    }
+
+    var deleteSelectInsertSql = compile(dialect, 'DELETE FROM ' + table + ' WHERE id = 4', 'dml-v1', qualification);
+    await db.execute(deleteSelectInsertSql);
+    var remaining = await db.all('SELECT id FROM ' + table + ' WHERE id IN (3, 4) ORDER BY id');
+    assert.strictEqual(remaining.length, 0);
   } finally {
     try { await db.execute('DROP TABLE IF EXISTS ' + table); } catch (_) {}
     await db.close();
   }
 
-  console.log('NuBloxSQL live compiler query wave: PASS for ' + dialect);
+  console.log('NuBloxSQL live compiler query and DML waves: PASS for ' + dialect);
 }
 
 main().catch(function (error) {
