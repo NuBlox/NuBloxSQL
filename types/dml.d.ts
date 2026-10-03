@@ -40,9 +40,48 @@ export interface SqlDeleteStatementAst {
   readonly returning: readonly SqlAstExpression[];
 }
 
-export type SqlDmlAst = SqlInsertStatementAst | SqlUpdateStatementAst | SqlDeleteStatementAst;
+export interface SqlConflictActionAst {
+  readonly type: 'ConflictAction';
+  readonly target: readonly SqlAstIdentifier[];
+  readonly action: 'nothing' | 'update';
+  readonly assignments: readonly SqlAstAssignment[];
+  readonly where: SqlAstExpression | null;
+}
+
+export interface SqlUpsertStatementAst {
+  readonly type: 'UpsertStatement';
+  readonly syntax: 'on-conflict' | 'on-duplicate-key';
+  readonly insert: SqlInsertStatementAst;
+  readonly conflict: SqlConflictActionAst;
+  readonly returning: readonly SqlAstExpression[];
+}
+
+export interface SqlMergeMatchedActionAst {
+  readonly type: 'MergeMatchedAction';
+  readonly action: 'update' | 'delete';
+  readonly assignments: readonly SqlAstAssignment[];
+}
+
+export interface SqlMergeNotMatchedActionAst {
+  readonly type: 'MergeNotMatchedAction';
+  readonly columns: readonly SqlAstIdentifier[];
+  readonly values: readonly SqlAstExpression[];
+}
+
+export interface SqlMergeStatementAst {
+  readonly type: 'MergeStatement';
+  readonly target: SqlAstIdentifier;
+  readonly targetAlias: SqlAstIdentifier | null;
+  readonly source: SqlAstIdentifier;
+  readonly sourceAlias: SqlAstIdentifier | null;
+  readonly on: SqlAstExpression;
+  readonly matched: SqlMergeMatchedActionAst | null;
+  readonly notMatched: SqlMergeNotMatchedActionAst | null;
+}
+
+export type SqlDmlAst = SqlInsertStatementAst | SqlUpdateStatementAst | SqlDeleteStatementAst | SqlUpsertStatementAst | SqlMergeStatementAst;
 export type SqlStatementAst = SqlQueryAst | SqlDmlAst;
-export type SqlDmlCompilerScope = 'dml-v1';
+export type SqlDmlCompilerScope = 'dml-v1' | 'dml-v2';
 export type SqlStatementCompilerScope = SqlCompilerScope | SqlDmlCompilerScope;
 export type SqlStatementType = SqlStatementAst['type'];
 
