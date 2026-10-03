@@ -26,6 +26,9 @@ assert.ok(Object.isFrozen(ids));
 assert.ok(ids.indexOf('queries.joins.inner') >= 0);
 assert.ok(ids.indexOf('queries.cte.recursive') >= 0);
 assert.ok(ids.indexOf('queries.setOperators.union') >= 0);
+assert.ok(ids.indexOf('queries.windows.rows') >= 0);
+assert.ok(ids.indexOf('expressions.caseExpression') >= 0);
+assert.ok(ids.indexOf('expressions.cast') >= 0);
 assert.ok(ids.indexOf('schema.materializedView') >= 0);
 assert.ok(ids.indexOf('security.rowLevelSecurity') >= 0);
 assert.ok(ids.indexOf('transactions.savepoints') >= 0 || ids.indexOf('statements.savepoint') >= 0);
@@ -74,6 +77,7 @@ assert.deepStrictEqual(Array.from(search.relationships.requires), ['queries.cte.
 assert.deepStrictEqual(Array.from(ontology.definition('queries.setOperators.unionAll').relationships.requires), ['queries.setOperators.union']);
 assert.deepStrictEqual(Array.from(ontology.definition('queries.setOperators.intersectAll').relationships.requires), ['queries.setOperators.intersect']);
 assert.deepStrictEqual(Array.from(ontology.definition('queries.setOperators.exceptAll').relationships.requires), ['queries.setOperators.except']);
+assert.deepStrictEqual(Array.from(ontology.definition('queries.windows.rows').relationships.requires), ['queries.windows.supported']);
 
 var implemented = ontology.implementation('statements.select');
 assert.strictEqual(implemented.scope, 'select-foundation-v1');
@@ -122,9 +126,37 @@ assert.strictEqual(implemented.qualified, true);
   assert.ok(setWave.evidence.indexOf('test/compiler-query-live.js') >= 0, path + ' live evidence');
 });
 
+[
+  'expressions.caseExpression',
+  'expressions.cast',
+  'queries.windows.supported',
+  'queries.windows.named',
+  'queries.windows.rows',
+  'queries.windows.range',
+  'queries.windows.groups',
+  'queries.windows.exclude'
+].forEach(function (path) {
+  var expressionWave = ontology.implementation(path);
+  assert.strictEqual(expressionWave.scope, 'select-query-v4', path + ' scope');
+  assert.strictEqual(expressionWave.stages.parser, 'implemented', path + ' parser');
+  assert.strictEqual(expressionWave.stages.ast, 'implemented', path + ' ast');
+  assert.strictEqual(expressionWave.stages.validator, 'partial', path + ' validator');
+  assert.strictEqual(expressionWave.stages.renderer, 'implemented', path + ' renderer');
+  assert.strictEqual(expressionWave.stages.rewrite, 'partial', path + ' rewrite');
+  assert.strictEqual(expressionWave.qualified, true, path + ' qualification');
+  assert.ok(expressionWave.evidence.indexOf('test/compiler-query-live.js') >= 0, path + ' live evidence');
+});
+
 var sqliteIntersectAll = ontology.observation('sqlite', 'queries.setOperators.intersectAll');
 assert.strictEqual(sqliteIntersectAll.support, 'unsupported');
 assert.strictEqual(ontology.resolve('sqlite', 'queries.setOperators.intersectAll').available, false);
+
+var mysqlGroups = ontology.observation('mysql', 'queries.windows.groups');
+assert.strictEqual(mysqlGroups.support, 'unsupported');
+assert.strictEqual(ontology.resolve('mysql', 'queries.windows.groups').available, false);
+
+var sqliteRows = ontology.observation('sqlite', 'queries.windows.rows');
+assert.strictEqual(sqliteRows.legacy.support, 'runtime-dependent');
 
 ['postgresql', 'mysql', 'sqlite'].forEach(function (dialect) {
   var profile = ontology.profile(dialect);
