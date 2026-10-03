@@ -17,6 +17,7 @@ on:
       - 'test/compiler-query-live.js'
       - 'test/compiler-ddl-live.js'
       - 'test/compiler-ddl-lifecycle-live.js'
+      - 'test/compiler-ddl-column-constraints-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/mysql/**'
@@ -36,6 +37,7 @@ on:
       - 'test/compiler-query-live.js'
       - 'test/compiler-ddl-live.js'
       - 'test/compiler-ddl-lifecycle-live.js'
+      - 'test/compiler-ddl-column-constraints-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/mysql/**'
@@ -113,6 +115,8 @@ jobs:
         run: node test/compiler-ddl-live.js
       - name: DDL lifecycle live qualification
         run: node test/compiler-ddl-lifecycle-live.js
+      - name: DDL column and constraint lifecycle qualification
+        run: node test/compiler-ddl-column-constraints-live.js
       - name: Direct streaming with backpressure
         run: node lib/dialects/mysql/test/live-streaming.js direct
       - name: Pooled streaming reuse

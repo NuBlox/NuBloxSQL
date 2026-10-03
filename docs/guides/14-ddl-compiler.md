@@ -3,7 +3,8 @@
 NuBloxSQL provides structured, capability-aware DDL compiler scopes for PostgreSQL, MySQL and SQLite:
 
 - `ddl-v1` — create/drop schema objects and table definitions;
-- `ddl-v2` — a deliberately narrow portable ALTER TABLE lifecycle.
+- `ddl-v2` — atomic add/drop/rename table-column lifecycle;
+- `ddl-v3` — column type/default/nullability and named constraint lifecycle with explicit dialect boundaries.
 
 Use these APIs when you need to parse, inspect, validate or transpile supported schema statements. They are not a schema-migration framework and do not imply identical physical type/storage semantics across databases.
 
@@ -21,8 +22,6 @@ Use these APIs when you need to parse, inspect, validate or transpile supported 
 - `DROP VIEW`.
 
 `CREATE TABLE` supports structured column definitions plus `NOT NULL`, scalar `DEFAULT`, `PRIMARY KEY`, `UNIQUE`, `CHECK` and basic foreign-key `REFERENCES`.
-
-## Parse DDL into an AST
 
 ```js
 const { capabilityModel } = require('nubloxsql');
@@ -44,7 +43,7 @@ Type names/modifiers, identifiers, defaults and constraints are structured AST d
 
 ## Compile versus transpile
 
-`compileAst(target, ast)` renders a validated AST for one target but does not run source-to-target capability planning.
+`compileAst(target, ast)` renders a validated AST for one target but does not replace source-to-target capability planning.
 
 Use `transpileSql()` when moving SQL between dialects:
 
@@ -58,12 +57,9 @@ const result = capabilityModel.transpileSql(
      amount DECIMAL(12,2) DEFAULT 0 CHECK (amount >= 0)
    )`
 );
-
-console.log(result.scope);     // ddl-v1
-console.log(result.certified); // capability plan certified
 ```
 
-Certification applies to the modeled DDL semantics. It does not assert identical affinity, collation, storage layout, coercion, precision or overflow behavior.
+Certification applies only to the modeled DDL semantics. It does not assert identical affinity, collation, storage layout, coercion, precision or overflow behavior.
 
 ## Runtime-dependent capabilities
 
@@ -90,7 +86,7 @@ MySQL does not expose an equivalent partial-index capability in the current comp
 
 `ddl-v1` models local/referenced column lists and validates column-count consistency. SQLite foreign-key capability may require runtime/configuration evidence.
 
-Foreign-key `ON DELETE`/`ON UPDATE`, `MATCH`, deferrability and named constraints remain outside the released scope and are rejected rather than discarded.
+Foreign-key `ON DELETE`/`ON UPDATE`, `MATCH`, deferrability and vendor-specific options remain outside the released scope and are rejected rather than discarded.
 
 ## Views
 
@@ -98,11 +94,11 @@ Foreign-key `ON DELETE`/`ON UPDATE`, `MATCH`, deferrability and named constraint
 
 ## Schemas and sequences
 
-PostgreSQL supports the released basic forms. NuBloxSQL does not automatically treat MySQL `CREATE DATABASE` as a lossless rewrite of PostgreSQL `CREATE SCHEMA`; the capability model records it as an equivalent construct requiring an explicit semantic policy. SQLite schema/sequence targets and MySQL sequence targets fail closed.
+PostgreSQL supports the released basic forms. NuBloxSQL does not automatically treat MySQL `CREATE DATABASE` as a lossless rewrite of PostgreSQL `CREATE SCHEMA`; the capability model records it as an equivalent construct requiring explicit semantic policy. SQLite schema/sequence targets and MySQL sequence targets fail closed.
 
 # ALTER TABLE lifecycle (`ddl-v2`)
 
-Wave 5b models four atomic lifecycle operations:
+`ddl-v2` models four atomic lifecycle operations:
 
 ```sql
 ALTER TABLE ledger ADD COLUMN note VARCHAR(120)
@@ -111,23 +107,9 @@ ALTER TABLE ledger RENAME COLUMN note TO memo
 ALTER TABLE ledger RENAME TO ledger_archive
 ```
 
-The AST uses `AlterTableStatement` with one of:
+The AST uses `AlterTableStatement` with one of `AddColumnAction`, `DropColumnAction`, `RenameColumnAction` or `RenameTableAction`.
 
-- `AddColumnAction`;
-- `DropColumnAction`;
-- `RenameColumnAction`;
-- `RenameTableAction`.
-
-Each operation maps to its own capability ID:
-
-```text
-schema.tableAlter.addColumn
-schema.tableAlter.dropColumn
-schema.tableAlter.renameColumn
-schema.tableAlter.renameTable
-```
-
-This is important because a dialect can support only part of ALTER TABLE. NuBloxSQL does not collapse these operations into a single optimistic `alterTable = true` flag.
+Each operation maps to its own capability ID under `schema.tableAlter.*`. NuBloxSQL therefore does not collapse partially supported ALTER TABLE families into a single optimistic boolean.
 
 ## SQLite version gating
 
@@ -136,7 +118,7 @@ SQLite ALTER support changed over time. NuBloxSQL models:
 - `RENAME COLUMN` from SQLite 3.25.0;
 - `DROP COLUMN` from SQLite 3.35.0.
 
-These operations are runtime-version qualified:
+Use live qualification for version-sensitive operations:
 
 ```js
 const runtime = await capabilityModel.qualifyClient(sqliteDb);
@@ -149,34 +131,84 @@ const rename = capabilityModel.transpileSql(
 );
 ```
 
-Version evidence also applies to the **source** dialect. If SQLite is the source of a version-dependent ALTER statement, supply `sourceQualification`; NuBloxSQL will not assume an older SQLite installation supported modern syntax.
-
-```js
-const result = capabilityModel.transpileSql(
-  'sqlite',
-  'postgresql',
-  'ALTER TABLE ledger DROP COLUMN obsolete',
-  { sourceQualification: sqliteRuntime }
-);
-```
+Version evidence also applies to the source dialect when the source capability is version-dependent.
 
 ## ADD COLUMN is intentionally conservative
 
-`ddl-v2` currently permits only a plain column name and type:
+`ddl-v2` permits a plain column name and type only. ALTER-time defaults, nullability constraints, keys, checks and references remain excluded because existing-row effects and restrictions differ materially across engines.
 
-```sql
-ALTER TABLE ledger ADD COLUMN note VARCHAR(120)
+# Column and constraint lifecycle (`ddl-v3`)
+
+Wave 5c adds seven explicit semantic actions:
+
+```text
+schema.tableAlter.alterColumnType
+schema.tableAlter.setDefault
+schema.tableAlter.dropDefault
+schema.tableAlter.setNotNull
+schema.tableAlter.dropNotNull
+schema.tableAlter.addConstraint
+schema.tableAlter.dropConstraint
 ```
 
-It rejects ALTER-time defaults, nullability constraints, keys, checks and references. Those constructs have materially different restrictions and existing-row effects across engines, particularly SQLite. NuBloxSQL will model them only when their ALTER-specific semantics can be qualified honestly.
-
-For example, this is rejected by the current scope:
+The corresponding SQL subset is:
 
 ```sql
-ALTER TABLE ledger ADD COLUMN active INTEGER NOT NULL DEFAULT 1
+ALTER TABLE ledger ALTER COLUMN amount TYPE DECIMAL(18,4)
+ALTER TABLE ledger ALTER COLUMN amount SET DEFAULT 0
+ALTER TABLE ledger ALTER COLUMN amount DROP DEFAULT
+ALTER TABLE ledger ALTER COLUMN code SET NOT NULL
+ALTER TABLE ledger ALTER COLUMN code DROP NOT NULL
+ALTER TABLE ledger ADD CONSTRAINT ledger_amount_positive CHECK (amount >= 0)
+ALTER TABLE ledger DROP CONSTRAINT ledger_amount_positive
 ```
 
-That is deliberate; the compiler does not strip clauses to make the statement fit a target.
+Named `ADD CONSTRAINT` currently supports `PRIMARY KEY`, `UNIQUE`, `CHECK` and basic `FOREIGN KEY (...) REFERENCES ... (...)` structures.
+
+## PostgreSQL and MySQL defaults
+
+`ALTER COLUMN ... SET DEFAULT` and `DROP DEFAULT` are modeled as native on both PostgreSQL and MySQL and can be transpiled between them when all expression capabilities are also supported:
+
+```js
+const result = capabilityModel.transpileSql(
+  'postgresql',
+  'mysql',
+  'ALTER TABLE ledger ALTER COLUMN amount SET DEFAULT 0'
+);
+
+console.log(result.scope);     // ddl-v3
+console.log(result.certified); // true
+```
+
+Default expressions are AST expressions, not raw SQL. CASE/CAST and other modeled expression capabilities are therefore included in the capability plan.
+
+## Type and nullability changes fail closed across PostgreSQL/MySQL
+
+PostgreSQL exposes direct `ALTER COLUMN ... TYPE`, `SET NOT NULL` and `DROP NOT NULL` forms. MySQL commonly requires `MODIFY COLUMN`/`CHANGE COLUMN` with a complete resulting column definition.
+
+NuBloxSQL records that as an **equivalent semantic family requiring explicit lowering**, not as a lossless syntax alias. This therefore fails:
+
+```js
+capabilityModel.transpileSql(
+  'postgresql',
+  'mysql',
+  'ALTER TABLE ledger ALTER COLUMN amount TYPE BIGINT'
+);
+```
+
+The failure is intentional. A future lowering strategy can use introspected column metadata to construct a complete MySQL definition safely; ddl-v3 does not guess missing attributes.
+
+## Constraint lifecycle is explicit
+
+PostgreSQL's generic named constraint lifecycle is modeled directly. MySQL constraint-drop syntax differs by constraint kind (`DROP FOREIGN KEY`, `DROP CHECK`, index-backed unique handling, and so on), so ddl-v3 does not treat generic PostgreSQL `DROP CONSTRAINT name` as losslessly portable to MySQL.
+
+The same principle applies to `ADD CONSTRAINT`: NuBloxSQL understands the structured constraint but does not certify cross-family behavior where target semantics are only partial.
+
+## SQLite does not receive fake ALTER COLUMN support
+
+SQLite's direct ALTER TABLE grammar does not provide this ddl-v3 lifecycle. Safe implementation generally requires a table-rebuild migration that recreates schema objects and copies data.
+
+NuBloxSQL therefore reports these capabilities as unsupported in ddl-v3 and rejects direct transpilation. A future migration-planner layer may provide an explicit rebuild strategy; it will not be hidden inside a simple renderer.
 
 ## Validation
 
@@ -186,11 +218,13 @@ The released DDL validator rejects, among other things:
 - multiple primary keys;
 - constraints referencing unknown local columns;
 - mismatched foreign-key column counts;
-- bind parameters in persisted DDL definitions;
+- bind parameters in persisted DDL/default/check expressions;
 - unsupported foreign-key options;
-- ADD COLUMN constraints/defaults in `ddl-v2`;
-- rename operations where old and new names are identical;
-- unmodeled ALTER actions such as `ALTER COLUMN TYPE`;
+- constrained/defaulted ADD COLUMN semantics in `ddl-v2`;
+- same-name rename operations;
+- malformed type modifiers;
+- mismatched foreign-key widths in `ddl-v3`;
+- dialect source syntax that would require a different semantic family;
 - multi-action ALTER statements.
 
 Unknown syntax must not turn into silently altered schema SQL.
@@ -201,11 +235,11 @@ The released DDL compiler does **not** yet claim:
 
 - `IF EXISTS` / `IF NOT EXISTS`;
 - generated or identity columns;
-- named constraints or constraint lifecycle operations;
 - foreign-key actions/match/deferrability;
 - `CREATE TABLE AS`;
-- ALTER COLUMN type/default/nullability changes;
 - constrained/defaulted ADD COLUMN semantics;
+- automatic MySQL `MODIFY COLUMN` lowering;
+- automatic SQLite table-rebuild migrations;
 - multi-action ALTER TABLE;
 - `DROP INDEX`, `DROP SCHEMA` or `DROP SEQUENCE` compiler nodes;
 - expression indexes;
@@ -223,14 +257,16 @@ DDL AST declarations are exported from `types/ddl.d.ts`:
 ```ts
 import type {
   SqlDdlAst,
-  SqlCreateTableStatementAst,
   SqlAlterTableStatementAst,
   SqlAlterTableActionAst,
+  SqlAlterColumnTypeActionAst,
+  SqlSetColumnDefaultActionAst,
+  SqlAddConstraintActionAst,
   SqlDdlCompilerScope
 } from 'nubloxsql';
 ```
 
-`SqlStatementAst` includes query, DML and DDL statements, so normal discriminated-union narrowing works on `statement.type`.
+`SqlStatementAst` includes query, DML and DDL statements, so normal discriminated-union narrowing works on `statement.type` and `statement.action.type`.
 
 ## Qualification
 
@@ -240,10 +276,10 @@ The DDL compiler is qualified through:
 - TypeScript declaration contracts;
 - live PostgreSQL 15–18 execution;
 - live MySQL 8.4/9.7 execution;
-- SQLite execution on Node 22/24/26;
+- SQLite fail-closed/runtime evidence on Node 22/24/26;
 - packed-package JavaScript and strict TypeScript consumers;
 - Tier-1 evidence and release audits.
 
-Wave 5b's live lifecycle test performs ADD COLUMN, RENAME COLUMN, RENAME TABLE and DROP COLUMN against the same real table and verifies that surviving data remains readable after every transition.
+Wave 5b's live test exercises ADD/DROP/RENAME lifecycle against real tables. Wave 5c additionally executes default changes on PostgreSQL/MySQL, PostgreSQL type/nullability changes, named CHECK add/drop, and explicit SQLite rejection.
 
 See [Capabilities and SQL portability](11-capabilities-and-portability.md) for capability resolution and [Metadata and introspection](07-metadata-and-introspection.md) for inspecting deployed schema state.
