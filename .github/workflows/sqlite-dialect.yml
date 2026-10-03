@@ -11,6 +11,7 @@ on:
       - 'lib/capabilities/**'
       - 'test/compiler-query-live.js'
       - 'test/compiler-ddl-live.js'
+      - 'test/compiler-ddl-lifecycle-live.js'
       - 'test/sql-ast-compiler.js'
       - 'lib/dialects/sqlite/**'
       - '.github/workflows/sqlite-dialect.yml'
@@ -23,6 +24,7 @@ on:
       - 'lib/capabilities/**'
       - 'test/compiler-query-live.js'
       - 'test/compiler-ddl-live.js'
+      - 'test/compiler-ddl-lifecycle-live.js'
       - 'test/sql-ast-compiler.js'
       - 'lib/dialects/sqlite/**'
       - '.github/workflows/sqlite-dialect.yml'
@@ -53,6 +55,10 @@ jobs:
           NUBLOX_DIALECT: sqlite
       - name: DDL compiler live qualification
         run: node test/compiler-ddl-live.js
+        env:
+          NUBLOX_DIALECT: sqlite
+      - name: DDL lifecycle live qualification
+        run: node test/compiler-ddl-lifecycle-live.js
         env:
           NUBLOX_DIALECT: sqlite
       - name: SQLite production performance and memory evidence
