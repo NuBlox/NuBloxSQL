@@ -82,6 +82,7 @@
     "lib/capabilities/AstPolicy.js",
     "lib/capabilities/DmlPipeline.js",
     "lib/capabilities/DmlSemanticPipeline.js",
+    "lib/capabilities/DmlPolicy.js",
     "test/sql-ast-compiler.js",
     "test/sql-ast-wave3.js",
     "test/sql-ast-wave4.js",
