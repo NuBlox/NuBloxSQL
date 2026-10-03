@@ -156,22 +156,36 @@ export interface SqlAstWildcard { readonly type: 'Wildcard'; readonly qualifier:
 export interface SqlAstCallExpression { readonly type: 'CallExpression'; readonly name: SqlAstIdentifier; readonly arguments: readonly SqlAstExpression[]; }
 export interface SqlAstUnaryExpression { readonly type: 'UnaryExpression'; readonly operator: string; readonly argument: SqlAstExpression; }
 export interface SqlAstBinaryExpression { readonly type: 'BinaryExpression'; readonly operator: string; readonly left: SqlAstExpression; readonly right: SqlAstExpression; }
+export interface SqlAstBetweenExpression { readonly type: 'BetweenExpression'; readonly expression: SqlAstExpression; readonly lower: SqlAstExpression; readonly upper: SqlAstExpression; readonly not: boolean; }
 export interface SqlAstListExpression { readonly type: 'ListExpression'; readonly items: readonly SqlAstExpression[]; }
+export interface SqlAstTypeName { readonly type: 'TypeName'; readonly name: string; readonly modifiers: readonly number[]; }
+export interface SqlAstCastExpression { readonly type: 'CastExpression'; readonly expression: SqlAstExpression; readonly targetType: SqlAstTypeName; readonly syntax: 'CAST' | '::'; }
+export interface SqlAstCaseBranch { readonly type: 'CaseBranch'; readonly when: SqlAstExpression; readonly then: SqlAstExpression; }
+export interface SqlAstCaseExpression { readonly type: 'CaseExpression'; readonly operand: SqlAstExpression | null; readonly branches: readonly SqlAstCaseBranch[]; readonly else: SqlAstExpression | null; }
 export interface SqlAstAliasedExpression { readonly type: 'AliasedExpression'; readonly expression: SqlAstExpression; readonly alias: SqlAstIdentifier; }
 export interface SqlAstSubqueryExpression { readonly type: 'SubqueryExpression'; readonly query: SqlQueryAst; }
 export interface SqlAstExistsExpression { readonly type: 'ExistsExpression'; readonly query: SqlQueryAst; }
-export type SqlAstExpression = SqlAstIdentifier | SqlAstLiteral | SqlAstParameter | SqlAstWildcard | SqlAstCallExpression | SqlAstUnaryExpression | SqlAstBinaryExpression | SqlAstListExpression | SqlAstAliasedExpression | SqlAstSubqueryExpression | SqlAstExistsExpression;
+export interface SqlAstOrderExpression { readonly type: 'OrderExpression'; readonly expression: SqlAstExpression; readonly direction: 'ASC' | 'DESC' | null; }
+export type SqlAstWindowFrameBoundKind = 'UNBOUNDED PRECEDING' | 'UNBOUNDED FOLLOWING' | 'CURRENT ROW' | 'VALUE PRECEDING' | 'VALUE FOLLOWING';
+export interface SqlAstWindowFrameBound { readonly type: 'WindowFrameBound'; readonly kind: SqlAstWindowFrameBoundKind; readonly value: SqlAstExpression | null; }
+export type SqlAstWindowFrameUnit = 'ROWS' | 'RANGE' | 'GROUPS';
+export type SqlAstWindowExclude = 'CURRENT ROW' | 'GROUP' | 'TIES' | 'NO OTHERS';
+export interface SqlAstWindowFrame { readonly type: 'WindowFrame'; readonly unit: SqlAstWindowFrameUnit; readonly start: SqlAstWindowFrameBound; readonly end: SqlAstWindowFrameBound | null; readonly exclude: SqlAstWindowExclude | null; }
+export interface SqlAstWindowSpecification { readonly type: 'WindowSpecification'; readonly base: SqlAstIdentifier | null; readonly partitionBy: readonly SqlAstExpression[]; readonly orderBy: readonly SqlAstOrderExpression[]; readonly frame: SqlAstWindowFrame | null; }
+export interface SqlAstWindowReference { readonly type: 'WindowReference'; readonly name: SqlAstIdentifier; }
+export interface SqlAstWindowExpression { readonly type: 'WindowExpression'; readonly expression: SqlAstCallExpression; readonly over: SqlAstWindowSpecification | SqlAstWindowReference; }
+export interface SqlAstWindowDefinition { readonly type: 'WindowDefinition'; readonly name: SqlAstIdentifier; readonly specification: SqlAstWindowSpecification; }
+export type SqlAstExpression = SqlAstIdentifier | SqlAstLiteral | SqlAstParameter | SqlAstWildcard | SqlAstCallExpression | SqlAstUnaryExpression | SqlAstBinaryExpression | SqlAstBetweenExpression | SqlAstListExpression | SqlAstCastExpression | SqlAstCaseExpression | SqlAstAliasedExpression | SqlAstSubqueryExpression | SqlAstExistsExpression | SqlAstWindowExpression;
 export interface SqlAstTableReference { readonly type: 'TableReference'; readonly name: SqlAstIdentifier; readonly alias: SqlAstIdentifier | null; }
 export interface SqlAstDerivedTable { readonly type: 'DerivedTable'; readonly query: SqlQueryAst; readonly alias: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; }
 export type SqlAstRelation = SqlAstTableReference | SqlAstDerivedTable;
 export interface SqlAstJoin { readonly type: 'Join'; readonly kind: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL' | 'CROSS'; readonly source: SqlAstRelation; readonly condition: SqlAstExpression | null; }
-export interface SqlAstOrderExpression { readonly type: 'OrderExpression'; readonly expression: SqlAstExpression; readonly direction: 'ASC' | 'DESC' | null; }
 export interface SqlAstCommonTableExpression { readonly type: 'CommonTableExpression'; readonly name: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; readonly query: SqlQueryAst; }
 export interface SqlAstWithClause { readonly type: 'WithClause'; readonly recursive: boolean; readonly entries: readonly SqlAstCommonTableExpression[]; }
 export interface SqlSelectStatementAst {
   readonly type: 'SelectStatement'; readonly with: SqlAstWithClause | null; readonly distinct: boolean; readonly columns: readonly SqlAstExpression[];
   readonly from: SqlAstRelation | null; readonly joins: readonly SqlAstJoin[]; readonly where: SqlAstExpression | null;
-  readonly groupBy: readonly SqlAstExpression[]; readonly having: SqlAstExpression | null;
+  readonly groupBy: readonly SqlAstExpression[]; readonly having: SqlAstExpression | null; readonly windows: readonly SqlAstWindowDefinition[];
   readonly orderBy: readonly SqlAstOrderExpression[]; readonly limit: SqlAstExpression | null; readonly offset: SqlAstExpression | null;
 }
 export type SqlSetOperator = 'UNION' | 'INTERSECT' | 'EXCEPT';
@@ -181,7 +195,7 @@ export interface SqlSetOperationStatementAst {
   readonly orderBy: readonly SqlAstOrderExpression[]; readonly limit: SqlAstExpression | null; readonly offset: SqlAstExpression | null;
 }
 export type SqlQueryAst = SqlSelectStatementAst | SqlSetOperationStatementAst;
-export type SqlCompilerScope = 'select-foundation-v1' | 'select-query-v2' | 'select-query-v3';
+export type SqlCompilerScope = 'select-foundation-v1' | 'select-query-v2' | 'select-query-v3' | 'select-query-v4';
 export interface SqlAstAnalysis { readonly statementType: 'SelectStatement' | 'SetOperationStatement'; readonly scope: SqlCompilerScope; readonly capabilities: readonly string[]; }
 export interface SqlCompiledAst { readonly dialect: SqlCapabilityTier1Dialect; readonly sql: string; readonly targetToSource: readonly (number | string)[]; }
 export interface SqlTranspileOptions extends SqlRewritePlanOptions {
