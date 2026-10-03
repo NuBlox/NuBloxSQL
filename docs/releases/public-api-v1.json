@@ -76,6 +76,7 @@
     "lib/capabilities/DmlPolicy.js",
     "lib/capabilities/DdlPipeline.js",
     "lib/capabilities/DdlLifecyclePipeline.js",
+    "lib/capabilities/DdlColumnConstraintPipeline.js",
     "lib/core/index.js",
     "lib/core/index.d.ts",
     "lib/dialects/mysql/index.js",
