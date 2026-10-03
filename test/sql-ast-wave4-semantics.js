@@ -101,6 +101,19 @@ var ontology = sql.capabilityOntology;
   assert.ok(model.compileAst('postgresql', ast).sql.indexOf('WHEN MATCHED THEN DELETE') !== -1);
 })();
 
+(function semanticScalarPolicy() {
+  assert.throws(function () {
+    model.parseSql('postgresql', 'INSERT INTO ledger (id, name) VALUES (1, 2) ON CONFLICT (id) DO UPDATE SET name = *');
+  }, /cannot contain a wildcard/);
+
+  assert.throws(function () {
+    model.parseSql('postgresql', 'MERGE INTO ledger AS t USING incoming AS s ON t.id = s.id WHEN MATCHED THEN UPDATE SET name = *');
+  }, /cannot contain a wildcard/);
+
+  var returningWildcard = model.parseSql('postgresql', 'INSERT INTO ledger (id, name) VALUES (1, 2) ON CONFLICT (id) DO NOTHING RETURNING *');
+  assert.strictEqual(returningWildcard.returning[0].type, 'Wildcard');
+})();
+
 (function invalidSemanticFormsFailClosed() {
   assert.throws(function () {
     model.parseSql('postgresql', 'INSERT INTO ledger (id, name) VALUES (1, 2) ON CONFLICT DO UPDATE SET name = excluded.name');
