@@ -70,7 +70,9 @@ expressions.cast
 statements.insert
 statements.update
 statements.delete
+statements.merge
 syntax.returning
+syntax.conflictHandling
 functions.windowFunctions
 schema.materializedView
 security.rowLevelSecurity
@@ -132,6 +134,19 @@ console.log(after.available);  // true
 
 If NuBloxSQL lacks enough evidence to resolve a conditional capability, `available` remains `null`; it is not converted into an optimistic `true`.
 
+The same rule applies to PostgreSQL `MERGE`, which is version-dependent:
+
+```js
+capabilityOntology.resolve('postgresql', 'statements.merge').available;
+// null: version context is unresolved
+
+capabilityOntology.resolve('postgresql', 'statements.merge', { version: '14' }).available;
+// false
+
+capabilityOntology.resolve('postgresql', 'statements.merge', { version: '18' }).available;
+// true
+```
+
 For connected Tier-1 clients use runtime qualification:
 
 ```js
@@ -154,6 +169,9 @@ console.log(coverage.qualified);   // true
 
 const insertCoverage = capabilityOntology.implementation('statements.insert');
 console.log(insertCoverage.scope); // dml-v1
+
+const mergeCoverage = capabilityOntology.implementation('statements.merge');
+console.log(mergeCoverage.scope);  // dml-v2
 ```
 
 The implementation record has independent stages for parser, AST, validator, renderer, rewrite/lowering and runtime. Each stage is `implemented`, `partial`, `unsupported` or `not-applicable`.
@@ -164,7 +182,8 @@ The compiler scopes are additive:
 - `select-query-v2` — ordinary/recursive CTE declarations, scalar/`EXISTS`/`IN` subqueries, correlated-subquery detection and derived tables;
 - `select-query-v3` — `UNION`, `UNION ALL`, `INTERSECT`, `INTERSECT ALL`, `EXCEPT` and `EXCEPT ALL`, including compound queries inside CTEs, subqueries and derived tables;
 - `select-query-v4` — searched/simple `CASE`, structured `CAST`, PostgreSQL `::` normalization, richer comparison predicates, window functions, named windows and window frames;
-- `dml-v1` — INSERT, INSERT-SELECT, UPDATE, DELETE and capability-gated RETURNING.
+- `dml-v1` — INSERT, INSERT-SELECT, UPDATE, DELETE and capability-gated RETURNING;
+- `dml-v2` — explicit UPSERT/conflict semantics and PostgreSQL MERGE semantics.
 
 A scope reports NuBlox compiler coverage, not universal target support. For example, MySQL's profile marks `GROUPS` window frames unsupported, so a PostgreSQL query that requires `GROUPS` is blocked when targeting MySQL. SQLite window and `RETURNING` support are runtime-dependent, so transpilation should use a live qualification report when those capabilities are involved.
 
@@ -299,7 +318,64 @@ const result = capabilityModel.transpileSql(
 
 A PostgreSQL `RETURNING` statement targeted at MySQL is rejected. NuBloxSQL does not drop the clause or invent a second query as hidden emulation.
 
-`dml-v1` does not yet represent DEFAULT VALUES, UPSERT/ON CONFLICT, MySQL ON DUPLICATE KEY UPDATE, MERGE, UPDATE FROM, DELETE USING, data-modifying CTEs, target aliases or vendor-specific mutation modifiers. Treat those as unsupported compiler features until their implementation coverage says otherwise.
+### UPSERT and conflict semantics
+
+NuBloxSQL deliberately does not treat all UPSERT-like syntax as equivalent.
+
+PostgreSQL and SQLite share a certified common `ON CONFLICT` subset:
+
+```js
+const result = capabilityModel.transpileSql(
+  'postgresql',
+  'sqlite',
+  `INSERT INTO ledger (id, name)
+   VALUES ($1, $2)
+   ON CONFLICT (id)
+   DO UPDATE SET name = excluded.name`
+);
+
+console.log(result.scope); // dml-v2
+```
+
+The released subset supports an explicit column-list conflict target, `DO NOTHING`, and `DO UPDATE SET ...` with an optional update predicate.
+
+MySQL `ON DUPLICATE KEY UPDATE` is represented as a separate semantic family:
+
+```js
+const mysqlUpsert = capabilityModel.transpileSql(
+  'mysql',
+  'mysql',
+  'INSERT INTO ledger (id, name) VALUES (?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)'
+);
+```
+
+Automatic translation between the MySQL form and PostgreSQL/SQLite `ON CONFLICT` is rejected. NuBloxSQL will not guess a conflict target or claim identical trigger/conflict semantics.
+
+### MERGE
+
+The released `dml-v2` MERGE subset is PostgreSQL-specific and version-aware:
+
+```js
+const source = `
+  MERGE INTO ledger AS t
+  USING incoming AS s
+  ON t.id = s.id
+  WHEN MATCHED THEN UPDATE SET name = s.name
+  WHEN NOT MATCHED THEN INSERT (id, name) VALUES (s.id, s.name)
+`;
+
+const result = capabilityModel.transpileSql(
+  'postgresql',
+  'postgresql',
+  source
+);
+
+console.log(result.scope); // dml-v2
+```
+
+The current semantic AST supports one matched `UPDATE` or `DELETE` action and one not-matched `INSERT ... VALUES` action. MySQL and SQLite targets are rejected because this release has no certified automatic MERGE lowering for those engines.
+
+`dml-v2` still does not represent PostgreSQL conflict-expression/constraint-name targets, multiple MERGE action clauses, MERGE action predicates, MERGE source subqueries/joins, `MERGE ... RETURNING`, UPDATE FROM, DELETE USING, data-modifying CTEs, target aliases for ordinary DML, or vendor-specific mutation modifiers. Treat those as unsupported compiler features until their implementation coverage says otherwise.
 
 ## Set-operation semantics
 
