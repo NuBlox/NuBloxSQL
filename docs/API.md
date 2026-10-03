@@ -49,6 +49,7 @@ const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.tableAlter.ren
 | `dml-v2` | explicit UPSERT/conflict semantics and PostgreSQL MERGE subset |
 | `ddl-v1` | structured CREATE TABLE/INDEX/VIEW/SCHEMA/SEQUENCE and DROP TABLE/VIEW |
 | `ddl-v2` | atomic ALTER TABLE add/drop/rename-column and rename-table lifecycle operations |
+| `ddl-v3` | ALTER COLUMN type/default/nullability and named constraint lifecycle with explicit dialect boundaries |
 
 A successful compilation certifies the modeled syntax/capability plan for that scope. It does **not** claim identical vendor coercion, collation, precision, conflict, trigger, storage or physical-design semantics where engines differ.
 
@@ -90,41 +91,57 @@ MySQL partial-index targets are rejected rather than having the predicate droppe
 
 ### DDL lifecycle (`ddl-v2`)
 
-Wave 5b adds a deliberately small portable ALTER TABLE lifecycle:
+`ddl-v2` covers:
 
 - `ALTER TABLE ... ADD [COLUMN] name type`;
 - `ALTER TABLE ... DROP [COLUMN] name`;
 - `ALTER TABLE ... RENAME COLUMN old TO new`;
 - `ALTER TABLE ... RENAME TO new_table`.
 
-Each action has its own atomic capability ID under `schema.tableAlter.*`. NuBloxSQL therefore does not treat SQLite's broad, partial `ALTER TABLE` support as one optimistic boolean.
+Each action has its own atomic capability ID under `schema.tableAlter.*`. SQLite `RENAME COLUMN` is version-gated from 3.25.0 and `DROP COLUMN` from 3.35.0. Source SQLite syntax is also version-qualified when transpiling away from SQLite.
+
+`ADD COLUMN` remains intentionally limited to a plain name + type because ALTER-time defaults, constraints and existing-row effects differ materially across engines.
+
+### Column and constraint lifecycle (`ddl-v3`)
+
+`ddl-v3` adds structured semantic actions for:
+
+- `ALTER COLUMN ... TYPE ...`;
+- `ALTER COLUMN ... SET DEFAULT ...`;
+- `ALTER COLUMN ... DROP DEFAULT`;
+- `ALTER COLUMN ... SET NOT NULL`;
+- `ALTER COLUMN ... DROP NOT NULL`;
+- `ADD CONSTRAINT name` for `PRIMARY KEY`, `UNIQUE`, `CHECK` and basic `FOREIGN KEY` definitions;
+- `DROP CONSTRAINT name`.
 
 ```js
-const runtime = await sql.capabilityModel.qualifyClient(db);
-
-const rename = sql.capabilityModel.transpileSql(
+const changed = sql.capabilityModel.transpileSql(
   'postgresql',
-  'sqlite',
-  'ALTER TABLE ledger RENAME COLUMN note TO memo',
-  { targetQualification: runtime }
+  'mysql',
+  'ALTER TABLE ledger ALTER COLUMN amount SET DEFAULT 0'
 );
 
-console.log(rename.scope); // ddl-v2
+console.log(changed.scope); // ddl-v3
 ```
 
-SQLite `RENAME COLUMN` is version-gated from 3.25.0 and `DROP COLUMN` from 3.35.0. Source SQLite syntax is also version-qualified when transpiling away from SQLite; target qualification alone is not used to assert what an older source engine supported.
+`SET DEFAULT` and `DROP DEFAULT` are modeled as native PostgreSQL/MySQL operations. Other ddl-v3 operations are deliberately stricter:
 
-`ADD COLUMN` is intentionally limited to a **plain name + type** in `ddl-v2`. Defaults, nullability changes, keys, checks and references during ALTER are rejected because ALTER-time restrictions and existing-row effects differ materially across engines.
+- PostgreSQL `ALTER COLUMN ... TYPE` and nullability changes are **not** automatically lowered to MySQL `MODIFY COLUMN`, because MySQL requires the complete target column definition and existing metadata can affect semantics;
+- PostgreSQL generic constraint lifecycle is **not** treated as equivalent to MySQL's constraint-kind-specific drop/alter syntax;
+- SQLite rejects ddl-v3 operations because safe support generally requires a table-rebuild strategy rather than a direct ALTER statement.
+
+These cases fail closed with an explicit semantic-transformation or unsupported-capability error instead of emitting plausible but unsafe SQL.
+
+Named constraints in `ddl-v3` currently cover the portable structural subset only. Foreign-key actions, match modes, deferrability and vendor-specific constraint modifiers remain outside this scope.
 
 The current DDL compiler still does not claim:
 
-- named constraints or constraint lifecycle operations;
-- foreign-key actions/match/deferrability;
 - generated/identity columns;
 - `IF EXISTS` / `IF NOT EXISTS` modifiers;
 - `CREATE TABLE AS`;
-- ALTER COLUMN type/default/nullability changes;
 - multi-action ALTER TABLE;
+- automatic MySQL `MODIFY COLUMN` lowering;
+- automatic SQLite table-rebuild migrations;
 - `DROP INDEX`, `DROP SCHEMA` or `DROP SEQUENCE` compiler nodes;
 - expression indexes, index methods, included columns or vendor index modifiers;
 - sequence options;
@@ -163,4 +180,4 @@ The exact exported JavaScript surface and required package files are machine-def
 
 The TypeScript entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statements in `types/dml.d.ts`, DDL statements in `types/ddl.d.ts`, portable metadata in `types/portable-metadata.d.ts`, query diagnostics in `types/diagnostics.d.ts`, and ontology declarations in `types/capability-ontology.d.ts`.
 
-Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1` and `ddl-v2` gates verify their released semantic surfaces.
+Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1`, `ddl-v2` and `ddl-v3` gates verify their released semantic surfaces.
