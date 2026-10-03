@@ -14,6 +14,7 @@ on:
       - 'test/client-transaction-live.js'
       - 'test/client-operation-live.js'
       - 'test/compiler-query-live.js'
+      - 'test/compiler-ddl-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
@@ -33,6 +34,7 @@ on:
       - 'test/client-transaction-live.js'
       - 'test/client-operation-live.js'
       - 'test/compiler-query-live.js'
+      - 'test/compiler-ddl-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
@@ -101,6 +103,8 @@ jobs:
         run: node test/client-operation-live.js
       - name: SQL compiler live qualification
         run: node test/compiler-query-live.js
+      - name: DDL compiler live qualification
+        run: node test/compiler-ddl-live.js
       - name: Native runtime, extended protocol, cancellation, pooling and portals
         run: node lib/dialects/postgresql/test/live.js
       - name: Native COPY FROM/TO streaming and pool qualification

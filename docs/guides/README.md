@@ -19,6 +19,7 @@ Use these guides together with the [support matrix](../SUPPORT.md), [public API 
 11. [Capabilities and SQL portability](11-capabilities-and-portability.md) — capability discovery, compatibility analysis, rewrite planning and the current SQL AST/transpilation scope.
 12. [TypeScript guide](12-typescript.md) — dialect discrimination, typed clients, portable metadata and result typing.
 13. [Production operation and troubleshooting](13-production-and-troubleshooting.md) — production configuration, cleanup, resource limits, diagnosis and common failure patterns.
+14. [DDL compiler](14-ddl-compiler.md) — structured table/index/view/schema/sequence ASTs, constraints, capability-gated schema portability and the precise `ddl-v1` boundary.
 
 ## Documentation rules
 

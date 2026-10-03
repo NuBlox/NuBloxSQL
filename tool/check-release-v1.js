@@ -78,7 +78,8 @@ var userGuides = [
   'docs/guides/10-dialects.md',
   'docs/guides/11-capabilities-and-portability.md',
   'docs/guides/12-typescript.md',
-  'docs/guides/13-production-and-troubleshooting.md'
+  'docs/guides/13-production-and-troubleshooting.md',
+  'docs/guides/14-ddl-compiler.md'
 ];
 
 var cookbook = [
