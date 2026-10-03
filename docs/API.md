@@ -22,18 +22,13 @@ For task-oriented usage see the [NuBloxSQL User Guides](guides/README.md) and [C
 
 ## Capability ontology
 
-`capabilityOntology` (`SQL_CAPABILITY_ONTOLOGY_SCHEMA_VERSION === 1`) separates four different facts:
-
-1. what a database engine supports;
-2. under what version/edition/deployment/runtime conditions it is available;
-3. lifecycle maturity such as stable, preview or deprecated;
-4. what NuBloxSQL itself can parse, represent, validate, render, rewrite and qualify.
+`capabilityOntology` (`SQL_CAPABILITY_ONTOLOGY_SCHEMA_VERSION === 1`) separates engine support, conditional availability, lifecycle maturity and NuBlox implementation coverage.
 
 ```js
-const definition = sql.capabilityOntology.definition('statements.createTable');
-const engine = sql.capabilityOntology.observation('postgresql', 'statements.createTable');
-const nublox = sql.capabilityOntology.implementation('statements.createTable');
-const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.partialIndex', {
+const definition = sql.capabilityOntology.definition('schema.tableAlter.renameColumn');
+const engine = sql.capabilityOntology.observation('sqlite', 'schema.tableAlter.renameColumn');
+const nublox = sql.capabilityOntology.implementation('schema.tableAlter.renameColumn');
+const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.tableAlter.renameColumn', {
   version: '3.49.1'
 });
 ```
@@ -44,8 +39,6 @@ const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.partialIndex',
 
 `capabilityModel.parseSql()`, `analyzeAst()`, `compileAst()` and `transpileSql()` expose the released Tier-1 compiler surface for PostgreSQL, MySQL and SQLite.
 
-Released compiler scopes are additive:
-
 | Scope | Released compiler surface |
 | --- | --- |
 | `select-foundation-v1` | SELECT, joins, grouping, ordering and pagination |
@@ -55,47 +48,31 @@ Released compiler scopes are additive:
 | `dml-v1` | INSERT, INSERT-SELECT, UPDATE, DELETE and capability-gated RETURNING |
 | `dml-v2` | explicit UPSERT/conflict semantics and PostgreSQL MERGE subset |
 | `ddl-v1` | structured CREATE TABLE/INDEX/VIEW/SCHEMA/SEQUENCE and DROP TABLE/VIEW |
+| `ddl-v2` | atomic ALTER TABLE add/drop/rename-column and rename-table lifecycle operations |
 
-A successful compilation means the modeled syntax/capability plan is certified for that scope. It does **not** claim identical vendor coercion, collation, precision, conflict, trigger, storage or physical-design semantics where engines differ.
+A successful compilation certifies the modeled syntax/capability plan for that scope. It does **not** claim identical vendor coercion, collation, precision, conflict, trigger, storage or physical-design semantics where engines differ.
 
 ### Query composition
 
-Set-operation parsing preserves source-dialect precedence in the AST. PostgreSQL/MySQL `INTERSECT` precedence and SQLite left-to-right compound-query behavior are not treated as interchangeable text. Unsupported target capabilities such as SQLite `INTERSECT ALL` and `EXCEPT ALL` fail closed.
-
-Window nodes model `OVER`, `PARTITION BY`, ordering, `ROWS`/`RANGE`/`GROUPS`, frame bounds, `EXCLUDE` and named windows. PostgreSQL `expression::type` is normalized to the structured cast AST and can render as `CAST(...)`.
+Set-operation parsing preserves source-dialect precedence in the AST. Unsupported target capabilities fail closed rather than changing semantics. Window nodes model `OVER`, partition/order specifications, frames, `EXCLUDE` and named windows. PostgreSQL `expression::type` is normalized to the structured cast AST.
 
 ### DML (`dml-v1` and `dml-v2`)
 
-`dml-v1` uses first-class `InsertStatement`, `UpdateStatement`, `DeleteStatement` and `Assignment` AST nodes. Query expressions and `INSERT ... SELECT` reuse the query compiler.
+`dml-v1` uses first-class INSERT/UPDATE/DELETE ASTs and reuses the query/expression compiler. `RETURNING` remains capability-driven: PostgreSQL is native; MySQL is rejected; SQLite requires runtime qualification when its capability state is runtime-dependent.
 
-```js
-const mutation = sql.capabilityModel.transpileSql(
-  'postgresql',
-  'sqlite',
-  `UPDATE ledger
-   SET amount = CASE WHEN amount < $1 THEN $1 ELSE amount END
-   WHERE id = $2`
-);
-```
+`dml-v2` represents PostgreSQL/SQLite `ON CONFLICT`, MySQL `ON DUPLICATE KEY UPDATE`, and PostgreSQL `MERGE` as distinct semantic families. NuBloxSQL does not automatically translate materially different conflict semantics.
 
-`RETURNING` remains capability-driven. PostgreSQL is native; MySQL is rejected; SQLite requires runtime qualification when its capability state is runtime-dependent.
+### DDL foundation (`ddl-v1`)
 
-`dml-v2` represents PostgreSQL/SQLite `ON CONFLICT`, MySQL `ON DUPLICATE KEY UPDATE`, and PostgreSQL `MERGE` as explicit semantic families rather than interchangeable strings. NuBloxSQL does not automatically translate MySQL conflict semantics to PostgreSQL/SQLite conflict-target semantics.
+`ddl-v1` models:
 
-The released PostgreSQL MERGE subset supports one matched UPDATE or DELETE and one not-matched INSERT ... VALUES action. MySQL and SQLite MERGE targets fail closed because no certified lowering is claimed.
-
-### DDL (`ddl-v1`)
-
-Wave 5 introduces structured schema ASTs:
-
-- `CreateTableStatement` and `ColumnDefinition`;
+- `CreateTableStatement` and structured column/type definitions;
 - column/table `PRIMARY KEY`, `UNIQUE`, `CHECK` and foreign-key references;
 - `NOT NULL` and scalar `DEFAULT` expressions;
-- `CreateIndexStatement`, including unique indexes and capability-gated partial indexes;
-- `CreateViewStatement`, whose query is parsed through the released query compiler;
-- `CreateSchemaStatement`;
-- `CreateSequenceStatement`;
-- `DropTableStatement` and `DropViewStatement`.
+- unique/basic/partial index creation with capability gating;
+- `CREATE VIEW` using the released query compiler;
+- basic `CREATE SCHEMA` and `CREATE SEQUENCE`;
+- `DROP TABLE` and `DROP VIEW`.
 
 ```js
 const ddl = sql.capabilityModel.transpileSql(
@@ -107,78 +84,83 @@ const ddl = sql.capabilityModel.transpileSql(
      amount DECIMAL(12,2) DEFAULT 0 CHECK (amount >= 0)
    )`
 );
-
-console.log(ddl.scope); // ddl-v1
-console.log(ddl.sql);
 ```
 
-Capability planning remains authoritative. Examples:
+MySQL partial-index targets are rejected rather than having the predicate dropped. SQLite runtime-dependent schema capabilities require live/version qualification. `CREATE SCHEMA` is not silently rewritten to MySQL `CREATE DATABASE` because the current model records an equivalent—not proven identical—construct.
 
-- MySQL partial indexes are rejected rather than having the predicate dropped;
-- SQLite runtime-dependent schema features require target qualification where the capability profile says so;
-- `CREATE SCHEMA` is not silently rewritten to MySQL `CREATE DATABASE`; the current equivalent capability requires an explicit semantic rewrite policy;
-- SQLite `CREATE SCHEMA` and sequence targets fail closed;
-- PostgreSQL and MySQL `DROP VIEW` observations are explicitly modeled and documented rather than bypassing the planner.
+### DDL lifecycle (`ddl-v2`)
 
-The `ddl-v1` boundary deliberately excludes:
+Wave 5b adds a deliberately small portable ALTER TABLE lifecycle:
 
-- named constraints;
-- foreign-key `ON DELETE`/`ON UPDATE`, match and deferrability options;
-- generated/identity columns;
-- `IF EXISTS` / `IF NOT EXISTS` modifiers;
-- `CREATE TABLE AS`;
-- `ALTER TABLE`;
-- `DROP INDEX`, `DROP SCHEMA` and `DROP SEQUENCE` compiler nodes;
-- expression indexes, index methods, included columns and vendor index modifiers;
-- sequence options;
-- table engines, tablespaces, partitioning, distribution, clustering and other physical-storage clauses.
+- `ALTER TABLE ... ADD [COLUMN] name type`;
+- `ALTER TABLE ... DROP [COLUMN] name`;
+- `ALTER TABLE ... RENAME COLUMN old TO new`;
+- `ALTER TABLE ... RENAME TO new_table`.
 
-SQL type names and numeric modifiers are structured AST data. Cross-dialect DDL certification does not imply identical physical storage, affinity, collation, coercion, precision or overflow behavior.
-
-## Runtime qualification
-
-Use a live qualification report where a target capability is version/runtime dependent:
+Each action has its own atomic capability ID under `schema.tableAlter.*`. NuBloxSQL therefore does not treat SQLite's broad, partial `ALTER TABLE` support as one optimistic boolean.
 
 ```js
 const runtime = await sql.capabilityModel.qualifyClient(db);
 
-const ddl = sql.capabilityModel.transpileSql(
+const rename = sql.capabilityModel.transpileSql(
   'postgresql',
   'sqlite',
-  'CREATE INDEX positive_idx ON ledger (id) WHERE amount > 0',
+  'ALTER TABLE ledger RENAME COLUMN note TO memo',
+  { targetQualification: runtime }
+);
+
+console.log(rename.scope); // ddl-v2
+```
+
+SQLite `RENAME COLUMN` is version-gated from 3.25.0 and `DROP COLUMN` from 3.35.0. Source SQLite syntax is also version-qualified when transpiling away from SQLite; target qualification alone is not used to assert what an older source engine supported.
+
+`ADD COLUMN` is intentionally limited to a **plain name + type** in `ddl-v2`. Defaults, nullability changes, keys, checks and references during ALTER are rejected because ALTER-time restrictions and existing-row effects differ materially across engines.
+
+The current DDL compiler still does not claim:
+
+- named constraints or constraint lifecycle operations;
+- foreign-key actions/match/deferrability;
+- generated/identity columns;
+- `IF EXISTS` / `IF NOT EXISTS` modifiers;
+- `CREATE TABLE AS`;
+- ALTER COLUMN type/default/nullability changes;
+- multi-action ALTER TABLE;
+- `DROP INDEX`, `DROP SCHEMA` or `DROP SEQUENCE` compiler nodes;
+- expression indexes, index methods, included columns or vendor index modifiers;
+- sequence options;
+- table engines, tablespaces, partitioning, distribution, clustering or other physical-storage clauses.
+
+SQL type names and modifiers are structured AST data. Cross-dialect DDL certification does not imply identical physical storage, affinity, collation, coercion, precision or overflow behavior.
+
+## Runtime qualification
+
+Use a live qualification report where either the source or target capability is version/runtime dependent:
+
+```js
+const runtime = await sql.capabilityModel.qualifyClient(db);
+
+const result = sql.capabilityModel.transpileSql(
+  'postgresql',
+  'sqlite',
+  'ALTER TABLE ledger DROP COLUMN obsolete',
   { targetQualification: runtime }
 );
 ```
 
-Unknown or unresolved capability states remain unresolved; NuBloxSQL does not convert them into optimistic support claims.
+Unknown or unresolved states remain unresolved; NuBloxSQL does not convert them into optimistic support claims.
 
 ## Query diagnostics
 
-Tier-1 clients expose `client.diagnose(statement, options)` for PostgreSQL, MySQL and SQLite. The versioned portable report normalizes only defensible common metrics and keeps the complete engine-native report under `native`.
-
-`analyze: true` uses native execution-analysis semantics on PostgreSQL/MySQL. SQLite remains plan-only through the portable contract. SQL Server is not yet part of the qualified portable diagnostics surface.
+Tier-1 clients expose `client.diagnose(statement, options)` for PostgreSQL, MySQL and SQLite. The portable report normalizes only defensible common metrics and keeps the complete engine-native report under `native`. SQL Server is not yet part of this qualified portable diagnostics surface.
 
 ## Metadata
 
 Metadata snapshots retain native-rich evidence and expose `snapshot.portable`, an immutable portable metadata vocabulary v1. The portable projection normalizes common schema concepts without discarding native metadata.
 
-## Public classes and contracts
-
-The public package also includes `Client`, `ClientRowStream`, `MetadataCatalog`, `NuBloxSqlError`, `Observer`, `TypeRegistry`, dialect adapters and SQL Core.
-
-Canonical runtime dialect names are `mysql`, `postgresql`, `sqlite` and `sqlserver`. The exhaustive compiler ontology currently uses PostgreSQL, MySQL and SQLite Tier-1 profiles; SQL Server remains a supported native runtime outside that exhaustive compiler surface.
-
 ## Exact release contract
 
 The exact exported JavaScript surface and required package files are machine-defined in `docs/releases/public-api-v1.json`.
 
-The TypeScript entry point is `types/root.d.ts`:
+The TypeScript entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statements in `types/dml.d.ts`, DDL statements in `types/ddl.d.ts`, portable metadata in `types/portable-metadata.d.ts`, query diagnostics in `types/diagnostics.d.ts`, and ontology declarations in `types/capability-ontology.d.ts`.
 
-- query/compiler declarations: `types/public.d.ts`;
-- DML statement declarations: `types/dml.d.ts`;
-- DDL statement declarations: `types/ddl.d.ts`;
-- portable metadata: `types/portable-metadata.d.ts`;
-- query diagnostics: `types/diagnostics.d.ts`;
-- capability ontology: `types/capability-ontology.d.ts`.
-
-Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2` and `ddl-v1` packed-package gates verify their released semantic surfaces.
+Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1` and `ddl-v2` gates verify their released semantic surfaces.
