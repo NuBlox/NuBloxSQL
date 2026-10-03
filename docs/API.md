@@ -6,70 +6,67 @@ NuBloxSQL exposes one package entry point:
 const sql = require('nubloxsql');
 ```
 
-For detailed, task-oriented usage see the [NuBloxSQL User Guides](guides/README.md).
+For task-oriented usage see the [NuBloxSQL User Guides](guides/README.md) and [Cookbook](cookbook/README.md).
 
 ## Primary entry points
 
-- `createClient()` — create the unified client for a configured dialect.
-- `createConnection()` — create a native dialect connection.
-- `createPool()` — create a native pool where the dialect supports pooling.
+- `createClient()` — unified client for a configured dialect.
+- `createConnection()` — native dialect connection.
+- `createPool()` — native pool where supported.
 - `sql` — tagged SQL, identifiers, named parameters and portable typed values.
 - `introspect()` — one-shot metadata/schema introspection.
 - `capabilityReport()` — static platform capability report.
 - `transactionPolicy()` — portable transaction-policy description.
-- `capabilityModel` — Tier-1 SQL compatibility, rewrite and compiler/transpilation surfaces.
-- `capabilityOntology` — versioned atomic SQL capability definitions, engine observations and NuBlox implementation coverage.
+- `capabilityModel` — Tier-1 compatibility, runtime qualification, rewrite and compiler/transpilation APIs.
+- `capabilityOntology` — atomic capability definitions, engine observations and NuBlox implementation coverage.
 
 ## Capability ontology
 
-`capabilityOntology` (`SQL_CAPABILITY_ONTOLOGY_SCHEMA_VERSION === 1`) projects the exhaustive Tier-1 feature inventory into a formal registry without breaking the legacy capability API.
+`capabilityOntology` (`SQL_CAPABILITY_ONTOLOGY_SCHEMA_VERSION === 1`) separates four different facts:
 
-Every capability has a stable ID and definition. Engine observations keep separate axes for:
-
-- support: `native`, `partial`, `emulated`, `unsupported`, `unknown` or `not-applicable`;
-- availability: unconditional, version-, edition-, deployment-, engine-, connector-, extension-, component- or configuration-dependent;
-- maturity: stable, preview, experimental, deprecated or removed;
-- evidence: source documentation and legacy classification retained from the dialect profile.
-
-NuBlox implementation coverage is separate from engine support and reports parser, AST, validator, renderer, rewrite and runtime stages. This prevents a database feature from being treated as compiler support merely because the target engine implements it.
+1. what a database engine supports;
+2. under what version/edition/deployment/runtime conditions it is available;
+3. lifecycle maturity such as stable, preview or deprecated;
+4. what NuBloxSQL itself can parse, represent, validate, render, rewrite and qualify.
 
 ```js
-const { capabilityOntology } = require('nubloxsql');
-
-const definition = capabilityOntology.definition('queries.cte.recursive');
-const engine = capabilityOntology.observation('postgresql', 'queries.cte.recursive');
-const nublox = capabilityOntology.implementation('queries.cte.recursive');
-const resolved = capabilityOntology.resolve(
-  'sqlite',
-  'queries.joins.right',
-  { version: '3.39.0' }
-);
+const definition = sql.capabilityOntology.definition('statements.createTable');
+const engine = sql.capabilityOntology.observation('postgresql', 'statements.createTable');
+const nublox = sql.capabilityOntology.implementation('statements.createTable');
+const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.partialIndex', {
+  version: '3.49.1'
+});
 ```
 
-`profile(dialect)` returns the complete engine inventory. `inventory({ dialect, family, kind })` supports tooling and filtered capability browsers. `validate()` checks referential and state integrity of the generated ontology.
-
-The original `capabilityModel.status()`, `compare()`, compatibility, runtime qualification, rewrite and compiler APIs remain supported. The ontology is an additive control-plane layer above them.
+`profile(dialect)` returns an engine inventory. `inventory({ dialect, family, kind })` supports filtered tooling. `validate()` verifies ontology integrity. Legacy `capabilityModel.status()`, `compare()`, compatibility and rewrite APIs remain supported.
 
 ## SQL AST and transpilation
 
 `capabilityModel.parseSql()`, `analyzeAst()`, `compileAst()` and `transpileSql()` expose the released Tier-1 compiler surface for PostgreSQL, MySQL and SQLite.
 
-Compiler scopes are additive:
+Released compiler scopes are additive:
 
-- `select-foundation-v1` — SELECT, joins, grouping, ordering and pagination;
-- `select-query-v2` — ordinary/recursive CTE declarations, scalar/`EXISTS`/`IN` subqueries, detectable correlated subqueries and derived tables;
-- `select-query-v3` — compound queries using `UNION`, `UNION ALL`, `INTERSECT`, `INTERSECT ALL`, `EXCEPT` and `EXCEPT ALL` where the target engine supports the requested capability;
-- `select-query-v4` — searched/simple `CASE`, `CAST`, PostgreSQL `::` normalization, `BETWEEN`/`NOT BETWEEN`, `NOT IN`, `NOT LIKE`, window functions, named windows and window-frame specifications;
-- `dml-v1` — `INSERT ... VALUES`, multi-row inserts, `INSERT ... SELECT`, `UPDATE ... SET ... WHERE`, `DELETE FROM ... WHERE`, and capability-gated `RETURNING`;
-- `dml-v2` — explicit UPSERT/conflict semantics and PostgreSQL `MERGE` semantic nodes.
+| Scope | Released compiler surface |
+| --- | --- |
+| `select-foundation-v1` | SELECT, joins, grouping, ordering and pagination |
+| `select-query-v2` | CTEs, recursive CTE declarations, subqueries and derived tables |
+| `select-query-v3` | UNION/INTERSECT/EXCEPT families and compound-query composition |
+| `select-query-v4` | CASE, CAST, richer predicates, windows and window frames |
+| `dml-v1` | INSERT, INSERT-SELECT, UPDATE, DELETE and capability-gated RETURNING |
+| `dml-v2` | explicit UPSERT/conflict semantics and PostgreSQL MERGE subset |
+| `ddl-v1` | structured CREATE TABLE/INDEX/VIEW/SCHEMA/SEQUENCE and DROP TABLE/VIEW |
 
-Wave 2 set-operation support includes nested compound queries, explicit grouping, CTE bodies and derived tables containing compound queries, top-level `ORDER BY`/`LIMIT`/`OFFSET`, and parameter mapping across operands.
+A successful compilation means the modeled syntax/capability plan is certified for that scope. It does **not** claim identical vendor coercion, collation, precision, conflict, trigger, storage or physical-design semantics where engines differ.
 
-Wave 3 models window semantics explicitly: `OVER`, `PARTITION BY`, window `ORDER BY`, `ROWS`/`RANGE`/`GROUPS`, frame bounds, `BETWEEN ... AND ...`, `EXCLUDE`, and named `WINDOW` definitions. The target capability profile remains authoritative: for example, MySQL rejects `GROUPS` frames through the capability plan rather than emitting unsupported SQL, while SQLite window use requires runtime qualification because its profile is host-runtime dependent.
+### Query composition
 
-### DML compiler (`dml-v1`)
+Set-operation parsing preserves source-dialect precedence in the AST. PostgreSQL/MySQL `INTERSECT` precedence and SQLite left-to-right compound-query behavior are not treated as interchangeable text. Unsupported target capabilities such as SQLite `INTERSECT ALL` and `EXCEPT ALL` fail closed.
 
-Wave 4 introduces first-class mutation ASTs: `InsertStatement`, `UpdateStatement`, `DeleteStatement` and `Assignment`. DML expressions reuse the released expression/query compiler, so CASE/CAST, predicates, parameters and `INSERT ... SELECT` query sources retain the same capability analysis and target rendering rules.
+Window nodes model `OVER`, `PARTITION BY`, ordering, `ROWS`/`RANGE`/`GROUPS`, frame bounds, `EXCLUDE` and named windows. PostgreSQL `expression::type` is normalized to the structured cast AST and can render as `CAST(...)`.
+
+### DML (`dml-v1` and `dml-v2`)
+
+`dml-v1` uses first-class `InsertStatement`, `UpdateStatement`, `DeleteStatement` and `Assignment` AST nodes. Query expressions and `INSERT ... SELECT` reuse the query compiler.
 
 ```js
 const mutation = sql.capabilityModel.transpileSql(
@@ -79,141 +76,109 @@ const mutation = sql.capabilityModel.transpileSql(
    SET amount = CASE WHEN amount < $1 THEN $1 ELSE amount END
    WHERE id = $2`
 );
-
-console.log(mutation.scope); // dml-v1
-console.log(mutation.sql);
-console.log(mutation.targetToSource);
 ```
 
-`RETURNING` is never assumed to be universally portable. PostgreSQL exposes it natively. MySQL is rejected as an unsupported target rather than silently dropping returned rows. SQLite is runtime-dependent and therefore requires a successful target qualification before a `RETURNING` statement can be certified:
+`RETURNING` remains capability-driven. PostgreSQL is native; MySQL is rejected; SQLite requires runtime qualification when its capability state is runtime-dependent.
+
+`dml-v2` represents PostgreSQL/SQLite `ON CONFLICT`, MySQL `ON DUPLICATE KEY UPDATE`, and PostgreSQL `MERGE` as explicit semantic families rather than interchangeable strings. NuBloxSQL does not automatically translate MySQL conflict semantics to PostgreSQL/SQLite conflict-target semantics.
+
+The released PostgreSQL MERGE subset supports one matched UPDATE or DELETE and one not-matched INSERT ... VALUES action. MySQL and SQLite MERGE targets fail closed because no certified lowering is claimed.
+
+### DDL (`ddl-v1`)
+
+Wave 5 introduces structured schema ASTs:
+
+- `CreateTableStatement` and `ColumnDefinition`;
+- column/table `PRIMARY KEY`, `UNIQUE`, `CHECK` and foreign-key references;
+- `NOT NULL` and scalar `DEFAULT` expressions;
+- `CreateIndexStatement`, including unique indexes and capability-gated partial indexes;
+- `CreateViewStatement`, whose query is parsed through the released query compiler;
+- `CreateSchemaStatement`;
+- `CreateSequenceStatement`;
+- `DropTableStatement` and `DropViewStatement`.
+
+```js
+const ddl = sql.capabilityModel.transpileSql(
+  'postgresql',
+  'mysql',
+  `CREATE TABLE ledger (
+     id INTEGER PRIMARY KEY,
+     name VARCHAR(100) NOT NULL UNIQUE,
+     amount DECIMAL(12,2) DEFAULT 0 CHECK (amount >= 0)
+   )`
+);
+
+console.log(ddl.scope); // ddl-v1
+console.log(ddl.sql);
+```
+
+Capability planning remains authoritative. Examples:
+
+- MySQL partial indexes are rejected rather than having the predicate dropped;
+- SQLite runtime-dependent schema features require target qualification where the capability profile says so;
+- `CREATE SCHEMA` is not silently rewritten to MySQL `CREATE DATABASE`; the current equivalent capability requires an explicit semantic rewrite policy;
+- SQLite `CREATE SCHEMA` and sequence targets fail closed;
+- PostgreSQL and MySQL `DROP VIEW` observations are explicitly modeled and documented rather than bypassing the planner.
+
+The `ddl-v1` boundary deliberately excludes:
+
+- named constraints;
+- foreign-key `ON DELETE`/`ON UPDATE`, match and deferrability options;
+- generated/identity columns;
+- `IF EXISTS` / `IF NOT EXISTS` modifiers;
+- `CREATE TABLE AS`;
+- `ALTER TABLE`;
+- `DROP INDEX`, `DROP SCHEMA` and `DROP SEQUENCE` compiler nodes;
+- expression indexes, index methods, included columns and vendor index modifiers;
+- sequence options;
+- table engines, tablespaces, partitioning, distribution, clustering and other physical-storage clauses.
+
+SQL type names and numeric modifiers are structured AST data. Cross-dialect DDL certification does not imply identical physical storage, affinity, collation, coercion, precision or overflow behavior.
+
+## Runtime qualification
+
+Use a live qualification report where a target capability is version/runtime dependent:
 
 ```js
 const runtime = await sql.capabilityModel.qualifyClient(db);
 
-const deletion = sql.capabilityModel.transpileSql(
+const ddl = sql.capabilityModel.transpileSql(
   'postgresql',
   'sqlite',
-  'DELETE FROM ledger WHERE id = $1 RETURNING id',
+  'CREATE INDEX positive_idx ON ledger (id) WHERE amount > 0',
   { targetQualification: runtime }
 );
 ```
 
-The `dml-v1` boundary remains precise. It does not claim `DEFAULT VALUES`, `UPDATE ... FROM`, `DELETE ... USING`, data-modifying CTEs, DML target aliases or vendor-specific modifiers.
-
-### Conflict and MERGE semantics (`dml-v2`)
-
-`dml-v2` adds explicit `UpsertStatement`, `ConflictAction`, `MergeStatement`, `MergeMatchedAction` and `MergeNotMatchedAction` nodes instead of treating every vendor conflict construct as interchangeable text.
-
-PostgreSQL and SQLite share a certified common `ON CONFLICT` subset:
-
-```js
-const upsert = sql.capabilityModel.transpileSql(
-  'postgresql',
-  'sqlite',
-  `INSERT INTO ledger (id, name)
-   VALUES ($1, $2)
-   ON CONFLICT (id)
-   DO UPDATE SET name = excluded.name`
-);
-
-console.log(upsert.scope); // dml-v2
-```
-
-The released common subset supports column-list conflict targets, `DO NOTHING`, and `DO UPDATE SET ...` with an optional update predicate. NuBloxSQL does not currently claim lossless automatic translation between PostgreSQL/SQLite `ON CONFLICT` and MySQL `ON DUPLICATE KEY UPDATE`, because their conflict-target and trigger semantics differ. MySQL's form is parsed, represented and rendered as its own `on-duplicate-key` semantic family and is certified only when the target is MySQL.
-
-PostgreSQL `MERGE` is represented explicitly and is version-dependent (`since: 15`). The released subset supports:
-
-- `MERGE INTO target [AS alias] USING source [AS alias] ON ...`;
-- one `WHEN MATCHED THEN UPDATE SET ...` or `DELETE` action;
-- one `WHEN NOT MATCHED THEN INSERT (...) VALUES (...)` action.
-
-```js
-const merged = sql.capabilityModel.transpileSql(
-  'postgresql',
-  'postgresql',
-  `MERGE INTO ledger AS t
-   USING incoming AS s
-   ON t.id = s.id
-   WHEN MATCHED THEN UPDATE SET name = s.name
-   WHEN NOT MATCHED THEN INSERT (id, name) VALUES (s.id, s.name)`
-);
-
-console.log(merged.scope); // dml-v2
-```
-
-MySQL and SQLite targets reject `MergeStatement` rather than applying an unsafe rewrite. Availability must also respect the concrete PostgreSQL version: unresolved version context remains indeterminate, PostgreSQL 14 resolves unavailable, and PostgreSQL 15+ resolves available.
-
-The `dml-v2` boundary does not yet claim PostgreSQL conflict-expression targets, constraint-name targets, multiple MERGE action clauses, action predicates, source subqueries/joins inside MERGE, `MERGE ... RETURNING`, MySQL conflict-to-ON-CONFLICT conversion, or vendor-specific conflict modifiers. Those remain separate capability/compiler expansions.
-
-```js
-const parsed = sql.capabilityModel.parseSql(
-  'postgresql',
-  `SELECT
-     CASE WHEN amount BETWEEN $1 AND $2
-          THEN amount::DECIMAL(12,2)
-          ELSE 0
-     END AS band,
-     sum(amount) OVER w AS running
-   FROM ledger
-   WINDOW w AS (
-     PARTITION BY tenant_id
-     ORDER BY id
-     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-   )`
-);
-
-const analysis = sql.capabilityModel.analyzeAst(parsed);
-const compiled = sql.capabilityModel.compileAst('mysql', parsed);
-```
-
-PostgreSQL `expression::type` is represented as a structured cast and renders portably as `CAST(expression AS type)`. Type names and numeric modifiers are AST data rather than arbitrary SQL text. A successful syntax/capability compilation does **not** assert that every vendor's coercion, collation, precision or overflow semantics are identical; applications that depend on those native semantics must qualify them separately.
-
-Set-operation parsing preserves **source-dialect semantics**, not merely source text. PostgreSQL and MySQL give `INTERSECT` tighter precedence than `UNION`/`EXCEPT`; SQLite compound SELECTs group left-to-right. NuBloxSQL records the resulting tree in the AST and renders explicit grouping where required so cross-dialect transpilation preserves that tree.
-
-Capability gating remains authoritative. SQLite supports `UNION ALL` but not `INTERSECT ALL` or `EXCEPT ALL`; those targets are rejected rather than silently changing duplicate semantics. CTE validation rejects duplicate names, forward references and self-reference without `WITH RECURSIVE`. Named-window validation rejects duplicate or unresolved window references and invalid frame bounds.
-
-Advanced recursive CTE clauses such as `SEARCH`/`CYCLE`, CTE materialization hints and later statement families remain separately capability-gated.
+Unknown or unresolved capability states remain unresolved; NuBloxSQL does not convert them into optimistic support claims.
 
 ## Query diagnostics
 
-Unified Tier-1 clients expose `client.diagnose(statement, options)` for PostgreSQL, MySQL and SQLite.
+Tier-1 clients expose `client.diagnose(statement, options)` for PostgreSQL, MySQL and SQLite. The versioned portable report normalizes only defensible common metrics and keeps the complete engine-native report under `native`.
 
-```js
-const report = await db.diagnose(
-  sql`SELECT id, name FROM users WHERE id = ${42}`,
-  { analyze: false }
-);
-
-console.log(report.summary);
-console.log(report.native);
-```
-
-The versioned report (`QUERY_DIAGNOSTICS_SCHEMA_VERSION === 1`) provides a deliberately small common summary: plan node count/depth, estimated and actual rows, estimated cost, planning time and execution time where the engine supplies semantically compatible evidence. Unsupported values remain `null` rather than being invented.
-
-`report.native` retains the complete engine-native diagnostics payload. SQLite planner warnings are also exposed through the portable `warnings` array. Passing `analyze: true` uses native EXPLAIN ANALYZE semantics on PostgreSQL and MySQL; this executes the target statement. SQLite does not expose an EXPLAIN ANALYZE equivalent through this contract. SQL Server is not yet part of the qualified portable diagnostics surface and returns an explicit unsupported error.
-
-Engine-specific diagnostic options remain available through the options object, including PostgreSQL EXPLAIN options, MySQL `allowMutation`, and SQLite `includeOpcodes`/statement-metadata options.
+`analyze: true` uses native execution-analysis semantics on PostgreSQL/MySQL. SQLite remains plan-only through the portable contract. SQL Server is not yet part of the qualified portable diagnostics surface.
 
 ## Metadata
 
-Metadata snapshots retain the native-rich database, schema, table, column, index, foreign-key and constraint evidence supplied by each dialect.
-
-Snapshots also expose `snapshot.portable`, an immutable **portable metadata vocabulary v1**. It normalizes common object kinds, nullability, identity/auto-increment, generated columns, index key parts, referential actions and common constraint types while retaining native payloads. Engine-specific metadata remains authoritative where semantics cannot be represented portably.
+Metadata snapshots retain native-rich evidence and expose `snapshot.portable`, an immutable portable metadata vocabulary v1. The portable projection normalizes common schema concepts without discarding native metadata.
 
 ## Public classes and contracts
 
-The public surface also includes `Client`, `ClientRowStream`, `MetadataCatalog`, `NuBloxSqlError`, `Observer`, `TypeRegistry`, dialect adapters and SQL Core.
+The public package also includes `Client`, `ClientRowStream`, `MetadataCatalog`, `NuBloxSqlError`, `Observer`, `TypeRegistry`, dialect adapters and SQL Core.
 
-Client operations cover queries, execution, prepared statements, streaming, transactions, savepoints, operation control, query diagnostics, type codecs, metadata and observability. Native diagnostic information is retained when NuBloxSQL supplies a portable representation.
-
-## Dialects
-
-Canonical runtime dialect names are `mysql`, `postgresql`, `sqlite` and `sqlserver`. The current exhaustive ontology observations and AST/transpilation control plane are generated from the Tier-1 PostgreSQL, MySQL and SQLite capability profiles; additional dialect profiles can be added without changing the ontology schema.
+Canonical runtime dialect names are `mysql`, `postgresql`, `sqlite` and `sqlserver`. The exhaustive compiler ontology currently uses PostgreSQL, MySQL and SQLite Tier-1 profiles; SQL Server remains a supported native runtime outside that exhaustive compiler surface.
 
 ## Exact release contract
 
-The exact exported JavaScript surface, package files, version and Node.js floor are machine-defined in `docs/releases/public-api-v1.json`.
+The exact exported JavaScript surface and required package files are machine-defined in `docs/releases/public-api-v1.json`.
 
-The TypeScript package entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statement declarations in `types/dml.d.ts`, portable metadata in `types/portable-metadata.d.ts`, portable query diagnostics in `types/diagnostics.d.ts`, and the SQL capability ontology in `types/capability-ontology.d.ts`.
+The TypeScript entry point is `types/root.d.ts`:
 
-Release qualification checks both JavaScript and strict TypeScript consumer installation from the packed npm artifact. `dml-v2` also has a dedicated packed-package release gate covering conflict semantics and PostgreSQL MERGE capability evidence.
+- query/compiler declarations: `types/public.d.ts`;
+- DML statement declarations: `types/dml.d.ts`;
+- DDL statement declarations: `types/ddl.d.ts`;
+- portable metadata: `types/portable-metadata.d.ts`;
+- query diagnostics: `types/diagnostics.d.ts`;
+- capability ontology: `types/capability-ontology.d.ts`.
+
+Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2` and `ddl-v1` packed-package gates verify their released semantic surfaces.
