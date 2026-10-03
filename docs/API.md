@@ -60,7 +60,8 @@ Compiler scopes are additive:
 - `select-query-v2` — ordinary/recursive CTE declarations, scalar/`EXISTS`/`IN` subqueries, detectable correlated subqueries and derived tables;
 - `select-query-v3` — compound queries using `UNION`, `UNION ALL`, `INTERSECT`, `INTERSECT ALL`, `EXCEPT` and `EXCEPT ALL` where the target engine supports the requested capability;
 - `select-query-v4` — searched/simple `CASE`, `CAST`, PostgreSQL `::` normalization, `BETWEEN`/`NOT BETWEEN`, `NOT IN`, `NOT LIKE`, window functions, named windows and window-frame specifications;
-- `dml-v1` — `INSERT ... VALUES`, multi-row inserts, `INSERT ... SELECT`, `UPDATE ... SET ... WHERE`, `DELETE FROM ... WHERE`, and capability-gated `RETURNING`.
+- `dml-v1` — `INSERT ... VALUES`, multi-row inserts, `INSERT ... SELECT`, `UPDATE ... SET ... WHERE`, `DELETE FROM ... WHERE`, and capability-gated `RETURNING`;
+- `dml-v2` — explicit UPSERT/conflict semantics and PostgreSQL `MERGE` semantic nodes.
 
 Wave 2 set-operation support includes nested compound queries, explicit grouping, CTE bodies and derived tables containing compound queries, top-level `ORDER BY`/`LIMIT`/`OFFSET`, and parameter mapping across operands.
 
@@ -97,7 +98,52 @@ const deletion = sql.capabilityModel.transpileSql(
 );
 ```
 
-The `dml-v1` boundary is intentionally precise. It does **not** yet claim `DEFAULT VALUES`, UPSERT/`ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `MERGE`, `UPDATE ... FROM`, `DELETE ... USING`, data-modifying CTEs, DML target aliases or vendor-specific DML modifiers. Those remain separate capability/compiler waves rather than being accepted without qualified semantics.
+The `dml-v1` boundary remains precise. It does not claim `DEFAULT VALUES`, `UPDATE ... FROM`, `DELETE ... USING`, data-modifying CTEs, DML target aliases or vendor-specific modifiers.
+
+### Conflict and MERGE semantics (`dml-v2`)
+
+`dml-v2` adds explicit `UpsertStatement`, `ConflictAction`, `MergeStatement`, `MergeMatchedAction` and `MergeNotMatchedAction` nodes instead of treating every vendor conflict construct as interchangeable text.
+
+PostgreSQL and SQLite share a certified common `ON CONFLICT` subset:
+
+```js
+const upsert = sql.capabilityModel.transpileSql(
+  'postgresql',
+  'sqlite',
+  `INSERT INTO ledger (id, name)
+   VALUES ($1, $2)
+   ON CONFLICT (id)
+   DO UPDATE SET name = excluded.name`
+);
+
+console.log(upsert.scope); // dml-v2
+```
+
+The released common subset supports column-list conflict targets, `DO NOTHING`, and `DO UPDATE SET ...` with an optional update predicate. NuBloxSQL does not currently claim lossless automatic translation between PostgreSQL/SQLite `ON CONFLICT` and MySQL `ON DUPLICATE KEY UPDATE`, because their conflict-target and trigger semantics differ. MySQL's form is parsed, represented and rendered as its own `on-duplicate-key` semantic family and is certified only when the target is MySQL.
+
+PostgreSQL `MERGE` is represented explicitly and is version-dependent (`since: 15`). The released subset supports:
+
+- `MERGE INTO target [AS alias] USING source [AS alias] ON ...`;
+- one `WHEN MATCHED THEN UPDATE SET ...` or `DELETE` action;
+- one `WHEN NOT MATCHED THEN INSERT (...) VALUES (...)` action.
+
+```js
+const merged = sql.capabilityModel.transpileSql(
+  'postgresql',
+  'postgresql',
+  `MERGE INTO ledger AS t
+   USING incoming AS s
+   ON t.id = s.id
+   WHEN MATCHED THEN UPDATE SET name = s.name
+   WHEN NOT MATCHED THEN INSERT (id, name) VALUES (s.id, s.name)`
+);
+
+console.log(merged.scope); // dml-v2
+```
+
+MySQL and SQLite targets reject `MergeStatement` rather than applying an unsafe rewrite. Availability must also respect the concrete PostgreSQL version: unresolved version context remains indeterminate, PostgreSQL 14 resolves unavailable, and PostgreSQL 15+ resolves available.
+
+The `dml-v2` boundary does not yet claim PostgreSQL conflict-expression targets, constraint-name targets, multiple MERGE action clauses, action predicates, source subqueries/joins inside MERGE, `MERGE ... RETURNING`, MySQL conflict-to-ON-CONFLICT conversion, or vendor-specific conflict modifiers. Those remain separate capability/compiler expansions.
 
 ```js
 const parsed = sql.capabilityModel.parseSql(
@@ -170,4 +216,4 @@ The exact exported JavaScript surface, package files, version and Node.js floor 
 
 The TypeScript package entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statement declarations in `types/dml.d.ts`, portable metadata in `types/portable-metadata.d.ts`, portable query diagnostics in `types/diagnostics.d.ts`, and the SQL capability ontology in `types/capability-ontology.d.ts`.
 
-Release qualification checks both JavaScript and strict TypeScript consumer installation from the packed npm artifact.
+Release qualification checks both JavaScript and strict TypeScript consumer installation from the packed npm artifact. `dml-v2` also has a dedicated packed-package release gate covering conflict semantics and PostgreSQL MERGE capability evidence.
