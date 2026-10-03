@@ -61,6 +61,19 @@ var publicDeclarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'pu
   'readonly coverage: SqlCapabilityCoverageLevel',
   'readonly evidenceRegister: readonly string[]',
   'export interface SqlCapabilityModelApi',
+  'export interface SqlAstBetweenExpression',
+  'export interface SqlAstTypeName',
+  'export interface SqlAstCastExpression',
+  'export interface SqlAstCaseBranch',
+  'export interface SqlAstCaseExpression',
+  'export interface SqlAstWindowFrameBound',
+  'export interface SqlAstWindowFrame',
+  'export interface SqlAstWindowSpecification',
+  'export interface SqlAstWindowReference',
+  'export interface SqlAstWindowExpression',
+  'export interface SqlAstWindowDefinition',
+  "'select-query-v4'",
+  'readonly windows: readonly SqlAstWindowDefinition[]',
   'export const SQL_CAPABILITY_MODEL_SCHEMA_VERSION',
   'export const TIER1_DIALECTS',
   'export const capabilityModel'
@@ -108,4 +121,4 @@ var postgresqlDeclarations = fs.readFileSync(path.join(__dirname, '..', 'lib', '
   assert.ok(postgresqlDeclarations.indexOf(needle) >= 0, 'missing PostgreSQL diagnostics TypeScript contract: ' + needle);
 });
 
-console.log('NuBloxSQL TypeScript dialect discrimination, portable metadata and capability-model surface contract passed');
+console.log('NuBloxSQL TypeScript dialect discrimination, portable metadata and Wave 3 compiler surface contract passed');
