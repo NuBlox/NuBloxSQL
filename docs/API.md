@@ -59,11 +59,45 @@ Compiler scopes are additive:
 - `select-foundation-v1` — SELECT, joins, grouping, ordering and pagination;
 - `select-query-v2` — ordinary/recursive CTE declarations, scalar/`EXISTS`/`IN` subqueries, detectable correlated subqueries and derived tables;
 - `select-query-v3` — compound queries using `UNION`, `UNION ALL`, `INTERSECT`, `INTERSECT ALL`, `EXCEPT` and `EXCEPT ALL` where the target engine supports the requested capability;
-- `select-query-v4` — searched/simple `CASE`, `CAST`, PostgreSQL `::` normalization, `BETWEEN`/`NOT BETWEEN`, `NOT IN`, `NOT LIKE`, window functions, named windows and window-frame specifications.
+- `select-query-v4` — searched/simple `CASE`, `CAST`, PostgreSQL `::` normalization, `BETWEEN`/`NOT BETWEEN`, `NOT IN`, `NOT LIKE`, window functions, named windows and window-frame specifications;
+- `dml-v1` — `INSERT ... VALUES`, multi-row inserts, `INSERT ... SELECT`, `UPDATE ... SET ... WHERE`, `DELETE FROM ... WHERE`, and capability-gated `RETURNING`.
 
 Wave 2 set-operation support includes nested compound queries, explicit grouping, CTE bodies and derived tables containing compound queries, top-level `ORDER BY`/`LIMIT`/`OFFSET`, and parameter mapping across operands.
 
 Wave 3 models window semantics explicitly: `OVER`, `PARTITION BY`, window `ORDER BY`, `ROWS`/`RANGE`/`GROUPS`, frame bounds, `BETWEEN ... AND ...`, `EXCLUDE`, and named `WINDOW` definitions. The target capability profile remains authoritative: for example, MySQL rejects `GROUPS` frames through the capability plan rather than emitting unsupported SQL, while SQLite window use requires runtime qualification because its profile is host-runtime dependent.
+
+### DML compiler (`dml-v1`)
+
+Wave 4 introduces first-class mutation ASTs: `InsertStatement`, `UpdateStatement`, `DeleteStatement` and `Assignment`. DML expressions reuse the released expression/query compiler, so CASE/CAST, predicates, parameters and `INSERT ... SELECT` query sources retain the same capability analysis and target rendering rules.
+
+```js
+const mutation = sql.capabilityModel.transpileSql(
+  'postgresql',
+  'sqlite',
+  `UPDATE ledger
+   SET amount = CASE WHEN amount < $1 THEN $1 ELSE amount END
+   WHERE id = $2`
+);
+
+console.log(mutation.scope); // dml-v1
+console.log(mutation.sql);
+console.log(mutation.targetToSource);
+```
+
+`RETURNING` is never assumed to be universally portable. PostgreSQL exposes it natively. MySQL is rejected as an unsupported target rather than silently dropping returned rows. SQLite is runtime-dependent and therefore requires a successful target qualification before a `RETURNING` statement can be certified:
+
+```js
+const runtime = await sql.capabilityModel.qualifyClient(db);
+
+const deletion = sql.capabilityModel.transpileSql(
+  'postgresql',
+  'sqlite',
+  'DELETE FROM ledger WHERE id = $1 RETURNING id',
+  { targetQualification: runtime }
+);
+```
+
+The `dml-v1` boundary is intentionally precise. It does **not** yet claim `DEFAULT VALUES`, UPSERT/`ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `MERGE`, `UPDATE ... FROM`, `DELETE ... USING`, data-modifying CTEs, DML target aliases or vendor-specific DML modifiers. Those remain separate capability/compiler waves rather than being accepted without qualified semantics.
 
 ```js
 const parsed = sql.capabilityModel.parseSql(
@@ -134,6 +168,6 @@ Canonical runtime dialect names are `mysql`, `postgresql`, `sqlite` and `sqlserv
 
 The exact exported JavaScript surface, package files, version and Node.js floor are machine-defined in `docs/releases/public-api-v1.json`.
 
-The TypeScript package entry point is `types/root.d.ts`; portable metadata is declared in `types/portable-metadata.d.ts`, portable query diagnostics in `types/diagnostics.d.ts`, and the SQL capability ontology in `types/capability-ontology.d.ts`.
+The TypeScript package entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statement declarations in `types/dml.d.ts`, portable metadata in `types/portable-metadata.d.ts`, portable query diagnostics in `types/diagnostics.d.ts`, and the SQL capability ontology in `types/capability-ontology.d.ts`.
 
 Release qualification checks both JavaScript and strict TypeScript consumer installation from the packed npm artifact.

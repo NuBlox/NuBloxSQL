@@ -67,6 +67,10 @@ queries.windows.rows
 queries.windows.groups
 expressions.caseExpression
 expressions.cast
+statements.insert
+statements.update
+statements.delete
+syntax.returning
 functions.windowFunctions
 schema.materializedView
 security.rowLevelSecurity
@@ -87,7 +91,7 @@ console.log(definition.portability);
 console.log(definition.relationships.requires);
 ```
 
-Relationships are explicit. Recursive-CTE `SEARCH` requires recursive CTE support; `UNION ALL`, `INTERSECT ALL` and `EXCEPT ALL` require their corresponding base set operator; named windows, frame units and window functions require the base window capability.
+Relationships are explicit. Recursive-CTE `SEARCH` requires recursive CTE support; `UNION ALL`, `INTERSECT ALL` and `EXCEPT ALL` require their corresponding base set operator; named windows and frame units require the base window capability.
 
 ### Engine observations
 
@@ -136,7 +140,7 @@ console.log(qualified.version);
 console.log(qualified.entries);
 ```
 
-This is particularly important for SQLite capabilities that depend on the host `node:sqlite` runtime, including the qualified window-function surface.
+This is particularly important for SQLite capabilities that depend on the host `node:sqlite` runtime, including the qualified window-function and `RETURNING` surfaces.
 
 ## NuBlox implementation coverage
 
@@ -147,6 +151,9 @@ const coverage = capabilityOntology.implementation('queries.windows.rows');
 console.log(coverage.scope);       // select-query-v4
 console.log(coverage.stages);
 console.log(coverage.qualified);   // true
+
+const insertCoverage = capabilityOntology.implementation('statements.insert');
+console.log(insertCoverage.scope); // dml-v1
 ```
 
 The implementation record has independent stages for parser, AST, validator, renderer, rewrite/lowering and runtime. Each stage is `implemented`, `partial`, `unsupported` or `not-applicable`.
@@ -156,9 +163,10 @@ The compiler scopes are additive:
 - `select-foundation-v1` — SELECT, joins, grouping, ordering and pagination;
 - `select-query-v2` — ordinary/recursive CTE declarations, scalar/`EXISTS`/`IN` subqueries, correlated-subquery detection and derived tables;
 - `select-query-v3` — `UNION`, `UNION ALL`, `INTERSECT`, `INTERSECT ALL`, `EXCEPT` and `EXCEPT ALL`, including compound queries inside CTEs, subqueries and derived tables;
-- `select-query-v4` — searched/simple `CASE`, structured `CAST`, PostgreSQL `::` normalization, richer comparison predicates, window functions, named windows and window frames.
+- `select-query-v4` — searched/simple `CASE`, structured `CAST`, PostgreSQL `::` normalization, richer comparison predicates, window functions, named windows and window frames;
+- `dml-v1` — INSERT, INSERT-SELECT, UPDATE, DELETE and capability-gated RETURNING.
 
-A scope reports NuBlox compiler coverage, not universal target support. For example, MySQL's profile marks `GROUPS` window frames unsupported, so a PostgreSQL query that requires `GROUPS` is blocked when targeting MySQL. SQLite window support is runtime-dependent, so transpilation should use a live qualification report when window capabilities are involved.
+A scope reports NuBlox compiler coverage, not universal target support. For example, MySQL's profile marks `GROUPS` window frames unsupported, so a PostgreSQL query that requires `GROUPS` is blocked when targeting MySQL. SQLite window and `RETURNING` support are runtime-dependent, so transpilation should use a live qualification report when those capabilities are involved.
 
 ## Rewrite planning
 
@@ -166,7 +174,7 @@ A scope reports NuBlox compiler coverage, not universal target support. For exam
 const plan = capabilityModel.planRewrite(
   'postgresql',
   'mysql',
-  ['statements.select', 'queries.windows.rows']
+  ['statements.update', 'syntax.returning']
 );
 
 if (!plan.safeToProceed) {
@@ -223,18 +231,7 @@ const windowAnalysis = capabilityModel.analyzeAst(parsed);
 console.log(windowAnalysis.scope); // select-query-v4
 ```
 
-The AST models:
-
-- inline and named `OVER` clauses;
-- `PARTITION BY`;
-- window `ORDER BY`;
-- `ROWS`, `RANGE` and `GROUPS` frames;
-- `UNBOUNDED PRECEDING/FOLLOWING`, `CURRENT ROW`, and expression offsets;
-- `BETWEEN ... AND ...` frames;
-- `EXCLUDE CURRENT ROW`, `GROUP`, `TIES` and `NO OTHERS`;
-- named `WINDOW` definitions and references.
-
-Structural validation rejects duplicate/unresolved window names and impossible frame boundaries such as starting with `UNBOUNDED FOLLOWING`.
+The AST models inline and named `OVER` clauses, `PARTITION BY`, window `ORDER BY`, `ROWS`/`RANGE`/`GROUPS` frames, frame bounds, `BETWEEN ... AND ...`, `EXCLUDE`, and named `WINDOW` definitions/references. Structural validation rejects duplicate/unresolved window names and impossible frame boundaries.
 
 For a runtime-dependent target, qualify first:
 
@@ -247,10 +244,62 @@ const result = capabilityModel.transpileSql(
   source,
   { targetQualification }
 );
-
-console.log(result.certified);
-console.log(result.sql);
 ```
+
+### INSERT, UPDATE and DELETE
+
+```js
+const insert = capabilityModel.transpileSql(
+  'mysql',
+  'postgresql',
+  'INSERT INTO ledger (id, amount) VALUES (?, ?), (?, ?)'
+);
+
+console.log(insert.scope);          // dml-v1
+console.log(insert.targetToSource); // [1, 2, 3, 4]
+
+const update = capabilityModel.transpileSql(
+  'postgresql',
+  'mysql',
+  `UPDATE ledger
+   SET amount = CASE WHEN amount < $1 THEN $1 ELSE amount END
+   WHERE id = $2`
+);
+
+const deletion = capabilityModel.transpileSql(
+  'sqlite',
+  'postgresql',
+  'DELETE FROM ledger WHERE id = :id'
+);
+```
+
+DML values use the released expression compiler. `INSERT ... SELECT` uses the released query compiler for its source query. Source bindings are retained explicitly in `targetToSource`, so a target using positional `?` markers still knows which source binding each occurrence represents.
+
+#### RETURNING
+
+`RETURNING` illustrates why engine support, runtime availability and compiler support are separate dimensions:
+
+```js
+const pgReturning = capabilityOntology.resolve('postgresql', 'syntax.returning');
+const mysqlReturning = capabilityOntology.resolve('mysql', 'syntax.returning');
+```
+
+PostgreSQL is native and MySQL is unsupported. SQLite is runtime-dependent, so qualify the connected target before transpiling:
+
+```js
+const targetQualification = await capabilityModel.qualifyClient(sqliteClient);
+
+const result = capabilityModel.transpileSql(
+  'postgresql',
+  'sqlite',
+  'DELETE FROM ledger WHERE id = $1 RETURNING id',
+  { targetQualification }
+);
+```
+
+A PostgreSQL `RETURNING` statement targeted at MySQL is rejected. NuBloxSQL does not drop the clause or invent a second query as hidden emulation.
+
+`dml-v1` does not yet represent DEFAULT VALUES, UPSERT/ON CONFLICT, MySQL ON DUPLICATE KEY UPDATE, MERGE, UPDATE FROM, DELETE USING, data-modifying CTEs, target aliases or vendor-specific mutation modifiers. Treat those as unsupported compiler features until their implementation coverage says otherwise.
 
 ## Set-operation semantics
 
@@ -270,7 +319,7 @@ const queryCapabilities = capabilityOntology.inventory({
 });
 
 const comparison = capabilityModel.compare(
-  'queries.windows.groups',
+  'syntax.returning',
   ['postgresql', 'mysql', 'sqlite']
 );
 ```

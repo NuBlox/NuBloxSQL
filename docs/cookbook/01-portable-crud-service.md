@@ -90,7 +90,62 @@ main().catch((error) => {
 });
 ```
 
-Generated identity/sequence handling is deliberately omitted because PostgreSQL, MySQL and SQLite expose different native mechanisms. If your application relies on generated IDs, keep that detail in a small dialect-aware repository function or use the database's native `RETURNING`/identity mechanism where appropriate.
+Generated identity/sequence handling is deliberately omitted because PostgreSQL, MySQL and SQLite expose different native mechanisms. If your application relies on generated IDs, keep that detail in a small dialect-aware repository function or use the database's native identity mechanism where appropriate.
+
+## Compile DML between Tier-1 dialects
+
+The same package now exposes the capability-aware `dml-v1` compiler for INSERT, UPDATE and DELETE. Use this when the application owns SQL in one Tier-1 source dialect and needs NuBloxSQL to validate and render the same supported mutation for another Tier-1 target.
+
+```js
+const { capabilityModel } = require('nubloxsql');
+
+const mutation = capabilityModel.transpileSql(
+  'postgresql',
+  'mysql',
+  `UPDATE customers
+   SET display_name = $1
+   WHERE id = $2`
+);
+
+console.log(mutation.scope);          // dml-v1
+console.log(mutation.sql);            // UPDATE `customers` SET ...
+console.log(mutation.targetToSource); // [1, 2]
+```
+
+The released `dml-v1` grammar covers:
+
+- `INSERT ... VALUES`, including multiple rows;
+- `INSERT ... SELECT` using the released query compiler as the source;
+- `UPDATE ... SET ... WHERE`;
+- `DELETE FROM ... WHERE`;
+- `RETURNING` only where the target capability is qualified.
+
+DML parameter bindings are remapped across the whole statement. A PostgreSQL statement that references `$2` before `$1`, for example, preserves that source-binding relationship when rendered to MySQL `?` markers or SQLite numbered markers.
+
+### RETURNING is capability-dependent
+
+Do not assume `RETURNING` is portable merely because the source database accepts it.
+
+PostgreSQL supports it natively. MySQL does not support this compiler capability and NuBloxSQL rejects that target. SQLite support depends on the host runtime, so qualify the connected client first:
+
+```js
+const runtime = await capabilityModel.qualifyClient(db);
+
+const deletion = capabilityModel.transpileSql(
+  'postgresql',
+  'sqlite',
+  'DELETE FROM customers WHERE id = $1 RETURNING id',
+  { targetQualification: runtime }
+);
+
+const removed = await db.all(deletion.sql, [1001]);
+```
+
+For MySQL, use a normal DELETE and obtain required application data through an explicit query/transaction design. NuBloxSQL does not silently emulate or discard `RETURNING` semantics.
+
+### Current DML boundary
+
+The first DML compiler scope intentionally does not include `DEFAULT VALUES`, UPSERT/`ON CONFLICT`, MySQL `ON DUPLICATE KEY UPDATE`, `MERGE`, `UPDATE ... FROM`, `DELETE ... USING`, data-modifying CTEs or vendor-specific DML modifiers. Check `capabilityOntology.implementation(...)` and the release API contract before depending on a later feature.
 
 ## Dynamic table names
 
@@ -125,5 +180,6 @@ Use the narrowest operation that describes your expectation:
 - Use transactions for multi-statement state changes.
 - Apply operation timeouts and result budgets at service boundaries.
 - Use pools for external client/server databases; SQLite is embedded and does not expose a pool.
+- Treat compiler certification and runtime transaction design as separate concerns: successful transpilation proves the requested SQL capability surface, not application-level idempotency or concurrency safety.
 
-See [SQL, parameters and typed values](../guides/03-sql-parameters-and-types.md), [prepared statements and results](../guides/04-prepared-and-results.md), and [errors and recovery](../guides/08-errors-retries-and-recovery.md).
+See [SQL, parameters and typed values](../guides/03-sql-parameters-and-types.md), [prepared statements and results](../guides/04-prepared-and-results.md), [capabilities and portability](../guides/11-capabilities-and-portability.md), and [errors and recovery](../guides/08-errors-retries-and-recovery.md).

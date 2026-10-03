@@ -9,6 +9,7 @@ assert.strictEqual(packageJson.types, 'types/root.d.ts');
 
 var rootDeclarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'root.d.ts'), 'utf8');
 assert.ok(rootDeclarations.indexOf("export * from './public';") >= 0);
+assert.ok(rootDeclarations.indexOf("export * from './dml';") >= 0);
 assert.ok(rootDeclarations.indexOf("export * from './portable-metadata';") >= 0);
 
 var declarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'index.d.ts'), 'utf8');
@@ -81,6 +82,26 @@ var publicDeclarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'pu
   assert.ok(publicDeclarations.indexOf(needle) >= 0, 'missing capability model TypeScript contract: ' + needle);
 });
 
+var dmlDeclarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'dml.d.ts'), 'utf8');
+[
+  'export interface SqlAstAssignment',
+  'export interface SqlInsertStatementAst',
+  'export interface SqlUpdateStatementAst',
+  'export interface SqlDeleteStatementAst',
+  'export type SqlDmlAst',
+  'export type SqlStatementAst',
+  "export type SqlDmlCompilerScope = 'dml-v1'",
+  'export interface SqlStatementAstAnalysis',
+  'export interface SqlStatementTranspileResult',
+  "declare module './public'",
+  'parseSql(dialect:',
+  'analyzeAst(ast: SqlStatementAst)',
+  'compileAst(dialect:',
+  'transpileSql(from:'
+].forEach(function (needle) {
+  assert.ok(dmlDeclarations.indexOf(needle) >= 0, 'missing Wave 4 DML TypeScript contract: ' + needle);
+});
+
 var portableDeclarations = fs.readFileSync(path.join(__dirname, '..', 'types', 'portable-metadata.d.ts'), 'utf8');
 [
   'export type PortableMetadataDialect',
@@ -121,4 +142,4 @@ var postgresqlDeclarations = fs.readFileSync(path.join(__dirname, '..', 'lib', '
   assert.ok(postgresqlDeclarations.indexOf(needle) >= 0, 'missing PostgreSQL diagnostics TypeScript contract: ' + needle);
 });
 
-console.log('NuBloxSQL TypeScript dialect discrimination, portable metadata and Wave 3 compiler surface contract passed');
+console.log('NuBloxSQL TypeScript dialect discrimination, portable metadata and Wave 4 compiler surface contract passed');
