@@ -85,6 +85,31 @@ var ontology = sql.capabilityOntology;
   });
   assert.strictEqual(sqlite.certified, true);
   assert.strictEqual(sqlite.sql, 'DELETE FROM "ledger" WHERE ("id" = ?1) RETURNING "id"');
+
+  var wildcard = model.parseSql('postgresql', 'DELETE FROM ledger WHERE id = $1 RETURNING *');
+  assert.strictEqual(wildcard.returning[0].type, 'Wildcard');
+})();
+
+(function dmlScalarPolicy() {
+  assert.throws(function () {
+    model.parseSql('postgresql', 'INSERT INTO ledger (id) VALUES (*)');
+  }, /cannot contain a wildcard/);
+  assert.throws(function () {
+    model.parseSql('postgresql', 'UPDATE ledger SET id = * WHERE id = 1');
+  }, /cannot contain a wildcard/);
+
+  var scalarSubquery = model.parseSql('postgresql', 'UPDATE ledger SET amount = (SELECT max(amount) AS maximum FROM archive) WHERE id = 1');
+  assert.strictEqual(scalarSubquery.assignments[0].value.type, 'SubqueryExpression');
+
+  assert.throws(function () {
+    model.compileAst('postgresql', {
+      type: 'UpdateStatement',
+      target: { type: 'Identifier', parts: ['ledger'] },
+      assignments: [{ type: 'Assignment', column: { type: 'Identifier', parts: ['id'] }, value: { type: 'Wildcard' } }],
+      where: null,
+      returning: []
+    });
+  }, /cannot contain a wildcard/);
 })();
 
 (function invalidDmlFailsClosed() {
@@ -96,7 +121,7 @@ var ontology = sql.capabilityOntology;
   }, /Duplicate UPDATE assignment column/);
   assert.throws(function () {
     model.parseSql('postgresql', 'UPDATE ledger SET id = row_number() OVER ()');
-  }, /does not permit window expressions/);
+  }, /window expression/);
   assert.throws(function () {
     model.parseSql('postgresql', 'INSERT INTO ledger DEFAULT VALUES');
   }, /supports VALUES or a SELECT query source/);
