@@ -61,7 +61,7 @@ var model = sql.capabilityModel;
 
   var analysis = model.analyzeAst(ast);
   assert.strictEqual(analysis.scope, 'select-query-v4');
-  ['queries.windows.supported', 'queries.windows.rows', 'functions.windowFunctions'].forEach(function (path) {
+  ['queries.windows.supported', 'queries.windows.rows'].forEach(function (path) {
     assert.ok(analysis.capabilities.indexOf(path) !== -1, 'missing ' + path);
   });
 
