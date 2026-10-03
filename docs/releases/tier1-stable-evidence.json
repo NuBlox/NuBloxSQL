@@ -71,6 +71,7 @@
     "test/portable-metadata-vocabulary.js",
     "lib/client/Diagnostics.js",
     "test/client-diagnostics.js",
+    "lib/capabilities/ModelPolicy.js",
     "lib/capabilities/Ontology.js",
     "lib/capabilities/OntologyPolicy.js",
     "test/sql-capability-ontology.js",
