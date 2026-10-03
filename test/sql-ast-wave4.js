@@ -50,7 +50,7 @@ var ontology = sql.capabilityOntology;
   var update = model.transpileSql('postgresql', 'mysql', 'UPDATE ledger SET amount = $1, name = CASE WHEN $2 = 1 THEN $3 ELSE name END WHERE id = $4');
   assert.strictEqual(update.scope, 'dml-v1');
   assert.strictEqual(update.certified, true);
-  assert.strictEqual(update.sql, 'UPDATE `ledger` SET `amount` = ?, `name` = CASE WHEN (`$2` = 1) THEN ? ELSE `name` END WHERE (`id` = ?)');
+  assert.strictEqual(update.sql, 'UPDATE `ledger` SET `amount` = ?, `name` = CASE WHEN (? = 1) THEN ? ELSE `name` END WHERE (`id` = ?)');
 })();
 
 (function updateParameterMappingUsesSourceBindings() {
