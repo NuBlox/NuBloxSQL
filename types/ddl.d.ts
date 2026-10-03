@@ -87,6 +87,39 @@ export interface SqlDropViewStatementAst {
   readonly name: SqlAstIdentifier;
 }
 
+export interface SqlAlterTableAddColumnActionAst {
+  readonly type: 'AddColumnAction';
+  readonly column: SqlAstColumnDefinition;
+}
+
+export interface SqlAlterTableDropColumnActionAst {
+  readonly type: 'DropColumnAction';
+  readonly column: SqlAstIdentifier;
+}
+
+export interface SqlAlterTableRenameColumnActionAst {
+  readonly type: 'RenameColumnAction';
+  readonly from: SqlAstIdentifier;
+  readonly to: SqlAstIdentifier;
+}
+
+export interface SqlAlterTableRenameTableActionAst {
+  readonly type: 'RenameTableAction';
+  readonly to: SqlAstIdentifier;
+}
+
+export type SqlAlterTableActionAst =
+  | SqlAlterTableAddColumnActionAst
+  | SqlAlterTableDropColumnActionAst
+  | SqlAlterTableRenameColumnActionAst
+  | SqlAlterTableRenameTableActionAst;
+
+export interface SqlAlterTableStatementAst {
+  readonly type: 'AlterTableStatement';
+  readonly table: SqlAstIdentifier;
+  readonly action: SqlAlterTableActionAst;
+}
+
 export type SqlDdlAst =
   | SqlCreateTableStatementAst
   | SqlCreateIndexStatementAst
@@ -94,6 +127,7 @@ export type SqlDdlAst =
   | SqlCreateSchemaStatementAst
   | SqlCreateSequenceStatementAst
   | SqlDropTableStatementAst
-  | SqlDropViewStatementAst;
+  | SqlDropViewStatementAst
+  | SqlAlterTableStatementAst;
 
-export type SqlDdlCompilerScope = 'ddl-v1';
+export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2';
