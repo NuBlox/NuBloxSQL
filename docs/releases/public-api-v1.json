@@ -66,6 +66,7 @@
     "lib/capabilities/Parser.js",
     "lib/capabilities/Compiler.js",
     "lib/capabilities/AstPipeline.js",
+    "lib/capabilities/AstPolicy.js",
     "lib/core/index.js",
     "lib/core/index.d.ts",
     "lib/dialects/mysql/index.js",

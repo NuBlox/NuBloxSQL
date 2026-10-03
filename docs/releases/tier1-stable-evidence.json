@@ -78,6 +78,7 @@
     "lib/capabilities/Parser.js",
     "lib/capabilities/Compiler.js",
     "lib/capabilities/AstPipeline.js",
+    "lib/capabilities/AstPolicy.js",
     "test/sql-ast-compiler.js",
     "test/sql-ast-wave3.js",
     "test/compiler-query-live.js",

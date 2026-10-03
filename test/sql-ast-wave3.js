@@ -47,6 +47,18 @@ var model = sql.capabilityModel;
   assert.ok(mysql.sql.indexOf('CAST(`amount` AS DECIMAL(12, 2)) AS `normalized`') !== -1);
 })();
 
+(function postgresCastAliasIsSourceDialectSpecific() {
+  assert.throws(function () {
+    model.parseSql('mysql', 'SELECT amount::DECIMAL(12,2) FROM ledger');
+  }, /PostgreSQL :: cast syntax is not valid for mysql source SQL/);
+  assert.throws(function () {
+    model.parseSql('sqlite', 'SELECT amount::DECIMAL(12,2) FROM ledger');
+  }, /PostgreSQL :: cast syntax is not valid for sqlite source SQL/);
+  assert.throws(function () {
+    model.transpileSql('mysql', 'postgresql', 'SELECT amount::DECIMAL(12,2) FROM ledger');
+  }, /PostgreSQL :: cast syntax is not valid for mysql source SQL/);
+})();
+
 (function inlineWindowSpecification() {
   var source = 'SELECT id, sum(amount) OVER (PARTITION BY tenant_id ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS running FROM sales ORDER BY id';
   var ast = model.parseSql('postgresql', source);
@@ -79,11 +91,21 @@ var model = sql.capabilityModel;
   var analysis = model.analyzeAst(ast);
   assert.strictEqual(analysis.scope, 'select-query-v4');
   assert.ok(analysis.capabilities.indexOf('queries.windows.named') !== -1);
+  assert.ok(analysis.capabilities.indexOf('queries.windows.rows') !== -1);
 
   var mysql = model.transpileSql('postgresql', 'mysql', source);
   assert.strictEqual(mysql.certified, true);
   assert.ok(mysql.sql.indexOf('OVER `w`') !== -1);
   assert.ok(mysql.sql.indexOf(' WINDOW `w` AS (PARTITION BY `tenant_id` ORDER BY `id` ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)') !== -1);
+})();
+
+(function namedWindowFrameCapabilitiesFailClosed() {
+  var source = 'SELECT sum(amount) OVER w FROM sales WINDOW w AS (ORDER BY id GROUPS BETWEEN 1 PRECEDING AND CURRENT ROW)';
+  var analysis = model.analyzeAst(model.parseSql('postgresql', source));
+  assert.ok(analysis.capabilities.indexOf('queries.windows.groups') !== -1);
+  assert.throws(function () {
+    model.transpileSql('postgresql', 'mysql', source);
+  }, /blocked by unsupported target capabilities/);
 })();
 
 (function windowTargetCapabilitiesFailClosed() {
@@ -99,6 +121,18 @@ var model = sql.capabilityModel;
   assert.strictEqual(window.over.frame.exclude, 'TIES');
   var analysis = model.analyzeAst(ast);
   assert.ok(analysis.capabilities.indexOf('queries.windows.exclude') !== -1);
+})();
+
+(function windowFrameOrderingFailsClosed() {
+  assert.throws(function () {
+    model.parseSql('postgresql', 'SELECT sum(id) OVER (ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 PRECEDING) FROM users');
+  }, /Window frame end cannot precede its start/);
+  assert.throws(function () {
+    model.parseSql('postgresql', 'SELECT sum(id) OVER (ORDER BY id ROWS 1 FOLLOWING) FROM users');
+  }, /Window frame end cannot precede its start/);
+  assert.doesNotThrow(function () {
+    model.parseSql('postgresql', 'SELECT sum(id) OVER (ORDER BY id ROWS BETWEEN 7 PRECEDING AND 8 PRECEDING) FROM users');
+  });
 })();
 
 (function invalidWindowReferencesFailClosed() {
