@@ -16,6 +16,7 @@ on:
       - 'test/client-operation-live.js'
       - 'test/compiler-query-live.js'
       - 'test/compiler-ddl-live.js'
+      - 'test/compiler-ddl-lifecycle-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/mysql/**'
@@ -34,6 +35,7 @@ on:
       - 'test/client-operation-live.js'
       - 'test/compiler-query-live.js'
       - 'test/compiler-ddl-live.js'
+      - 'test/compiler-ddl-lifecycle-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/mysql/**'
@@ -109,6 +111,8 @@ jobs:
         run: node test/compiler-query-live.js
       - name: DDL compiler live qualification
         run: node test/compiler-ddl-live.js
+      - name: DDL lifecycle live qualification
+        run: node test/compiler-ddl-lifecycle-live.js
       - name: Direct streaming with backpressure
         run: node lib/dialects/mysql/test/live-streaming.js direct
       - name: Pooled streaming reuse
