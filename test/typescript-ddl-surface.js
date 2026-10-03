@@ -24,10 +24,16 @@ var ddl = fs.readFileSync(path.join(root, 'types', 'ddl.d.ts'), 'utf8');
   'export interface SqlCreateSequenceStatementAst',
   'export interface SqlDropTableStatementAst',
   'export interface SqlDropViewStatementAst',
+  'export interface SqlAlterTableAddColumnActionAst',
+  'export interface SqlAlterTableDropColumnActionAst',
+  'export interface SqlAlterTableRenameColumnActionAst',
+  'export interface SqlAlterTableRenameTableActionAst',
+  'export type SqlAlterTableActionAst',
+  'export interface SqlAlterTableStatementAst',
   'export type SqlDdlAst',
-  "export type SqlDdlCompilerScope = 'ddl-v1'"
+  "export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2'"
 ].forEach(function (needle) {
-  assert.ok(ddl.indexOf(needle) >= 0, 'missing Wave 5 DDL TypeScript contract: ' + needle);
+  assert.ok(ddl.indexOf(needle) >= 0, 'missing Wave 5/5b DDL TypeScript contract: ' + needle);
 });
 
 var dml = fs.readFileSync(path.join(root, 'types', 'dml.d.ts'), 'utf8');
@@ -35,4 +41,4 @@ assert.ok(dml.indexOf("import type { SqlDdlAst, SqlDdlCompilerScope } from './dd
 assert.ok(dml.indexOf('export type SqlStatementAst = SqlQueryAst | SqlDmlAst | SqlDdlAst;') >= 0);
 assert.ok(dml.indexOf('SqlCompilerScope | SqlDmlCompilerScope | SqlDdlCompilerScope') >= 0);
 
-console.log('NuBloxSQL Wave 5 DDL TypeScript surface contract passed');
+console.log('NuBloxSQL Wave 5/5b DDL TypeScript surface contract passed');
