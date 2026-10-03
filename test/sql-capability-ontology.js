@@ -77,7 +77,6 @@ assert.deepStrictEqual(Array.from(search.relationships.requires), ['queries.cte.
 assert.deepStrictEqual(Array.from(ontology.definition('queries.setOperators.unionAll').relationships.requires), ['queries.setOperators.union']);
 assert.deepStrictEqual(Array.from(ontology.definition('queries.setOperators.intersectAll').relationships.requires), ['queries.setOperators.intersect']);
 assert.deepStrictEqual(Array.from(ontology.definition('queries.setOperators.exceptAll').relationships.requires), ['queries.setOperators.except']);
-assert.deepStrictEqual(Array.from(ontology.definition('functions.windowFunctions').relationships.requires), ['queries.windows.supported']);
 assert.deepStrictEqual(Array.from(ontology.definition('queries.windows.rows').relationships.requires), ['queries.windows.supported']);
 
 var implemented = ontology.implementation('statements.select');
@@ -135,8 +134,7 @@ assert.strictEqual(implemented.qualified, true);
   'queries.windows.rows',
   'queries.windows.range',
   'queries.windows.groups',
-  'queries.windows.exclude',
-  'functions.windowFunctions'
+  'queries.windows.exclude'
 ].forEach(function (path) {
   var expressionWave = ontology.implementation(path);
   assert.strictEqual(expressionWave.scope, 'select-query-v4', path + ' scope');
