@@ -79,6 +79,7 @@
     "lib/capabilities/Compiler.js",
     "lib/capabilities/AstPipeline.js",
     "test/sql-ast-compiler.js",
+    "test/sql-ast-wave3.js",
     "test/compiler-query-live.js",
     "types/root.d.ts",
     "types/public.d.ts",
