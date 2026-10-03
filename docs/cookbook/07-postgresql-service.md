@@ -92,6 +92,8 @@ await fs.promises.writeFile('users.csv', result.data);
 
 For very large exports, use a sink rather than retaining the complete output buffer.
 
+A `COPY TO` output-budget failure or sink failure retires the owning PostgreSQL connection instead of attempting to reuse a session whose COPY stream was interrupted. When `copyTo()` is invoked through a NuBloxSQL pool, the pool removes that connection and supplies a replacement for subsequent work. When using a dedicated connection directly, treat such a failed `copyTo()` as terminal for that connection and create a new one before issuing more SQL.
+
 ## LISTEN/NOTIFY
 
 A notification subscription belongs on a dedicated connection.

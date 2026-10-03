@@ -103,7 +103,7 @@ jobs:
         run: node test/client-transaction-live.js
       - name: Portable operation control contract
         run: node test/client-operation-live.js
-      - name: CTE and subquery compiler live qualification
+      - name: SQL compiler live qualification
         run: node test/compiler-query-live.js
       - name: Direct streaming with backpressure
         run: node lib/dialects/mysql/test/live-streaming.js direct

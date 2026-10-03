@@ -25,6 +25,7 @@ var ids = ontology.ids();
 assert.ok(Object.isFrozen(ids));
 assert.ok(ids.indexOf('queries.joins.inner') >= 0);
 assert.ok(ids.indexOf('queries.cte.recursive') >= 0);
+assert.ok(ids.indexOf('queries.setOperators.union') >= 0);
 assert.ok(ids.indexOf('schema.materializedView') >= 0);
 assert.ok(ids.indexOf('security.rowLevelSecurity') >= 0);
 assert.ok(ids.indexOf('transactions.savepoints') >= 0 || ids.indexOf('statements.savepoint') >= 0);
@@ -70,6 +71,9 @@ var recursive = ontology.definition('queries.cte.recursive');
 assert.deepStrictEqual(Array.from(recursive.relationships.requires), ['queries.cte.ordinary']);
 var search = ontology.definition('queries.cte.search');
 assert.deepStrictEqual(Array.from(search.relationships.requires), ['queries.cte.recursive']);
+assert.deepStrictEqual(Array.from(ontology.definition('queries.setOperators.unionAll').relationships.requires), ['queries.setOperators.union']);
+assert.deepStrictEqual(Array.from(ontology.definition('queries.setOperators.intersectAll').relationships.requires), ['queries.setOperators.intersect']);
+assert.deepStrictEqual(Array.from(ontology.definition('queries.setOperators.exceptAll').relationships.requires), ['queries.setOperators.except']);
 
 var implemented = ontology.implementation('statements.select');
 assert.strictEqual(implemented.scope, 'select-foundation-v1');
@@ -99,13 +103,28 @@ assert.strictEqual(implemented.qualified, true);
   assert.strictEqual(queryWave.qualified, true, path + ' qualification');
 });
 
-var notYetCompiled = ontology.implementation('queries.setOperators.union');
-if (notYetCompiled) {
-  assert.strictEqual(notYetCompiled.stages.parser, 'unsupported');
-  assert.strictEqual(notYetCompiled.stages.ast, 'unsupported');
-  assert.strictEqual(notYetCompiled.stages.renderer, 'unsupported');
-  assert.strictEqual(notYetCompiled.qualified, false);
-}
+[
+  'queries.setOperators.union',
+  'queries.setOperators.unionAll',
+  'queries.setOperators.intersect',
+  'queries.setOperators.intersectAll',
+  'queries.setOperators.except',
+  'queries.setOperators.exceptAll'
+].forEach(function (path) {
+  var setWave = ontology.implementation(path);
+  assert.strictEqual(setWave.scope, 'select-query-v3', path + ' scope');
+  assert.strictEqual(setWave.stages.parser, 'implemented', path + ' parser');
+  assert.strictEqual(setWave.stages.ast, 'implemented', path + ' ast');
+  assert.strictEqual(setWave.stages.validator, 'partial', path + ' validator');
+  assert.strictEqual(setWave.stages.renderer, 'implemented', path + ' renderer');
+  assert.strictEqual(setWave.stages.rewrite, 'partial', path + ' rewrite');
+  assert.strictEqual(setWave.qualified, true, path + ' qualification');
+  assert.ok(setWave.evidence.indexOf('test/compiler-query-live.js') >= 0, path + ' live evidence');
+});
+
+var sqliteIntersectAll = ontology.observation('sqlite', 'queries.setOperators.intersectAll');
+assert.strictEqual(sqliteIntersectAll.support, 'unsupported');
+assert.strictEqual(ontology.resolve('sqlite', 'queries.setOperators.intersectAll').available, false);
 
 ['postgresql', 'mysql', 'sqlite'].forEach(function (dialect) {
   var profile = ontology.profile(dialect);
