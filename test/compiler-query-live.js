@@ -32,19 +32,25 @@ function configFor(dialect) {
   throw new Error('Unsupported compiler live dialect: ' + dialect);
 }
 
-function compile(dialect, source, expectedScope, targetQualification) {
+function compileFrom(sourceDialect, dialect, source, expectedScope, targetQualification) {
   var options = targetQualification ? { targetQualification: targetQualification } : undefined;
-  var result = nublox.capabilityModel.transpileSql('postgresql', dialect, source, options);
+  var result = nublox.capabilityModel.transpileSql(sourceDialect, dialect, source, options);
   assert.strictEqual(result.scope, expectedScope || 'select-query-v2');
   assert.strictEqual(result.certified, true);
   return result.sql;
+}
+
+function compile(dialect, source, expectedScope, targetQualification) {
+  return compileFrom('postgresql', dialect, source, expectedScope, targetQualification);
 }
 
 async function main() {
   var dialect = process.env.NUBLOX_DIALECT || 'sqlite';
   var db = nublox.createClient(configFor(dialect));
   var table = 'nublox_compiler_query_wave';
+  var mergeSource = 'nublox_compiler_merge_source';
   try {
+    await db.execute('DROP TABLE IF EXISTS ' + mergeSource);
     await db.execute('DROP TABLE IF EXISTS ' + table);
     await db.execute('CREATE TABLE ' + table + ' (id INTEGER PRIMARY KEY, parent_id INTEGER, name VARCHAR(100) NOT NULL)');
     await db.execute("INSERT INTO " + table + " (id, parent_id, name) VALUES (1, NULL, 'root')");
@@ -206,7 +212,45 @@ async function main() {
     await db.execute(deleteSelectInsertSql);
     var remaining = await db.all('SELECT id FROM ' + table + ' WHERE id IN (3, 4) ORDER BY id');
     assert.strictEqual(remaining.length, 0);
+
+    await db.execute("INSERT INTO " + table + " (id, parent_id, name) VALUES (5, NULL, 'initial')");
+    var upsertSql;
+    if (dialect === 'mysql') {
+      upsertSql = compileFrom('mysql', 'mysql',
+        "INSERT INTO " + table + " (id, parent_id, name) VALUES (5, NULL, 'ignored') ON DUPLICATE KEY UPDATE name = 'upserted'",
+        'dml-v2', qualification
+      );
+    } else {
+      upsertSql = compile(dialect,
+        "INSERT INTO " + table + " (id, parent_id, name) VALUES (5, NULL, 'upserted') ON CONFLICT (id) DO UPDATE SET name = excluded.name",
+        'dml-v2', qualification
+      );
+    }
+    await db.execute(upsertSql);
+    var upserted = await db.one('SELECT name FROM ' + table + ' WHERE id = 5');
+    assert.strictEqual(upserted.name, 'upserted');
+
+    if (dialect === 'postgresql') {
+      await db.execute('CREATE TABLE ' + mergeSource + ' (id INTEGER PRIMARY KEY, parent_id INTEGER, name VARCHAR(100) NOT NULL)');
+      await db.execute("INSERT INTO " + mergeSource + " (id, parent_id, name) VALUES (6, NULL, 'merge-one')");
+      var mergeSql = compileFrom('postgresql', 'postgresql',
+        'MERGE INTO ' + table + ' AS t USING ' + mergeSource + ' AS s ON t.id = s.id ' +
+        'WHEN MATCHED THEN UPDATE SET name = s.name ' +
+        'WHEN NOT MATCHED THEN INSERT (id, parent_id, name) VALUES (s.id, s.parent_id, s.name)',
+        'dml-v2', qualification
+      );
+      await db.execute(mergeSql);
+      var mergedInsert = await db.one('SELECT name FROM ' + table + ' WHERE id = 6');
+      assert.strictEqual(mergedInsert.name, 'merge-one');
+      await db.execute("UPDATE " + mergeSource + " SET name = 'merge-two' WHERE id = 6");
+      await db.execute(mergeSql);
+      var mergedUpdate = await db.one('SELECT name FROM ' + table + ' WHERE id = 6');
+      assert.strictEqual(mergedUpdate.name, 'merge-two');
+    }
+
+    await db.execute('DELETE FROM ' + table + ' WHERE id IN (5, 6)');
   } finally {
+    try { await db.execute('DROP TABLE IF EXISTS ' + mergeSource); } catch (_) {}
     try { await db.execute('DROP TABLE IF EXISTS ' + table); } catch (_) {}
     await db.close();
   }
