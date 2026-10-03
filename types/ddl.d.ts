@@ -1,57 +1,23 @@
 import type { SqlAstExpression, SqlAstIdentifier, SqlAstTypeName, SqlQueryAst } from './public';
 
-export interface SqlAstForeignKeyReference {
-  readonly type: 'ForeignKeyReference';
-  readonly table: SqlAstIdentifier;
-  readonly columns: readonly SqlAstIdentifier[];
-}
-
-export interface SqlAstColumnDefinition {
-  readonly type: 'ColumnDefinition';
-  readonly name: SqlAstIdentifier;
-  readonly dataType: SqlAstTypeName;
-  readonly nullable: boolean | null;
-  readonly default: SqlAstExpression | null;
-  readonly primaryKey: boolean;
-  readonly unique: boolean;
-  readonly checks: readonly SqlAstExpression[];
-  readonly references: SqlAstForeignKeyReference | null;
-}
-
+export interface SqlAstForeignKeyReference { readonly type: 'ForeignKeyReference'; readonly table: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; }
+export interface SqlAstColumnDefinition { readonly type: 'ColumnDefinition'; readonly name: SqlAstIdentifier; readonly dataType: SqlAstTypeName; readonly nullable: boolean | null; readonly default: SqlAstExpression | null; readonly primaryKey: boolean; readonly unique: boolean; readonly checks: readonly SqlAstExpression[]; readonly references: SqlAstForeignKeyReference | null; }
 export interface SqlAstPrimaryKeyConstraint { readonly type: 'PrimaryKeyConstraint'; readonly columns: readonly SqlAstIdentifier[]; }
 export interface SqlAstUniqueConstraint { readonly type: 'UniqueConstraint'; readonly columns: readonly SqlAstIdentifier[]; }
 export interface SqlAstCheckConstraint { readonly type: 'CheckConstraint'; readonly expression: SqlAstExpression; }
-export interface SqlAstForeignKeyConstraint {
-  readonly type: 'ForeignKeyConstraint';
-  readonly columns: readonly SqlAstIdentifier[];
-  readonly references: SqlAstForeignKeyReference;
-}
+export interface SqlAstForeignKeyConstraint { readonly type: 'ForeignKeyConstraint'; readonly columns: readonly SqlAstIdentifier[]; readonly references: SqlAstForeignKeyReference; }
+export type SqlAstTableConstraint = SqlAstPrimaryKeyConstraint | SqlAstUniqueConstraint | SqlAstCheckConstraint | SqlAstForeignKeyConstraint;
 
-export type SqlAstTableConstraint =
-  | SqlAstPrimaryKeyConstraint
-  | SqlAstUniqueConstraint
-  | SqlAstCheckConstraint
-  | SqlAstForeignKeyConstraint;
-
-export interface SqlCreateTableStatementAst {
-  readonly type: 'CreateTableStatement';
-  readonly name: SqlAstIdentifier;
-  readonly columns: readonly SqlAstColumnDefinition[];
-  readonly constraints: readonly SqlAstTableConstraint[];
-}
-export interface SqlCreateIndexStatementAst {
-  readonly type: 'CreateIndexStatement';
-  readonly name: SqlAstIdentifier;
-  readonly table: SqlAstIdentifier;
-  readonly columns: readonly SqlAstIdentifier[];
-  readonly unique: boolean;
-  readonly where: SqlAstExpression | null;
-}
+export interface SqlCreateTableStatementAst { readonly type: 'CreateTableStatement'; readonly name: SqlAstIdentifier; readonly columns: readonly SqlAstColumnDefinition[]; readonly constraints: readonly SqlAstTableConstraint[]; readonly ifNotExists?: boolean; }
+export interface SqlCreateIndexStatementAst { readonly type: 'CreateIndexStatement'; readonly name: SqlAstIdentifier; readonly table: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; readonly unique: boolean; readonly where: SqlAstExpression | null; readonly ifNotExists?: boolean; }
 export interface SqlCreateViewStatementAst { readonly type: 'CreateViewStatement'; readonly name: SqlAstIdentifier; readonly query: SqlQueryAst; }
-export interface SqlCreateSchemaStatementAst { readonly type: 'CreateSchemaStatement'; readonly name: SqlAstIdentifier; }
-export interface SqlCreateSequenceStatementAst { readonly type: 'CreateSequenceStatement'; readonly name: SqlAstIdentifier; }
-export interface SqlDropTableStatementAst { readonly type: 'DropTableStatement'; readonly name: SqlAstIdentifier; }
-export interface SqlDropViewStatementAst { readonly type: 'DropViewStatement'; readonly name: SqlAstIdentifier; }
+export interface SqlCreateSchemaStatementAst { readonly type: 'CreateSchemaStatement'; readonly name: SqlAstIdentifier; readonly ifNotExists?: boolean; }
+export interface SqlCreateSequenceStatementAst { readonly type: 'CreateSequenceStatement'; readonly name: SqlAstIdentifier; readonly ifNotExists?: boolean; }
+export interface SqlDropTableStatementAst { readonly type: 'DropTableStatement'; readonly name: SqlAstIdentifier; readonly ifExists?: boolean; }
+export interface SqlDropViewStatementAst { readonly type: 'DropViewStatement'; readonly name: SqlAstIdentifier; readonly ifExists?: boolean; }
+export interface SqlDropIndexStatementAst { readonly type: 'DropIndexStatement'; readonly name: SqlAstIdentifier; readonly table: SqlAstIdentifier | null; readonly ifExists: boolean; }
+export interface SqlDropSchemaStatementAst { readonly type: 'DropSchemaStatement'; readonly name: SqlAstIdentifier; readonly table: null; readonly ifExists: boolean; }
+export interface SqlDropSequenceStatementAst { readonly type: 'DropSequenceStatement'; readonly name: SqlAstIdentifier; readonly table: null; readonly ifExists: boolean; }
 
 export interface SqlAlterTableAddColumnActionAst { readonly type: 'AddColumnAction'; readonly column: SqlAstColumnDefinition; }
 export interface SqlAlterTableDropColumnActionAst { readonly type: 'DropColumnAction'; readonly column: SqlAstIdentifier; }
@@ -64,34 +30,8 @@ export interface SqlSetColumnNotNullActionAst { readonly type: 'SetColumnNotNull
 export interface SqlDropColumnNotNullActionAst { readonly type: 'DropColumnNotNullAction'; readonly column: SqlAstIdentifier; }
 export interface SqlAddConstraintActionAst { readonly type: 'AddConstraintAction'; readonly name: SqlAstIdentifier; readonly constraint: SqlAstTableConstraint; }
 export interface SqlDropConstraintActionAst { readonly type: 'DropConstraintAction'; readonly name: SqlAstIdentifier; }
+export type SqlAlterTableActionAst = SqlAlterTableAddColumnActionAst | SqlAlterTableDropColumnActionAst | SqlAlterTableRenameColumnActionAst | SqlAlterTableRenameTableActionAst | SqlAlterColumnTypeActionAst | SqlSetColumnDefaultActionAst | SqlDropColumnDefaultActionAst | SqlSetColumnNotNullActionAst | SqlDropColumnNotNullActionAst | SqlAddConstraintActionAst | SqlDropConstraintActionAst;
+export interface SqlAlterTableStatementAst { readonly type: 'AlterTableStatement'; readonly table: SqlAstIdentifier; readonly action: SqlAlterTableActionAst; }
 
-export type SqlAlterTableActionAst =
-  | SqlAlterTableAddColumnActionAst
-  | SqlAlterTableDropColumnActionAst
-  | SqlAlterTableRenameColumnActionAst
-  | SqlAlterTableRenameTableActionAst
-  | SqlAlterColumnTypeActionAst
-  | SqlSetColumnDefaultActionAst
-  | SqlDropColumnDefaultActionAst
-  | SqlSetColumnNotNullActionAst
-  | SqlDropColumnNotNullActionAst
-  | SqlAddConstraintActionAst
-  | SqlDropConstraintActionAst;
-
-export interface SqlAlterTableStatementAst {
-  readonly type: 'AlterTableStatement';
-  readonly table: SqlAstIdentifier;
-  readonly action: SqlAlterTableActionAst;
-}
-
-export type SqlDdlAst =
-  | SqlCreateTableStatementAst
-  | SqlCreateIndexStatementAst
-  | SqlCreateViewStatementAst
-  | SqlCreateSchemaStatementAst
-  | SqlCreateSequenceStatementAst
-  | SqlDropTableStatementAst
-  | SqlDropViewStatementAst
-  | SqlAlterTableStatementAst;
-
-export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3';
+export type SqlDdlAst = SqlCreateTableStatementAst | SqlCreateIndexStatementAst | SqlCreateViewStatementAst | SqlCreateSchemaStatementAst | SqlCreateSequenceStatementAst | SqlDropTableStatementAst | SqlDropViewStatementAst | SqlDropIndexStatementAst | SqlDropSchemaStatementAst | SqlDropSequenceStatementAst | SqlAlterTableStatementAst;
+export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3' | 'ddl-v4';
