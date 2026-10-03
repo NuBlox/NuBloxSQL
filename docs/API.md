@@ -51,6 +51,7 @@ const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.tableAlter.ren
 | `ddl-v2` | atomic ALTER TABLE add/drop/rename-column and rename-table lifecycle operations |
 | `ddl-v3` | ALTER COLUMN type/default/nullability and named constraint lifecycle |
 | `ddl-v4` | schema-object drop lifecycle plus statement-specific `IF EXISTS` / `IF NOT EXISTS` modifiers |
+| `ddl-v5` | PostgreSQL concurrent index lifecycle and explicit DROP dependency behavior |
 
 A successful compilation certifies the modeled syntax/capability plan for that scope. It does **not** claim identical vendor coercion, collation, precision, conflict, trigger, storage or physical-design semantics where engines differ.
 
@@ -106,11 +107,40 @@ const lifecycle = sql.capabilityModel.transpileSql(
 console.log(lifecycle.scope); // ddl-v4
 ```
 
-Index identity is also explicit. PostgreSQL and SQLite drop an index by index identity; MySQL uses `DROP INDEX name ON table`. NuBloxSQL therefore does not infer the MySQL table or silently translate a MySQL table-scoped drop to a PostgreSQL/SQLite object identity.
+Index identity is explicit. PostgreSQL and SQLite drop an index by index identity; MySQL uses `DROP INDEX name ON table`. NuBloxSQL therefore does not infer the MySQL table or silently translate a MySQL table-scoped drop to a PostgreSQL/SQLite object identity.
 
 Likewise, PostgreSQL schemas are namespaces while MySQL treats `SCHEMA` as a database synonym. Same-dialect `DROP SCHEMA` is supported where native, but automatic PostgreSQL↔MySQL schema/database translation fails closed.
 
-`ddl-v4` currently excludes `CASCADE`/`RESTRICT`, multi-object drops, concurrent index lifecycle, vendor locking/algorithm clauses and metadata-inferred object identity.
+`ddl-v4` excludes multi-object drops, vendor locking/algorithm clauses and metadata-inferred object identity.
+
+### PostgreSQL dependency and concurrent index lifecycle (`ddl-v5`)
+
+`ddl-v5` models PostgreSQL-specific physical and dependency semantics explicitly:
+
+- `CREATE [UNIQUE] INDEX CONCURRENTLY`;
+- `DROP INDEX CONCURRENTLY`;
+- `DROP ... CASCADE` for the released DROP statement families;
+- `DROP ... RESTRICT` for the released DROP statement families.
+
+```js
+const createIndex = sql.capabilityModel.transpileSql(
+  'postgresql',
+  'postgresql',
+  'CREATE INDEX CONCURRENTLY ledger_amount_idx ON ledger (amount)'
+);
+
+const dropTable = sql.capabilityModel.transpileSql(
+  'postgresql',
+  'postgresql',
+  'DROP TABLE IF EXISTS ledger CASCADE'
+);
+```
+
+These semantics are intentionally **not** lowered to MySQL or SQLite. `schema.concurrentIndexBuild`, `schema.concurrentIndexDrop`, `syntax.dropDependency.cascade`, and `syntax.dropDependency.restrict` are separate atomic capabilities. MySQL/SQLite observations are unsupported for this released compiler scope, so cross-dialect targets fail closed instead of emitting superficially similar SQL.
+
+PostgreSQL does not allow `DROP INDEX CONCURRENTLY ... CASCADE`; ddl-v5 rejects that combination. PostgreSQL concurrent index creation/removal also has native transaction-block restrictions: callers must execute those statements outside an explicit transaction. NuBloxSQL models and validates the SQL semantics but does not silently escape an application transaction.
+
+`ddl-v5` does not yet claim concurrent reindexing, concurrent constraint attachment, vendor online-index equivalents, multi-object concurrent drops, or automatic emulation of dependency behavior.
 
 ## Runtime qualification
 
@@ -143,4 +173,4 @@ The exact exported JavaScript surface and required package files are machine-def
 
 The TypeScript entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statements in `types/dml.d.ts`, DDL statements in `types/ddl.d.ts`, portable metadata in `types/portable-metadata.d.ts`, query diagnostics in `types/diagnostics.d.ts`, and ontology declarations in `types/capability-ontology.d.ts`.
 
-Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1`, `ddl-v2`, `ddl-v3` and `ddl-v4` gates verify their released semantic surfaces.
+Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4` and `ddl-v5` gates verify their released semantic surfaces.

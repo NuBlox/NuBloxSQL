@@ -5,7 +5,8 @@ NuBloxSQL provides structured, capability-aware DDL compiler scopes for PostgreS
 - `ddl-v1` — create/drop schema objects and structured table definitions;
 - `ddl-v2` — atomic add/drop/rename table-column lifecycle;
 - `ddl-v3` — column type/default/nullability and named constraint lifecycle;
-- `ddl-v4` — schema-object drops and statement-specific existence modifiers.
+- `ddl-v4` — schema-object drops and statement-specific existence modifiers;
+- `ddl-v5` — PostgreSQL concurrent index lifecycle and explicit DROP dependency behavior.
 
 Use these APIs to parse, inspect, validate or transpile supported schema statements. They are not a schema-migration framework, and certification never implies identical storage, affinity, collation, coercion or physical-design semantics.
 
@@ -187,6 +188,60 @@ SQLite has no supported ddl-v4 `DROP SCHEMA` target.
 
 `CREATE SEQUENCE IF NOT EXISTS` and `DROP SEQUENCE IF EXISTS` are currently PostgreSQL-only in the Tier-1 compiler profile. MySQL and SQLite targets fail closed.
 
+## `ddl-v5`: dependency behavior and concurrent indexes
+
+`ddl-v5` deliberately models PostgreSQL-specific lifecycle semantics instead of pretending similarly named vendor features are interchangeable.
+
+### Concurrent index creation
+
+```js
+const created = capabilityModel.transpileSql(
+  'postgresql',
+  'postgresql',
+  'CREATE INDEX CONCURRENTLY ledger_amount_idx ON ledger (amount)'
+);
+
+console.log(created.scope);     // ddl-v5
+console.log(created.certified); // true
+```
+
+The AST exposes `concurrently: true` on `CreateIndexStatement`. The required atomic capability is `schema.concurrentIndexBuild`.
+
+PostgreSQL executes `CREATE INDEX CONCURRENTLY` outside an explicit transaction block. NuBloxSQL preserves that native requirement; compilation does not move the operation outside an application transaction automatically.
+
+### Concurrent index removal
+
+```js
+const dropped = capabilityModel.transpileSql(
+  'postgresql',
+  'postgresql',
+  'DROP INDEX CONCURRENTLY IF EXISTS ledger_amount_idx RESTRICT'
+);
+```
+
+The compiler records both `schema.concurrentIndexDrop` and `syntax.dropDependency.restrict`. PostgreSQL does not permit `DROP INDEX CONCURRENTLY ... CASCADE`, so that combination is rejected during validation.
+
+### Explicit dependency behavior
+
+Supported released DROP nodes can carry `dependencyMode: 'cascade' | 'restrict'`:
+
+```js
+const result = capabilityModel.transpileSql(
+  'postgresql',
+  'postgresql',
+  'DROP TABLE IF EXISTS ledger CASCADE'
+);
+```
+
+The atomic capabilities are:
+
+```text
+syntax.dropDependency.cascade
+syntax.dropDependency.restrict
+```
+
+This scope intentionally treats these as PostgreSQL semantics. MySQL and SQLite are marked unsupported for the ddl-v5 dependency capabilities, and PostgreSQL→MySQL/SQLite transpilation fails closed. NuBloxSQL does not infer that a vendor's superficially similar keyword has identical dependency, trigger, locking or transactional behavior.
+
 ## Validation and fail-closed behavior
 
 Across the released DDL scopes, validation rejects or blocks cases including:
@@ -204,7 +259,9 @@ Across the released DDL scopes, validation rejects or blocks cases including:
 - MySQL `CREATE INDEX IF NOT EXISTS` / `DROP INDEX IF EXISTS`;
 - cross-family MySQL index identity rewrites;
 - cross PostgreSQL/MySQL schema/database translation;
-- unsupported sequence lifecycle targets.
+- unsupported sequence lifecycle targets;
+- non-PostgreSQL ddl-v5 concurrent/dependency syntax;
+- `DROP INDEX CONCURRENTLY ... CASCADE`.
 
 Unknown syntax must not turn into plausible-but-different schema SQL.
 
@@ -220,10 +277,10 @@ The released DDL compiler still does **not** claim:
 - automatic SQLite table-rebuild migrations;
 - multi-action ALTER TABLE;
 - expression indexes;
-- index methods, included columns, concurrent index lifecycle or vendor index options;
+- index methods, included columns or general vendor index options;
 - sequence start/increment/cache/cycle options;
-- `CASCADE` / `RESTRICT` lifecycle modifiers;
 - multi-object drops;
+- concurrent reindex or cross-vendor online-index equivalence;
 - partitioning, table engines, tablespaces, clustering or distribution clauses;
 - vendor-specific physical design/locking/algorithm modifiers.
 
@@ -231,7 +288,7 @@ Use `capabilityOntology.implementation(feature)` to distinguish database support
 
 ## TypeScript
 
-DDL AST declarations are exported from `types/ddl.d.ts`, including `SqlDdlAst`, ALTER action types, object-drop nodes and `SqlDdlCompilerScope`. `SqlStatementAst` includes query, DML and DDL statements, so normal discriminated-union narrowing works on `statement.type` and `statement.action.type`.
+DDL AST declarations are exported from `types/ddl.d.ts`, including `SqlDdlAst`, ALTER action types, object-drop nodes, `SqlDropDependencyMode` and `SqlDdlCompilerScope`. `SqlStatementAst` includes query, DML and DDL statements, so normal discriminated-union narrowing works on `statement.type` and `statement.action.type`.
 
 ## Qualification
 
@@ -240,11 +297,11 @@ The DDL compiler is qualified through:
 - static AST/compiler contracts;
 - TypeScript declaration contracts;
 - live PostgreSQL 15–18 execution;
-- live MySQL 8.4/9.7 execution;
+- live MySQL 8.4/9.7 execution for portable earlier DDL scopes;
 - SQLite execution/fail-closed evidence on Node 22/24/26;
 - packed-package JavaScript and strict TypeScript consumers;
 - Tier-1 evidence and release audits.
 
-Wave 5b exercises add/drop/rename lifecycle. Wave 5c exercises default changes on PostgreSQL/MySQL plus PostgreSQL type/nullability and named constraints. Wave 5d exercises safe existence modifiers and object drops, including engine-specific index identity behavior.
+Wave 5b exercises add/drop/rename lifecycle. Wave 5c exercises default changes on PostgreSQL/MySQL plus PostgreSQL type/nullability and named constraints. Wave 5d exercises safe existence modifiers and object drops, including engine-specific index identity behavior. Wave 5e exercises PostgreSQL concurrent index creation/removal and explicit CASCADE/RESTRICT dependency behavior while proving non-PostgreSQL targets fail closed.
 
 See [Capabilities and SQL portability](11-capabilities-and-portability.md) for capability resolution and [Metadata and introspection](07-metadata-and-introspection.md) for deployed schema state.

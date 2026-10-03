@@ -9,11 +9,12 @@ assert.ok(rootDeclarations.indexOf("export * from './ddl';") >= 0, 'root declara
 var ddl = fs.readFileSync(path.join(root, 'types', 'ddl.d.ts'), 'utf8');
 [
   'export interface SqlAstForeignKeyReference','export interface SqlAstColumnDefinition','export interface SqlAstPrimaryKeyConstraint','export interface SqlAstUniqueConstraint','export interface SqlAstCheckConstraint','export interface SqlAstForeignKeyConstraint','export type SqlAstTableConstraint',
+  'export type SqlDropDependencyMode',
   'export interface SqlCreateTableStatementAst','export interface SqlCreateIndexStatementAst','export interface SqlCreateViewStatementAst','export interface SqlCreateSchemaStatementAst','export interface SqlCreateSequenceStatementAst',
   'export interface SqlDropTableStatementAst','export interface SqlDropViewStatementAst','export interface SqlDropIndexStatementAst','export interface SqlDropSchemaStatementAst','export interface SqlDropSequenceStatementAst',
-  'readonly ifNotExists?: boolean','readonly ifExists?: boolean',
+  'readonly ifNotExists?: boolean','readonly ifExists?: boolean','readonly concurrently?: boolean','readonly dependencyMode?: SqlDropDependencyMode',
   'export interface SqlAlterTableAddColumnActionAst','export interface SqlAlterTableDropColumnActionAst','export interface SqlAlterTableRenameColumnActionAst','export interface SqlAlterTableRenameTableActionAst','export interface SqlAlterColumnTypeActionAst','export interface SqlSetColumnDefaultActionAst','export interface SqlDropColumnDefaultActionAst','export interface SqlSetColumnNotNullActionAst','export interface SqlDropColumnNotNullActionAst','export interface SqlAddConstraintActionAst','export interface SqlDropConstraintActionAst','export type SqlAlterTableActionAst','export interface SqlAlterTableStatementAst','export type SqlDdlAst',
-  "export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3' | 'ddl-v4'"
+  "export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3' | 'ddl-v4' | 'ddl-v5'"
 ].forEach(function (needle) { assert.ok(ddl.indexOf(needle) >= 0, 'missing Wave 5 DDL TypeScript contract: ' + needle); });
 var dml = fs.readFileSync(path.join(root, 'types', 'dml.d.ts'), 'utf8');
 assert.ok(dml.indexOf("import type { SqlDdlAst, SqlDdlCompilerScope } from './ddl';") >= 0);
