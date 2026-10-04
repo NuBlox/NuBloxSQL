@@ -11,3 +11,4 @@ export * from './type-semantics';
 export * from './schema-snapshot';
 export * from './schema-diff';
 export * from './migration-planner';
+export * from './migration-executor';
