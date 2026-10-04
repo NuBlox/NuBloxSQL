@@ -82,6 +82,8 @@ This yields more product value than another narrow PostgreSQL MERGE extension.
 
 ## Priority 3 — canonical type semantics
 
+**Status:** first released canonical type semantics slice delivered. Metadata inference, typed-bind integration and cross-dialect mapping decisions are now public; remaining work is advanced/vendor-specific type families.
+
 Build a product-level type system that connects:
 
 - SQL type AST;
@@ -246,7 +248,7 @@ Recommended next engineering sequence:
 1. **Product coverage model v2** — machine-readable whole-product implementation stages.
 2. **Database structure intelligence** — canonical structure tree, stable object identity and dependency/impact graph delivered; extend toward descriptions and richer object families.
 3. **SQL Server Tier-1 parity plan and first parity slice**.
-4. **Canonical type-system architecture and mapping register**.
+4. **Canonical type-system architecture and mapping register** — first released slice delivered; continue advanced type families as required by schema-diff work.
 5. **Schema diff model**.
 6. **Migration planner MVP**.
 7. **Unified data-movement engine**.
