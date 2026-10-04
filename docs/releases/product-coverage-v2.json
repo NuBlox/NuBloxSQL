@@ -102,6 +102,11 @@
       "id": "intelligence.dependencies",
       "pillar": "intelligence",
       "status": "established"
+    },
+    {
+      "id": "platform.schema-snapshot",
+      "pillar": "platform",
+      "status": "established"
     }
   ]
 }
