@@ -42,9 +42,10 @@ async function main() {
     } else if (dialect === 'mysql') {
       await db.execute(compile('CREATE TABLE ' + table + ' (id BIGINT AUTO_INCREMENT PRIMARY KEY, note VARCHAR(20))'));
       await db.execute("INSERT INTO " + table + " (note) VALUES ('a'), ('b')");
-      var rows = await db.query('SELECT id FROM ' + table + ' ORDER BY id');
-      assert.strictEqual(Number(rows[0].id), 1);
-      assert.strictEqual(Number(rows[1].id), 2);
+      var first = await db.one("SELECT id FROM " + table + " WHERE note = 'a'");
+      var second = await db.one("SELECT id FROM " + table + " WHERE note = 'b'");
+      assert.strictEqual(Number(first.id), 1);
+      assert.strictEqual(Number(second.id), 2);
     } else {
       await db.execute(compile('CREATE TABLE ' + table + ' (id INTEGER PRIMARY KEY AUTOINCREMENT, note TEXT)'));
       await db.execute("INSERT INTO " + table + " (note) VALUES ('a'), ('b')");
