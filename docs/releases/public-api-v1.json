@@ -77,7 +77,12 @@
     "schemaFingerprint",
     "schemasEquivalent",
     "sourceSchemasEquivalent",
-    "schemaLogicalKey"
+    "schemaLogicalKey",
+    "SCHEMA_DIFF_SCHEMA_VERSION",
+    "SCHEMA_CHANGE_SAFETY",
+    "diffSchemas",
+    "schemaDiffChanged",
+    "schemaDiffHighestSafety"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -150,7 +155,9 @@
     "types/type-semantics.d.ts",
     "lib/client/TypeSemantics.js",
     "types/schema-snapshot.d.ts",
-    "lib/client/SchemaSnapshot.js"
+    "lib/client/SchemaSnapshot.js",
+    "types/schema-diff.d.ts",
+    "lib/client/SchemaDiff.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",

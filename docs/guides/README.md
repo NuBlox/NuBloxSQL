@@ -22,6 +22,7 @@ Use these guides together with the [support matrix](../SUPPORT.md), [public API 
 14. [DDL compiler](14-ddl-compiler.md) — structured table/index/view/schema/sequence ASTs, constraints, capability-gated schema portability and the precise `ddl-v1` boundary.
 15. [Canonical type semantics](15-canonical-type-semantics.md) — cross-dialect type families, metadata annotation, mapping decisions and explicit lossiness.
 16. [Canonical schema snapshots](16-canonical-schema-snapshots.md) — deterministic schema normalization, logical object keys and semantic/source fingerprints.
+17. [Canonical schema diff](17-canonical-schema-diff.md) — object changes, property deltas, dependency changes and conservative safety classification.
 
 ## Documentation rules
 

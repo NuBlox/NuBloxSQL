@@ -215,6 +215,11 @@
     "types/schema-snapshot.d.ts",
     "test/canonical-schema-snapshot.js",
     "tool/check-schema-snapshot-release.js",
-    "docs/guides/16-canonical-schema-snapshots.md"
+    "docs/guides/16-canonical-schema-snapshots.md",
+    "lib/client/SchemaDiff.js",
+    "types/schema-diff.d.ts",
+    "test/canonical-schema-diff.js",
+    "tool/check-schema-diff-release.js",
+    "docs/guides/17-canonical-schema-diff.md"
   ]
 }

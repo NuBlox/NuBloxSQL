@@ -61,7 +61,7 @@
     {
       "id": "platform.schema-diff",
       "pillar": "platform",
-      "status": "gap"
+      "status": "established"
     },
     {
       "id": "platform.migrations",
