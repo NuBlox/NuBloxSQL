@@ -53,6 +53,7 @@ const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.tableAlter.ren
 | `ddl-v4` | schema-object drop lifecycle plus statement-specific `IF EXISTS` / `IF NOT EXISTS` modifiers |
 | `ddl-v5` | PostgreSQL concurrent index lifecycle and explicit DROP dependency behavior |
 | `ddl-v6` | generated columns plus PostgreSQL SQL-standard identity columns |
+| `ddl-v7` | foreign-key actions, match modes and deferrability semantics |
 
 A successful compilation certifies the modeled syntax/capability plan for that scope. It does **not** claim identical vendor coercion, collation, precision, conflict, trigger, storage or physical-design semantics where engines differ.
 
@@ -179,6 +180,16 @@ The corresponding atomic capabilities are `integrity.identity`, `integrity.ident
 
 `ddl-v6` does not yet model identity sequence options, MySQL `AUTO_INCREMENT` as its own semantic node, SQLite ROWID/AUTOINCREMENT semantics, generated-column index restrictions, or vendor-specific generated expression restrictions beyond the qualified subset.
 
+### Foreign-key semantics (`ddl-v7`)
+
+`ddl-v7` extends foreign-key references and named `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY` with structured `ON DELETE` / `ON UPDATE` actions, `MATCH` mode, `DEFERRABLE` / `NOT DEFERRABLE`, and `INITIALLY DEFERRED` / `INITIALLY IMMEDIATE`.
+
+Atomic capabilities include `schema.tableAlter.addForeignKey`, the `integrity.onDelete*` / `integrity.onUpdate*` action families, `integrity.matchSimple|Full|Partial`, `integrity.deferrableForeignKeys`, `integrity.notDeferrableForeignKeys`, and initial-mode capabilities.
+
+PostgreSQL supports the released deferrability semantics. MySQL action support is modeled separately and does not pretend deferred enforcement exists. SQLite foreign-key behavior remains runtime-qualified because enforcement depends on runtime configuration. Unsupported `MATCH`, `SET DEFAULT`, deferrability, and timing differences fail closed rather than being rewritten optimistically.
+
+NuBloxSQL treats MySQL `NO ACTION` timing differences explicitly during cross-dialect planning and does not certify them as lossless PostgreSQL semantics where behavior can differ.
+
 ## Runtime qualification
 
 Use a live qualification report where either source or target availability depends on version/runtime evidence:
@@ -210,4 +221,4 @@ The exact exported JavaScript surface and required package files are machine-def
 
 The TypeScript entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statements in `types/dml.d.ts`, DDL statements in `types/ddl.d.ts`, portable metadata in `types/portable-metadata.d.ts`, query diagnostics in `types/diagnostics.d.ts`, and ontology declarations in `types/capability-ontology.d.ts`.
 
-Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5` and `ddl-v6` gates verify their released semantic surfaces.
+Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6` and `ddl-v7` gates verify their released semantic surfaces.

@@ -20,6 +20,7 @@ on:
       - 'test/compiler-ddl-column-constraints-live.js'
       - 'test/compiler-ddl-object-lifecycle-live.js'
       - 'test/compiler-ddl-generated-identity-live.js'
+      - 'test/compiler-ddl-foreign-keys-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/mysql/**'
@@ -42,6 +43,7 @@ on:
       - 'test/compiler-ddl-column-constraints-live.js'
       - 'test/compiler-ddl-object-lifecycle-live.js'
       - 'test/compiler-ddl-generated-identity-live.js'
+      - 'test/compiler-ddl-foreign-keys-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/mysql/**'
@@ -125,6 +127,8 @@ jobs:
         run: node test/compiler-ddl-object-lifecycle-live.js
       - name: DDL generated column qualification
         run: node test/compiler-ddl-generated-identity-live.js
+      - name: DDL foreign-key semantic qualification
+        run: node test/compiler-ddl-foreign-keys-live.js
       - name: Direct streaming with backpressure
         run: node lib/dialects/mysql/test/live-streaming.js direct
       - name: Pooled streaming reuse
