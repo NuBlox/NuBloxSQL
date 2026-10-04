@@ -25,6 +25,7 @@ For task-oriented usage see the [NuBloxSQL User Guides](guides/README.md) and [C
 - `capabilityOntology` — atomic capability definitions, engine observations and NuBlox implementation coverage.
 - `productCoverage` — whole-product maturity register across runtime, language, intelligence, portability, platform foundations and dialect depth.
 - `typeSemantics` / `canonicalType()` / `nativeTypeMapping()` / `typeCompatibility()` — canonical cross-dialect type analysis and mapping.
+- `schemaSnapshot()` / `buildSchemaSnapshot()` — deterministic canonical schema model with semantic/source fingerprints.
 
 ## Capability ontology
 
@@ -415,3 +416,15 @@ const compatibility = sql.typeCompatibility('postgresql', 'mysql', 'uuid');
 ```
 
 Mapping decisions are `native-equivalent`, `lossless-map`, `lossy-map`, `application-convention`, `runtime-qualified`, or `unsupported`. `canonicalTypeFromPortableSpec()` bridges existing portable typed binds into the same semantic vocabulary, and `annotateTypes()` projects canonical type descriptors over a portable metadata snapshot without changing portable metadata vocabulary v1.
+
+
+## Canonical schema snapshots
+
+`SCHEMA_SNAPSHOT_SCHEMA_VERSION === 1` defines the released normalized schema model. The snapshot combines portable metadata, stable object identity, canonical type semantics and dependency edges into one immutable representation.
+
+```js
+const snapshot = await db.schemaSnapshot({ schema: 'public', deep: true });
+const fingerprint = sql.schemaFingerprint(snapshot);
+```
+
+Each object exposes both its engine-qualified `id` and a dialect-neutral `logicalKey`. `semanticHash` ignores source-dialect type spelling so equivalent canonical schemas can compare equal across engines; `sourceHash` also includes source dialect and native type names. Use `schemasEquivalent()` for semantic comparison and `sourceSchemasEquivalent()` for source-representation comparison.

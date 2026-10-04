@@ -21,6 +21,7 @@ Use these guides together with the [support matrix](../SUPPORT.md), [public API 
 13. [Production operation and troubleshooting](13-production-and-troubleshooting.md) — production configuration, cleanup, resource limits, diagnosis and common failure patterns.
 14. [DDL compiler](14-ddl-compiler.md) — structured table/index/view/schema/sequence ASTs, constraints, capability-gated schema portability and the precise `ddl-v1` boundary.
 15. [Canonical type semantics](15-canonical-type-semantics.md) — cross-dialect type families, metadata annotation, mapping decisions and explicit lossiness.
+16. [Canonical schema snapshots](16-canonical-schema-snapshots.md) — deterministic schema normalization, logical object keys and semantic/source fingerprints.
 
 ## Documentation rules
 

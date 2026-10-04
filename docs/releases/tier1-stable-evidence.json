@@ -210,6 +210,11 @@
     "types/type-semantics.d.ts",
     "test/canonical-type-semantics.js",
     "tool/check-type-semantics-release.js",
-    "docs/guides/15-canonical-type-semantics.md"
+    "docs/guides/15-canonical-type-semantics.md",
+    "lib/client/SchemaSnapshot.js",
+    "types/schema-snapshot.d.ts",
+    "test/canonical-schema-snapshot.js",
+    "tool/check-schema-snapshot-release.js",
+    "docs/guides/16-canonical-schema-snapshots.md"
   ]
 }

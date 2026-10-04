@@ -20,6 +20,7 @@ var structureTreeApi = require('./lib/client/StructureTree');
 var typeSemanticsApi = require('./lib/client/TypeSemantics');
 var objectIdentityApi = require('./lib/client/ObjectIdentity');
 var dependencyGraphApi = require('./lib/client/DependencyGraph');
+var schemaSnapshotApi = require('./lib/client/SchemaSnapshot');
 streamApi.install(clientApi);
 require('./lib/client/SqlServerStreamIntegration').install(streamApi);
 diagnosticsApi.install(clientApi);
@@ -115,6 +116,18 @@ function parseObjectId(id) { return objectIdentityApi.parse(id); }
 function graphDependencies(graph, id, options) { return dependencyGraphApi.dependencies(graph, id, options); }
 function graphDependents(graph, id, options) { return dependencyGraphApi.dependents(graph, id, options); }
 function impactAnalysis(graph, id, options) { return dependencyGraphApi.impact(graph, id, options); }
+async function schemaSnapshot(dialectOrConfig, maybeConfig, maybeOptions) {
+  var client, options;
+  if (typeof dialectOrConfig === 'string' && !connectionUrlApi.isUrlLike(dialectOrConfig)) { client = createClient(dialectOrConfig, maybeConfig); options = maybeOptions || {}; }
+  else { client = createClient(dialectOrConfig); options = maybeConfig || {}; }
+  try { return await client.schemaSnapshot(options); }
+  finally { await client.close(); }
+}
+function buildSchemaSnapshot(snapshot) { return schemaSnapshotApi.build(snapshot); }
+function schemaFingerprint(snapshot) { return schemaSnapshotApi.fingerprint(snapshot); }
+function schemasEquivalent(left, right) { return schemaSnapshotApi.equivalent(left, right); }
+function sourceSchemasEquivalent(left, right) { return schemaSnapshotApi.sourceEquivalent(left, right); }
+function schemaLogicalKey(kind, parts) { return schemaSnapshotApi.logicalKey(kind, parts); }
 function supports(dialect, capability) { var implementation = loadAdapter(dialect); var dialectDescriptor = implementation.descriptor; return !!(dialectDescriptor && typeof dialectDescriptor.supports === 'function' && dialectDescriptor.supports(capability)); }
 function descriptor(dialect) { var implementation = loadAdapter(dialect); return implementation.descriptor || null; }
 function capabilityReport(dialect) { var normalized = normalizeDialect(dialect); var implementation = loadAdapter(normalized); return capabilitiesApi.buildReport(normalized, implementation.descriptor || null, null, false); }
@@ -175,6 +188,13 @@ exports.buildDependencyGraph = buildDependencyGraph;
 exports.graphDependencies = graphDependencies;
 exports.graphDependents = graphDependents;
 exports.impactAnalysis = impactAnalysis;
+exports.SCHEMA_SNAPSHOT_SCHEMA_VERSION = schemaSnapshotApi.SCHEMA_VERSION;
+exports.schemaSnapshot = schemaSnapshot;
+exports.buildSchemaSnapshot = buildSchemaSnapshot;
+exports.schemaFingerprint = schemaFingerprint;
+exports.schemasEquivalent = schemasEquivalent;
+exports.sourceSchemasEquivalent = sourceSchemasEquivalent;
+exports.schemaLogicalKey = schemaLogicalKey;
 exports.sql = sqlApi.sql;
 exports.Client = clientApi.Client;
 exports.ClientRowStream = streamApi.ClientRowStream;
