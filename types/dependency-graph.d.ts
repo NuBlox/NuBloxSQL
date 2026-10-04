@@ -63,6 +63,12 @@ export interface DatabaseDependencyGraph<D extends root.Dialect = root.Dialect> 
   readonly edges: readonly DependencyEdge[];
 }
 
+export interface DependencyGraphIntrospectionOptions extends root.MetadataScope {
+  deep?: boolean;
+  concurrency?: number;
+  tables?: readonly string[];
+}
+
 export interface DependencyTraversalOptions {
   transitive?: boolean;
   relations?: readonly DependencyRelation[];
@@ -109,21 +115,21 @@ export function impactAnalysis(
 
 declare module './index' {
   interface MetadataCatalog {
-    dependencyGraph(options?: root.MetadataIntrospectionOptions): Promise<DatabaseDependencyGraph>;
+    dependencyGraph(options?: DependencyGraphIntrospectionOptions): Promise<DatabaseDependencyGraph>;
   }
 
   interface Client {
-    dependencyGraph(options?: root.MetadataIntrospectionOptions): Promise<DatabaseDependencyGraph>;
+    dependencyGraph(options?: DependencyGraphIntrospectionOptions): Promise<DatabaseDependencyGraph>;
   }
 
   function dependencyGraph<D extends root.DialectAlias>(
     dialect: D,
     config?: unknown,
-    options?: root.MetadataIntrospectionOptions
+    options?: DependencyGraphIntrospectionOptions
   ): Promise<DatabaseDependencyGraph<root.Dialect>>;
 
   function dependencyGraph(
     config: root.ClientConfig,
-    options?: root.MetadataIntrospectionOptions
+    options?: DependencyGraphIntrospectionOptions
   ): Promise<DatabaseDependencyGraph>;
 }
