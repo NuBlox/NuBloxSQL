@@ -88,6 +88,12 @@ jobs:
           MSSQL_HOST: 127.0.0.1
           MSSQL_PORT: 1434
         run: node lib/dialects/sqlserver/test/live-tds74.js
+      - name: Native TDS bulk-load qualification
+        env:
+          MSSQL_HOST: 127.0.0.1
+          MSSQL_PORT: 1434
+          MSSQL_TDS_VERSION: '7.4'
+        run: node lib/dialects/sqlserver/test/live-bulk-load.js
       - name: Show SQL Server logs on failure
         if: failure()
         shell: bash
@@ -224,6 +230,13 @@ jobs:
           MSSQL_SERVER_NAME: sqlserver
           MSSQL_PORT: 1433
         run: node lib/dialects/sqlserver/test/live-type-fidelity.js
+      - name: Native TDS bulk-load qualification
+        env:
+          MSSQL_HOST: 127.0.0.1
+          MSSQL_SERVER_NAME: sqlserver
+          MSSQL_PORT: 1433
+          MSSQL_TDS_VERSION: '8.0'
+        run: node lib/dialects/sqlserver/test/live-bulk-load.js
       - name: Show SQL Server logs on failure
         if: failure()
         run: docker logs nublox-sqlserver || true

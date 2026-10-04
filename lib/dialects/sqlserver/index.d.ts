@@ -19,6 +19,7 @@ export interface SqlServerQueryResult<Row=Record<string,unknown>> { readonly col
 export interface SqlServerOperationOptions { timeout?:number; deadline?:number; signal?:AbortSignal; cancelTimeout?:number; acquire?:{ timeout?:number; deadline?:number; signal?:AbortSignal } }
 export interface SqlServerStreamOptions extends SqlServerOperationOptions { highWaterMark?:number }
 export interface SqlServerRowStream<Row=Record<string,unknown>> extends AsyncIterableIterator<Row> { readonly fields:readonly SqlServerColumn[]|null; readonly closed:boolean; readonly done:boolean; readonly result:SqlServerQueryResult<Row>|null; close():Promise<void> }
+export interface SqlServerBulkInsertResult { readonly rowCount:bigint; readonly affectedRows:bigint; readonly columns:readonly Readonly<{name:string;sqlType:string}>[]; readonly native:SqlServerQueryResult }
 export interface SqlServerTransactionOptions extends SqlServerOperationOptions { isolationLevel?:'read-uncommitted'|'read-committed'|'repeatable-read'|'serializable'; readOnly?:never; deferrable?:never }
 export class SqlServerError extends Error { readonly code?:number|string|null; readonly category?:string; readonly retryable?:boolean; readonly severity?:number|null; readonly state?:number|null; readonly native?:unknown; readonly alpnProtocol?:string|null; readonly cause?:unknown; readonly result?:unknown }
 export class PreparedStatement {
@@ -40,6 +41,7 @@ export class Connection {
   execute<Row=Record<string,unknown>>(sqlText:string,values:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
   executeParameters<Row=Record<string,unknown>>(sqlText:string,values:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
   prepare(sqlText:string,options?:SqlServerOperationOptions):PreparedStatement;
+  bulkInsert(tableParts:readonly string[],columnNames:readonly string[],rows:readonly Record<string,unknown>[],options?:SqlServerOperationOptions):Promise<SqlServerBulkInsertResult|null>;
   beginTransaction(options?:SqlServerTransactionOptions):Promise<this>;
   commit(options?:SqlServerOperationOptions):Promise<this>;
   rollback(options?:SqlServerOperationOptions):Promise<this>;
@@ -58,13 +60,14 @@ export class Pool {
   releaseConnection(connection:Connection):Promise<void>;
   query<Row=Record<string,unknown>>(sqlText:string,options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
   execute<Row=Record<string,unknown>>(sqlText:string,values?:readonly unknown[],options?:SqlServerOperationOptions):Promise<SqlServerQueryResult<Row>>;
+  bulkInsert(tableParts:readonly string[],columnNames:readonly string[],rows:readonly Record<string,unknown>[],options?:SqlServerOperationOptions):Promise<SqlServerBulkInsertResult|null>;
   withTransaction<T>(fn:(connection:Connection)=>T|Promise<T>,options?:SqlServerTransactionOptions):Promise<T>;
   end():Promise<void>;
 }
 export function createConnection(config?:SqlServerConnectionConfig):Connection;
 export function createPool(config:SqlServerPoolConfig):Pool;
 export const descriptor:SqlServerDialectDescriptor;
-export const capabilities:Readonly<{ rawQuery:true; transactions:true; savepoints:true; nestedTransactions:true; transactionIsolation:true; readOnlyTransactions:false; deferrableTransactions:false; queryCancellation:true; preparedStatements:true } & Record<string,boolean>>;
+export const capabilities:Readonly<{ rawQuery:true; transactions:true; savepoints:true; nestedTransactions:true; transactionIsolation:true; readOnlyTransactions:false; deferrableTransactions:false; queryCancellation:true; preparedStatements:true; nativeBulkLoad:true } & Record<string,boolean>>;
 export const plannedCapabilities:Readonly<Record<string,boolean>>;
 export const services:SqlServerDialectDescriptor['services'];
 export const TdsPacket:{ readonly HEADER_LENGTH:8; readonly MAX_PACKET_LENGTH:32767; readonly DEFAULT_PACKET_SIZE:4096; readonly PACKET_TYPES:Readonly<Record<string,number>>; readonly STATUS:Readonly<Record<string,number>>; encodePacket(options:TdsPacketOptions):Buffer; decodePacket(buffer:Uint8Array):TdsPacket; packetize(type:number,payload?:Uint8Array,options?:{packetSize?:number;packetId?:number;spid?:number;window?:number}):Buffer[]; PacketParser:new()=>{push(chunk:Uint8Array):TdsPacket[];bufferedBytes():number} };
@@ -73,3 +76,5 @@ export const Login7:{ readonly FIXED_LENGTH:94; readonly MAX_LENGTH:number; read
 export const TokenStream:{ readonly TOKENS:Readonly<Record<string,number>>; readonly DONE_STATUS:Readonly<Record<string,number>>; readonly ENVCHANGE_TYPES:Readonly<Record<string,number>>; parseLoginResponse(payload:Uint8Array):Readonly<Record<string,unknown>> };
 export const ResultStream:{ readonly TOKENS:Readonly<Record<string,number>>; readonly TYPES:Readonly<Record<string,number>>; parse(payload:Uint8Array):SqlServerQueryResult };
 export const AllHeaders:{ readonly HEADER_TYPE_TRANSACTION_DESCRIPTOR:number; readonly TRANSACTION_HEADER_LENGTH:number; readonly TOTAL_LENGTH:number; transaction(transactionDescriptor?:bigint|number,outstandingRequestCount?:number):Buffer; sqlBatch(sqlText:string,transactionDescriptor?:bigint|number):Buffer };
+
+export const BulkLoad:{ readonly FLAG_NULLABLE:number; readonly FLAG_UPDATEABLE_READWRITE:number; readonly FLAGS_NULLABLE_UPDATEABLE:number; quoteIdentifier(value:string):string; metadataQuery(tableParts:readonly string[],columnNames:readonly string[]):string; typeInfoFromTarget(column:SqlServerColumn):Buffer|null; declaration(column:SqlServerColumn):string|null; encodeValue(column:SqlServerColumn,value:unknown):Buffer|null; build(tableParts:readonly string[],columnNames:readonly string[],rows:readonly Record<string,unknown>[],targetColumns:readonly SqlServerColumn[]):Readonly<{statement:string;payload:Buffer;columns:readonly Readonly<{name:string;sqlType:string}>[];rowCount:number}>|null };

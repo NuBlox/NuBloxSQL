@@ -255,7 +255,7 @@ Recommended next engineering sequence:
 6. **Schema diff model** — first released layer delivered; continue rename inference and richer vendor objects as migration planning requires.
 7. **Migration planner MVP** — delivered; extend renderer coverage and runtime qualification as the execution layer is built.
 8. **Migration execution engine** — delivered; continue persistent checkpoints, richer lock policy and backfill orchestration through generic job infrastructure.
-9. **Unified data-movement engine** — portable resumable pipeline plus native PostgreSQL COPY / opt-in MySQL LOCAL INFILE transfer planning delivered; continue SQL Server bulk-writer promotion, SQLite prepared-write tuning, durable checkpoints and large-transfer qualification.
+9. **Unified data-movement engine** — portable resumable pipeline plus native PostgreSQL COPY, opt-in MySQL LOCAL INFILE and SQL Server TDS BulkLoadBCP transfer planning delivered; continue SQLite prepared-write tuning, durable checkpoints and large-transfer qualification.
 10. **Standalone SQL tooling services**.
 11. **Automation/job execution model**.
 12. **TCL/security/administration language families**, prioritized from the coverage register.
