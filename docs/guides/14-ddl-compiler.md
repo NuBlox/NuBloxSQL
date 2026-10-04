@@ -10,7 +10,8 @@ NuBloxSQL provides structured, capability-aware DDL compiler scopes for PostgreS
 - `ddl-v6` — generated-expression columns and PostgreSQL SQL-standard identity columns;
 - `ddl-v7` — foreign-key actions, match modes and deferrability semantics;
 - `ddl-v8` — expression/functional index keys plus PostgreSQL covering/access-method semantics;
-- `ddl-v9` — per-key ordering/collation plus PostgreSQL NULL placement and operator classes.
+- `ddl-v9` — per-key ordering/collation plus PostgreSQL NULL placement and operator classes;
+- `ddl-v10` — native CREATE TABLE AS query materialisation with engine-local result-schema semantics.
 
 Use these APIs to parse, inspect, validate or transpile supported schema statements. They are not a schema-migration framework, and certification never implies identical storage, affinity, collation, coercion or physical-design semantics.
 
@@ -405,6 +406,25 @@ Collation is not treated as a portable string. A PostgreSQL collation name is no
 
 Operator-class parameters, schema-qualified operator classes/collations, per-key length prefixes, and custom PostgreSQL access-method/opclass discovery remain future catalog-aware work.
 
+## `ddl-v10`: CREATE TABLE AS
+
+`ddl-v10` represents CTAS as its own AST node rather than overloading column-definition `CREATE TABLE`:
+
+```sql
+CREATE TABLE IF NOT EXISTS ledger_snapshot AS
+SELECT id, amount
+FROM ledger
+WHERE amount >= 0
+```
+
+The AST contains the target table identifier, `ifNotExists`, and the full released query AST. Query capability requirements are merged into the CTAS capability plan.
+
+PostgreSQL, MySQL and SQLite all have native `statements.createTableAs` observations in the Tier-1 registry. Same-engine compilation is qualified on each engine.
+
+Cross-dialect CTAS is intentionally blocked in this release. The engines derive output column types/affinities and table metadata differently, so shared syntax is not sufficient evidence of lossless schema equivalence. Future cross-dialect CTAS lowering must first materialise and normalise the intended result schema explicitly.
+
+Bind parameters are rejected in the released CTAS query subset to avoid claiming portable prepared-DDL behavior that has not been qualified across all three engines.
+
 ## Current boundary
 
 The released DDL compiler still does **not** claim:
@@ -412,7 +432,6 @@ The released DDL compiler still does **not** claim:
 - identity sequence options;
 - explicit MySQL `AUTO_INCREMENT` semantic nodes;
 - explicit SQLite ROWID/AUTOINCREMENT semantic nodes;
-- `CREATE TABLE AS`;
 - constrained/defaulted ADD COLUMN semantics;
 - automatic MySQL `MODIFY COLUMN` lowering;
 - automatic SQLite table-rebuild migrations;
@@ -444,6 +463,6 @@ The DDL compiler is qualified through:
 - packed-package JavaScript and strict TypeScript consumers;
 - Tier-1 evidence and release audits.
 
-Wave 5b exercises add/drop/rename lifecycle. Wave 5c exercises default changes on PostgreSQL/MySQL plus PostgreSQL type/nullability and named constraints. Wave 5d exercises safe existence modifiers and object drops, including engine-specific index identity behavior. Wave 5e exercises PostgreSQL concurrent index creation/removal and explicit CASCADE/RESTRICT dependency behavior. Wave 5f executes stored generated columns on PostgreSQL/MySQL/SQLite, PostgreSQL identity on PostgreSQL 15–18, and virtual generation when PostgreSQL 18 qualifies it. Wave 5g executes foreign-key semantics across Tier-1 engines with explicit vendor boundaries. Wave 5h executes PostgreSQL/SQLite expression indexes, MySQL functional key parts, and PostgreSQL INCLUDE/access-method syntax. Wave 5i executes per-key ASC/DESC on all Tier-1 engines, key-level collation on PostgreSQL/SQLite, and PostgreSQL NULL placement/operator-class identity.
+Wave 5b exercises add/drop/rename lifecycle. Wave 5c exercises default changes on PostgreSQL/MySQL plus PostgreSQL type/nullability and named constraints. Wave 5d exercises safe existence modifiers and object drops, including engine-specific index identity behavior. Wave 5e exercises PostgreSQL concurrent index creation/removal and explicit CASCADE/RESTRICT dependency behavior. Wave 5f executes stored generated columns on PostgreSQL/MySQL/SQLite, PostgreSQL identity on PostgreSQL 15–18, and virtual generation when PostgreSQL 18 qualifies it. Wave 5g executes foreign-key semantics across Tier-1 engines with explicit vendor boundaries. Wave 5h executes PostgreSQL/SQLite expression indexes, MySQL functional key parts, and PostgreSQL INCLUDE/access-method syntax. Wave 5i executes per-key ASC/DESC on all Tier-1 engines, key-level collation on PostgreSQL/SQLite, and PostgreSQL NULL placement/operator-class identity. Wave 5j executes same-engine CREATE TABLE AS on PostgreSQL 15–18, MySQL 8.4/9.7 and SQLite while explicitly rejecting cross-engine result-schema inference.
 
 See [Capabilities and SQL portability](11-capabilities-and-portability.md) for capability resolution and [Metadata and introspection](07-metadata-and-introspection.md) for deployed schema state.
