@@ -48,7 +48,9 @@
     "mysql",
     "postgresql",
     "sqlite",
-    "sqlserver"
+    "sqlserver",
+    "PRODUCT_COVERAGE_SCHEMA_VERSION",
+    "productCoverage"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -110,7 +112,9 @@
     "lib/capabilities/DmlMysqlMultiTablePipeline.js",
     "lib/capabilities/DmlMysqlMutationControlPipeline.js",
     "lib/capabilities/DmlMergeModelPolicy.js",
-    "lib/capabilities/DmlMergeActionsPipeline.js"
+    "lib/capabilities/DmlMergeActionsPipeline.js",
+    "types/product-coverage.d.ts",
+    "lib/capabilities/ProductCoverage.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
