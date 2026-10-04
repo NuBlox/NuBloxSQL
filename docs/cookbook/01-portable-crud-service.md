@@ -145,7 +145,7 @@ For MySQL, use a normal DELETE and obtain required application data through an e
 
 ### Current DML boundary
 
-The first DML compiler scope intentionally does not include `DEFAULT VALUES`, UPSERT/`ON CONFLICT`, MySQL `ON DUPLICATE KEY UPDATE`, `MERGE`, `UPDATE ... FROM`, `DELETE ... USING`, data-modifying CTEs or vendor-specific DML modifiers. Check `capabilityOntology.implementation(...)` and the release API contract before depending on a later feature.
+`dml-v1` remains the portable INSERT/UPDATE/DELETE foundation. Later released scopes add explicit UPSERT/MERGE semantics (`dml-v2`) and qualified auxiliary-table mutation forms (`dml-v3`). `DEFAULT VALUES`, data-modifying CTEs, richer conflict targets, expanded MERGE actions and vendor-specific multi-table DML remain capability-specific; check `capabilityOntology.implementation(...)` before depending on them.
 
 ## Dynamic table names
 
