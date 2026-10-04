@@ -16,6 +16,7 @@ on:
       - 'test/compiler-query-live.js'
       - 'test/compiler-dml-merge-actions-live.js'
       - 'test/compiler-dml-merge-versioned-live.js'
+      - 'test/compiler-dml-merge-rich-source-live.js'
       - 'test/compiler-dml-advanced-live.js'
       - 'test/compiler-dml-source-composition-live.js'
       - 'test/compiler-ddl-live.js'
@@ -50,6 +51,7 @@ on:
       - 'test/compiler-query-live.js'
       - 'test/compiler-dml-merge-actions-live.js'
       - 'test/compiler-dml-merge-versioned-live.js'
+      - 'test/compiler-dml-merge-rich-source-live.js'
       - 'test/compiler-dml-advanced-live.js'
       - 'test/compiler-dml-source-composition-live.js'
       - 'test/compiler-ddl-live.js'
@@ -136,6 +138,8 @@ jobs:
         run: node test/compiler-dml-merge-actions-live.js
       - name: Version-qualified MERGE live qualification
         run: node test/compiler-dml-merge-versioned-live.js
+      - name: MERGE rich-source live qualification
+        run: node test/compiler-dml-merge-rich-source-live.js
       - name: DDL compiler live qualification
         run: node test/compiler-ddl-live.js
       - name: DDL lifecycle live qualification
