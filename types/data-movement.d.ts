@@ -12,7 +12,7 @@ export type DataMovementStrategy =
 
 export interface DataMovementClient {
   readonly dialect: root.Dialect;
-  readonly config?: Readonly<Record<string, unknown>>;
+  readonly config?: object;
   readonly native?: unknown;
   compile(statement: root.SqlFragment | string): root.CompiledSql;
   all<Row = Record<string, unknown>>(statement: root.SqlFragment | string, options?: root.ClientOperationOptions): Promise<Row[]>;
