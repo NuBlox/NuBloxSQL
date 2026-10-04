@@ -8,3 +8,4 @@ export * from './product-coverage';
 export * from './structure-tree';
 export * from './dependency-graph';
 export * from './type-semantics';
+export * from './schema-snapshot';
