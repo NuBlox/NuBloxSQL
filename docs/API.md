@@ -48,7 +48,7 @@ const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.tableAlter.ren
 | `dml-v1` | INSERT, INSERT-SELECT, UPDATE, DELETE and capability-gated RETURNING |
 | `dml-v2` | explicit UPSERT/conflict semantics and PostgreSQL MERGE subset |
 | `dml-v3` | PostgreSQL/SQLite UPDATE FROM and PostgreSQL DELETE USING with one auxiliary table reference |
-| `dml-v4` | joined and derived-table auxiliary mutation-source composition |
+| `dml-v4` | joined and derived-table auxiliary mutation-source composition |\n| `dml-v5` | lossless parameter-origin remapping across rich mutation sources |
 | `ddl-v1` | structured CREATE TABLE/INDEX/VIEW/SCHEMA/SEQUENCE and DROP TABLE/VIEW |
 | `ddl-v2` | atomic ALTER TABLE add/drop/rename-column and rename-table lifecycle operations |
 | `ddl-v3` | ALTER COLUMN type/default/nullability and named constraint lifecycle |
@@ -88,7 +88,7 @@ The initial released source shape is one auxiliary table reference with an optio
 
 PostgreSQL supports joined/derived `UPDATE ... FROM` and `DELETE ... USING`. SQLite is qualified for joined/derived `UPDATE ... FROM` when runtime evidence satisfies its UPDATE-FROM version floor. MySQL remains a distinct multi-table DML family and is not rewritten as PostgreSQL-style FROM/USING.
 
-Bind parameters inside the auxiliary mutation source are deliberately rejected in dml-v4 until source-origin parameter remapping is explicitly modeled. Parameters in the normal SET/WHERE/RETURNING positions retain the existing DML behavior.
+`dml-v5` adds source-origin-aware bind handling for parameters inside auxiliary mutation sources. PostgreSQL numbered parameters and SQLite positional, numbered, and named parameters are rebound through one final statement binder so target marker order and `targetToSource` remain correct when the source clause is inserted between SET and WHERE/RETURNING.
 
 ### DDL foundation (`ddl-v1`)
 
@@ -293,7 +293,7 @@ The exact exported JavaScript surface and required package files are machine-def
 
 The TypeScript entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statements in `types/dml.d.ts`, DDL statements in `types/ddl.d.ts`, portable metadata in `types/portable-metadata.d.ts`, query diagnostics in `types/diagnostics.d.ts`, and ontology declarations in `types/capability-ontology.d.ts`.
 
-Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `dml-v3`, `dml-v4`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8`, `ddl-v9` and `ddl-v10` gates verify their released semantic surfaces.
+Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `dml-v3`, `dml-v4`, `dml-v5`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8`, `ddl-v9` and `ddl-v10` gates verify their released semantic surfaces.
 
 ### Identity, autoincrement and sequence options (`ddl-v11`)
 

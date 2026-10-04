@@ -442,4 +442,4 @@ The mutation-source relation tree contributes its own query capabilities to the 
 
 MySQL multi-table UPDATE/DELETE remains a separate capability family. NuBloxSQL does not reinterpret it as PostgreSQL/SQLite UPDATE-FROM or PostgreSQL DELETE-USING.
 
-For this release, bind parameters inside the auxiliary mutation source are rejected. That boundary prevents accidental parameter renumbering until explicit source-origin mapping is implemented.
+Wave 6c (`dml-v5`) removes the auxiliary-source bind restriction. NuBloxSQL preserves each marker's source binding and rebinds the final composed statement in rendered SQL order. PostgreSQL numbered parameters and SQLite positional, numbered, and named markers therefore retain a correct `targetToSource` mapping even when FROM/USING parameters appear between SET and WHERE/RETURNING parameters.

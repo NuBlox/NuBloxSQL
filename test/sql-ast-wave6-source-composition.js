@@ -50,10 +50,24 @@ var model=sql.capabilityModel;
   assert.ok(/\) AS "r" WHERE /.test(compiled.sql));
 })();
 
-(function sourceBindsFailClosed(){
-  assert.throws(function(){
-    model.parseSql('postgresql','UPDATE ledger SET amount = r.amount FROM (SELECT id, amount FROM rates WHERE tenant_id = $1) AS r WHERE ledger.id = r.id');
-  },/bind parameters inside auxiliary mutation sources|parameter remapping/i);
+(function sourceBindsAreRemappedLosslessly(){
+  var pg=model.parseSql('postgresql','UPDATE ledger SET amount = $1 FROM (SELECT id, amount FROM rates WHERE tenant_id = $3) AS r WHERE ledger.id = $2');
+  assert.strictEqual(model.analyzeAst(pg).scope,'dml-v5');
+  var pgCompiled=model.compileAst('postgresql',pg);
+  assert.deepStrictEqual(pgCompiled.targetToSource,[1,3,2]);
+  assert.ok(/SET "amount" = \$1 FROM \(SELECT .*tenant_id.* = \$2/.test(pgCompiled.sql));
+  assert.ok(/WHERE .*ledger.*id.* = \$3/.test(pgCompiled.sql));
+
+  var sqlite=model.parseSql('sqlite','UPDATE ledger SET amount = ? FROM (SELECT id, amount FROM rates WHERE tenant_id = ?) AS r WHERE ledger.id = ?');
+  assert.strictEqual(model.analyzeAst(sqlite).scope,'dml-v5');
+  var sqliteCompiled=model.compileAst('sqlite',sqlite);
+  assert.deepStrictEqual(sqliteCompiled.targetToSource,[1,2,3]);
+  assert.ok(/SET "amount" = \?1 FROM \(SELECT .*tenant_id.* = \?2/.test(sqliteCompiled.sql));
+  assert.ok(/WHERE .*ledger.*id.* = \?3/.test(sqliteCompiled.sql));
+
+  var named=model.parseSql('sqlite','UPDATE ledger SET amount = :amount FROM (SELECT id, amount FROM rates WHERE tenant_id = :tenant) AS r WHERE ledger.id = :id');
+  var namedCompiled=model.compileAst('sqlite',named);
+  assert.deepStrictEqual(namedCompiled.targetToSource,[':amount',':tenant',':id']);
 })();
 
 (function mysqlFamilyRemainsDistinct(){
