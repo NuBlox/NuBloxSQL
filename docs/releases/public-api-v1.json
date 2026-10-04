@@ -16,8 +16,11 @@
     "ClientRowStream",
     "DATA_MOVEMENT_CHECKPOINT_SCHEMA_VERSION",
     "DATA_MOVEMENT_INVALID_ROW_POLICIES",
+    "DATA_MOVEMENT_PLAN_SCHEMA_VERSION",
     "DATA_MOVEMENT_SCHEMA_VERSION",
     "DATA_MOVEMENT_STATUSES",
+    "DATA_MOVEMENT_STRATEGIES",
+    "DATA_MOVEMENT_STRATEGY_PREFERENCES",
     "DEPENDENCY_GRAPH_SCHEMA_VERSION",
     "DIALECTS",
     "ERROR_CATEGORIES",
@@ -81,6 +84,7 @@
     "nativeTypeMapping",
     "objectId",
     "parseObjectId",
+    "planDataMovement",
     "planMigration",
     "postgresql",
     "productCoverage",
@@ -180,7 +184,8 @@
     "types/migration-planner.d.ts",
     "lib/client/MigrationPlanner.js",
     "types/migration-executor.d.ts",
-    "lib/client/MigrationExecutor.js"
+    "lib/client/MigrationExecutor.js",
+    "lib/client/DataMovementPlanner.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
