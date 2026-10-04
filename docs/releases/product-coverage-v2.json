@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 2,
+  "purpose": "Whole-product planning and release coverage register for NuBloxSQL as a standalone database platform.",
+  "source": "lib/capabilities/ProductCoverage.js",
+  "areas": [
+    {
+      "id": "runtime.client",
+      "pillar": "runtime",
+      "status": "strong"
+    },
+    {
+      "id": "runtime.transactions",
+      "pillar": "runtime",
+      "status": "established"
+    },
+    {
+      "id": "runtime.streaming-control",
+      "pillar": "runtime",
+      "status": "strong"
+    },
+    {
+      "id": "language.query",
+      "pillar": "language",
+      "status": "established"
+    },
+    {
+      "id": "language.dml",
+      "pillar": "language",
+      "status": "strong"
+    },
+    {
+      "id": "language.ddl",
+      "pillar": "language",
+      "status": "strong"
+    },
+    {
+      "id": "intelligence.metadata",
+      "pillar": "intelligence",
+      "status": "strong"
+    },
+    {
+      "id": "intelligence.diagnostics",
+      "pillar": "intelligence",
+      "status": "strong"
+    },
+    {
+      "id": "portability.ontology",
+      "pillar": "portability",
+      "status": "strong"
+    },
+    {
+      "id": "portability.rewrite",
+      "pillar": "portability",
+      "status": "established"
+    },
+    {
+      "id": "platform.types",
+      "pillar": "platform",
+      "status": "partial"
+    },
+    {
+      "id": "platform.schema-diff",
+      "pillar": "platform",
+      "status": "gap"
+    },
+    {
+      "id": "platform.migrations",
+      "pillar": "platform",
+      "status": "gap"
+    },
+    {
+      "id": "dialect.sqlserver-parity",
+      "pillar": "dialect-depth",
+      "status": "partial"
+    }
+  ]
+}
