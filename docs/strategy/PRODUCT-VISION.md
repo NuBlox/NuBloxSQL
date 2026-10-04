@@ -92,9 +92,6 @@ A portable API should exist where semantics genuinely align. Engine-native acces
 ## Architectural relationship
 
 ```text
-Applications / ORMs / tooling
-            |
-            v
         NuBloxSQL
             |
    +--------+---------+----------+-------------+
