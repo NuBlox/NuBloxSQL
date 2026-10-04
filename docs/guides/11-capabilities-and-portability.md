@@ -504,3 +504,23 @@ WHEN NOT MATCHED THEN
 ```
 
 The compiler records `syntax.mergeMultipleWhen`, `syntax.mergeActionCondition`, and `syntax.mergeDoNothing`, preserves parameter bindings across predicates/actions, and remains PostgreSQL-only. PostgreSQL 17+ `BY SOURCE` / `BY TARGET` and MERGE `RETURNING` are intentionally excluded from this shared PostgreSQL 15–18 scope.
+
+
+## PostgreSQL 17+ MERGE extensions (`dml-v9`)
+
+PostgreSQL 17 adds `WHEN NOT MATCHED BY SOURCE` and MERGE `RETURNING`; `BY TARGET` is the explicit form of the ordinary target-not-matched family. NuBloxSQL models these as version-qualified capabilities rather than treating all PostgreSQL releases as equivalent.
+
+```sql
+MERGE INTO ledger AS t
+USING incoming AS s
+ON t.id = s.id
+WHEN MATCHED THEN
+  UPDATE SET amount = s.amount
+WHEN NOT MATCHED BY TARGET THEN
+  INSERT (id, amount) VALUES (s.id, s.amount)
+WHEN NOT MATCHED BY SOURCE THEN
+  DELETE
+RETURNING merge_action(), t.id, t.amount;
+```
+
+A `dml-v9` statement requires runtime qualification. PostgreSQL 15/16 resolve the new capabilities as unsupported; PostgreSQL 17/18 resolve them as native. The compiler preserves the different match families, validates reachability, and keeps cross-dialect lowering fail-closed.

@@ -62,9 +62,12 @@ var model=sql.capabilityModel;
 })();
 
 (function versionedFamiliesRemainSeparate(){
+  var source='MERGE INTO ledger t USING incoming s ON t.id=s.id WHEN NOT MATCHED BY SOURCE THEN DELETE';
+  var ast=model.parseSql('postgresql',source);
+  assert.strictEqual(model.analyzeAst(ast).scope,'dml-v9');
   assert.throws(function(){
-    model.parseSql('postgresql','MERGE INTO ledger t USING incoming s ON t.id=s.id WHEN NOT MATCHED BY SOURCE THEN DELETE');
-  },/does not yet include PostgreSQL 17\+ BY SOURCE\/BY TARGET/);
+    model.transpileSql('postgresql','postgresql',source);
+  },/requires runtime qualification/);
 })();
 
 (function crossDialectFailsClosed(){

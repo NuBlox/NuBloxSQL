@@ -308,7 +308,7 @@ The exact exported JavaScript surface and required package files are machine-def
 
 The TypeScript entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statements in `types/dml.d.ts`, DDL statements in `types/ddl.d.ts`, portable metadata in `types/portable-metadata.d.ts`, query diagnostics in `types/diagnostics.d.ts`, and ontology declarations in `types/capability-ontology.d.ts`.
 
-Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `dml-v3`, `dml-v4`, `dml-v5`, `dml-v6`, `dml-v7`, `dml-v8`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8`, `ddl-v9` and `ddl-v10` gates verify their released semantic surfaces.
+Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `dml-v3`, `dml-v4`, `dml-v5`, `dml-v6`, `dml-v7`, `dml-v8`, `dml-v9`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8`, `ddl-v9` and `ddl-v10` gates verify their released semantic surfaces.
 
 ### Identity, autoincrement and sequence options (`ddl-v11`)
 
@@ -327,3 +327,10 @@ These families are **not** automatically translated across dialects. Same-engine
 `dml-v8` expands PostgreSQL MERGE from the earlier one-matched/one-not-matched shape into an ordered `clauses[]` AST. Each clause records its match family, optional `AND` predicate, and one of UPDATE, DELETE, INSERT, or DO NOTHING. Clause order is preserved because PostgreSQL executes the first reachable matching action.
 
 The released subset targets semantics shared across PostgreSQL 15–18: multiple `WHEN MATCHED` / `WHEN NOT MATCHED` clauses, action predicates and `DO NOTHING`. Unreachable same-family clauses after an unconditional clause are rejected. PostgreSQL 17+ `BY SOURCE` / `BY TARGET` and MERGE `RETURNING` remain separately versioned future capabilities rather than being accepted implicitly.
+
+
+### PostgreSQL 17+ MERGE extensions (`dml-v9`)
+
+`dml-v9` adds the PostgreSQL 17+ match families `WHEN NOT MATCHED BY SOURCE` and explicit `WHEN NOT MATCHED BY TARGET`, plus statement-level `MERGE ... RETURNING`. These capabilities are modeled as runtime-version-dependent from PostgreSQL 17. A `dml-v9` transpilation therefore requires source and target qualification; PostgreSQL 15/16 are rejected, while qualified PostgreSQL 17/18 can render and execute the statement.
+
+The AST keeps `not-matched`, `not-matched-by-target`, and `not-matched-by-source` distinct while treating unqualified NOT MATCHED and BY TARGET as one reachability family. `RETURNING WITH (OLD/NEW AS ...)` output aliases remain outside the released subset.
