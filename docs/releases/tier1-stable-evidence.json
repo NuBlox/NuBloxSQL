@@ -191,6 +191,10 @@
     "tool/check-dml-v9-release.js",
     "test/sql-ast-wave6-merge-rich-source.js",
     "test/compiler-dml-merge-rich-source-live.js",
-    "tool/check-dml-v10-release.js"
+    "tool/check-dml-v10-release.js",
+    "lib/capabilities/ProductCoverage.js",
+    "test/product-coverage-v2.js",
+    "tool/check-product-coverage-v2.js",
+    "docs/releases/product-coverage-v2.json"
   ]
 }
