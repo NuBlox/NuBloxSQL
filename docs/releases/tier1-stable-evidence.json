@@ -185,6 +185,9 @@
     "lib/capabilities/DmlMergeActionsPipeline.js",
     "test/sql-ast-wave6-merge-actions.js",
     "test/compiler-dml-merge-actions-live.js",
-    "tool/check-dml-v8-release.js"
+    "tool/check-dml-v8-release.js",
+    "test/sql-ast-wave6-merge-versioned.js",
+    "test/compiler-dml-merge-versioned-live.js",
+    "tool/check-dml-v9-release.js"
   ]
 }
