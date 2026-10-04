@@ -1,5 +1,7 @@
 # NuBloxSQL Product Capability Register
 
+The executable source of truth for the current whole-product register is `lib/capabilities/ProductCoverage.js`, with release snapshot `docs/releases/product-coverage-v2.json`. This document explains the assessment and prioritization model.
+
 Status values:
 
 - **Strong** — substantial released implementation and automated qualification exist.
