@@ -9,7 +9,8 @@ NuBloxSQL provides structured, capability-aware DDL compiler scopes for PostgreS
 - `ddl-v5` — PostgreSQL concurrent index lifecycle and explicit DROP dependency behavior;
 - `ddl-v6` — generated-expression columns and PostgreSQL SQL-standard identity columns;
 - `ddl-v7` — foreign-key actions, match modes and deferrability semantics;
-- `ddl-v8` — expression/functional index keys plus PostgreSQL covering/access-method semantics.
+- `ddl-v8` — expression/functional index keys plus PostgreSQL covering/access-method semantics;
+- `ddl-v9` — per-key ordering/collation plus PostgreSQL NULL placement and operator classes.
 
 Use these APIs to parse, inspect, validate or transpile supported schema statements. They are not a schema-migration framework, and certification never implies identical storage, affinity, collation, coercion or physical-design semantics.
 
@@ -382,6 +383,28 @@ The released access-method set is `btree`, `hash`, `gist`, `spgist`, `gin` and `
 
 SQLite expression indexes require runtime version qualification (3.9.0 or newer). NuBloxSQL does not silently translate PostgreSQL/SQLite expression-index semantics to MySQL functional indexes or vice versa.
 
+## `ddl-v9`: index key options
+
+`ddl-v9` makes physical key modifiers explicit rather than leaving them in raw SQL.
+
+```sql
+CREATE INDEX ledger_code_idx
+ON ledger (code COLLATE "C" text_pattern_ops DESC NULLS LAST)
+```
+
+Each key can carry:
+
+- `direction: 'ASC' | 'DESC'`;
+- `collation` as a structured identifier;
+- `operatorClass` as a structured identifier;
+- `nulls: 'FIRST' | 'LAST'`.
+
+`ASC`/`DESC` is the portable Tier-1 subset. PostgreSQL and SQLite support the released key-level collation form; MySQL does not expose a ddl-v9 key-level `COLLATE` capability. PostgreSQL alone exposes `NULLS FIRST/LAST` and operator-class identity in this scope.
+
+Collation is not treated as a portable string. A PostgreSQL collation name is not automatically rewritten to SQLite, and vice versa, because identical names do not prove identical locale/provider/version semantics.
+
+Operator-class parameters, schema-qualified operator classes/collations, per-key length prefixes, and custom PostgreSQL access-method/opclass discovery remain future catalog-aware work.
+
 ## Current boundary
 
 The released DDL compiler still does **not** claim:
@@ -394,7 +417,7 @@ The released DDL compiler still does **not** claim:
 - automatic MySQL `MODIFY COLUMN` lowering;
 - automatic SQLite table-rebuild migrations;
 - multi-action ALTER TABLE;
-- operator classes/families, index collations and per-key sort/null-order options;
+- operator-class parameters/families, schema-qualified index collations/opclasses and vendor-specific per-key extensions beyond ddl-v9;
 - MySQL invisible/multi-valued/full-text/spatial index semantics;
 - general vendor index storage/algorithm options;
 - sequence start/increment/cache/cycle options;
@@ -421,6 +444,6 @@ The DDL compiler is qualified through:
 - packed-package JavaScript and strict TypeScript consumers;
 - Tier-1 evidence and release audits.
 
-Wave 5b exercises add/drop/rename lifecycle. Wave 5c exercises default changes on PostgreSQL/MySQL plus PostgreSQL type/nullability and named constraints. Wave 5d exercises safe existence modifiers and object drops, including engine-specific index identity behavior. Wave 5e exercises PostgreSQL concurrent index creation/removal and explicit CASCADE/RESTRICT dependency behavior. Wave 5f executes stored generated columns on PostgreSQL/MySQL/SQLite, PostgreSQL identity on PostgreSQL 15–18, and virtual generation when PostgreSQL 18 qualifies it. Wave 5g executes foreign-key semantics across Tier-1 engines with explicit vendor boundaries. Wave 5h executes PostgreSQL/SQLite expression indexes, MySQL functional key parts, and PostgreSQL INCLUDE/access-method syntax.
+Wave 5b exercises add/drop/rename lifecycle. Wave 5c exercises default changes on PostgreSQL/MySQL plus PostgreSQL type/nullability and named constraints. Wave 5d exercises safe existence modifiers and object drops, including engine-specific index identity behavior. Wave 5e exercises PostgreSQL concurrent index creation/removal and explicit CASCADE/RESTRICT dependency behavior. Wave 5f executes stored generated columns on PostgreSQL/MySQL/SQLite, PostgreSQL identity on PostgreSQL 15–18, and virtual generation when PostgreSQL 18 qualifies it. Wave 5g executes foreign-key semantics across Tier-1 engines with explicit vendor boundaries. Wave 5h executes PostgreSQL/SQLite expression indexes, MySQL functional key parts, and PostgreSQL INCLUDE/access-method syntax. Wave 5i executes per-key ASC/DESC on all Tier-1 engines, key-level collation on PostgreSQL/SQLite, and PostgreSQL NULL placement/operator-class identity.
 
 See [Capabilities and SQL portability](11-capabilities-and-portability.md) for capability resolution and [Metadata and introspection](07-metadata-and-introspection.md) for deployed schema state.

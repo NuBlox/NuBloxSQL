@@ -55,6 +55,7 @@ const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.tableAlter.ren
 | `ddl-v6` | generated columns plus PostgreSQL SQL-standard identity columns |
 | `ddl-v7` | foreign-key actions, match modes and deferrability semantics |
 | `ddl-v8` | expression/functional index keys plus PostgreSQL INCLUDE/access methods |
+| `ddl-v9` | per-key ordering/collation plus PostgreSQL NULL placement and operator classes |
 
 A successful compilation certifies the modeled syntax/capability plan for that scope. It does **not** claim identical vendor coercion, collation, precision, conflict, trigger, storage or physical-design semantics where engines differ.
 
@@ -204,6 +205,27 @@ Expression keys are first-class AST nodes rather than raw SQL fragments. Bind pa
 
 NuBloxSQL deliberately does not certify PostgreSQL/SQLite expression indexes as losslessly identical to MySQL functional key parts. Cross-family expression-index transpilation fails closed until a specific semantic strategy is selected. SQLite expression-index availability remains version-qualified from SQLite 3.9.0.
 
+### Index key options (`ddl-v9`)
+
+`ddl-v9` extends each structured index key with optional `direction`, `collation`, `operatorClass`, and `nulls` fields.
+
+- `ASC` / `DESC` is qualified across PostgreSQL, MySQL and SQLite.
+- key-level `COLLATE` is qualified for PostgreSQL and SQLite only.
+- `NULLS FIRST` / `NULLS LAST` and operator-class identity are PostgreSQL-only.
+- collation identity is deliberately engine-local: NuBloxSQL does not translate a collation name across dialects merely because the same text exists on both systems.
+
+```js
+const index = sql.capabilityModel.transpileSql(
+  'postgresql',
+  'postgresql',
+  'CREATE INDEX ledger_code_idx ON ledger (code COLLATE "C" text_pattern_ops DESC NULLS LAST)'
+);
+
+console.log(index.scope); // ddl-v9
+```
+
+The atomic capabilities are `schema.indexKeyOrder`, `schema.indexKeyCollation`, `schema.indexNullsOrder`, and the existing `schema.operatorClass` capability.
+
 ## Runtime qualification
 
 Use a live qualification report where either source or target availability depends on version/runtime evidence:
@@ -235,4 +257,4 @@ The exact exported JavaScript surface and required package files are machine-def
 
 The TypeScript entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statements in `types/dml.d.ts`, DDL statements in `types/ddl.d.ts`, portable metadata in `types/portable-metadata.d.ts`, query diagnostics in `types/diagnostics.d.ts`, and ontology declarations in `types/capability-ontology.d.ts`.
 
-Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7` and `ddl-v8` gates verify their released semantic surfaces.
+Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8` and `ddl-v9` gates verify their released semantic surfaces.

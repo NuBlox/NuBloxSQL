@@ -17,7 +17,7 @@ on:
       - 'test/compiler-ddl-generated-identity-live.js'
       - 'test/compiler-ddl-foreign-keys-live.js'
       - 'test/compiler-ddl-index-semantics-live.js'
-      - 'test/compiler-ddl-index-semantics-live.js'
+      - 'test/compiler-ddl-index-key-options-live.js'
       - 'test/sql-ast-compiler.js'
       - 'lib/dialects/sqlite/**'
       - '.github/workflows/sqlite-dialect.yml'
@@ -88,6 +88,10 @@ jobs:
         run: node test/compiler-ddl-foreign-keys-live.js
       - name: DDL advanced index semantic qualification
         run: node test/compiler-ddl-index-semantics-live.js
+        env:
+          NUBLOX_DIALECT: sqlite
+      - name: DDL index key option qualification
+        run: node test/compiler-ddl-index-key-options-live.js
         env:
           NUBLOX_DIALECT: sqlite
       - name: SQLite production performance and memory evidence
