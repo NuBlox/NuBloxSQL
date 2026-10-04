@@ -24,6 +24,7 @@ on:
       - 'test/compiler-ddl-index-semantics-live.js'
       - 'test/compiler-ddl-index-key-options-live.js'
       - 'test/compiler-ddl-ctas-live.js'
+      - 'test/compiler-ddl-identity-sequence-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/mysql/**'
@@ -139,6 +140,8 @@ jobs:
         run: node test/compiler-ddl-index-key-options-live.js
       - name: DDL CREATE TABLE AS qualification
         run: node test/compiler-ddl-ctas-live.js
+      - name: DDL identity/autoincrement/sequence qualification
+        run: node test/compiler-ddl-identity-sequence-live.js
       - name: Direct streaming with backpressure
         run: node lib/dialects/mysql/test/live-streaming.js direct
       - name: Pooled streaming reuse
