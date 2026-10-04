@@ -51,6 +51,7 @@ const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.tableAlter.ren
 | `dml-v4` | joined and derived-table auxiliary mutation-source composition |
 | `dml-v5` | lossless parameter-origin remapping across rich mutation sources |
 | `dml-v6` | native MySQL multi-table UPDATE/DELETE semantic family |
+| `dml-v7` | MySQL mutation target aliases, modifiers, and single-table ORDER BY/LIMIT controls |
 | `ddl-v1` | structured CREATE TABLE/INDEX/VIEW/SCHEMA/SEQUENCE and DROP TABLE/VIEW |
 | `ddl-v2` | atomic ALTER TABLE add/drop/rename-column and rename-table lifecycle operations |
 | `ddl-v3` | ALTER COLUMN type/default/nullability and named constraint lifecycle |
@@ -97,6 +98,12 @@ PostgreSQL supports joined/derived `UPDATE ... FROM` and `DELETE ... USING`. SQL
 `dml-v6` models MySQL multi-table mutation syntax as its own vendor-specific AST family. It supports joined table-reference graphs for `UPDATE`, qualified assignment targets such as `a.status` and `b.amount`, and both native multi-target `DELETE` forms (`DELETE a, b FROM ...` and `DELETE FROM a, b USING ...`). Parameters are preserved in source occurrence order for MySQL `?` markers.
 
 This family is intentionally same-dialect only. NuBloxSQL does not translate it automatically to PostgreSQL/SQLite `UPDATE ... FROM` or `DELETE ... USING`, because affected-row sets, writable-target semantics, and grammar are not equivalent.
+
+### MySQL mutation controls (`dml-v7`)
+
+`dml-v7` adds MySQL-native mutation controls without changing the portable DML contract. Single-table `UPDATE` supports target aliases, `LOW_PRIORITY`, `IGNORE`, `ORDER BY`, and `LIMIT`. Single-table `DELETE` supports target aliases, `LOW_PRIORITY`, `QUICK`, `IGNORE`, `ORDER BY`, and `LIMIT`. Multi-table UPDATE/DELETE can carry the legal statement modifiers but deliberately reject `ORDER BY` and `LIMIT`.
+
+The parser enforces MySQL modifier ordering, the AST keeps modifiers/order/limit structured, and parameter-origin mapping remains preserved through compilation. These controls are vendor-specific and same-dialect only.
 
 ### DDL foundation (`ddl-v1`)
 
@@ -301,7 +308,7 @@ The exact exported JavaScript surface and required package files are machine-def
 
 The TypeScript entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statements in `types/dml.d.ts`, DDL statements in `types/ddl.d.ts`, portable metadata in `types/portable-metadata.d.ts`, query diagnostics in `types/diagnostics.d.ts`, and ontology declarations in `types/capability-ontology.d.ts`.
 
-Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `dml-v3`, `dml-v4`, `dml-v5`, `dml-v6`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8`, `ddl-v9` and `ddl-v10` gates verify their released semantic surfaces.
+Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `dml-v3`, `dml-v4`, `dml-v5`, `dml-v6`, `dml-v7`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8`, `ddl-v9` and `ddl-v10` gates verify their released semantic surfaces.
 
 ### Identity, autoincrement and sequence options (`ddl-v11`)
 
