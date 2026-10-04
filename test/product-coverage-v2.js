@@ -1,0 +1,54 @@
+'use strict';
+
+var assert=require('assert');
+var sql=require('..');
+
+assert.strictEqual(sql.PRODUCT_COVERAGE_SCHEMA_VERSION,2);
+assert.strictEqual(sql.productCoverage.SCHEMA_VERSION,2);
+assert.strictEqual(sql.capabilityModel.productCoverage,sql.productCoverage);
+
+var validation=sql.productCoverage.validate();
+assert.strictEqual(validation.valid,true);
+assert.strictEqual(validation.schemaVersion,2);
+assert.ok(validation.areas>=10);
+
+var report=sql.productCoverage.report();
+assert.strictEqual(report.schemaVersion,2);
+assert.strictEqual(report.summary.total,report.areas.length);
+assert.ok(report.summary.strong>0);
+assert.ok(report.summary.gap>0);
+assert.ok(Array.isArray(report.pillars.runtime));
+assert.ok(Array.isArray(report.pillars.language));
+assert.ok(Array.isArray(report.pillars.intelligence));
+assert.ok(Array.isArray(report.pillars.portability));
+assert.ok(Array.isArray(report.pillars.platform));
+assert.ok(Array.isArray(report.pillars['dialect-depth']));
+
+var metadata=sql.productCoverage.area('intelligence.metadata');
+assert.strictEqual(metadata.status,'strong');
+assert.strictEqual(metadata.stages.introspection,'implemented');
+assert.strictEqual(metadata.dialects.postgresql,'implemented');
+
+var sqlServer=sql.productCoverage.area('dialect.sqlserver-parity');
+assert.strictEqual(sqlServer.status,'partial');
+assert.strictEqual(sqlServer.dialects.sqlserver,'partial');
+
+var migration=sql.productCoverage.area('platform.migrations');
+assert.strictEqual(migration.status,'gap');
+assert.strictEqual(migration.stages.publicApi,'unsupported');
+
+var gaps=sql.productCoverage.gaps();
+assert.ok(gaps.some(function(area){return area.id==='platform.schema-diff';}));
+assert.ok(gaps.some(function(area){return area.id==='platform.migrations';}));
+assert.ok(gaps.some(function(area){return area.id==='dialect.sqlserver-parity';}));
+
+var impl=sql.capabilityOntology.implementation('statements.select');
+['parser','ast','validator','renderer','rewrite','runtime','introspection','diagnostics','contractTest','liveQualification','packagedPublic','documentation'].forEach(function(stage){
+  assert.ok(Object.prototype.hasOwnProperty.call(impl.stages,stage),'missing ontology stage '+stage);
+});
+assert.strictEqual(impl.stages.contractTest,'implemented');
+assert.strictEqual(impl.stages.liveQualification,'implemented');
+assert.strictEqual(impl.stages.packagedPublic,'implemented');
+assert.strictEqual(impl.stages.documentation,'implemented');
+
+console.log('NuBloxSQL product coverage model v2 contract: PASS');

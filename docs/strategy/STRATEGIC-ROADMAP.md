@@ -18,6 +18,8 @@ New compiler scopes should require a capability-register justification.
 
 ## Priority 1 — capability coverage dashboard
 
+**Status:** implemented as Product Coverage Model v2. The public `productCoverage` API and `docs/releases/product-coverage-v2.json` now provide the machine-readable whole-product register; future roadmap decisions should update this model and its evidence.
+
 Create a machine-readable product coverage register derived from:
 
 - capability ontology definitions and observations;
@@ -105,7 +107,7 @@ unsupported
 runtime-qualified
 ```
 
-This is foundational for MetaObject, schema migration, SQL Workbench and generated data models.
+This is foundational for schema migration, metadata fidelity, generated models and cross-dialect correctness.
 
 ## Priority 4 — schema diff and migration planning
 
@@ -149,7 +151,7 @@ Migration planning must distinguish:
 - lock-sensitive;
 - unsupported automatically.
 
-This is one of the highest-leverage foundations for both MetaObject and SQL Workbench.
+This is one of the highest-leverage foundations in the NuBloxSQL platform.
 
 ## Priority 5 — complete major SQL language families
 
@@ -217,7 +219,7 @@ Only after the broader common platform is stronger:
 
 These are high-complexity and highly vendor-specific, so they should not displace the earlier cross-product foundations.
 
-## Priority 6 — SQL Workbench foundations
+## Priority 6 — standalone SQL tooling foundations
 
 Leverage the parser/AST/intelligence layer for tooling capabilities:
 
@@ -231,22 +233,8 @@ Leverage the parser/AST/intelligence layer for tooling capabilities:
 - metadata-aware completion primitives;
 - safe rewrite suggestions.
 
-This validates NuBloxSQL as a platform, not just an application database driver.
+This strengthens NuBloxSQL as a complete database platform rather than only an execution runtime.
 
-## Priority 7 — MetaObject/ORM integration contract
-
-Define what MetaObject may rely on from NuBloxSQL:
-
-- canonical types;
-- schema metadata;
-- DDL generation;
-- transactions;
-- prepared statements;
-- migration planning;
-- capability/version discovery;
-- dialect-native escape hatches.
-
-Do not duplicate database semantics in MetaObject that belong in NuBloxSQL.
 
 ## Near-term implementation sequence
 
@@ -281,7 +269,7 @@ A 2.0 release candidate should require:
 - compiler family roadmap based on coverage gaps;
 - clean JS/TypeScript package qualification;
 - supported-engine live matrices;
-- documented downstream contracts for MetaObject and SQL Workbench.
+- documented standalone product contracts for runtime, language, metadata, diagnostics, portability and tooling.
 
 ## Decision rule for future work
 
@@ -289,7 +277,7 @@ Before starting a new feature, answer:
 
 1. Which product pillar does it improve?
 2. Which capability-register gap does it close?
-3. Which downstream consumer benefits?
+3. Which NuBloxSQL product capability becomes materially stronger?
 4. Is there a broader reusable abstraction that should be built first?
 5. What live evidence will prove it?
 6. Is this higher value than the largest currently open product gap?

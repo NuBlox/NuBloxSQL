@@ -10,7 +10,7 @@ The governing design rule is:
 
 > **One developer API, honest dialect semantics.**
 
-NuBloxSQL should be usable as a standalone database integration platform and as foundational infrastructure for higher NuBlox products such as MetaObject, SQL Workbench and application platforms.
+NuBloxSQL is an independent database integration platform with its own public contract, architecture, release lifecycle and product roadmap.
 
 ## Product architecture
 
@@ -92,9 +92,6 @@ A portable API should exist where semantics genuinely align. Engine-native acces
 ## Architectural relationship
 
 ```text
-Applications / ORMs / tooling
-            |
-            v
         NuBloxSQL
             |
    +--------+---------+----------+-------------+
@@ -107,17 +104,7 @@ Runtime           Language   Intelligence   Portability
        PostgreSQL / MySQL / SQLite / SQL Server
 ```
 
-Potential NuBlox consumers:
 
-```text
-NuBloxSQL
-   |
-   +--> NuBlox MetaObject / ORM
-   |
-   +--> NuBlox SQL Workbench
-   |
-   +--> NuBlox application services
-```
 
 ## Product principles
 
@@ -125,9 +112,9 @@ NuBloxSQL
 2. **Native depth without API fragmentation.** A single package may expose common and native-specific surfaces.
 3. **Evidence-backed claims.** Released capability claims require implementation and automated qualification.
 4. **Version awareness.** Database capability changes across versions must be represented explicitly.
-5. **No parser-first roadmap.** Development priority is decided from product coverage, risk and downstream value rather than the next available grammar feature.
+5. **No parser-first roadmap.** Development priority is decided from product coverage, platform value and risk reduction rather than the next available grammar feature.
 6. **Reusable foundations.** New language support should extend shared AST, compiler, capability and binder infrastructure rather than creating isolated statement parsers.
-7. **Downstream usefulness.** NuBloxSQL should make MetaObject, SQL Workbench and future NuBlox applications easier to build.
+7. **Standalone product value.** Every major capability should strengthen NuBloxSQL itself as a coherent database platform.
 8. **Operational quality is product functionality.** Pooling, cancellation, memory behavior, protocol correctness, observability and recovery are first-class concerns.
 9. **Portable views retain native evidence.** Normalization must not discard engine-specific detail.
 10. **One public release surface.** The package remains a coherent product rather than a collection of unrelated dialect packages.

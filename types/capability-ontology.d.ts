@@ -89,6 +89,12 @@ export interface SqlCapabilityImplementationCoverage {
     renderer: SqlCapabilityImplementationLevel;
     rewrite: SqlCapabilityImplementationLevel;
     runtime: SqlCapabilityImplementationLevel;
+    introspection: SqlCapabilityImplementationLevel;
+    diagnostics: SqlCapabilityImplementationLevel;
+    contractTest: SqlCapabilityImplementationLevel;
+    liveQualification: SqlCapabilityImplementationLevel;
+    packagedPublic: SqlCapabilityImplementationLevel;
+    documentation: SqlCapabilityImplementationLevel;
   }>;
   readonly qualified: boolean;
   readonly evidence: readonly string[];
