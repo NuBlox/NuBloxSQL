@@ -35,13 +35,14 @@ function portableSample(){
 
 (function pureBuilderContract(){
   var tree=nublox.buildStructureTree(portableSample());
-  assert.strictEqual(nublox.STRUCTURE_TREE_SCHEMA_VERSION,1);
-  assert.strictEqual(tree.schemaVersion,1);
+  assert.strictEqual(nublox.STRUCTURE_TREE_SCHEMA_VERSION,2);
+  assert.strictEqual(tree.schemaVersion,2);
   assert.strictEqual(tree.dialect,'sqlite');
   assert.deepStrictEqual(tree.summary,{
     databases:1,schemas:1,tables:1,views:1,foreignTables:0,
     columns:2,indexes:1,foreignKeys:0,constraints:1
   });
+  assert.ok(tree.databases[0].id.indexOf('nubloxsql://sqlite/database/')===0);
   assert.strictEqual(tree.databases[0].kind,'database');
   assert.strictEqual(tree.databases[0].children[0].kind,'schema');
   var users=tree.databases[0].children[0].children.find(function(entry){return entry.name==='users';});

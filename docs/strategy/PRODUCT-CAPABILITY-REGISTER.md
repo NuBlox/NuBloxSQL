@@ -26,7 +26,8 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | Capability ontology | Strong | exhaustive-v1 Tier-1 engine observations, runtime qualification, implementation coverage | Expand implementation-stage precision |
 | Portability/rewrite planner | Established | compatibility, rewrite planning, fail-closed behavior | Needs broader semantic transformation architecture |
 | Metadata/introspection | Strong | portable vocabulary, deep PostgreSQL/MySQL metadata, public introspection APIs | Extend consistency and SQL Server parity |
-| Structure intelligence | Established | canonical database/schema/object tree with columns, indexes, foreign keys and constraints | Add dependencies, descriptions and broader object families |
+| Structure intelligence | Established | canonical database/schema/object tree with stable object IDs, columns, indexes, foreign keys and constraints | Add descriptions and broader object families |
+| Dependency intelligence | Established | deterministic object identity, order-independent dependency graph and impact traversal | Extend to views, routines, triggers, sequences and vendor-native dependency catalogs |
 | Query diagnostics | Strong for Tier 1 | portable diagnostics plus native-plan retention; PostgreSQL/MySQL execution analysis, SQLite plan/opcode diagnostics | Add SQL Server to shared contract |
 | Transactions | Established | client transaction APIs, savepoints, policy and tests | Need deeper isolation/locking capability integration |
 | Streaming/operation control | Strong | async/incremental result handling, cancellation, deadlines, budgets | Maintain |

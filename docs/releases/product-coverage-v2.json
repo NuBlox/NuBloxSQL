@@ -97,6 +97,11 @@
       "id": "reporting.export",
       "pillar": "platform",
       "status": "gap"
+    },
+    {
+      "id": "intelligence.dependencies",
+      "pillar": "intelligence",
+      "status": "established"
     }
   ]
 }

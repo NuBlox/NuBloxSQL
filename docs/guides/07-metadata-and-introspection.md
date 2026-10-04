@@ -137,3 +137,41 @@ const tree = await db.catalog.structureTree({
 ```
 
 This is a data-model API rather than a UI contract. It is intended to support database exploration, structure export, diagrams, comparison and migration tooling without coupling those concerns to a particular interface.
+
+
+## Stable object identity
+
+Structure-tree nodes carry deterministic NuBloxSQL object IDs. IDs are derived from dialect, object kind and catalog scope rather than metadata row order.
+
+```js
+const ordersId = objectId(
+  'table',
+  { database: 'app', schema: 'public', name: 'orders' },
+  { dialect: 'postgresql' }
+);
+
+const parts = parseObjectId(ordersId);
+```
+
+Unnamed foreign keys and constraints receive deterministic structural identities derived from their defining metadata, so they can still participate in graph and snapshot correlation.
+
+## Dependency graph and impact analysis
+
+Use `dependencyGraph()` to derive object relationships from a deep metadata snapshot:
+
+```js
+const graph = await db.dependencyGraph({
+  schema: 'public',
+  deep: true
+});
+```
+
+Edges point from an object to the object it depends on. For example, a foreign-key table has a `references` edge to the referenced table, an index has `uses-column` edges, and columns participating in foreign keys have `references-column` edges.
+
+```js
+const dependencies = graphDependencies(graph, objectIdValue);
+const dependents = graphDependents(graph, objectIdValue);
+const impact = impactAnalysis(graph, objectIdValue);
+```
+
+Traversal is transitive by default and can be restricted by relation or to direct neighbors. This provides the first released foundation for change-impact analysis, dependency diagrams, schema comparison ordering and safe migration planning.

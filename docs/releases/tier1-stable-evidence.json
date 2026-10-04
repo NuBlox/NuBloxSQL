@@ -200,6 +200,11 @@
     "types/structure-tree.d.ts",
     "test/database-structure-tree.js",
     "tool/check-structure-tree-release.js",
-    "docs/strategy/COMPETITIVE-BENCHMARK.md"
+    "docs/strategy/COMPETITIVE-BENCHMARK.md",
+    "lib/client/ObjectIdentity.js",
+    "lib/client/DependencyGraph.js",
+    "types/dependency-graph.d.ts",
+    "test/object-identity-dependency-graph.js",
+    "tool/check-dependency-graph-release.js"
   ]
 }

@@ -244,7 +244,7 @@ This strengthens NuBloxSQL as a complete database platform rather than only an e
 Recommended next engineering sequence:
 
 1. **Product coverage model v2** — machine-readable whole-product implementation stages.
-2. **Database structure intelligence** — canonical structure tree delivered; extend toward dependencies/descriptions/object families.
+2. **Database structure intelligence** — canonical structure tree, stable object identity and dependency/impact graph delivered; extend toward descriptions and richer object families.
 3. **SQL Server Tier-1 parity plan and first parity slice**.
 4. **Canonical type-system architecture and mapping register**.
 5. **Schema diff model**.
