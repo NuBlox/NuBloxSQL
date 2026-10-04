@@ -116,7 +116,7 @@ This is foundational for schema migration, metadata fidelity, generated models a
 
 ## Priority 4 — schema diff and migration planning
 
-**Status:** canonical schema snapshot and first schema-diff layer delivered. The diff now emits object/property/dependency changes with conservative safety classification. The next implementation slice is migration planning.
+**Status:** canonical schema snapshot, schema diff and first migration-planner layer delivered. The next platform slice is execution/checkpoint orchestration and broader automatic DDL coverage.
 
 Use the existing metadata, DDL AST and capability planner to build:
 
@@ -253,7 +253,7 @@ Recommended next engineering sequence:
 4. **Canonical type-system architecture and mapping register** — first released slice delivered; continue advanced type families as required by schema-diff work.
 5. **Canonical schema snapshot** — delivered; deterministic semantic/source fingerprints now provide the diff foundation.
 6. **Schema diff model** — first released layer delivered; continue rename inference and richer vendor objects as migration planning requires.
-7. **Migration planner MVP**.
+7. **Migration planner MVP** — delivered; extend renderer coverage and runtime qualification as the execution layer is built.
 8. **Unified data-movement engine**.
 9. **Standalone SQL tooling services**.
 10. **Automation/job execution model**.
