@@ -72,6 +72,31 @@
       "id": "dialect.sqlserver-parity",
       "pillar": "dialect-depth",
       "status": "partial"
+    },
+    {
+      "id": "intelligence.structure-tree",
+      "pillar": "intelligence",
+      "status": "established"
+    },
+    {
+      "id": "platform.data-movement",
+      "pillar": "platform",
+      "status": "partial"
+    },
+    {
+      "id": "tooling.sql",
+      "pillar": "platform",
+      "status": "partial"
+    },
+    {
+      "id": "automation.jobs",
+      "pillar": "platform",
+      "status": "gap"
+    },
+    {
+      "id": "reporting.export",
+      "pillar": "platform",
+      "status": "gap"
     }
   ]
 }

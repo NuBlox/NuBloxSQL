@@ -4,6 +4,9 @@ This roadmap replaces feature-wave momentum with product-coverage priorities.
 
 ## Direction
 
+The competitive capability programme is documented in [COMPETITIVE-BENCHMARK.md](COMPETITIVE-BENCHMARK.md). Database Tour is used as a breadth benchmark for database exploration, SQL tooling, data movement, automation and reporting; NuBloxSQL remains an independent product and does not copy its implementation or UI.
+
+
 The immediate objective is to turn NuBloxSQL from a strong multi-dialect database integration package with an increasingly capable compiler into a **balanced database platform**.
 
 The next work should strengthen missing horizontal capabilities before returning to deep vendor grammar edges.
@@ -241,15 +244,17 @@ This strengthens NuBloxSQL as a complete database platform rather than only an e
 Recommended next engineering sequence:
 
 1. **Product coverage model v2** — machine-readable whole-product implementation stages.
-2. **SQL Server Tier-1 parity plan and first parity slice**.
-3. **Canonical type-system architecture and mapping register**.
-4. **Schema diff model**.
-5. **Migration planner MVP**.
-6. **TCL compiler family**.
-7. **Security/control compiler family**.
-8. **Views/materialized-view completion**.
-9. **Administration/EXPLAIN integration**.
-10. Reassess the register before additional DML/DDL depth.
+2. **Database structure intelligence** — canonical structure tree delivered; extend toward dependencies/descriptions/object families.
+3. **SQL Server Tier-1 parity plan and first parity slice**.
+4. **Canonical type-system architecture and mapping register**.
+5. **Schema diff model**.
+6. **Migration planner MVP**.
+7. **Unified data-movement engine**.
+8. **Standalone SQL tooling services**.
+9. **Automation/job execution model**.
+10. **TCL/security/administration language families**, prioritized from the coverage register.
+11. **Reporting/export contracts** after the data pipeline is stable.
+12. Reassess the register before additional narrow DML/DDL depth.
 
 ## Release milestone proposal
 

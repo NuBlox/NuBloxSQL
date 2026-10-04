@@ -16,6 +16,7 @@ var capabilityModelApi = require('./lib/capabilities');
 var metadataIntegrationApi = require('./lib/client/MetadataIntegration');
 var transactionPolicyApi = require('./lib/client/TransactionPolicy');
 var diagnosticsApi = require('./lib/client/Diagnostics');
+var structureTreeApi = require('./lib/client/StructureTree');
 streamApi.install(clientApi);
 require('./lib/client/SqlServerStreamIntegration').install(streamApi);
 diagnosticsApi.install(clientApi);
@@ -90,6 +91,14 @@ async function introspect(dialectOrConfig, maybeConfig, maybeOptions) {
   try { return await client.introspect(options); }
   finally { await client.close(); }
 }
+async function structureTree(dialectOrConfig, maybeConfig, maybeOptions) {
+  var client, options;
+  if (typeof dialectOrConfig === 'string' && !connectionUrlApi.isUrlLike(dialectOrConfig)) { client = createClient(dialectOrConfig, maybeConfig); options = maybeOptions || {}; }
+  else { client = createClient(dialectOrConfig); options = maybeConfig || {}; }
+  try { return await client.structureTree(options); }
+  finally { await client.close(); }
+}
+function buildStructureTree(snapshot, options) { return structureTreeApi.build(snapshot, options); }
 function supports(dialect, capability) { var implementation = loadAdapter(dialect); var dialectDescriptor = implementation.descriptor; return !!(dialectDescriptor && typeof dialectDescriptor.supports === 'function' && dialectDescriptor.supports(capability)); }
 function descriptor(dialect) { var implementation = loadAdapter(dialect); return implementation.descriptor || null; }
 function capabilityReport(dialect) { var normalized = normalizeDialect(dialect); var implementation = loadAdapter(normalized); return capabilitiesApi.buildReport(normalized, implementation.descriptor || null, null, false); }
@@ -130,6 +139,9 @@ exports.createConnection = createConnection;
 exports.createPool = createPool;
 exports.createClient = createClient;
 exports.introspect = introspect;
+exports.structureTree = structureTree;
+exports.buildStructureTree = buildStructureTree;
+exports.STRUCTURE_TREE_SCHEMA_VERSION = structureTreeApi.SCHEMA_VERSION;
 exports.sql = sqlApi.sql;
 exports.Client = clientApi.Client;
 exports.ClientRowStream = streamApi.ClientRowStream;

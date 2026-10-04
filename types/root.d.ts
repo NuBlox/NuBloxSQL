@@ -5,3 +5,4 @@ export * from './portable-metadata';
 export * from './diagnostics';
 export * from './capability-ontology';
 export * from './product-coverage';
+export * from './structure-tree';

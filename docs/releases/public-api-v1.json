@@ -50,7 +50,10 @@
     "sqlite",
     "sqlserver",
     "PRODUCT_COVERAGE_SCHEMA_VERSION",
-    "productCoverage"
+    "productCoverage",
+    "STRUCTURE_TREE_SCHEMA_VERSION",
+    "structureTree",
+    "buildStructureTree"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -114,7 +117,9 @@
     "lib/capabilities/DmlMergeModelPolicy.js",
     "lib/capabilities/DmlMergeActionsPipeline.js",
     "types/product-coverage.d.ts",
-    "lib/capabilities/ProductCoverage.js"
+    "lib/capabilities/ProductCoverage.js",
+    "types/structure-tree.d.ts",
+    "lib/client/StructureTree.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
