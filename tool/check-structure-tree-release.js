@@ -23,10 +23,10 @@ try{
   var smoke=[
     "const assert=require('assert');",
     "const sql=require('nubloxsql');",
-    "assert.strictEqual(sql.STRUCTURE_TREE_SCHEMA_VERSION,1);",
+    "assert.strictEqual(sql.STRUCTURE_TREE_SCHEMA_VERSION,2);",
     "const tree=sql.buildStructureTree({vocabularyVersion:1,dialect:'sqlite',scope:{},databases:[{kind:'database',name:'main',native:{}}],schemas:[{kind:'schema',database:'main',name:'main',native:{}}],tables:[{kind:'table',database:'main',schema:'main',name:'users',columns:[],indexes:[],foreignKeys:[],constraints:[],native:{}}]});",
     "assert.strictEqual(tree.summary.tables,1);",
-    "assert.strictEqual(tree.databases[0].children[0].children[0].name,'users');"
+    "assert.strictEqual(tree.databases[0].children[0].children[0].name,'users');",\n    "assert.ok(tree.databases[0].children[0].children[0].id.startsWith('nubloxsql://'));"
   ].join('\n');
   fs.writeFileSync(path.join(temp,'smoke.js'),smoke);
   run(process.execPath,['smoke.js'],{cwd:temp});
@@ -35,7 +35,7 @@ try{
   var ts=[
     "import sql = require('nubloxsql');",
     "import type { DatabaseStructureTree, StructureTreeNode } from 'nubloxsql';",
-    "const version:1=sql.STRUCTURE_TREE_SCHEMA_VERSION;",
+    "const version:2=sql.STRUCTURE_TREE_SCHEMA_VERSION;",
     "const tree:DatabaseStructureTree=sql.buildStructureTree({vocabularyVersion:1,dialect:'sqlite',scope:{},databases:[],schemas:[],tables:[]});",
     "const roots:readonly StructureTreeNode[]=tree.databases;",
     "void version; void roots;"
