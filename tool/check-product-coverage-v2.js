@@ -33,7 +33,9 @@ report.areas.forEach(function(area){
 
 assert.strictEqual(sql.productCoverage.area('platform.schema-diff').status,'established');
 assert.strictEqual(sql.productCoverage.gaps().some(function(area){return area.id==='platform.schema-diff';}),false);
-['platform.migrations','dialect.sqlserver-parity'].forEach(function(id){
+assert.strictEqual(sql.productCoverage.area('platform.migrations').status,'established');
+assert.strictEqual(sql.productCoverage.gaps().some(function(area){return area.id==='platform.migrations';}),false);
+['dialect.sqlserver-parity'].forEach(function(id){
   assert(sql.productCoverage.gaps().some(function(area){return area.id===id;}),'expected strategic gap missing: '+id);
 });
 
