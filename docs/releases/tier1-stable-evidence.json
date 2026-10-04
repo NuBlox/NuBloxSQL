@@ -214,6 +214,7 @@
     "lib/client/SchemaSnapshot.js",
     "types/schema-snapshot.d.ts",
     "test/canonical-schema-snapshot.js",
-    "tool/check-schema-snapshot-release.js"
+    "tool/check-schema-snapshot-release.js",
+    "docs/guides/16-canonical-schema-snapshots.md"
   ]
 }
