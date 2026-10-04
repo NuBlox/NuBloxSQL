@@ -19,6 +19,7 @@ on:
       - 'test/compiler-ddl-column-constraints-live.js'
       - 'test/compiler-ddl-object-lifecycle-live.js'
       - 'test/compiler-ddl-dependency-concurrent-live.js'
+      - 'test/compiler-ddl-generated-identity-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
@@ -43,6 +44,7 @@ on:
       - 'test/compiler-ddl-column-constraints-live.js'
       - 'test/compiler-ddl-object-lifecycle-live.js'
       - 'test/compiler-ddl-dependency-concurrent-live.js'
+      - 'test/compiler-ddl-generated-identity-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
@@ -121,6 +123,8 @@ jobs:
         run: node test/compiler-ddl-object-lifecycle-live.js
       - name: DDL dependency and concurrent index qualification
         run: node test/compiler-ddl-dependency-concurrent-live.js
+      - name: DDL generated and identity qualification
+        run: node test/compiler-ddl-generated-identity-live.js
       - name: Native runtime, extended protocol, cancellation, pooling and portals
         run: node lib/dialects/postgresql/test/live.js
       - name: Native COPY FROM/TO streaming and pool qualification

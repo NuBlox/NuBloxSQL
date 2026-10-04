@@ -1,7 +1,9 @@
 import type { SqlAstExpression, SqlAstIdentifier, SqlAstTypeName, SqlQueryAst } from './public';
 
 export interface SqlAstForeignKeyReference { readonly type: 'ForeignKeyReference'; readonly table: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; }
-export interface SqlAstColumnDefinition { readonly type: 'ColumnDefinition'; readonly name: SqlAstIdentifier; readonly dataType: SqlAstTypeName; readonly nullable: boolean | null; readonly default: SqlAstExpression | null; readonly primaryKey: boolean; readonly unique: boolean; readonly checks: readonly SqlAstExpression[]; readonly references: SqlAstForeignKeyReference | null; }
+export interface SqlAstGeneratedColumn { readonly storage: 'stored' | 'virtual'; readonly expression: SqlAstExpression; }
+export interface SqlAstIdentityColumn { readonly mode: 'always' | 'by-default'; }
+export interface SqlAstColumnDefinition { readonly type: 'ColumnDefinition'; readonly name: SqlAstIdentifier; readonly dataType: SqlAstTypeName; readonly nullable: boolean | null; readonly default: SqlAstExpression | null; readonly primaryKey: boolean; readonly unique: boolean; readonly checks: readonly SqlAstExpression[]; readonly references: SqlAstForeignKeyReference | null; readonly generated?: SqlAstGeneratedColumn; readonly identity?: SqlAstIdentityColumn; }
 export interface SqlAstPrimaryKeyConstraint { readonly type: 'PrimaryKeyConstraint'; readonly columns: readonly SqlAstIdentifier[]; }
 export interface SqlAstUniqueConstraint { readonly type: 'UniqueConstraint'; readonly columns: readonly SqlAstIdentifier[]; }
 export interface SqlAstCheckConstraint { readonly type: 'CheckConstraint'; readonly expression: SqlAstExpression; }
@@ -35,4 +37,4 @@ export type SqlAlterTableActionAst = SqlAlterTableAddColumnActionAst | SqlAlterT
 export interface SqlAlterTableStatementAst { readonly type: 'AlterTableStatement'; readonly table: SqlAstIdentifier; readonly action: SqlAlterTableActionAst; }
 
 export type SqlDdlAst = SqlCreateTableStatementAst | SqlCreateIndexStatementAst | SqlCreateViewStatementAst | SqlCreateSchemaStatementAst | SqlCreateSequenceStatementAst | SqlDropTableStatementAst | SqlDropViewStatementAst | SqlDropIndexStatementAst | SqlDropSchemaStatementAst | SqlDropSequenceStatementAst | SqlAlterTableStatementAst;
-export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3' | 'ddl-v4' | 'ddl-v5';
+export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3' | 'ddl-v4' | 'ddl-v5' | 'ddl-v6';

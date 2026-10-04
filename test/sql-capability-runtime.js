@@ -31,6 +31,35 @@ assert.ok(sqliteNew.summary.runtimeQualified > 0);
 assert.ok(Object.isFrozen(sqliteNew));
 assert.ok(Object.isFrozen(sqliteNew.entries));
 
+var pg14 = sql.capabilityModel.qualify('postgresql', { version: '14' });
+var pg14Merge = pg14.entries.find(function (entry) { return entry.path === 'statements.merge'; });
+assert.ok(pg14Merge);
+assert.strictEqual(pg14Merge.supported, false);
+assert.strictEqual(pg14Merge.resolution, 'runtime-version');
+
+var pg17 = sql.capabilityModel.qualify('postgresql', { version: '17' });
+var pg17Virtual = pg17.entries.find(function (entry) { return entry.path === 'integrity.generatedVirtual'; });
+assert.ok(pg17Virtual);
+assert.strictEqual(pg17Virtual.supported, false);
+assert.strictEqual(pg17Virtual.resolution, 'runtime-version');
+
+var pg18Versioned = sql.capabilityModel.qualify('postgresql', { version: '18' });
+var pg18Virtual = pg18Versioned.entries.find(function (entry) { return entry.path === 'integrity.generatedVirtual'; });
+assert.ok(pg18Virtual);
+assert.strictEqual(pg18Virtual.supported, true);
+assert.strictEqual(pg18Virtual.resolution, 'runtime-version');
+
+var mysql8013 = sql.capabilityModel.qualify('mysql', { version: '8.0.13' });
+var mysql8013Lateral = mysql8013.entries.find(function (entry) { return entry.path === 'queries.joins.lateral'; });
+assert.ok(mysql8013Lateral);
+assert.strictEqual(mysql8013Lateral.supported, false);
+assert.strictEqual(mysql8013Lateral.resolution, 'runtime-version');
+
+var mysql8014 = sql.capabilityModel.qualify('mysql', { version: '8.0.14' });
+var mysql8014Lateral = mysql8014.entries.find(function (entry) { return entry.path === 'queries.joins.lateral'; });
+assert.ok(mysql8014Lateral);
+assert.strictEqual(mysql8014Lateral.supported, true);
+assert.strictEqual(mysql8014Lateral.resolution, 'runtime-version');
 var pg = sql.capabilityModel.qualify('postgresql', { version: '18.0' });
 assert.strictEqual(pg.dialect, 'postgresql');
 assert.strictEqual(pg.version, '18.0');
