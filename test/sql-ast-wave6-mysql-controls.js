@@ -66,10 +66,10 @@ var model=sql.capabilityModel;
   },/modifier order/);
   assert.throws(function(){
     model.parseSql('mysql','UPDATE a JOIN b ON b.id=a.id SET a.x=1 ORDER BY a.id LIMIT 1');
-  },/Unexpected|unsupported|expression|trailing/i);
+  },/Unexpected|unsupported|expression|trailing|relations and joins only/i);
   assert.throws(function(){
     model.parseSql('mysql','DELETE a FROM a JOIN b ON b.id=a.id ORDER BY a.id LIMIT 1');
-  },/Unexpected|unsupported|expression|trailing/i);
+  },/Unexpected|unsupported|expression|trailing|relations and joins only/i);
 })();
 
 (function crossDialectFailsClosed(){
