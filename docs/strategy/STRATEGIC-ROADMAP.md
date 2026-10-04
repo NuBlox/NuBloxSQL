@@ -18,6 +18,8 @@ New compiler scopes should require a capability-register justification.
 
 ## Priority 1 — capability coverage dashboard
 
+**Status:** implemented as Product Coverage Model v2. The public `productCoverage` API and `docs/releases/product-coverage-v2.json` now provide the machine-readable whole-product register; future roadmap decisions should update this model and its evidence.
+
 Create a machine-readable product coverage register derived from:
 
 - capability ontology definitions and observations;
