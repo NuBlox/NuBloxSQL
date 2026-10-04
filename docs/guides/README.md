@@ -24,6 +24,7 @@ Use these guides together with the [support matrix](../SUPPORT.md), [public API 
 16. [Canonical schema snapshots](16-canonical-schema-snapshots.md) — deterministic schema normalization, logical object keys and semantic/source fingerprints.
 17. [Canonical schema diff](17-canonical-schema-diff.md) — object changes, property deltas, dependency changes and conservative safety classification.
 18. [Migration planner](18-migration-planner.md) — ordered migration steps, automatic/manual execution boundaries, preconditions and rollback metadata.
+19. [Migration execution engine](19-migration-execution-engine.md) — dry-run, approvals, checkpoints, resumability, failure recovery, transaction control and verification.
 
 ## Documentation rules
 
