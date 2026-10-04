@@ -107,6 +107,11 @@
       "id": "platform.schema-snapshot",
       "pillar": "platform",
       "status": "established"
+    },
+    {
+      "id": "platform.migration-execution",
+      "pillar": "platform",
+      "status": "established"
     }
   ]
 }
