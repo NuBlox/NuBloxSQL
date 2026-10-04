@@ -15,6 +15,7 @@ on:
       - 'test/compiler-ddl-column-constraints-live.js'
       - 'test/compiler-ddl-object-lifecycle-live.js'
       - 'test/compiler-ddl-generated-identity-live.js'
+      - 'test/compiler-ddl-foreign-keys-live.js'
       - 'test/sql-ast-compiler.js'
       - 'lib/dialects/sqlite/**'
       - '.github/workflows/sqlite-dialect.yml'
@@ -31,6 +32,7 @@ on:
       - 'test/compiler-ddl-column-constraints-live.js'
       - 'test/compiler-ddl-object-lifecycle-live.js'
       - 'test/compiler-ddl-generated-identity-live.js'
+      - 'test/compiler-ddl-foreign-keys-live.js'
       - 'test/sql-ast-compiler.js'
       - 'lib/dialects/sqlite/**'
       - '.github/workflows/sqlite-dialect.yml'
@@ -77,6 +79,10 @@ jobs:
           NUBLOX_DIALECT: sqlite
       - name: DDL generated column qualification
         run: node test/compiler-ddl-generated-identity-live.js
+        env:
+          NUBLOX_DIALECT: sqlite
+      - name: DDL foreign-key semantic qualification
+        run: node test/compiler-ddl-foreign-keys-live.js
         env:
           NUBLOX_DIALECT: sqlite
       - name: SQLite production performance and memory evidence
