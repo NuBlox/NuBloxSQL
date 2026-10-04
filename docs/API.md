@@ -56,6 +56,7 @@ const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.tableAlter.ren
 | `ddl-v7` | foreign-key actions, match modes and deferrability semantics |
 | `ddl-v8` | expression/functional index keys plus PostgreSQL INCLUDE/access methods |
 | `ddl-v9` | per-key ordering/collation plus PostgreSQL NULL placement and operator classes |
+| `ddl-v10` | native CREATE TABLE AS query materialisation with engine-local result-schema semantics |
 
 A successful compilation certifies the modeled syntax/capability plan for that scope. It does **not** claim identical vendor coercion, collation, precision, conflict, trigger, storage or physical-design semantics where engines differ.
 
@@ -226,6 +227,21 @@ console.log(index.scope); // ddl-v9
 
 The atomic capabilities are `schema.indexKeyOrder`, `schema.indexKeyCollation`, `schema.indexNullsOrder`, and the existing `schema.operatorClass` capability.
 
+### CREATE TABLE AS (`ddl-v10`)
+
+`ddl-v10` adds first-class `CreateTableAsStatement` support for PostgreSQL, MySQL and SQLite:
+
+```sql
+CREATE TABLE IF NOT EXISTS ledger_snapshot AS
+SELECT id, amount FROM ledger WHERE amount >= 0
+```
+
+The query body is the existing qualified query AST, so CTE, set-operation, expression and window capabilities remain visible in capability analysis. The released subset rejects bind parameters in CTAS queries.
+
+Although all three Tier-1 engines support CTAS syntax, NuBloxSQL does **not** certify automatic cross-dialect CTAS transpilation. Result-column type/affinity derivation, names and physical table semantics are engine-specific, so `transpileSql()` requires the same source and target dialect until an explicit result-schema/type-normalisation strategy exists.
+
+The atomic engine capability is `statements.createTableAs`; `IF NOT EXISTS` also requires `syntax.existence.createTableIfNotExists`.
+
 ## Runtime qualification
 
 Use a live qualification report where either source or target availability depends on version/runtime evidence:
@@ -257,4 +273,4 @@ The exact exported JavaScript surface and required package files are machine-def
 
 The TypeScript entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statements in `types/dml.d.ts`, DDL statements in `types/ddl.d.ts`, portable metadata in `types/portable-metadata.d.ts`, query diagnostics in `types/diagnostics.d.ts`, and ontology declarations in `types/capability-ontology.d.ts`.
 
-Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8` and `ddl-v9` gates verify their released semantic surfaces.
+Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8`, `ddl-v9` and `ddl-v10` gates verify their released semantic surfaces.
