@@ -31,9 +31,9 @@ var model=sql.capabilityModel;
   });
 
   var compiled=model.compileAst('postgresql',ast);
-  assert.ok(/WHEN MATCHED AND .* > \$1 THEN UPDATE SET/.test(compiled.sql));
+  assert.ok(/WHEN MATCHED AND .* > \$1\) THEN UPDATE SET/.test(compiled.sql));
   assert.ok(/WHEN MATCHED THEN DELETE/.test(compiled.sql));
-  assert.ok(/WHEN NOT MATCHED AND .* > \$2 THEN INSERT/.test(compiled.sql));
+  assert.ok(/WHEN NOT MATCHED AND .* > \$2\) THEN INSERT/.test(compiled.sql));
   assert.ok(/WHEN NOT MATCHED THEN DO NOTHING/.test(compiled.sql));
   assert.deepStrictEqual(compiled.targetToSource,[1,2]);
 })();
