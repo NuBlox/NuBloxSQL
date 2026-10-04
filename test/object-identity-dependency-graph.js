@@ -74,8 +74,11 @@ function sample(reverse) {
   var direct=nublox.graphDependencies(graph,childId,{transitive:false,relations:['references']});
   assert.deepStrictEqual(direct.map(function(n){return n.id;}),[parentId]);
 
+  var foreignKeyId=nublox.objectId('foreign-key',sample(false).tables[0].foreignKeys[0],{dialect:'sqlite'});
   var dependents=nublox.graphDependents(graph,parentId,{transitive:false,relations:['references']});
-  assert.deepStrictEqual(dependents.map(function(n){return n.id;}),[childId]);
+  var dependentIds=dependents.map(function(n){return n.id;});
+  assert.ok(dependentIds.indexOf(childId)!==-1);
+  assert.ok(dependentIds.indexOf(foreignKeyId)!==-1);
 
   var impact=nublox.impactAnalysis(graph,parentId,{relations:['references','references-column','defined-on','uses-column']});
   assert.strictEqual(impact.object.id,parentId);
