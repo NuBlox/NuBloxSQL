@@ -3,6 +3,14 @@ import type * as root from '../index';
 export type DataMovementStatus = 'succeeded' | 'failed' | 'dry-run';
 export type DataMovementInvalidRowPolicy = 'stop' | 'skip';
 
+export interface DataMovementClient {
+  readonly dialect: root.Dialect;
+  compile(statement: root.SqlFragment | string): root.CompiledSql;
+  all<Row = Record<string, unknown>>(statement: root.SqlFragment | string, options?: root.ClientOperationOptions): Promise<Row[]>;
+  execute<Row = Record<string, unknown>>(statement: root.SqlFragment | string, options?: root.ClientOperationOptions): Promise<root.ClientResult<Row>>;
+  stream<Row = Record<string, unknown>>(statement: root.SqlFragment | string, options?: root.ClientStreamOptions): root.ClientRowStream<Row>;
+}
+
 export interface DataMovementColumnMapping {
   readonly source: string;
   readonly target: string;
@@ -41,8 +49,8 @@ export interface DataMovementAuditRecord {
 export interface DataMovementContext {
   readonly sourceRow: Readonly<Record<string, unknown>>;
   readonly row: number;
-  readonly sourceClient: root.Client;
-  readonly targetClient: root.Client;
+  readonly sourceClient: DataMovementClient;
+  readonly targetClient: DataMovementClient;
 }
 
 export interface DataMovementOptions {
@@ -88,15 +96,15 @@ export const DATA_MOVEMENT_STATUSES: readonly DataMovementStatus[];
 export const DATA_MOVEMENT_INVALID_ROW_POLICIES: readonly DataMovementInvalidRowPolicy[];
 
 export function moveData(
-  sourceClient: root.Client,
-  targetClient: root.Client,
+  sourceClient: DataMovementClient,
+  targetClient: DataMovementClient,
   spec: DataMovementSpec,
   options?: DataMovementOptions
 ): Promise<DataMovementResult>;
 
 export function resumeDataMovement(
-  sourceClient: root.Client,
-  targetClient: root.Client,
+  sourceClient: DataMovementClient,
+  targetClient: DataMovementClient,
   spec: DataMovementSpec,
   checkpoint: DataMovementCheckpoint,
   options?: DataMovementOptions
@@ -105,12 +113,12 @@ export function resumeDataMovement(
 declare module './index' {
   interface Client {
     moveDataTo(
-      targetClient: root.Client,
+      targetClient: DataMovementClient,
       spec: DataMovementSpec,
       options?: DataMovementOptions
     ): Promise<DataMovementResult>;
     resumeDataMovementTo(
-      targetClient: root.Client,
+      targetClient: DataMovementClient,
       spec: DataMovementSpec,
       checkpoint: DataMovementCheckpoint,
       options?: DataMovementOptions
