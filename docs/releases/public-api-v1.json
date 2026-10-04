@@ -88,7 +88,14 @@
     "MIGRATION_TRANSACTION_STRATEGIES",
     "planMigration",
     "migrationAutomaticSteps",
-    "migrationManualSteps"
+    "migrationManualSteps",
+    "MIGRATION_EXECUTION_SCHEMA_VERSION",
+    "MIGRATION_EXECUTION_STATUSES",
+    "MIGRATION_APPROVAL_MODES",
+    "MIGRATION_FAILURE_POLICIES",
+    "MIGRATION_TRANSACTION_MODES",
+    "executeMigration",
+    "resumeMigration"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -165,7 +172,9 @@
     "types/schema-diff.d.ts",
     "lib/client/SchemaDiff.js",
     "types/migration-planner.d.ts",
-    "lib/client/MigrationPlanner.js"
+    "lib/client/MigrationPlanner.js",
+    "types/migration-executor.d.ts",
+    "lib/client/MigrationExecutor.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",

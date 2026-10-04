@@ -116,7 +116,7 @@ This is foundational for schema migration, metadata fidelity, generated models a
 
 ## Priority 4 — schema diff and migration planning
 
-**Status:** canonical schema snapshot, schema diff and first migration-planner layer delivered. The next platform slice is execution/checkpoint orchestration and broader automatic DDL coverage.
+**Status:** canonical schema snapshot, schema diff, migration planning and the first migration-execution layer are delivered. The next platform slice is unified data movement plus broader migration renderer/runtime qualification.
 
 Use the existing metadata, DDL AST and capability planner to build:
 
@@ -254,12 +254,13 @@ Recommended next engineering sequence:
 5. **Canonical schema snapshot** — delivered; deterministic semantic/source fingerprints now provide the diff foundation.
 6. **Schema diff model** — first released layer delivered; continue rename inference and richer vendor objects as migration planning requires.
 7. **Migration planner MVP** — delivered; extend renderer coverage and runtime qualification as the execution layer is built.
-8. **Unified data-movement engine**.
-9. **Standalone SQL tooling services**.
-10. **Automation/job execution model**.
-11. **TCL/security/administration language families**, prioritized from the coverage register.
-12. **Reporting/export contracts** after the data pipeline is stable.
-13. Reassess the register before additional narrow DML/DDL depth.
+8. **Migration execution engine** — delivered; continue persistent checkpoints, richer lock policy and backfill orchestration through generic job infrastructure.
+9. **Unified data-movement engine**.
+10. **Standalone SQL tooling services**.
+11. **Automation/job execution model**.
+12. **TCL/security/administration language families**, prioritized from the coverage register.
+13. **Reporting/export contracts** after the data pipeline is stable.
+14. Reassess the register before additional narrow DML/DDL depth.
 
 ## Release milestone proposal
 

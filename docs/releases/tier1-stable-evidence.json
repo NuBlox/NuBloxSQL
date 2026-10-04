@@ -225,6 +225,11 @@
     "types/migration-planner.d.ts",
     "test/migration-planner.js",
     "tool/check-migration-planner-release.js",
-    "docs/guides/18-migration-planner.md"
+    "docs/guides/18-migration-planner.md",
+    "lib/client/MigrationExecutor.js",
+    "types/migration-executor.d.ts",
+    "test/migration-executor.js",
+    "tool/check-migration-executor-release.js",
+    "docs/guides/19-migration-execution-engine.md"
   ]
 }

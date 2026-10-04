@@ -28,6 +28,8 @@ For task-oriented usage see the [NuBloxSQL User Guides](guides/README.md) and [C
 - `schemaSnapshot()` / `buildSchemaSnapshot()` — deterministic canonical schema model with semantic/source fingerprints.
 - `diffSchemas()` — canonical schema comparison with object/property/dependency changes and safety classification.
 - `planMigration()` — dependency-aware migration planning with safety, execution mode, preconditions and target-dialect SQL.
+- `executeMigration()` / `resumeMigration()` — controlled migration execution with dry-run, approvals, checkpoints, recovery and post-verification.
+- `executeMigration()` / `resumeMigration()` — controlled migration execution with dry-run, approvals, checkpoints, recovery and post-verification.
 
 ## Capability ontology
 
@@ -455,3 +457,33 @@ const plan = sql.planMigration(diff, { targetDialect: 'postgresql' });
 ```
 
 Each step includes `safety`, `execution`, `sql`, `preconditions`, rollback metadata, target dialect and logical object identity. `migrationAutomaticSteps()` and `migrationManualSteps()` split a plan by execution mode. A plan is `executable: true` only when every step has automatic SQL; this does not override destructive or potentially-lossy safety classifications.
+
+
+## Migration execution engine
+
+`MIGRATION_EXECUTION_SCHEMA_VERSION === 1` executes a migration plan through a NuBloxSQL client.
+
+```js
+const result = await db.executeMigration(plan, {
+  approval: 'risky',
+  approve: async ({ step }) => step.safety !== 'destructive',
+  onCheckpoint: async checkpoint => saveCheckpoint(checkpoint)
+});
+```
+
+Execution supports `dryRun`, approval modes, resumable checkpoints, optional compensating rollback (`failurePolicy: 'compensate'`), opt-in single-transaction execution where the plan allows it, operation timeout/cancellation options, lifecycle hooks, immutable audit records, and semantic-hash post-verification against an expected schema snapshot. Manual steps block execution before any SQL runs unless a `manualHandler` is supplied.
+
+
+## Migration execution engine
+
+`MIGRATION_EXECUTION_SCHEMA_VERSION === 1` executes a migration plan through a NuBloxSQL client.
+
+```js
+const result = await db.executeMigration(plan, {
+  approval: 'risky',
+  approve: async ({ step }) => step.safety !== 'destructive',
+  onCheckpoint: async checkpoint => saveCheckpoint(checkpoint)
+});
+```
+
+Execution supports dry-run, approval modes, resumable checkpoints, optional compensating rollback (`failurePolicy: 'compensate'`), opt-in single-transaction execution where the plan allows it, operation timeout/cancellation options, lifecycle hooks, immutable audit records, and semantic-hash post-verification against an expected schema snapshot. Manual steps block execution before any SQL runs unless a `manualHandler` is supplied.
