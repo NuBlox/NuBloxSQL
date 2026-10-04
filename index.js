@@ -17,6 +17,8 @@ var metadataIntegrationApi = require('./lib/client/MetadataIntegration');
 var transactionPolicyApi = require('./lib/client/TransactionPolicy');
 var diagnosticsApi = require('./lib/client/Diagnostics');
 var structureTreeApi = require('./lib/client/StructureTree');
+var objectIdentityApi = require('./lib/client/ObjectIdentity');
+var dependencyGraphApi = require('./lib/client/DependencyGraph');
 streamApi.install(clientApi);
 require('./lib/client/SqlServerStreamIntegration').install(streamApi);
 diagnosticsApi.install(clientApi);
@@ -99,6 +101,19 @@ async function structureTree(dialectOrConfig, maybeConfig, maybeOptions) {
   finally { await client.close(); }
 }
 function buildStructureTree(snapshot, options) { return structureTreeApi.build(snapshot, options); }
+async function dependencyGraph(dialectOrConfig, maybeConfig, maybeOptions) {
+  var client, options;
+  if (typeof dialectOrConfig === 'string' && !connectionUrlApi.isUrlLike(dialectOrConfig)) { client = createClient(dialectOrConfig, maybeConfig); options = maybeOptions || {}; }
+  else { client = createClient(dialectOrConfig); options = maybeConfig || {}; }
+  try { return await client.dependencyGraph(options); }
+  finally { await client.close(); }
+}
+function buildDependencyGraph(snapshot) { return dependencyGraphApi.build(snapshot); }
+function objectId(kind, metadata, context) { return objectIdentityApi.objectId(kind, metadata, context); }
+function parseObjectId(id) { return objectIdentityApi.parse(id); }
+function graphDependencies(graph, id, options) { return dependencyGraphApi.dependencies(graph, id, options); }
+function graphDependents(graph, id, options) { return dependencyGraphApi.dependents(graph, id, options); }
+function impactAnalysis(graph, id, options) { return dependencyGraphApi.impact(graph, id, options); }
 function supports(dialect, capability) { var implementation = loadAdapter(dialect); var dialectDescriptor = implementation.descriptor; return !!(dialectDescriptor && typeof dialectDescriptor.supports === 'function' && dialectDescriptor.supports(capability)); }
 function descriptor(dialect) { var implementation = loadAdapter(dialect); return implementation.descriptor || null; }
 function capabilityReport(dialect) { var normalized = normalizeDialect(dialect); var implementation = loadAdapter(normalized); return capabilitiesApi.buildReport(normalized, implementation.descriptor || null, null, false); }
@@ -142,6 +157,15 @@ exports.introspect = introspect;
 exports.structureTree = structureTree;
 exports.buildStructureTree = buildStructureTree;
 exports.STRUCTURE_TREE_SCHEMA_VERSION = structureTreeApi.SCHEMA_VERSION;
+exports.OBJECT_IDENTITY_SCHEMA_VERSION = objectIdentityApi.SCHEMA_VERSION;
+exports.DEPENDENCY_GRAPH_SCHEMA_VERSION = dependencyGraphApi.SCHEMA_VERSION;
+exports.objectId = objectId;
+exports.parseObjectId = parseObjectId;
+exports.dependencyGraph = dependencyGraph;
+exports.buildDependencyGraph = buildDependencyGraph;
+exports.graphDependencies = graphDependencies;
+exports.graphDependents = graphDependents;
+exports.impactAnalysis = impactAnalysis;
 exports.sql = sqlApi.sql;
 exports.Client = clientApi.Client;
 exports.ClientRowStream = streamApi.ClientRowStream;
