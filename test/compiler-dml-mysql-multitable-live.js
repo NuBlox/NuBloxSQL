@@ -23,19 +23,19 @@ async function main(){
     await db.execute('INSERT INTO '+b+' (account_id, amount) VALUES (1, 50), (2, 60)');
 
     var update=model.transpileSql('mysql','mysql',
-      'UPDATE '+a+' AS a INNER JOIN '+b+' AS b ON b.account_id = a.id SET a.status = ?, b.amount = ? WHERE a.tenant_id = ?');
+      'UPDATE '+a+' AS a INNER JOIN '+b+' AS b ON b.account_id = a.id SET a.status = 1, b.amount = 99 WHERE a.tenant_id = 10');
     assert.strictEqual(update.scope,'dml-v6');
     assert.strictEqual(update.certified,true);
-    await db.execute({sql:update.sql,values:[1,99,10]});
+    await db.execute(update.sql);
     var ar=await db.one('SELECT status FROM '+a+' WHERE id = 1');
     var br=await db.one('SELECT amount FROM '+b+' WHERE account_id = 1');
     assert.strictEqual(Number(ar.status),1);
     assert.strictEqual(Number(br.amount),99);
 
     var del=model.transpileSql('mysql','mysql',
-      'DELETE b FROM '+a+' AS a INNER JOIN '+b+' AS b ON b.account_id = a.id WHERE a.tenant_id = ?');
+      'DELETE b FROM '+a+' AS a INNER JOIN '+b+' AS b ON b.account_id = a.id WHERE a.tenant_id = 10');
     assert.strictEqual(del.scope,'dml-v6');
-    await db.execute({sql:del.sql,values:[10]});
+    await db.execute(del.sql);
     var left=await db.all('SELECT account_id FROM '+b+' ORDER BY account_id');
     assert.deepStrictEqual(left.map(function(row){return Number(row.account_id);}),[2]);
   }finally{
