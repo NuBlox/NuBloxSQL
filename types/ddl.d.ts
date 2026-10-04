@@ -15,6 +15,7 @@ export type SqlAstTableConstraint = SqlAstPrimaryKeyConstraint | SqlAstUniqueCon
 export type SqlDropDependencyMode = 'cascade' | 'restrict';
 
 export interface SqlCreateTableStatementAst { readonly type: 'CreateTableStatement'; readonly name: SqlAstIdentifier; readonly columns: readonly SqlAstColumnDefinition[]; readonly constraints: readonly SqlAstTableConstraint[]; readonly ifNotExists?: boolean; }
+export interface SqlCreateTableAsStatementAst { readonly type: 'CreateTableAsStatement'; readonly name: SqlAstIdentifier; readonly query: SqlQueryAst; readonly ifNotExists: boolean; }
 export type SqlIndexKeyDirection = 'ASC' | 'DESC';
 export type SqlIndexNullsOrder = 'FIRST' | 'LAST';
 export interface SqlAstIndexColumnKey { readonly type: 'IndexColumnKey'; readonly column: SqlAstIdentifier; readonly direction?: SqlIndexKeyDirection | null; readonly collation?: SqlAstIdentifier | null; readonly operatorClass?: SqlAstIdentifier | null; readonly nulls?: SqlIndexNullsOrder | null; }
@@ -44,5 +45,5 @@ export interface SqlDropConstraintActionAst { readonly type: 'DropConstraintActi
 export type SqlAlterTableActionAst = SqlAlterTableAddColumnActionAst | SqlAlterTableDropColumnActionAst | SqlAlterTableRenameColumnActionAst | SqlAlterTableRenameTableActionAst | SqlAlterColumnTypeActionAst | SqlSetColumnDefaultActionAst | SqlDropColumnDefaultActionAst | SqlSetColumnNotNullActionAst | SqlDropColumnNotNullActionAst | SqlAddConstraintActionAst | SqlDropConstraintActionAst;
 export interface SqlAlterTableStatementAst { readonly type: 'AlterTableStatement'; readonly table: SqlAstIdentifier; readonly action: SqlAlterTableActionAst; }
 
-export type SqlDdlAst = SqlCreateTableStatementAst | SqlCreateIndexStatementAst | SqlCreateViewStatementAst | SqlCreateSchemaStatementAst | SqlCreateSequenceStatementAst | SqlDropTableStatementAst | SqlDropViewStatementAst | SqlDropIndexStatementAst | SqlDropSchemaStatementAst | SqlDropSequenceStatementAst | SqlAlterTableStatementAst;
-export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3' | 'ddl-v4' | 'ddl-v5' | 'ddl-v6' | 'ddl-v7' | 'ddl-v8' | 'ddl-v9';
+export type SqlDdlAst = SqlCreateTableStatementAst | SqlCreateTableAsStatementAst | SqlCreateIndexStatementAst | SqlCreateViewStatementAst | SqlCreateSchemaStatementAst | SqlCreateSequenceStatementAst | SqlDropTableStatementAst | SqlDropViewStatementAst | SqlDropIndexStatementAst | SqlDropSchemaStatementAst | SqlDropSequenceStatementAst | SqlAlterTableStatementAst;
+export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3' | 'ddl-v4' | 'ddl-v5' | 'ddl-v6' | 'ddl-v7' | 'ddl-v8' | 'ddl-v9' | 'ddl-v10';
