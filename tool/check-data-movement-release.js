@@ -25,7 +25,9 @@ try {
     "const sql=require('nubloxsql');",
     "assert.strictEqual(sql.DATA_MOVEMENT_SCHEMA_VERSION,1);",
     "assert.strictEqual(typeof sql.moveData,'function');",
-    "assert.strictEqual(typeof sql.resumeDataMovement,'function');"
+    "assert.strictEqual(typeof sql.resumeDataMovement,'function');",
+    "assert.strictEqual(typeof sql.planDataMovement,'function');",
+    "assert.ok(sql.DATA_MOVEMENT_STRATEGIES.includes('postgresql-copy-csv'));"
   ].join('\n');
   fs.writeFileSync(path.join(temp, 'smoke.js'), smoke);
   run(process.execPath, ['smoke.js'], { cwd: temp });
@@ -33,12 +35,13 @@ try {
   run(npm, ['install', '--no-save', '--ignore-scripts', '--no-audit', '--no-fund', 'typescript@5.9.3', '@types/node@22'], { cwd: temp });
   var ts = [
     "import sql = require('nubloxsql');",
-    "import type { DataMovementSpec, DataMovementResult } from 'nubloxsql';",
+    "import type { DataMovementSpec, DataMovementResult, DataMovementPlan } from 'nubloxsql';",
     "const source=sql.createClient({dialect:'sqlite',filename:':memory:'});",
     "const target=sql.createClient({dialect:'sqlite',filename:':memory:'});",
     "const spec:DataMovementSpec={source:{statement:'SELECT 1 AS id'},target:{table:'x',columns:['id']}};",
-    "const result:Promise<DataMovementResult>=sql.moveData(source,target,spec,{dryRun:true});",
-    "void result;"
+    "const plan:DataMovementPlan=sql.planDataMovement(source,target,spec);",
+    "const result:Promise<DataMovementResult>=sql.moveData(source,target,spec,{dryRun:true,strategy:'portable'});",
+    "void plan; void result;"
   ].join('\n');
   fs.writeFileSync(path.join(temp, 'smoke.ts'), ts);
   fs.writeFileSync(path.join(temp, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, noEmit: true, module: 'commonjs', target: 'ES2022', moduleResolution: 'node', esModuleInterop: true, skipLibCheck: false }, files: ['smoke.ts'] }));
