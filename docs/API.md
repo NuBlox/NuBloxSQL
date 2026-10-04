@@ -16,6 +16,9 @@ For task-oriented usage see the [NuBloxSQL User Guides](guides/README.md) and [C
 - `sql` — tagged SQL, identifiers, named parameters and portable typed values.
 - `introspect()` — one-shot metadata/schema introspection.
 - `structureTree()` / `buildStructureTree()` — canonical hierarchical database structure model built from portable metadata.
+- `objectId()` / `parseObjectId()` — deterministic database-object identity.
+- `dependencyGraph()` / `buildDependencyGraph()` — database dependency graph derived from metadata.
+- `graphDependencies()`, `graphDependents()`, `impactAnalysis()` — dependency and change-impact traversal.
 - `capabilityReport()` — static platform capability report.
 - `transactionPolicy()` — portable transaction-policy description.
 - `capabilityModel` — Tier-1 compatibility, runtime qualification, rewrite and compiler/transpilation APIs.
@@ -374,4 +377,27 @@ for (const database of tree.databases) {
 }
 ```
 
-The hierarchy is database → schema → table/view/foreign-table → columns/indexes/foreign keys/constraints. `buildStructureTree(snapshot)` can build the same model from an existing portable metadata snapshot without opening a connection. `STRUCTURE_TREE_SCHEMA_VERSION` is currently `1`.
+The hierarchy is database → schema → table/view/foreign-table → columns/indexes/foreign keys/constraints. `buildStructureTree(snapshot)` can build the same model from an existing portable metadata snapshot without opening a connection. `STRUCTURE_TREE_SCHEMA_VERSION` is currently `2`. Every node also carries a deterministic `id` from the canonical database-object identity scheme.
+
+
+## Object identity and dependency graph
+
+NuBloxSQL assigns deterministic IDs to database objects so the same logical object can be correlated across structure trees, dependency graphs and future schema snapshots.
+
+```js
+const id = sql.objectId(
+  'table',
+  { database: 'app', schema: 'public', name: 'orders' },
+  { dialect: 'postgresql' }
+);
+```
+
+`dependencyGraph()` builds an immutable graph from deep portable metadata. Edges are directed from the dependent object to the object it requires. Released relations include `contained-by`, `defined-on`, `uses-column`, `references`, and `references-column`.
+
+```js
+const graph = await db.dependencyGraph({ schema: 'public' });
+const affected = sql.graphDependents(graph, id);
+const analysis = sql.impactAnalysis(graph, id);
+```
+
+Graph construction is order-independent: catalog row ordering does not change node identities or dependency edges. The current graph derives structural, index/constraint-column and foreign-key dependencies; richer view/routine/trigger/native dependency evidence remains future scope.
