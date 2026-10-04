@@ -443,3 +443,22 @@ The mutation-source relation tree contributes its own query capabilities to the 
 MySQL multi-table UPDATE/DELETE remains a separate capability family. NuBloxSQL does not reinterpret it as PostgreSQL/SQLite UPDATE-FROM or PostgreSQL DELETE-USING.
 
 Wave 6c (`dml-v5`) removes the auxiliary-source bind restriction. NuBloxSQL preserves each marker's source binding and rebinds the final composed statement in rendered SQL order. PostgreSQL numbered parameters and SQLite positional, numbered, and named markers therefore retain a correct `targetToSource` mapping even when FROM/USING parameters appear between SET and WHERE/RETURNING parameters.
+
+
+## MySQL multi-table mutation (`dml-v6`)
+
+Wave 6d implements MySQL's native multi-table DML family directly rather than mapping it onto PostgreSQL-style auxiliary clauses. The released AST supports joined table-reference graphs for multi-table `UPDATE`, qualified assignment targets, and both multi-target `DELETE` syntaxes.
+
+```sql
+UPDATE accounts AS a
+JOIN balances AS b ON b.account_id = a.id
+SET a.status = ?, b.amount = ?
+WHERE a.tenant_id = ?;
+
+DELETE a, b
+FROM accounts AS a
+JOIN balances AS b ON b.account_id = a.id
+WHERE a.tenant_id = ?;
+```
+
+The compiler reports `syntax.multiTableUpdate` or `syntax.multiTableDelete`, uses scope `dml-v6`, preserves MySQL parameter occurrence bindings, and fails closed for PostgreSQL or SQLite targets. That separation is intentional because writable-target semantics and affected-row behavior are vendor-specific.

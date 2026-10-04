@@ -17,6 +17,7 @@ on:
       - 'test/compiler-query-live.js'
       - 'test/compiler-dml-advanced-live.js'
       - 'test/compiler-dml-source-composition-live.js'
+      - 'test/compiler-dml-mysql-multitable-live.js'
       - 'test/compiler-ddl-live.js'
       - 'test/compiler-ddl-lifecycle-live.js'
       - 'test/compiler-ddl-column-constraints-live.js'
@@ -46,6 +47,7 @@ on:
       - 'test/compiler-query-live.js'
       - 'test/compiler-dml-advanced-live.js'
       - 'test/compiler-dml-source-composition-live.js'
+      - 'test/compiler-dml-mysql-multitable-live.js'
       - 'test/compiler-ddl-live.js'
       - 'test/compiler-ddl-lifecycle-live.js'
       - 'test/compiler-ddl-column-constraints-live.js'
@@ -130,6 +132,8 @@ jobs:
         run: node test/compiler-dml-advanced-live.js
       - name: Rich DML source composition live qualification
         run: node test/compiler-dml-source-composition-live.js
+      - name: MySQL multi-table DML live qualification
+        run: node test/compiler-dml-mysql-multitable-live.js
       - name: DDL compiler live qualification
         run: node test/compiler-ddl-live.js
       - name: DDL lifecycle live qualification
