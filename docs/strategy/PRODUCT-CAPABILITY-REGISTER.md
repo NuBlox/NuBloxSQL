@@ -44,7 +44,7 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | Competitive benchmark | Active | `docs/strategy/COMPETITIVE-BENCHMARK.md` | Track breadth without copying external product architecture |
 | Canonical schema snapshot | Established | deterministic schema model with stable IDs, dialect-neutral logical keys, canonical types, dependencies and semantic/source hashes | Use as the source model for schema diff |
 | Schema diff | Established | logical-key comparison, added/removed/modified changes, property deltas, dependency-edge changes and conservative safety classification | Add rename inference and richer object-family comparison |
-| Migration planner | Gap | canonical snapshots and schema diff now exist, but no executable migration plan yet | Very high platform value |
+| Migration planner | Established | ordered safety-classified plans, automatic/manual execution boundaries, target-dialect DDL for supported steps, preconditions and rollback metadata | Expand DDL coverage and add execution/checkpoint orchestration |
 | SQL formatting/linting/static analysis | Gap | parser/AST foundations exist | High value for the standalone tooling surface |
 | SQL Server ontology parity | Gap | SQL Server is Tier 2 and outside shared exhaustive ontology/diagnostics contracts | High strategic priority |
 | Performance benchmarking | Partial | SQLite production suite strong; other dialect performance evidence less productized | Medium |

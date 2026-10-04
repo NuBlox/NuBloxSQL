@@ -82,7 +82,13 @@
     "SCHEMA_CHANGE_SAFETY",
     "diffSchemas",
     "schemaDiffChanged",
-    "schemaDiffHighestSafety"
+    "schemaDiffHighestSafety",
+    "MIGRATION_PLAN_SCHEMA_VERSION",
+    "MIGRATION_EXECUTION_MODES",
+    "MIGRATION_TRANSACTION_STRATEGIES",
+    "planMigration",
+    "migrationAutomaticSteps",
+    "migrationManualSteps"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -157,7 +163,9 @@
     "types/schema-snapshot.d.ts",
     "lib/client/SchemaSnapshot.js",
     "types/schema-diff.d.ts",
-    "lib/client/SchemaDiff.js"
+    "lib/client/SchemaDiff.js",
+    "types/migration-planner.d.ts",
+    "lib/client/MigrationPlanner.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",

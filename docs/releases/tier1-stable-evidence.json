@@ -220,6 +220,11 @@
     "types/schema-diff.d.ts",
     "test/canonical-schema-diff.js",
     "tool/check-schema-diff-release.js",
-    "docs/guides/17-canonical-schema-diff.md"
+    "docs/guides/17-canonical-schema-diff.md",
+    "lib/client/MigrationPlanner.js",
+    "types/migration-planner.d.ts",
+    "test/migration-planner.js",
+    "tool/check-migration-planner-release.js",
+    "docs/guides/18-migration-planner.md"
   ]
 }

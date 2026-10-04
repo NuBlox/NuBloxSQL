@@ -66,7 +66,7 @@
     {
       "id": "platform.migrations",
       "pillar": "platform",
-      "status": "gap"
+      "status": "established"
     },
     {
       "id": "dialect.sqlserver-parity",
