@@ -17,10 +17,10 @@ export type DatabaseObjectKind =
 export interface DatabaseObjectIdentity {
   readonly dialect: string;
   readonly kind: string;
-  readonly database: string;
-  readonly schema: string;
-  readonly table: string;
-  readonly name: string;
+  readonly database: string | null;
+  readonly schema: string | null;
+  readonly table: string | null;
+  readonly name: string | null;
 }
 
 export interface DatabaseObjectNode {
