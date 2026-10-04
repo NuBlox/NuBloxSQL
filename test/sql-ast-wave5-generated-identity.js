@@ -18,10 +18,10 @@ var ontology = sql.capabilityOntology;
   var mysql = model.transpileSql('postgresql', 'mysql', source);
   assert.strictEqual(mysql.certified, true);
   assert.strictEqual(mysql.scope, 'ddl-v6');
-  assert.ok(/GENERATED ALWAYS AS\\s*\\(/i.test(mysql.sql));
+  assert.ok(/GENERATED ALWAYS AS\s*\(/i.test(mysql.sql));
   assert.ok(mysql.sql.indexOf('`price`') !== -1);
   assert.ok(mysql.sql.indexOf('`qty`') !== -1);
-  assert.ok(/\\bSTORED\\b/i.test(mysql.sql));
+  assert.ok(/\bSTORED\b/i.test(mysql.sql));
 })();
 
 (function sqliteGeneratedRequiresRuntimeEvidence() {
