@@ -27,6 +27,7 @@ For task-oriented usage see the [NuBloxSQL User Guides](guides/README.md) and [C
 - `typeSemantics` / `canonicalType()` / `nativeTypeMapping()` / `typeCompatibility()` — canonical cross-dialect type analysis and mapping.
 - `schemaSnapshot()` / `buildSchemaSnapshot()` — deterministic canonical schema model with semantic/source fingerprints.
 - `diffSchemas()` — canonical schema comparison with object/property/dependency changes and safety classification.
+- `planMigration()` — dependency-aware migration planning with safety, execution mode, preconditions and target-dialect SQL.
 
 ## Capability ontology
 
@@ -442,3 +443,15 @@ const highestRisk = sql.schemaDiffHighestSafety(diff);
 ```
 
 Safety classes are `safe`, `dependency-sensitive`, `manual-review`, `potentially-lossy`, and `destructive`. Classification is deliberately conservative: removals are destructive, narrowing type changes are potentially lossy, nullable→not-null requires review, and key/constraint/foreign-key changes are dependency-sensitive. Rename inference and migration DDL generation are not part of schema diff v1.
+
+
+## Migration planner
+
+`MIGRATION_PLAN_SCHEMA_VERSION === 1` transforms a canonical schema diff into an ordered migration plan.
+
+```js
+const diff = sql.diffSchemas(before, after);
+const plan = sql.planMigration(diff, { targetDialect: 'postgresql' });
+```
+
+Each step includes `safety`, `execution`, `sql`, `preconditions`, rollback metadata, target dialect and logical object identity. `migrationAutomaticSteps()` and `migrationManualSteps()` split a plan by execution mode. A plan is `executable: true` only when every step has automatic SQL; this does not override destructive or potentially-lossy safety classifications.
