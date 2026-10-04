@@ -57,6 +57,12 @@ Start with the [NuBloxSQL User Guides](docs/guides/README.md) for detailed API a
 
 Use the [NuBloxSQL Cookbook](docs/cookbook/README.md) for worked applications and recipes covering CRUD, joins and CTEs, reporting, transactions, streaming, metadata tooling, diagnostics, PostgreSQL/MySQL/SQLite/SQL Server service patterns, bulk movement, observability and migration analysis.
 
+Product direction is defined in:
+
+- [Product vision](docs/strategy/PRODUCT-VISION.md)
+- [Product capability register](docs/strategy/PRODUCT-CAPABILITY-REGISTER.md)
+- [Strategic roadmap](docs/strategy/STRATEGIC-ROADMAP.md)
+
 Other authoritative release documents are:
 
 - [Documentation index](docs/README.md)
