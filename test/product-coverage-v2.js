@@ -45,6 +45,10 @@ var migrationExecution=sql.productCoverage.area('platform.migration-execution');
 assert.strictEqual(migrationExecution.status,'established');
 assert.strictEqual(migrationExecution.stages.runtime,'implemented');
 
+var migrationExecution=sql.productCoverage.area('platform.migration-execution');
+assert.strictEqual(migrationExecution.status,'established');
+assert.strictEqual(migrationExecution.stages.runtime,'implemented');
+
 var gaps=sql.productCoverage.gaps();
 assert.strictEqual(gaps.some(function(area){return area.id==='platform.schema-diff';}),false);
 assert.strictEqual(gaps.some(function(area){return area.id==='platform.migrations';}),false);
