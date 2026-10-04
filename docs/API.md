@@ -308,7 +308,7 @@ The exact exported JavaScript surface and required package files are machine-def
 
 The TypeScript entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statements in `types/dml.d.ts`, DDL statements in `types/ddl.d.ts`, portable metadata in `types/portable-metadata.d.ts`, query diagnostics in `types/diagnostics.d.ts`, and ontology declarations in `types/capability-ontology.d.ts`.
 
-Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `dml-v3`, `dml-v4`, `dml-v5`, `dml-v6`, `dml-v7`, `dml-v8`, `dml-v9`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8`, `ddl-v9` and `ddl-v10` gates verify their released semantic surfaces.
+Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `dml-v3`, `dml-v4`, `dml-v5`, `dml-v6`, `dml-v7`, `dml-v8`, `dml-v9`, `dml-v10`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8`, `ddl-v9` and `ddl-v10` gates verify their released semantic surfaces.
 
 ### Identity, autoincrement and sequence options (`ddl-v11`)
 
@@ -334,3 +334,10 @@ The released subset targets semantics shared across PostgreSQL 15–18: multiple
 `dml-v9` adds the PostgreSQL 17+ match families `WHEN NOT MATCHED BY SOURCE` and explicit `WHEN NOT MATCHED BY TARGET`, plus statement-level `MERGE ... RETURNING`. These capabilities are modeled as runtime-version-dependent from PostgreSQL 17. A `dml-v9` transpilation therefore requires source and target qualification; PostgreSQL 15/16 are rejected, while qualified PostgreSQL 17/18 can render and execute the statement.
 
 The AST keeps `not-matched`, `not-matched-by-target`, and `not-matched-by-source` distinct while treating unqualified NOT MATCHED and BY TARGET as one reachability family. `RETURNING WITH (OLD/NEW AS ...)` output aliases remain outside the released subset.
+
+
+### PostgreSQL MERGE query sources (`dml-v10`)
+
+`dml-v10` upgrades MERGE `USING` from a table identifier to PostgreSQL's parenthesized `source_query` form. The source is represented with the existing `DerivedTable`/query AST, so joins, filters, expressions, CTEs and bind parameters reuse the qualified SELECT compiler. The released form requires an alias for a query source and deliberately rejects invented direct `USING a JOIN b ...` syntax; joins belong inside the parenthesized query.
+
+Rich sources compose with `dml-v8` action chains and `dml-v9` versioned match/RETURNING features. When a rich source is combined with PostgreSQL 17+ capabilities, the statement remains `dml-v10` while its capability plan still enforces the underlying runtime-version gates.
