@@ -38,7 +38,7 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | Triggers | Gap in compiler | engine observations/runtime support where applicable; no complete AST/compiler family | Medium-high |
 | Stored functions/procedures | Gap in compiler | engine observations exist; no coherent procedural SQL compiler | Medium, vendor-heavy |
 | Administration SQL | Gap in compiler | diagnostics/runtime operations exist; EXPLAIN/VACUUM/ANALYZE/PRAGMA/etc. not unified compiler families | Medium-high |
-| Bulk/data movement | Established foundation | portable cross-dialect mapping, batching, validation, checkpoints/resume and audit/events; transfer planner; native PostgreSQL COPY and opt-in MySQL LOCAL INFILE acceleration; bounded SQLite/SQL Server fallback strategies | Add live large-transfer qualification, SQL Server bulk-writer promotion, SQLite prepared-write tuning and durable external checkpoint storage |
+| Bulk/data movement | Established foundation | portable cross-dialect mapping, batching, validation, checkpoints/resume and audit/events; transfer planner; native PostgreSQL COPY, opt-in MySQL LOCAL INFILE and SQL Server TDS BulkLoadBCP acceleration; bounded SQLite fallback | Add live large-transfer qualification, SQLite prepared-write tuning and durable external checkpoint storage |
 | Automation/jobs | Gap | no unified reusable job-plan or CLI execution model | High platform value |
 | Reporting/export | Gap | no first-class report/export contract | Build after unified data movement |
 | Competitive benchmark | Active | `docs/strategy/COMPETITIVE-BENCHMARK.md` | Track breadth without copying external product architecture |
