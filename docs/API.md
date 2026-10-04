@@ -15,6 +15,7 @@ For task-oriented usage see the [NuBloxSQL User Guides](guides/README.md) and [C
 - `createPool()` — native pool where supported.
 - `sql` — tagged SQL, identifiers, named parameters and portable typed values.
 - `introspect()` — one-shot metadata/schema introspection.
+- `structureTree()` / `buildStructureTree()` — canonical hierarchical database structure model built from portable metadata.
 - `capabilityReport()` — static platform capability report.
 - `transactionPolicy()` — portable transaction-policy description.
 - `capabilityModel` — Tier-1 compatibility, runtime qualification, rewrite and compiler/transpilation APIs.
@@ -355,3 +356,22 @@ const sqlServerParity = sql.productCoverage.area('dialect.sqlserver-parity');
 ```
 
 Each area records its product pillar, overall status, per-stage maturity, per-dialect maturity, evidence files and the next known gap. `PRODUCT_COVERAGE_SCHEMA_VERSION` is currently `2`. The machine-readable release snapshot is `docs/releases/product-coverage-v2.json`.
+
+
+## Database structure tree
+
+`structureTree()` turns deep metadata into an immutable hierarchy suitable for object explorers, schema inspection, structure export, diagrams and later comparison/migration tooling.
+
+```js
+const tree = await db.structureTree({ schema: 'public' });
+
+for (const database of tree.databases) {
+  for (const schema of database.children) {
+    for (const object of schema.children) {
+      console.log(object.kind, object.name);
+    }
+  }
+}
+```
+
+The hierarchy is database → schema → table/view/foreign-table → columns/indexes/foreign keys/constraints. `buildStructureTree(snapshot)` can build the same model from an existing portable metadata snapshot without opening a connection. `STRUCTURE_TREE_SCHEMA_VERSION` is currently `1`.
