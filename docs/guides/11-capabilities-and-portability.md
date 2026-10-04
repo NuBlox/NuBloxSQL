@@ -524,3 +524,27 @@ RETURNING merge_action(), t.id, t.amount;
 ```
 
 A `dml-v9` statement requires runtime qualification. PostgreSQL 15/16 resolve the new capabilities as unsupported; PostgreSQL 17/18 resolve them as native. The compiler preserves the different match families, validates reachability, and keeps cross-dialect lowering fail-closed.
+
+
+## PostgreSQL MERGE query sources (`dml-v10`)
+
+PostgreSQL defines MERGE `data_source` as either a source table or a parenthesized query. NuBloxSQL dml-v10 models the query form with the existing query AST rather than a MERGE-specific mini-language.
+
+```sql
+MERGE INTO ledger AS t
+USING (
+  WITH enabled_tenants AS (
+    SELECT id FROM tenants WHERE enabled = TRUE
+  )
+  SELECT i.id, i.amount
+  FROM incoming AS i
+  JOIN enabled_tenants AS e ON e.id = i.tenant_id
+) AS s
+ON t.id = s.id
+WHEN MATCHED THEN
+  UPDATE SET amount = s.amount
+WHEN NOT MATCHED THEN
+  INSERT (id, amount) VALUES (s.id, s.amount);
+```
+
+The source query can therefore expose already-qualified SELECT capabilities including joins, CTEs, predicates and parameters. The outer MERGE source remains one parenthesized query relation with an alias. Direct join syntax after `USING` is not accepted because that is not PostgreSQL's MERGE `data_source` grammar.
