@@ -163,6 +163,11 @@
     "lib/capabilities/DdlIdentitySequenceModelPolicy.js",
     "test/sql-ast-wave5-identity-sequence.js",
     "test/compiler-ddl-identity-sequence-live.js",
-    "tool/check-ddl-v11-release.js"
+    "tool/check-ddl-v11-release.js",
+    "lib/capabilities/DmlAdvancedPipeline.js",
+    "lib/capabilities/DmlAdvancedModelPolicy.js",
+    "test/sql-ast-wave6-advanced-dml.js",
+    "test/compiler-dml-advanced-live.js",
+    "tool/check-dml-v3-release.js"
   ]
 }
