@@ -27,6 +27,38 @@ const result = await sql.moveData(source, target, {
 
 The same operation is available from the source client as `source.moveDataTo(target, spec, options)`.
 
+## Transfer planning
+
+NuBloxSQL selects the target write strategy before reading source rows:
+
+```js
+const plan = sql.planDataMovement(source, target, spec);
+
+console.log(plan.strategy);
+console.log(plan.accelerated);
+console.log(plan.reason);
+```
+
+The same decision is available as `source.planDataMovementTo(target, spec, options)`.
+
+Strategy preference is explicit:
+
+- `strategy: 'auto'` — default. Use a qualified native writer when available and fall back safely when a batch contains a value that the native text transport cannot encode losslessly.
+- `strategy: 'native'` — require a qualified native writer and fail rather than fall back.
+- `strategy: 'portable'` — always use the parameter-bound batched INSERT path.
+
+Current planned target strategies are:
+
+| Target | Strategy | Status |
+| --- | --- | --- |
+| PostgreSQL | `postgresql-copy-csv` | native COPY FROM STDIN acceleration when the runtime exposes `copyFrom()` |
+| MySQL | `mysql-local-infile-tsv` | native LOAD DATA LOCAL INFILE acceleration only when `localInfile: true` is explicitly configured |
+| SQLite | `sqlite-batched-insert` | bounded portable batched INSERT; no false native bulk-load claim |
+| SQL Server | `sqlserver-batched-insert` | bounded portable batched INSERT until a qualified TDS bulk-row writer is exposed |
+| Other/forced portable | `portable-batched-insert` | cross-dialect fallback |
+
+Native acceleration remains an internal execution strategy beneath the same public movement contract.
+
 ## Contract
 
 The v1 pipeline provides:
@@ -40,7 +72,10 @@ The v1 pipeline provides:
 - resumability with plan-hash validation;
 - dry-run mode;
 - audit records and lifecycle events;
-- cross-dialect execution through the normal NuBloxSQL client API.
+- cross-dialect execution through the normal NuBloxSQL client API;
+- preflight transfer planning with an explicit reason and fallback;
+- per-batch native PostgreSQL COPY and opt-in MySQL LOCAL INFILE acceleration;
+- lossless automatic fallback to parameter-bound INSERT for values not supported by native text transport.
 
 Checkpoints represent the largest contiguous processed source prefix. A failed batch therefore never advances the resumable offset and cannot be silently skipped after restart.
 
@@ -58,8 +93,16 @@ const resumed = await sql.resumeDataMovement(
 
 The source query must be deterministic for offset-based resume. Use a stable `ORDER BY` over a unique key when restart correctness matters.
 
+## Native acceleration and checkpoints
+
+Native writers execute one committed batch at a time. A checkpoint advances only after that batch succeeds. The native paths therefore preserve the same largest-contiguous-prefix resume guarantee as the portable path.
+
+PostgreSQL COPY and MySQL LOCAL INFILE currently accelerate scalar text-safe values: null, strings, finite numbers, bigint, booleans and valid Date values. In `auto` mode, batches containing values outside that lossless text set (for example structured objects or binary payloads) use the portable parameter-bound fallback. In `native` mode, such a batch fails rather than silently changing representation.
+
+MySQL LOCAL INFILE remains disabled unless the target client was created with `localInfile: true`; the planner will not implicitly weaken that security policy.
+
 ## Current boundary
 
-The public pipeline is intentionally independent of vendor-specific transfer mechanisms. PostgreSQL COPY, MySQL LOCAL INFILE and other engine-native acceleration can be added beneath this contract without changing application code.
+SQL Server exposes lower-level TDS bulk-load packet capability, but NuBloxSQL does not yet claim native data-movement acceleration until a row encoder/writer is implemented and qualified. SQLite deliberately reports its batched INSERT strategy rather than inventing a native bulk protocol that SQLite core does not provide.
 
 Durable checkpoint storage, distributed job coordination and scheduling remain responsibilities of the future generic NuBloxSQL job infrastructure.
