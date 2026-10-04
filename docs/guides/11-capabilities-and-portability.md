@@ -483,3 +483,24 @@ LIMIT ?;
 ```
 
 The multi-table grammar remains intentionally narrower: statement modifiers are permitted, but `ORDER BY` and `LIMIT` are rejected because MySQL does not allow them for multi-table UPDATE/DELETE. These features are represented by `syntax.mysql*` capability IDs and are not automatically lowered to PostgreSQL or SQLite.
+
+
+## Ordered PostgreSQL MERGE actions (`dml-v8`)
+
+The dml-v8 compiler represents PostgreSQL MERGE actions as an ordered clause list. PostgreSQL evaluates `WHEN` clauses in order, so NuBloxSQL preserves that order and validates reachability rather than flattening clauses by action type.
+
+```sql
+MERGE INTO ledger AS t
+USING incoming AS s
+ON t.id = s.id
+WHEN MATCHED AND s.amount > 0 THEN
+  UPDATE SET amount = s.amount
+WHEN MATCHED THEN
+  DELETE
+WHEN NOT MATCHED AND s.amount > 0 THEN
+  INSERT (id, amount) VALUES (s.id, s.amount)
+WHEN NOT MATCHED THEN
+  DO NOTHING;
+```
+
+The compiler records `syntax.mergeMultipleWhen`, `syntax.mergeActionCondition`, and `syntax.mergeDoNothing`, preserves parameter bindings across predicates/actions, and remains PostgreSQL-only. PostgreSQL 17+ `BY SOURCE` / `BY TARGET` and MERGE `RETURNING` are intentionally excluded from this shared PostgreSQL 15–18 scope.
