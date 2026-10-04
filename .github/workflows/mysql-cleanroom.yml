@@ -15,6 +15,7 @@ on:
       - 'test/client-transaction-live.js'
       - 'test/client-operation-live.js'
       - 'test/compiler-query-live.js'
+      - 'test/compiler-dml-advanced-live.js'
       - 'test/compiler-ddl-live.js'
       - 'test/compiler-ddl-lifecycle-live.js'
       - 'test/compiler-ddl-column-constraints-live.js'
@@ -42,6 +43,7 @@ on:
       - 'test/client-transaction-live.js'
       - 'test/client-operation-live.js'
       - 'test/compiler-query-live.js'
+      - 'test/compiler-dml-advanced-live.js'
       - 'test/compiler-ddl-live.js'
       - 'test/compiler-ddl-lifecycle-live.js'
       - 'test/compiler-ddl-column-constraints-live.js'
@@ -122,6 +124,8 @@ jobs:
         run: node test/client-operation-live.js
       - name: SQL compiler live qualification
         run: node test/compiler-query-live.js
+      - name: Advanced DML compiler live qualification
+        run: node test/compiler-dml-advanced-live.js
       - name: DDL compiler live qualification
         run: node test/compiler-ddl-live.js
       - name: DDL lifecycle live qualification
