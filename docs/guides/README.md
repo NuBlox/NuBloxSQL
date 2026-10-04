@@ -20,6 +20,7 @@ Use these guides together with the [support matrix](../SUPPORT.md), [public API 
 12. [TypeScript guide](12-typescript.md) — dialect discrimination, typed clients, portable metadata and result typing.
 13. [Production operation and troubleshooting](13-production-and-troubleshooting.md) — production configuration, cleanup, resource limits, diagnosis and common failure patterns.
 14. [DDL compiler](14-ddl-compiler.md) — structured table/index/view/schema/sequence ASTs, constraints, capability-gated schema portability and the precise `ddl-v1` boundary.
+15. [Canonical type semantics](15-canonical-type-semantics.md) — cross-dialect type families, metadata annotation, mapping decisions and explicit lossiness.
 
 ## Documentation rules
 
