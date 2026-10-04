@@ -17,6 +17,7 @@ Use guides to understand the contract; use cookbook recipes to see several APIs 
 - [Product vision](strategy/PRODUCT-VISION.md) — the five product pillars and governing architectural principles.
 - [Product capability register](strategy/PRODUCT-CAPABILITY-REGISTER.md) — whole-product coverage assessment and maturity model.
 - [Strategic roadmap](strategy/STRATEGIC-ROADMAP.md) — prioritized path toward NuBloxSQL 2.0 based on product gaps rather than statement-family momentum.
+- [Competitive capability benchmark](strategy/COMPETITIVE-BENCHMARK.md) — external breadth benchmark and NuBloxSQL capability programme.
 
 ## Release documents
 
