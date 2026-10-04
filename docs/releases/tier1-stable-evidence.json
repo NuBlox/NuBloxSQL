@@ -180,6 +180,11 @@
     "lib/capabilities/DmlMysqlMutationControlPipeline.js",
     "test/sql-ast-wave6-mysql-controls.js",
     "test/compiler-dml-mysql-controls-live.js",
-    "tool/check-dml-v7-release.js"
+    "tool/check-dml-v7-release.js",
+    "lib/capabilities/DmlMergeModelPolicy.js",
+    "lib/capabilities/DmlMergeActionsPipeline.js",
+    "test/sql-ast-wave6-merge-actions.js",
+    "test/compiler-dml-merge-actions-live.js",
+    "tool/check-dml-v8-release.js"
   ]
 }
