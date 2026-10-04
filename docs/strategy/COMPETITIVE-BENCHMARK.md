@@ -127,6 +127,8 @@ database
 
 This is deliberately implemented as a public object model rather than a UI feature. It can therefore support future explorers, structure exports, diagrams, comparisons, migrations and automation without coupling NuBloxSQL to any particular interface.
 
+The second delivered slice adds **stable object identity and dependency intelligence**. Every structure-tree object now has a deterministic NuBloxSQL identity, and `dependencyGraph()` derives structural, index/constraint-column and foreign-key dependency edges. `graphDependencies()`, `graphDependents()` and `impactAnalysis()` provide direct/transitive traversal for future change planning and diagrams.
+
 ## Sources used for benchmark verification
 
 - https://databasetour.net/documentation/database-objects.htm
