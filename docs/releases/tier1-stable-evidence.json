@@ -188,6 +188,9 @@
     "tool/check-dml-v8-release.js",
     "test/sql-ast-wave6-merge-versioned.js",
     "test/compiler-dml-merge-versioned-live.js",
-    "tool/check-dml-v9-release.js"
+    "tool/check-dml-v9-release.js",
+    "test/sql-ast-wave6-merge-rich-source.js",
+    "test/compiler-dml-merge-rich-source-live.js",
+    "tool/check-dml-v10-release.js"
   ]
 }
