@@ -31,7 +31,7 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | Query diagnostics | Strong for Tier 1 | portable diagnostics plus native-plan retention; PostgreSQL/MySQL execution analysis, SQLite plan/opcode diagnostics | Add SQL Server to shared contract |
 | Transactions | Established | client transaction APIs, savepoints, policy and tests | Need deeper isolation/locking capability integration |
 | Streaming/operation control | Strong | async/incremental result handling, cancellation, deadlines, budgets | Maintain |
-| Type system | Partial | typed binds, codec hooks, native decoding, capability observations | Needs canonical type semantics and mapping policy |
+| Type system | Established | canonical type families, typed-bind bridge, metadata annotation, explicit lossless/lossy/convention mapping decisions, native decoding | Extend arrays, domains/enums, spatial/range/user-defined types and richer precision evidence |
 | Security SQL | Gap in compiler | engine capability observations exist; GRANT/REVOKE/roles not a coherent compiled surface | High-value language gap |
 | TCL compiler | Gap/Partial | runtime transactions exist; SQL transaction statements are not a first-class compiler family | High-value language gap |
 | Views/materialized views | Partial | basic CREATE VIEW exists; broader lifecycle/materialized semantics incomplete | Medium-high |

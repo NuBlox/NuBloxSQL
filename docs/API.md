@@ -24,6 +24,7 @@ For task-oriented usage see the [NuBloxSQL User Guides](guides/README.md) and [C
 - `capabilityModel` — Tier-1 compatibility, runtime qualification, rewrite and compiler/transpilation APIs.
 - `capabilityOntology` — atomic capability definitions, engine observations and NuBlox implementation coverage.
 - `productCoverage` — whole-product maturity register across runtime, language, intelligence, portability, platform foundations and dialect depth.
+- `typeSemantics` / `canonicalType()` / `nativeTypeMapping()` / `typeCompatibility()` — canonical cross-dialect type analysis and mapping.
 
 ## Capability ontology
 
@@ -401,3 +402,16 @@ const analysis = sql.impactAnalysis(graph, id);
 ```
 
 Graph construction is order-independent: catalog row ordering does not change node identities or dependency edges. The current graph derives structural, index/constraint-column and foreign-key dependencies; richer view/routine/trigger/native dependency evidence remains future scope.
+
+
+## Canonical type semantics
+
+`TYPE_SEMANTICS_SCHEMA_VERSION === 1` defines the released canonical type model. NuBloxSQL classifies native types into conservative families and makes target mapping quality explicit rather than silently coercing unlike semantics.
+
+```js
+const source = sql.canonicalType('postgresql', 'numeric(26,6)');
+const target = sql.nativeTypeMapping('sqlserver', source);
+const compatibility = sql.typeCompatibility('postgresql', 'mysql', 'uuid');
+```
+
+Mapping decisions are `native-equivalent`, `lossless-map`, `lossy-map`, `application-convention`, `runtime-qualified`, or `unsupported`. `canonicalTypeFromPortableSpec()` bridges existing portable typed binds into the same semantic vocabulary, and `annotateTypes()` projects canonical type descriptors over a portable metadata snapshot without changing portable metadata vocabulary v1.

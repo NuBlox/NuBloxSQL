@@ -62,7 +62,15 @@
     "buildDependencyGraph",
     "graphDependencies",
     "graphDependents",
-    "impactAnalysis"
+    "impactAnalysis",
+    "TYPE_SEMANTICS_SCHEMA_VERSION",
+    "TYPE_MAPPING_DECISIONS",
+    "typeSemantics",
+    "canonicalType",
+    "nativeTypeMapping",
+    "typeCompatibility",
+    "canonicalTypeFromPortableSpec",
+    "annotateTypes"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -131,7 +139,9 @@
     "lib/client/StructureTree.js",
     "types/dependency-graph.d.ts",
     "lib/client/ObjectIdentity.js",
-    "lib/client/DependencyGraph.js"
+    "lib/client/DependencyGraph.js",
+    "types/type-semantics.d.ts",
+    "lib/client/TypeSemantics.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
