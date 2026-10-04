@@ -57,7 +57,7 @@ async function main(){
         assert.strictEqual(del.scope,'dml-v4');
         assert.strictEqual(del.certified,true);
         await db.execute(del.sql);
-        var remaining=await db.many('SELECT id FROM '+target+' ORDER BY id');
+        var remaining=await db.all('SELECT id FROM '+target+' ORDER BY id');
         assert.deepStrictEqual(remaining.map(function(row){return Number(row.id);}),[1]);
       }
     }
