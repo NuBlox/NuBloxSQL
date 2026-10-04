@@ -164,6 +164,7 @@ exports.typeSemantics = typeSemanticsApi;
 exports.canonicalType = typeSemanticsApi.infer;
 exports.nativeTypeMapping = typeSemanticsApi.target;
 exports.typeCompatibility = typeSemanticsApi.compatibility;
+exports.canonicalTypeFromPortableSpec = typeSemanticsApi.fromPortableSpec;
 exports.annotateTypes = typeSemanticsApi.annotate;
 exports.OBJECT_IDENTITY_SCHEMA_VERSION = objectIdentityApi.SCHEMA_VERSION;
 exports.DEPENDENCY_GRAPH_SCHEMA_VERSION = dependencyGraphApi.SCHEMA_VERSION;
