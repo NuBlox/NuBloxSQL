@@ -117,6 +117,39 @@ async function automaticLosslessFallback() {
   await target.close();
 }
 
+async function sqlServerPlannerAndExecution() {
+  var target = sql.createClient({ dialect: 'sqlserver', pool: false, host: 'localhost', user: 'test', password: 'test', database: 'test' });
+  var calls = [];
+  target._ensureConnected = async function () { return target.native; };
+  target.native.bulkInsert = async function (table, columns, rows, options) {
+    calls.push({ table: table, columns: columns, rows: rows, options: options });
+    return { affectedRows: BigInt(rows.length) };
+  };
+  target.execute = async function () { throw new Error('portable fallback should not be used'); };
+
+  var transferPlan = sql.planDataMovement(source('sqlite', []), target, {
+    source: { statement: 'SELECT id, name FROM source ORDER BY id' },
+    target: { table: ['dbo', 'target'], columns: ['id', 'name'] }
+  });
+  assert.strictEqual(transferPlan.strategy, 'sqlserver-tds-bulk');
+  assert.strictEqual(transferPlan.accelerated, true);
+
+  var result = await sql.moveData(source('sqlite', [
+    { id: 1, name: 'Ada' },
+    { id: 2, name: 'Grace' }
+  ]), target, {
+    source: { statement: 'SELECT id, name FROM source ORDER BY id' },
+    target: { table: ['dbo', 'target'], columns: ['id', 'name'] }
+  }, { batchSize: 10, strategy: 'native' });
+
+  assert.strictEqual(result.status, 'succeeded');
+  assert.deepStrictEqual(result.strategiesUsed, ['sqlserver-tds-bulk']);
+  assert.strictEqual(calls.length, 1);
+  assert.deepStrictEqual(calls[0].table, ['dbo', 'target']);
+  assert.deepStrictEqual(calls[0].columns, ['id', 'name']);
+  await target.close();
+}
+
 function plannerGuardrails() {
   var mysqlWithoutOptIn = sql.createClient({ dialect: 'mysql', pool: false, host: 'localhost', user: 'test' });
   var plan = sql.planDataMovement(source('sqlite', []), mysqlWithoutOptIn, {
@@ -142,6 +175,7 @@ Promise.resolve()
   .then(plannerGuardrails)
   .then(postgresPlannerAndExecution)
   .then(mysqlPlannerAndExecution)
+  .then(sqlServerPlannerAndExecution)
   .then(automaticLosslessFallback)
   .then(function () { console.log('NuBloxSQL native data movement planner: PASS'); })
   .catch(function (error) { console.error(error && error.stack ? error.stack : error); process.exitCode = 1; });
