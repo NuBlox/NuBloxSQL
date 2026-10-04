@@ -58,6 +58,13 @@ var ontology = sql.capabilityOntology;
   assert.throws(function () { model.transpileSql('postgresql', 'postgresql', source, { sourceQualification: pg17, targetQualification: pg17 }); }, /18\+ source runtime qualification/);
 })();
 
+(function quotedIdentifierIdentityIsPreserved() {
+  var ast = model.parseSql('postgresql', 'CREATE TABLE quoted_names ("A" INTEGER, "a" INTEGER GENERATED ALWAYS AS ("A" + 1) STORED)');
+  assert.strictEqual(ast.columns[0].name.parts[0], 'A');
+  assert.strictEqual(ast.columns[0].generated, undefined);
+  assert.strictEqual(ast.columns[1].name.parts[0], 'a');
+  assert.strictEqual(ast.columns[1].generated.storage, 'stored');
+})();
 (function validationAndOntology() {
   assert.throws(function () { model.parseSql('postgresql', 'CREATE TABLE x (a INTEGER GENERATED ALWAYS AS (1) STORED DEFAULT 1)'); }, /final ddl-v6 column clause/);
   ['integrity.generatedColumns','integrity.generatedStored','integrity.generatedVirtual','integrity.identity','integrity.identityAlways','integrity.identityByDefault'].forEach(function (path) {
