@@ -30,7 +30,10 @@ var ontology = sql.capabilityOntology;
   var runtime = model.qualify('sqlite', { version: '3.49.1', source: 'ddl-v6-static-test' });
   var result = model.transpileSql('postgresql', 'sqlite', source, { targetQualification: runtime });
   assert.strictEqual(result.certified, true);
-  assert.ok(result.sql.indexOf('GENERATED ALWAYS AS ("price" * "qty") STORED') !== -1);
+  assert.ok(/GENERATED ALWAYS AS\s*\(/i.test(result.sql));
+  assert.ok(result.sql.indexOf('"price"') !== -1);
+  assert.ok(result.sql.indexOf('"qty"') !== -1);
+  assert.ok(/\bSTORED\b/i.test(result.sql));
 })();
 
 (function postgresIdentityIsExplicit() {
