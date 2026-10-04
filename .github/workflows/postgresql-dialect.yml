@@ -20,6 +20,7 @@ on:
       - 'test/compiler-ddl-object-lifecycle-live.js'
       - 'test/compiler-ddl-dependency-concurrent-live.js'
       - 'test/compiler-ddl-generated-identity-live.js'
+      - 'test/compiler-ddl-foreign-keys-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
@@ -45,6 +46,7 @@ on:
       - 'test/compiler-ddl-object-lifecycle-live.js'
       - 'test/compiler-ddl-dependency-concurrent-live.js'
       - 'test/compiler-ddl-generated-identity-live.js'
+      - 'test/compiler-ddl-foreign-keys-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
@@ -125,6 +127,8 @@ jobs:
         run: node test/compiler-ddl-dependency-concurrent-live.js
       - name: DDL generated and identity qualification
         run: node test/compiler-ddl-generated-identity-live.js
+      - name: DDL foreign-key semantic qualification
+        run: node test/compiler-ddl-foreign-keys-live.js
       - name: Native runtime, extended protocol, cancellation, pooling and portals
         run: node lib/dialects/postgresql/test/live.js
       - name: Native COPY FROM/TO streaming and pool qualification
