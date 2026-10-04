@@ -15,8 +15,10 @@ export type SqlAstTableConstraint = SqlAstPrimaryKeyConstraint | SqlAstUniqueCon
 export type SqlDropDependencyMode = 'cascade' | 'restrict';
 
 export interface SqlCreateTableStatementAst { readonly type: 'CreateTableStatement'; readonly name: SqlAstIdentifier; readonly columns: readonly SqlAstColumnDefinition[]; readonly constraints: readonly SqlAstTableConstraint[]; readonly ifNotExists?: boolean; }
-export interface SqlAstIndexColumnKey { readonly type: 'IndexColumnKey'; readonly column: SqlAstIdentifier; }
-export interface SqlAstIndexExpressionKey { readonly type: 'IndexExpressionKey'; readonly expression: SqlAstExpression; readonly family: 'expression' | 'functional'; }
+export type SqlIndexKeyDirection = 'ASC' | 'DESC';
+export type SqlIndexNullsOrder = 'FIRST' | 'LAST';
+export interface SqlAstIndexColumnKey { readonly type: 'IndexColumnKey'; readonly column: SqlAstIdentifier; readonly direction?: SqlIndexKeyDirection | null; readonly collation?: SqlAstIdentifier | null; readonly operatorClass?: SqlAstIdentifier | null; readonly nulls?: SqlIndexNullsOrder | null; }
+export interface SqlAstIndexExpressionKey { readonly type: 'IndexExpressionKey'; readonly expression: SqlAstExpression; readonly family: 'expression' | 'functional'; readonly direction?: SqlIndexKeyDirection | null; readonly collation?: SqlAstIdentifier | null; readonly operatorClass?: SqlAstIdentifier | null; readonly nulls?: SqlIndexNullsOrder | null; }
 export type SqlAstIndexKey = SqlAstIndexColumnKey | SqlAstIndexExpressionKey;
 export interface SqlCreateIndexStatementAst { readonly type: 'CreateIndexStatement'; readonly name: SqlAstIdentifier; readonly table: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; readonly keys?: readonly SqlAstIndexKey[]; readonly unique: boolean; readonly where: SqlAstExpression | null; readonly ifNotExists?: boolean; readonly concurrently?: boolean; readonly method?: 'btree' | 'hash' | 'gist' | 'spgist' | 'gin' | 'brin' | null; readonly include?: readonly SqlAstIdentifier[]; }
 export interface SqlCreateViewStatementAst { readonly type: 'CreateViewStatement'; readonly name: SqlAstIdentifier; readonly query: SqlQueryAst; }
@@ -43,4 +45,4 @@ export type SqlAlterTableActionAst = SqlAlterTableAddColumnActionAst | SqlAlterT
 export interface SqlAlterTableStatementAst { readonly type: 'AlterTableStatement'; readonly table: SqlAstIdentifier; readonly action: SqlAlterTableActionAst; }
 
 export type SqlDdlAst = SqlCreateTableStatementAst | SqlCreateIndexStatementAst | SqlCreateViewStatementAst | SqlCreateSchemaStatementAst | SqlCreateSequenceStatementAst | SqlDropTableStatementAst | SqlDropViewStatementAst | SqlDropIndexStatementAst | SqlDropSchemaStatementAst | SqlDropSequenceStatementAst | SqlAlterTableStatementAst;
-export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3' | 'ddl-v4' | 'ddl-v5' | 'ddl-v6' | 'ddl-v7' | 'ddl-v8';
+export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3' | 'ddl-v4' | 'ddl-v5' | 'ddl-v6' | 'ddl-v7' | 'ddl-v8' | 'ddl-v9';
