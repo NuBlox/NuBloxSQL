@@ -26,6 +26,7 @@ For task-oriented usage see the [NuBloxSQL User Guides](guides/README.md) and [C
 - `productCoverage` — whole-product maturity register across runtime, language, intelligence, portability, platform foundations and dialect depth.
 - `typeSemantics` / `canonicalType()` / `nativeTypeMapping()` / `typeCompatibility()` — canonical cross-dialect type analysis and mapping.
 - `schemaSnapshot()` / `buildSchemaSnapshot()` — deterministic canonical schema model with semantic/source fingerprints.
+- `diffSchemas()` — canonical schema comparison with object/property/dependency changes and safety classification.
 
 ## Capability ontology
 
@@ -428,3 +429,16 @@ const fingerprint = sql.schemaFingerprint(snapshot);
 ```
 
 Each object exposes both its engine-qualified `id` and a dialect-neutral `logicalKey`. `semanticHash` ignores source-dialect type spelling so equivalent canonical schemas can compare equal across engines; `sourceHash` also includes source dialect and native type names. Use `schemasEquivalent()` for semantic comparison and `sourceSchemasEquivalent()` for source-representation comparison.
+
+
+## Canonical schema diff
+
+`SCHEMA_DIFF_SCHEMA_VERSION === 1` compares canonical snapshots (or portable metadata inputs) using dialect-neutral logical keys. It emits added, removed and modified objects; modified objects contain explicit property deltas.
+
+```js
+const diff = sql.diffSchemas(before, after);
+const changed = sql.schemaDiffChanged(diff);
+const highestRisk = sql.schemaDiffHighestSafety(diff);
+```
+
+Safety classes are `safe`, `dependency-sensitive`, `manual-review`, `potentially-lossy`, and `destructive`. Classification is deliberately conservative: removals are destructive, narrowing type changes are potentially lossy, nullable→not-null requires review, and key/constraint/foreign-key changes are dependency-sensitive. Rename inference and migration DDL generation are not part of schema diff v1.
