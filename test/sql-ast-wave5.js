@@ -57,9 +57,9 @@ var ontology = sql.capabilityOntology;
   assert.strictEqual(sqlite.certified, true);
   assert.ok(sqlite.sql.indexOf('FOREIGN KEY ("parent_id") REFERENCES "parent" ("id")') !== -1);
 
-  assert.throws(function () {
-    model.parseSql('postgresql', 'CREATE TABLE child_actions (id INTEGER, parent_id INTEGER REFERENCES parent (id) ON DELETE CASCADE)');
-  }, /foreign-key options beyond REFERENCES/);
+  var promoted = model.parseSql('postgresql', 'CREATE TABLE child_actions (id INTEGER, parent_id INTEGER REFERENCES parent (id) ON DELETE CASCADE)');
+  assert.strictEqual(model.analyzeAst(promoted).scope, 'ddl-v7');
+  assert.strictEqual(promoted.columns[1].references.onDelete, 'cascade');
 })();
 
 (function indexesAndPartialIndexGating() {
