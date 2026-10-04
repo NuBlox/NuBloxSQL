@@ -35,8 +35,8 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | Stored functions/procedures | Gap in compiler | engine observations exist; no coherent procedural SQL compiler | Medium, vendor-heavy |
 | Administration SQL | Gap in compiler | diagnostics/runtime operations exist; EXPLAIN/VACUUM/ANALYZE/PRAGMA/etc. not unified compiler families | Medium-high |
 | Bulk/data movement | Established but fragmented | PostgreSQL COPY, MySQL LOCAL INFILE, SQLite backup/changesets capabilities | Needs product-level abstraction/guide |
-| Schema diff/migrations | Gap | metadata and portability foundations exist, but no first-class migration planner | Very high downstream value |
-| SQL formatting/linting/static analysis | Gap | parser/AST foundations exist | High value for SQL Workbench |
+| Schema diff/migrations | Gap | metadata and portability foundations exist, but no first-class migration planner | Very high platform value |
+| SQL formatting/linting/static analysis | Gap | parser/AST foundations exist | High value for the standalone tooling surface |
 | SQL Server ontology parity | Gap | SQL Server is Tier 2 and outside shared exhaustive ontology/diagnostics contracts | High strategic priority |
 | Performance benchmarking | Partial | SQLite production suite strong; other dialect performance evidence less productized | Medium |
 | Extension/plugin architecture | Partial | dialect-native features exist; no clearly defined external extension contract | Medium/long-term |
@@ -81,7 +81,7 @@ Future product reviews should score important capabilities across these dimensio
 
 Roadmap priority should be calculated qualitatively from:
 
-1. **Downstream leverage** — importance to MetaObject, SQL Workbench and application consumers.
+1. **Platform leverage** — how broadly the capability strengthens NuBloxSQL itself.
 2. **Breadth** — number of engines and product pillars improved.
 3. **Risk reduction** — correctness, security, data-loss or operational risk addressed.
 4. **Coverage deficit** — size of the current gap.
