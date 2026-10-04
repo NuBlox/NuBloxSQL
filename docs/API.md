@@ -274,3 +274,14 @@ The exact exported JavaScript surface and required package files are machine-def
 The TypeScript entry point is `types/root.d.ts`; query/compiler declarations are in `types/public.d.ts`, DML statements in `types/dml.d.ts`, DDL statements in `types/ddl.d.ts`, portable metadata in `types/portable-metadata.d.ts`, query diagnostics in `types/diagnostics.d.ts`, and ontology declarations in `types/capability-ontology.d.ts`.
 
 Release qualification installs the packed npm artifact into clean JavaScript and strict TypeScript consumers. Dedicated `dml-v2`, `ddl-v1`, `ddl-v2`, `ddl-v3`, `ddl-v4`, `ddl-v5`, `ddl-v6`, `ddl-v7`, `ddl-v8`, `ddl-v9` and `ddl-v10` gates verify their released semantic surfaces.
+
+### Identity, autoincrement and sequence options (`ddl-v11`)
+
+`ddl-v11` makes allocation semantics explicit instead of collapsing them into a generic identity flag:
+
+- PostgreSQL `GENERATED ALWAYS/BY DEFAULT AS IDENTITY (...)` can carry structured start/increment/min/max/cache/cycle options;
+- PostgreSQL `CREATE SEQUENCE` supports the same structured option family;
+- MySQL `AUTO_INCREMENT` is represented as a MySQL-specific semantic node;
+- SQLite `INTEGER PRIMARY KEY AUTOINCREMENT` is represented as a SQLite ROWID-allocation semantic node.
+
+These families are **not** automatically translated across dialects. Same-engine parsing/compilation is qualified; cross-family lowering requires an explicit future transformation strategy.
