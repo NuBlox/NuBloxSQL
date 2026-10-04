@@ -76,7 +76,7 @@ async function validationAndSkipContract() {
   assert.strictEqual(result.rowsRead, 3);
   assert.strictEqual(result.rowsWritten, 2);
   assert.strictEqual(result.rowsSkipped, 1);
-  assert.strictEqual(writes.length, 1);
+  assert.strictEqual(writes.length, 2);
 }
 
 async function checkpointResumeContract() {
