@@ -2,9 +2,18 @@ import type * as root from '../index';
 
 export type DataMovementStatus = 'succeeded' | 'failed' | 'dry-run';
 export type DataMovementInvalidRowPolicy = 'stop' | 'skip';
+export type DataMovementStrategyPreference = 'auto' | 'native' | 'portable';
+export type DataMovementStrategy =
+  | 'postgresql-copy-csv'
+  | 'mysql-local-infile-tsv'
+  | 'sqlite-batched-insert'
+  | 'sqlserver-batched-insert'
+  | 'portable-batched-insert';
 
 export interface DataMovementClient {
   readonly dialect: root.Dialect;
+  readonly config?: Readonly<Record<string, unknown>>;
+  readonly native?: unknown;
   compile(statement: root.SqlFragment | string): root.CompiledSql;
   all<Row = Record<string, unknown>>(statement: root.SqlFragment | string, options?: root.ClientOperationOptions): Promise<Row[]>;
   execute<Row = Record<string, unknown>>(statement: root.SqlFragment | string, options?: root.ClientOperationOptions): Promise<root.ClientResult<Row>>;
@@ -27,6 +36,17 @@ export interface DataMovementSpec {
   };
 }
 
+export interface DataMovementPlan {
+  readonly schemaVersion: 1;
+  readonly requested: DataMovementStrategyPreference;
+  readonly strategy: DataMovementStrategy;
+  readonly accelerated: boolean;
+  readonly sourceDialect: root.Dialect | null;
+  readonly targetDialect: root.Dialect | null;
+  readonly reason: string;
+  readonly fallback: 'portable-batched-insert' | null;
+}
+
 export interface DataMovementCheckpoint {
   readonly schemaVersion: 1;
   readonly dataMovementSchemaVersion: 1;
@@ -43,6 +63,7 @@ export interface DataMovementAuditRecord {
   readonly firstRow?: number;
   readonly rows?: number;
   readonly status: 'planned' | 'succeeded' | 'skipped';
+  readonly strategy?: DataMovementStrategy;
   readonly error?: Readonly<{ name: string; message: string }>;
 }
 
@@ -57,6 +78,7 @@ export interface DataMovementOptions {
   readonly batchSize?: number;
   readonly dryRun?: boolean;
   readonly onInvalid?: DataMovementInvalidRowPolicy;
+  readonly strategy?: DataMovementStrategyPreference;
   readonly source?: root.ClientStreamOptions;
   readonly operation?: root.ClientOperationOptions;
   readonly resumeFrom?: DataMovementCheckpoint;
@@ -78,6 +100,8 @@ export interface DataMovementResult {
   readonly status: DataMovementStatus;
   readonly dryRun: boolean;
   readonly planHash: string;
+  readonly transferPlan: DataMovementPlan;
+  readonly strategiesUsed: readonly DataMovementStrategy[];
   readonly sourceDialect: root.Dialect | null;
   readonly targetDialect: root.Dialect | null;
   readonly startedAt: string;
@@ -92,8 +116,18 @@ export interface DataMovementResult {
 
 export const DATA_MOVEMENT_SCHEMA_VERSION: 1;
 export const DATA_MOVEMENT_CHECKPOINT_SCHEMA_VERSION: 1;
+export const DATA_MOVEMENT_PLAN_SCHEMA_VERSION: 1;
 export const DATA_MOVEMENT_STATUSES: readonly DataMovementStatus[];
 export const DATA_MOVEMENT_INVALID_ROW_POLICIES: readonly DataMovementInvalidRowPolicy[];
+export const DATA_MOVEMENT_STRATEGIES: readonly DataMovementStrategy[];
+export const DATA_MOVEMENT_STRATEGY_PREFERENCES: readonly DataMovementStrategyPreference[];
+
+export function planDataMovement(
+  sourceClient: DataMovementClient,
+  targetClient: DataMovementClient,
+  spec: DataMovementSpec,
+  options?: DataMovementOptions
+): DataMovementPlan;
 
 export function moveData(
   sourceClient: DataMovementClient,
@@ -112,6 +146,11 @@ export function resumeDataMovement(
 
 declare module './index' {
   interface Client {
+    planDataMovementTo(
+      targetClient: DataMovementClient,
+      spec: DataMovementSpec,
+      options?: DataMovementOptions
+    ): DataMovementPlan;
     moveDataTo(
       targetClient: DataMovementClient,
       spec: DataMovementSpec,
