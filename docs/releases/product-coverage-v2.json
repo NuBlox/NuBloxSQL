@@ -56,7 +56,7 @@
     {
       "id": "platform.types",
       "pillar": "platform",
-      "status": "partial"
+      "status": "established"
     },
     {
       "id": "platform.schema-diff",
