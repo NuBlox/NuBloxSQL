@@ -54,7 +54,7 @@ Current planned target strategies are:
 | PostgreSQL | `postgresql-copy-csv` | native COPY FROM STDIN acceleration when the runtime exposes `copyFrom()` |
 | MySQL | `mysql-local-infile-tsv` | native LOAD DATA LOCAL INFILE acceleration only when `localInfile: true` is explicitly configured |
 | SQLite | `sqlite-batched-insert` | bounded portable batched INSERT; no false native bulk-load claim |
-| SQL Server | `sqlserver-batched-insert` | bounded portable batched INSERT until a qualified TDS bulk-row writer is exposed |
+| SQL Server | `sqlserver-tds-bulk` | native TDS BulkLoadBCP acceleration; automatic portable fallback for unsupported value shapes |
 | Other/forced portable | `portable-batched-insert` | cross-dialect fallback |
 
 Native acceleration remains an internal execution strategy beneath the same public movement contract.
@@ -103,6 +103,6 @@ MySQL LOCAL INFILE remains disabled unless the target client was created with `l
 
 ## Current boundary
 
-SQL Server exposes lower-level TDS bulk-load packet capability, but NuBloxSQL does not yet claim native data-movement acceleration until a row encoder/writer is implemented and qualified. SQLite deliberately reports its batched INSERT strategy rather than inventing a native bulk protocol that SQLite core does not provide.
+SQL Server now exposes a qualified native TDS BulkLoadBCP writer for nullable booleans, 32-bit integers, bigint, finite numbers, Unicode strings and binary values, including MAX payloads. Unsupported mixed/object value shapes fall back to the portable parameter-bound path in `auto` mode and fail closed in `native` mode. SQLite deliberately reports its batched INSERT strategy rather than inventing a native bulk protocol that SQLite core does not provide.
 
 Durable checkpoint storage, distributed job coordination and scheduling remain responsibilities of the future generic NuBloxSQL job infrastructure.
