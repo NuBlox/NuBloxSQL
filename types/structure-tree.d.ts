@@ -69,7 +69,7 @@ export interface DatabaseStructureTree<D extends root.Dialect = root.Dialect> {
 export const STRUCTURE_TREE_SCHEMA_VERSION: 1;
 
 export function buildStructureTree<D extends root.Dialect = root.Dialect>(
-  snapshot: root.MetadataSnapshot<D> | PortableMetadataSnapshot<D>,
+  snapshot: PortableMetadataSnapshot<D> | Readonly<{ portable: PortableMetadataSnapshot<D> }>,
   options?: StructureTreeBuildOptions
 ): DatabaseStructureTree<D>;
 
