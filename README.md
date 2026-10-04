@@ -62,6 +62,7 @@ Product direction is defined in:
 - [Product vision](docs/strategy/PRODUCT-VISION.md)
 - [Product capability register](docs/strategy/PRODUCT-CAPABILITY-REGISTER.md)
 - [Strategic roadmap](docs/strategy/STRATEGIC-ROADMAP.md)
+- [Competitive capability benchmark](docs/strategy/COMPETITIVE-BENCHMARK.md)
 
 Other authoritative release documents are:
 
