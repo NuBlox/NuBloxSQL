@@ -7,7 +7,8 @@ NuBloxSQL provides structured, capability-aware DDL compiler scopes for PostgreS
 - `ddl-v3` — column type/default/nullability and named constraint lifecycle;
 - `ddl-v4` — schema-object drops and statement-specific existence modifiers;
 - `ddl-v5` — PostgreSQL concurrent index lifecycle and explicit DROP dependency behavior;
-- `ddl-v6` — generated-expression columns and PostgreSQL SQL-standard identity columns.
+- `ddl-v6` — generated-expression columns and PostgreSQL SQL-standard identity columns;
+- `ddl-v7` — foreign-key actions, match modes and deferrability semantics.
 
 Use these APIs to parse, inspect, validate or transpile supported schema statements. They are not a schema-migration framework, and certification never implies identical storage, affinity, collation, coercion or physical-design semantics.
 
@@ -346,11 +347,26 @@ Across the released DDL scopes, validation rejects or blocks cases including:
 
 Unknown syntax must not turn into plausible-but-different schema SQL.
 
+## `ddl-v7`: foreign-key semantics
+
+`ddl-v7` gives foreign keys a structured semantic model instead of treating the tail of a reference clause as opaque SQL.
+
+Supported fields include:
+
+- `ON DELETE` and `ON UPDATE` with `NO ACTION`, `RESTRICT`, `CASCADE`, `SET NULL`, and `SET DEFAULT` where the target genuinely supports them;
+- `MATCH SIMPLE`, `MATCH FULL`, and `MATCH PARTIAL` where supported;
+- `DEFERRABLE` / `NOT DEFERRABLE`;
+- `INITIALLY DEFERRED` / `INITIALLY IMMEDIATE`;
+- named `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY`.
+
+PostgreSQL exposes the broadest released semantics. MySQL action behavior is capability-gated and deferred constraints are rejected. SQLite requires runtime qualification for foreign-key behavior because enforcement is connection/runtime dependent.
+
+Cross-dialect compilation is deliberately conservative. NuBloxSQL does not erase MySQL/PostgreSQL timing differences, fabricate unsupported `MATCH` semantics, lower deferred constraints to immediate constraints, or assume `SET DEFAULT` is valid on an engine where it is not.
+
 ## Current boundary
 
 The released DDL compiler still does **not** claim:
 
-- foreign-key actions/match/deferrability;
 - identity sequence options;
 - explicit MySQL `AUTO_INCREMENT` semantic nodes;
 - explicit SQLite ROWID/AUTOINCREMENT semantic nodes;
@@ -371,7 +387,7 @@ Use `capabilityOntology.implementation(feature)` to distinguish database support
 
 ## TypeScript
 
-DDL AST declarations are exported from `types/ddl.d.ts`, including `SqlDdlAst`, ALTER action types, object-drop nodes, `SqlDropDependencyMode`, `SqlAstGeneratedColumn`, `SqlAstIdentityColumn` and `SqlDdlCompilerScope`. `SqlStatementAst` includes query, DML and DDL statements, so normal discriminated-union narrowing works on `statement.type` and `statement.action.type`.
+DDL AST declarations are exported from `types/ddl.d.ts`, including `SqlDdlAst`, ALTER action types, object-drop nodes, `SqlDropDependencyMode`, `SqlAstGeneratedColumn`, `SqlAstIdentityColumn`, foreign-key action/match/initial-mode types and `SqlDdlCompilerScope`. `SqlStatementAst` includes query, DML and DDL statements, so normal discriminated-union narrowing works on `statement.type` and `statement.action.type`.
 
 ## Qualification
 
