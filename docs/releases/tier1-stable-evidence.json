@@ -195,6 +195,11 @@
     "lib/capabilities/ProductCoverage.js",
     "test/product-coverage-v2.js",
     "tool/check-product-coverage-v2.js",
-    "docs/releases/product-coverage-v2.json"
+    "docs/releases/product-coverage-v2.json",
+    "lib/client/StructureTree.js",
+    "types/structure-tree.d.ts",
+    "test/database-structure-tree.js",
+    "tool/check-structure-tree-release.js",
+    "docs/strategy/COMPETITIVE-BENCHMARK.md"
   ]
 }
