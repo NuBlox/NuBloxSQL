@@ -425,13 +425,43 @@ Cross-dialect CTAS is intentionally blocked in this release. The engines derive 
 
 Bind parameters are rejected in the released CTAS query subset to avoid claiming portable prepared-DDL behavior that has not been qualified across all three engines.
 
+## `ddl-v11`: identity/autoincrement and sequence options
+
+`ddl-v11` keeps three allocation models distinct:
+
+```sql
+-- PostgreSQL
+CREATE TABLE pg_ids (
+  id BIGINT GENERATED ALWAYS AS IDENTITY (START WITH 100 INCREMENT BY 10 CACHE 5 NO CYCLE)
+)
+
+CREATE SEQUENCE order_seq
+  START WITH 1000
+  INCREMENT BY 5
+  MINVALUE 1000
+  MAXVALUE 999999
+  CACHE 20
+  CYCLE;
+
+-- MySQL
+CREATE TABLE mysql_ids (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY
+);
+
+-- SQLite
+CREATE TABLE sqlite_ids (
+  id INTEGER PRIMARY KEY AUTOINCREMENT
+);
+```
+
+PostgreSQL sequence and identity options are structured as start, increment, min/max value, cache and cycle fields. MySQL `AUTO_INCREMENT` and SQLite `AUTOINCREMENT` are represented by engine-specific AST strategies. NuBloxSQL deliberately refuses automatic conversion between these families because their allocation, reuse and transactional semantics differ.
+
+Plain SQLite `INTEGER PRIMARY KEY` ROWID aliases without `AUTOINCREMENT`, PostgreSQL sequence ownership/type options, and MySQL table-level starting counters remain outside this scope.
+
 ## Current boundary
 
 The released DDL compiler still does **not** claim:
 
-- identity sequence options;
-- explicit MySQL `AUTO_INCREMENT` semantic nodes;
-- explicit SQLite ROWID/AUTOINCREMENT semantic nodes;
 - constrained/defaulted ADD COLUMN semantics;
 - automatic MySQL `MODIFY COLUMN` lowering;
 - automatic SQLite table-rebuild migrations;
@@ -463,6 +493,6 @@ The DDL compiler is qualified through:
 - packed-package JavaScript and strict TypeScript consumers;
 - Tier-1 evidence and release audits.
 
-Wave 5b exercises add/drop/rename lifecycle. Wave 5c exercises default changes on PostgreSQL/MySQL plus PostgreSQL type/nullability and named constraints. Wave 5d exercises safe existence modifiers and object drops, including engine-specific index identity behavior. Wave 5e exercises PostgreSQL concurrent index creation/removal and explicit CASCADE/RESTRICT dependency behavior. Wave 5f executes stored generated columns on PostgreSQL/MySQL/SQLite, PostgreSQL identity on PostgreSQL 15–18, and virtual generation when PostgreSQL 18 qualifies it. Wave 5g executes foreign-key semantics across Tier-1 engines with explicit vendor boundaries. Wave 5h executes PostgreSQL/SQLite expression indexes, MySQL functional key parts, and PostgreSQL INCLUDE/access-method syntax. Wave 5i executes per-key ASC/DESC on all Tier-1 engines, key-level collation on PostgreSQL/SQLite, and PostgreSQL NULL placement/operator-class identity. Wave 5j executes same-engine CREATE TABLE AS on PostgreSQL 15–18, MySQL 8.4/9.7 and SQLite while explicitly rejecting cross-engine result-schema inference.
+Wave 5b exercises add/drop/rename lifecycle. Wave 5c exercises default changes on PostgreSQL/MySQL plus PostgreSQL type/nullability and named constraints. Wave 5d exercises safe existence modifiers and object drops, including engine-specific index identity behavior. Wave 5e exercises PostgreSQL concurrent index creation/removal and explicit CASCADE/RESTRICT dependency behavior. Wave 5f executes stored generated columns on PostgreSQL/MySQL/SQLite, PostgreSQL identity on PostgreSQL 15–18, and virtual generation when PostgreSQL 18 qualifies it. Wave 5g executes foreign-key semantics across Tier-1 engines with explicit vendor boundaries. Wave 5h executes PostgreSQL/SQLite expression indexes, MySQL functional key parts, and PostgreSQL INCLUDE/access-method syntax. Wave 5i executes per-key ASC/DESC on all Tier-1 engines, key-level collation on PostgreSQL/SQLite, and PostgreSQL NULL placement/operator-class identity. Wave 5j executes same-engine CREATE TABLE AS on PostgreSQL 15–18, MySQL 8.4/9.7 and SQLite while explicitly rejecting cross-engine result-schema inference. Wave 5k executes PostgreSQL identity/sequence options, MySQL AUTO_INCREMENT and SQLite AUTOINCREMENT as separate semantic families.
 
 See [Capabilities and SQL portability](11-capabilities-and-portability.md) for capability resolution and [Metadata and introspection](07-metadata-and-introspection.md) for deployed schema state.
