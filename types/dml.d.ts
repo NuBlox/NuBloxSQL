@@ -160,7 +160,7 @@ export interface SqlMergeStatementAst {
   readonly type: 'MergeStatement';
   readonly target: SqlAstIdentifier;
   readonly targetAlias: SqlAstIdentifier | null;
-  readonly source: SqlAstIdentifier;
+  readonly source: SqlAstIdentifier | SqlAstMutationSource;
   readonly sourceAlias: SqlAstIdentifier | null;
   readonly on: SqlAstExpression;
   readonly matched: SqlMergeMatchedActionAst | null;
@@ -171,7 +171,7 @@ export interface SqlMergeStatementAst {
 
 export type SqlDmlAst = SqlInsertStatementAst | SqlUpdateStatementAst | SqlDeleteStatementAst | SqlUpsertStatementAst | SqlMergeStatementAst | SqlAstMysqlSingleTableUpdateStatement | SqlAstMysqlSingleTableDeleteStatement | SqlAstMysqlMultiTableUpdateStatement | SqlAstMysqlMultiTableDeleteStatement;
 export type SqlStatementAst = SqlQueryAst | SqlDmlAst | SqlDdlAst;
-export type SqlDmlCompilerScope = 'dml-v1' | 'dml-v2' | 'dml-v3' | 'dml-v4' | 'dml-v5' | 'dml-v6' | 'dml-v7' | 'dml-v8' | 'dml-v9';
+export type SqlDmlCompilerScope = 'dml-v1' | 'dml-v2' | 'dml-v3' | 'dml-v4' | 'dml-v5' | 'dml-v6' | 'dml-v7' | 'dml-v8' | 'dml-v9' | 'dml-v10';
 export type SqlStatementCompilerScope = SqlCompilerScope | SqlDmlCompilerScope | SqlDdlCompilerScope;
 export type SqlStatementType = SqlStatementAst['type'];
 
