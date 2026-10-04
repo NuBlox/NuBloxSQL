@@ -19,6 +19,7 @@ on:
       - 'test/compiler-ddl-index-semantics-live.js'
       - 'test/compiler-ddl-index-key-options-live.js'
       - 'test/compiler-ddl-ctas-live.js'
+      - 'test/compiler-ddl-identity-sequence-live.js'
       - 'test/sql-ast-compiler.js'
       - 'lib/dialects/sqlite/**'
       - '.github/workflows/sqlite-dialect.yml'
@@ -97,6 +98,8 @@ jobs:
           NUBLOX_DIALECT: sqlite
       - name: DDL CREATE TABLE AS qualification
         run: node test/compiler-ddl-ctas-live.js
+      - name: DDL identity/autoincrement/sequence qualification
+        run: node test/compiler-ddl-identity-sequence-live.js
         env:
           NUBLOX_DIALECT: sqlite
       - name: SQLite production performance and memory evidence
