@@ -407,3 +407,24 @@ A comparison is only as determinate as its evidence. `unknown` and runtime-depen
 Keep business/application code on the unified client where semantics genuinely align. Isolate native-dialect features behind small interfaces. Use engine observations for database truth, implementation coverage for NuBlox compiler truth, runtime qualification for deployed-version truth, and conformance tests for release truth.
 
 Do not assume unsupported constructs are silently translated. A blocked or unqualified transformation remains a blocker until the relevant capability/compiler surface explicitly supports it.
+
+## Advanced UPDATE/DELETE composition (`dml-v3`)
+
+Wave 6a adds explicit auxiliary-table mutation semantics:
+
+```sql
+UPDATE ledger
+SET amount = rates.amount
+FROM rates AS rates
+WHERE ledger.id = rates.id;
+
+DELETE FROM ledger
+USING expired AS e
+WHERE ledger.id = e.id;
+```
+
+PostgreSQL supports both forms. SQLite supports `UPDATE ... FROM` from 3.33.0 and is runtime-version qualified. The released SQLite profile does not claim `DELETE ... USING`.
+
+MySQL's native multi-table UPDATE and DELETE grammars are tracked separately as `syntax.multiTableUpdate` and `syntax.multiTableDelete`. NuBloxSQL does not certify them as lossless equivalents of PostgreSQL-style auxiliary clauses.
+
+The dml-v3 source relation is intentionally limited to one table reference with an optional alias. Join trees and derived-table mutation sources remain a later expansion.

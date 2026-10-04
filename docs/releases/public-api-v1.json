@@ -103,7 +103,9 @@
     "lib/dialects/sqlserver/index.js",
     "lib/dialects/sqlserver/index.d.ts",
     "lib/capabilities/DdlIdentitySequencePipeline.js",
-    "lib/capabilities/DdlIdentitySequenceModelPolicy.js"
+    "lib/capabilities/DdlIdentitySequenceModelPolicy.js",
+    "lib/capabilities/DmlAdvancedPipeline.js",
+    "lib/capabilities/DmlAdvancedModelPolicy.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",

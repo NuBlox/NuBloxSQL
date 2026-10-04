@@ -47,6 +47,7 @@ const resolved = sql.capabilityOntology.resolve('sqlite', 'schema.tableAlter.ren
 | `select-query-v4` | CASE, CAST, richer predicates, windows and window frames |
 | `dml-v1` | INSERT, INSERT-SELECT, UPDATE, DELETE and capability-gated RETURNING |
 | `dml-v2` | explicit UPSERT/conflict semantics and PostgreSQL MERGE subset |
+| `dml-v3` | PostgreSQL/SQLite UPDATE FROM and PostgreSQL DELETE USING composition |
 | `ddl-v1` | structured CREATE TABLE/INDEX/VIEW/SCHEMA/SEQUENCE and DROP TABLE/VIEW |
 | `ddl-v2` | atomic ALTER TABLE add/drop/rename-column and rename-table lifecycle operations |
 | `ddl-v3` | ALTER COLUMN type/default/nullability and named constraint lifecycle |
@@ -69,6 +70,16 @@ Set-operation parsing preserves source-dialect precedence in the AST. Unsupporte
 `dml-v1` uses first-class INSERT/UPDATE/DELETE ASTs and reuses the query/expression compiler. `RETURNING` remains capability-driven: PostgreSQL is native; MySQL is rejected; SQLite requires runtime qualification when its capability state is runtime-dependent.
 
 `dml-v2` represents PostgreSQL/SQLite `ON CONFLICT`, MySQL `ON DUPLICATE KEY UPDATE`, and PostgreSQL `MERGE` as distinct semantic families. NuBloxSQL does not automatically translate materially different conflict semantics.
+
+### Advanced UPDATE/DELETE composition (`dml-v3`)
+
+`dml-v3` adds first-class auxiliary-relation semantics for:
+
+- PostgreSQL `UPDATE ... FROM`;
+- SQLite `UPDATE ... FROM`, runtime-version qualified from SQLite 3.33.0;
+- PostgreSQL `DELETE ... USING`.
+
+The initial released source shape is one auxiliary table reference with an optional alias. MySQL multi-table UPDATE/DELETE is recorded as a separate native capability family and is not silently treated as PostgreSQL-style `FROM`/`USING`.
 
 ### DDL foundation (`ddl-v1`)
 

@@ -10,6 +10,7 @@ on:
       - 'lib/client/**'
       - 'lib/capabilities/**'
       - 'test/compiler-query-live.js'
+      - 'test/compiler-dml-advanced-live.js'
       - 'test/compiler-ddl-live.js'
       - 'test/compiler-ddl-lifecycle-live.js'
       - 'test/compiler-ddl-column-constraints-live.js'
@@ -31,6 +32,7 @@ on:
       - 'lib/client/**'
       - 'lib/capabilities/**'
       - 'test/compiler-query-live.js'
+      - 'test/compiler-dml-advanced-live.js'
       - 'test/compiler-ddl-live.js'
       - 'test/compiler-ddl-lifecycle-live.js'
       - 'test/compiler-ddl-column-constraints-live.js'
@@ -64,6 +66,8 @@ jobs:
         run: npm run test:sqlite
       - name: SQL compiler live qualification
         run: node test/compiler-query-live.js
+      - name: Advanced DML compiler live qualification
+        run: node test/compiler-dml-advanced-live.js
         env:
           NUBLOX_DIALECT: sqlite
       - name: DDL compiler live qualification
