@@ -219,6 +219,7 @@
     "lib/client/SchemaDiff.js",
     "types/schema-diff.d.ts",
     "test/canonical-schema-diff.js",
-    "tool/check-schema-diff-release.js"
+    "tool/check-schema-diff-release.js",
+    "docs/guides/17-canonical-schema-diff.md"
   ]
 }
