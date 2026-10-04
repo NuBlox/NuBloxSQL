@@ -7,6 +7,8 @@ import type {
   SqlCompilerScope,
   SqlQueryAst,
   SqlAstTableReference,
+  SqlAstRelation,
+  SqlAstJoin,
   SqlRewritePlan,
   SqlTranspileOptions
 } from './public';
@@ -27,11 +29,17 @@ export interface SqlInsertStatementAst {
   readonly returning: readonly SqlAstExpression[];
 }
 
+export interface SqlAstMutationSource {
+  readonly type: 'MutationSource';
+  readonly relation: SqlAstRelation;
+  readonly joins: readonly SqlAstJoin[];
+}
+
 export interface SqlUpdateStatementAst {
   readonly type: 'UpdateStatement';
   readonly target: SqlAstIdentifier;
   readonly assignments: readonly SqlAstAssignment[];
-  readonly from?: SqlAstTableReference | null;
+  readonly from?: SqlAstTableReference | SqlAstMutationSource | null;
   readonly where: SqlAstExpression | null;
   readonly returning: readonly SqlAstExpression[];
 }
@@ -39,7 +47,7 @@ export interface SqlUpdateStatementAst {
 export interface SqlDeleteStatementAst {
   readonly type: 'DeleteStatement';
   readonly target: SqlAstIdentifier;
-  readonly using?: SqlAstTableReference | null;
+  readonly using?: SqlAstTableReference | SqlAstMutationSource | null;
   readonly where: SqlAstExpression | null;
   readonly returning: readonly SqlAstExpression[];
 }
@@ -85,7 +93,7 @@ export interface SqlMergeStatementAst {
 
 export type SqlDmlAst = SqlInsertStatementAst | SqlUpdateStatementAst | SqlDeleteStatementAst | SqlUpsertStatementAst | SqlMergeStatementAst;
 export type SqlStatementAst = SqlQueryAst | SqlDmlAst | SqlDdlAst;
-export type SqlDmlCompilerScope = 'dml-v1' | 'dml-v2' | 'dml-v3';
+export type SqlDmlCompilerScope = 'dml-v1' | 'dml-v2' | 'dml-v3' | 'dml-v4';
 export type SqlStatementCompilerScope = SqlCompilerScope | SqlDmlCompilerScope | SqlDdlCompilerScope;
 export type SqlStatementType = SqlStatementAst['type'];
 
