@@ -22,7 +22,7 @@ try{
     "const uc=sql.capabilityModel.compileAst('mysql',u); assert.deepStrictEqual(uc.targetToSource,[1,2,3]);",
     "const d=sql.capabilityModel.parseSql('mysql','DELETE a, b FROM a JOIN b ON b.id = a.id WHERE a.id = ?');",
     "assert.strictEqual(d.type,'MysqlMultiTableDeleteStatement'); assert(sql.capabilityModel.compileAst('mysql',d).sql.indexOf('DELETE `a`, `b` FROM')===0);"
-  ].join('\\n');
+  ].join('\n');
   fs.writeFileSync(path.join(temp,'smoke.js'),smoke); run(process.execPath,['smoke.js'],{cwd:temp});
   run(npm,['install','--no-save','--ignore-scripts','--no-audit','--no-fund','typescript@5.9.3','@types/node@22'],{cwd:temp});
   var ts=[
@@ -33,7 +33,7 @@ try{
     "const d=sql.capabilityModel.parseSql('mysql','DELETE a FROM a JOIN b ON b.id=a.id');",
     "if(d.type==='MysqlMultiTableDeleteStatement'){const typed:SqlAstMysqlMultiTableDeleteStatement=d; void typed;}",
     "const scope:SqlDmlCompilerScope='dml-v6'; void scope;"
-  ].join('\\n');
+  ].join('\n');
   fs.writeFileSync(path.join(temp,'smoke.ts'),ts);
   fs.writeFileSync(path.join(temp,'tsconfig.json'),JSON.stringify({compilerOptions:{strict:true,noEmit:true,module:'commonjs',target:'ES2022',moduleResolution:'node',esModuleInterop:true,skipLibCheck:false},files:['smoke.ts']}));
   var tsc=path.join(temp,'node_modules','.bin',process.platform==='win32'?'tsc.cmd':'tsc');
