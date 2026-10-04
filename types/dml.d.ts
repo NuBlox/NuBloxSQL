@@ -9,6 +9,7 @@ import type {
   SqlAstTableReference,
   SqlAstRelation,
   SqlAstJoin,
+  SqlAstOrderExpression,
   SqlRewritePlan,
   SqlTranspileOptions
 } from './public';
@@ -35,8 +36,31 @@ export interface SqlAstMutationSource {
   readonly joins: readonly SqlAstJoin[];
 }
 
+export type SqlMysqlUpdateModifier = 'LOW_PRIORITY' | 'IGNORE';
+export type SqlMysqlDeleteModifier = 'LOW_PRIORITY' | 'QUICK' | 'IGNORE';
+
+export interface SqlAstMysqlSingleTableUpdateStatement {
+  readonly type: 'MysqlSingleTableUpdateStatement';
+  readonly target: SqlAstTableReference;
+  readonly modifiers: readonly SqlMysqlUpdateModifier[];
+  readonly assignments: readonly SqlAstAssignment[];
+  readonly where: SqlAstExpression | null;
+  readonly orderBy: readonly SqlAstOrderExpression[];
+  readonly limit: SqlAstExpression | null;
+}
+
+export interface SqlAstMysqlSingleTableDeleteStatement {
+  readonly type: 'MysqlSingleTableDeleteStatement';
+  readonly target: SqlAstTableReference;
+  readonly modifiers: readonly SqlMysqlDeleteModifier[];
+  readonly where: SqlAstExpression | null;
+  readonly orderBy: readonly SqlAstOrderExpression[];
+  readonly limit: SqlAstExpression | null;
+}
+
 export interface SqlAstMysqlMultiTableUpdateStatement {
   readonly type: 'MysqlMultiTableUpdateStatement';
+  readonly modifiers?: readonly SqlMysqlUpdateModifier[];
   readonly source: SqlAstMutationSource;
   readonly assignments: readonly SqlAstAssignment[];
   readonly where: SqlAstExpression | null;
@@ -44,6 +68,7 @@ export interface SqlAstMysqlMultiTableUpdateStatement {
 
 export interface SqlAstMysqlMultiTableDeleteStatement {
   readonly type: 'MysqlMultiTableDeleteStatement';
+  readonly modifiers?: readonly SqlMysqlDeleteModifier[];
   readonly syntax: 'from' | 'using';
   readonly targets: readonly SqlAstIdentifier[];
   readonly source: SqlAstMutationSource;
@@ -106,9 +131,9 @@ export interface SqlMergeStatementAst {
   readonly notMatched: SqlMergeNotMatchedActionAst | null;
 }
 
-export type SqlDmlAst = SqlInsertStatementAst | SqlUpdateStatementAst | SqlDeleteStatementAst | SqlUpsertStatementAst | SqlMergeStatementAst | SqlAstMysqlMultiTableUpdateStatement | SqlAstMysqlMultiTableDeleteStatement;
+export type SqlDmlAst = SqlInsertStatementAst | SqlUpdateStatementAst | SqlDeleteStatementAst | SqlUpsertStatementAst | SqlMergeStatementAst | SqlAstMysqlSingleTableUpdateStatement | SqlAstMysqlSingleTableDeleteStatement | SqlAstMysqlMultiTableUpdateStatement | SqlAstMysqlMultiTableDeleteStatement;
 export type SqlStatementAst = SqlQueryAst | SqlDmlAst | SqlDdlAst;
-export type SqlDmlCompilerScope = 'dml-v1' | 'dml-v2' | 'dml-v3' | 'dml-v4' | 'dml-v5' | 'dml-v6';
+export type SqlDmlCompilerScope = 'dml-v1' | 'dml-v2' | 'dml-v3' | 'dml-v4' | 'dml-v5' | 'dml-v6' | 'dml-v7';
 export type SqlStatementCompilerScope = SqlCompilerScope | SqlDmlCompilerScope | SqlDdlCompilerScope;
 export type SqlStatementType = SqlStatementAst['type'];
 
