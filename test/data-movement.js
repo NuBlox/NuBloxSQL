@@ -108,7 +108,7 @@ async function checkpointResumeContract() {
 
   var first = await sql.moveData(source(), failingTarget, spec, { batchSize: 2 });
   assert.strictEqual(first.status, 'failed');
-  assert.strictEqual(first.checkpoint.rowOffset, 4);
+  assert.strictEqual(first.checkpoint.rowOffset, 2);
   assert.strictEqual(first.rowsWritten, 2);
 
   var resumedWrites = 0;
@@ -118,8 +118,8 @@ async function checkpointResumeContract() {
   };
   var resumed = await sql.resumeDataMovement(source(), healthyTarget, spec, first.checkpoint, { batchSize: 2 });
   assert.strictEqual(resumed.status, 'succeeded');
-  assert.strictEqual(resumedWrites, 0);
-  assert.strictEqual(resumed.rowsWritten, 2);
+  assert.strictEqual(resumedWrites, 1);
+  assert.strictEqual(resumed.rowsWritten, 4);
 
   await assert.rejects(function () {
     return sql.resumeDataMovement(source(), healthyTarget, {
