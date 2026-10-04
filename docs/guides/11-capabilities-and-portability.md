@@ -462,3 +462,24 @@ WHERE a.tenant_id = ?;
 ```
 
 The compiler reports `syntax.multiTableUpdate` or `syntax.multiTableDelete`, uses scope `dml-v6`, preserves MySQL parameter occurrence bindings, and fails closed for PostgreSQL or SQLite targets. That separation is intentional because writable-target semantics and affected-row behavior are vendor-specific.
+
+
+## MySQL mutation controls (`dml-v7`)
+
+Wave 6e adds structured MySQL mutation controls on top of the existing portable and multi-table DML families. The compiler models single-table target aliases plus `LOW_PRIORITY` / `IGNORE` on `UPDATE`, `LOW_PRIORITY` / `QUICK` / `IGNORE` on `DELETE`, and MySQL's single-table-only `ORDER BY` / `LIMIT` clauses.
+
+```sql
+UPDATE LOW_PRIORITY IGNORE ledger AS l
+SET l.amount = ?
+WHERE l.tenant_id = ?
+ORDER BY l.id DESC
+LIMIT ?;
+
+DELETE LOW_PRIORITY QUICK IGNORE
+FROM ledger AS l
+WHERE l.tenant_id = ?
+ORDER BY l.id ASC
+LIMIT ?;
+```
+
+The multi-table grammar remains intentionally narrower: statement modifiers are permitted, but `ORDER BY` and `LIMIT` are rejected because MySQL does not allow them for multi-table UPDATE/DELETE. These features are represented by `syntax.mysql*` capability IDs and are not automatically lowered to PostgreSQL or SQLite.
