@@ -176,6 +176,10 @@
     "lib/capabilities/DmlMysqlMultiTablePipeline.js",
     "test/sql-ast-wave6-mysql-multitable.js",
     "test/compiler-dml-mysql-multitable-live.js",
-    "tool/check-dml-v6-release.js"
+    "tool/check-dml-v6-release.js",
+    "lib/capabilities/DmlMysqlMutationControlPipeline.js",
+    "test/sql-ast-wave6-mysql-controls.js",
+    "test/compiler-dml-mysql-controls-live.js",
+    "tool/check-dml-v7-release.js"
   ]
 }

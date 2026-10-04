@@ -107,7 +107,8 @@
     "lib/capabilities/DmlAdvancedPipeline.js",
     "lib/capabilities/DmlAdvancedModelPolicy.js",
     "lib/capabilities/DmlSourceCompositionPipeline.js",
-    "lib/capabilities/DmlMysqlMultiTablePipeline.js"
+    "lib/capabilities/DmlMysqlMultiTablePipeline.js",
+    "lib/capabilities/DmlMysqlMutationControlPipeline.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
