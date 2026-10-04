@@ -70,7 +70,14 @@
     "nativeTypeMapping",
     "typeCompatibility",
     "canonicalTypeFromPortableSpec",
-    "annotateTypes"
+    "annotateTypes",
+    "SCHEMA_SNAPSHOT_SCHEMA_VERSION",
+    "schemaSnapshot",
+    "buildSchemaSnapshot",
+    "schemaFingerprint",
+    "schemasEquivalent",
+    "sourceSchemasEquivalent",
+    "schemaLogicalKey"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -141,7 +148,9 @@
     "lib/client/ObjectIdentity.js",
     "lib/client/DependencyGraph.js",
     "types/type-semantics.d.ts",
-    "lib/client/TypeSemantics.js"
+    "lib/client/TypeSemantics.js",
+    "types/schema-snapshot.d.ts",
+    "lib/client/SchemaSnapshot.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
