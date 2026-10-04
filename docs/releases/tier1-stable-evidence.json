@@ -205,6 +205,10 @@
     "lib/client/DependencyGraph.js",
     "types/dependency-graph.d.ts",
     "test/object-identity-dependency-graph.js",
-    "tool/check-dependency-graph-release.js"
+    "tool/check-dependency-graph-release.js",
+    "lib/client/TypeSemantics.js",
+    "types/type-semantics.d.ts",
+    "test/canonical-type-semantics.js",
+    "tool/check-type-semantics-release.js"
   ]
 }
