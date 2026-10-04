@@ -25,6 +25,8 @@ function sqliteQualification(paths) {
   assert.strictEqual(mysql.scope, 'ddl-v7');
   assert.ok(/ON DELETE CASCADE/.test(mysql.sql));
   assert.ok(/ON UPDATE RESTRICT/.test(mysql.sql));
+  assert.ok(/FOREIGN KEY \(\`parent_id\`\) REFERENCES \`parent\` \(\`id\`\)/.test(mysql.sql), mysql.sql);
+  assert.ok(!/\`parent_id\` INTEGER REFERENCES/.test(mysql.sql), mysql.sql);
 })();
 
 (function sqliteActionsRequireRuntimeEvidence() {
