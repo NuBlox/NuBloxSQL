@@ -19,7 +19,7 @@ var model=sql.capabilityModel;
   });
   var compiled=model.compileAst('mysql',ast);
   assert.ok(/^UPDATE LOW_PRIORITY IGNORE `ledger` AS `l` SET /.test(compiled.sql));
-  assert.ok(/ ORDER BY `l`.`id` DESC LIMIT \\?$/.test(compiled.sql));
+  assert.ok(/ ORDER BY `l`.`id` DESC LIMIT \?$/.test(compiled.sql));
   assert.deepStrictEqual(compiled.targetToSource,[1,2,3]);
   assert.strictEqual(model.transpileSql('mysql','mysql',source).certified,true);
 })();
@@ -37,7 +37,7 @@ var model=sql.capabilityModel;
   });
   var compiled=model.compileAst('mysql',ast);
   assert.ok(/^DELETE LOW_PRIORITY QUICK IGNORE FROM `ledger` AS `l`/.test(compiled.sql));
-  assert.ok(/ ORDER BY `l`.`id` ASC LIMIT \\?$/.test(compiled.sql));
+  assert.ok(/ ORDER BY `l`.`id` ASC LIMIT \?$/.test(compiled.sql));
   assert.deepStrictEqual(compiled.targetToSource,[1,2]);
 })();
 
