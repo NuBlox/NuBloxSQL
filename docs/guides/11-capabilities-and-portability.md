@@ -428,3 +428,18 @@ PostgreSQL supports both forms. SQLite supports `UPDATE ... FROM` from 3.33.0 an
 MySQL's native multi-table UPDATE and DELETE grammars are tracked separately as `syntax.multiTableUpdate` and `syntax.multiTableDelete`. NuBloxSQL does not certify them as lossless equivalents of PostgreSQL-style auxiliary clauses.
 
 The dml-v3 source relation is intentionally limited to one table reference with an optional alias. Join trees and derived-table mutation sources remain a later expansion.
+
+
+## Rich mutation-source composition (`dml-v4`)
+
+Wave 6b allows the auxiliary relation in qualified `UPDATE ... FROM` and `DELETE ... USING` statements to use the released query relation model:
+
+- ordinary table references;
+- derived tables with required aliases;
+- INNER, LEFT, RIGHT, FULL and CROSS joins where the target dialect capability permits them.
+
+The mutation-source relation tree contributes its own query capabilities to the rewrite plan. This means a target must support both the DML form and every join/query feature used inside the source.
+
+MySQL multi-table UPDATE/DELETE remains a separate capability family. NuBloxSQL does not reinterpret it as PostgreSQL/SQLite UPDATE-FROM or PostgreSQL DELETE-USING.
+
+For this release, bind parameters inside the auxiliary mutation source are rejected. That boundary prevents accidental parameter renumbering until explicit source-origin mapping is implemented.

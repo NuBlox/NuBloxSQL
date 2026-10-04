@@ -168,6 +168,10 @@
     "lib/capabilities/DmlAdvancedModelPolicy.js",
     "test/sql-ast-wave6-advanced-dml.js",
     "test/compiler-dml-advanced-live.js",
-    "tool/check-dml-v3-release.js"
+    "tool/check-dml-v3-release.js",
+    "lib/capabilities/DmlSourceCompositionPipeline.js",
+    "test/sql-ast-wave6-source-composition.js",
+    "test/compiler-dml-source-composition-live.js",
+    "tool/check-dml-v4-release.js"
   ]
 }

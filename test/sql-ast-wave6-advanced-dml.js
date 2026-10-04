@@ -61,10 +61,10 @@ var model=sql.capabilityModel;
   },/PostgreSQL source syntax/);
 })();
 
-(function auxiliaryScopeIsDeliberatelyNarrow(){
-  assert.throws(function(){
-    model.parseSql('postgresql','UPDATE ledger SET amount = r.amount FROM rates r JOIN bands b ON b.id = r.band_id WHERE ledger.id = r.id');
-  },/one auxiliary table reference/);
+(function richerAuxiliaryScopePromotesToWave6b(){
+  var ast=model.parseSql('postgresql','UPDATE ledger SET amount = r.amount FROM rates r JOIN bands b ON b.id = r.band_id WHERE ledger.id = r.id');
+  assert.strictEqual(ast.from.type,'MutationSource');
+  assert.strictEqual(model.analyzeAst(ast).scope,'dml-v4');
 })();
 
 console.log('NuBloxSQL Wave 6a advanced DML composition contract: PASS');

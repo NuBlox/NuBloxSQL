@@ -7,25 +7,58 @@
   "author": "Stephen J T Spittal",
   "main": "index.js",
   "types": "types/root.d.ts",
-  "files": ["index.js","index.d.ts","types/","lib/client/","lib/capabilities/","lib/core/index.js","lib/core/index.d.ts","lib/core/TypedValue.js","lib/dialects/mysql/index.js","lib/dialects/mysql/index.d.ts","lib/dialects/mysql/types.d.ts","lib/dialects/mysql/lib/","lib/dialects/postgresql/index.js","lib/dialects/postgresql/index.d.ts","lib/dialects/postgresql/lib/","lib/dialects/sqlite/index.js","lib/dialects/sqlite/index.d.ts","lib/dialects/sqlite/lib/","lib/dialects/sqlserver/index.js","lib/dialects/sqlserver/index.d.ts","lib/dialects/sqlserver/lib/","README.md","LICENSE","NOTICE"],
-  "repository":{"type":"git","url":"git+https://github.com/NuBlox/NuBloxSQL.git"},
-  "publishConfig":{"access":"public","tag":"latest"},
-  "engines":{"node":">=22"},
-  "scripts":{
-    "test:platform":"node test/platform-entry.js && node test/sql-capability-model.js && node test/sql-capability-ontology.js && node test/sql-capability-compatibility.js && node test/sql-capability-runtime.js && node test/sql-capability-rewrite.js && node test/sql-ast-compiler.js && node test/sql-ast-wave3.js && node test/sql-ast-wave4.js && node test/sql-ast-wave4-semantics.js && node test/sql-ast-wave6-advanced-dml.js && node test/sql-ast-wave5.js && node test/sql-ast-wave5-lifecycle.js && node test/sql-ast-wave5-column-constraints.js && node test/sql-ast-wave5-object-lifecycle.js && node test/sql-ast-wave5-dependency-concurrent.js && node test/sql-ast-wave5-generated-identity.js && node test/sql-ast-wave5-foreign-keys.js && node test/sql-ast-wave5-index-semantics.js && node test/sql-ast-wave5-index-key-options.js && node test/sql-ast-wave5-ctas.js && node test/sql-ast-wave5-identity-sequence.js && node test/connection-url.js && node test/client-lifecycle.js && node test/config-validation.js && node test/public-errors.js && node test/capability-discovery.js && node test/metadata-introspection.js && node test/portable-metadata-vocabulary.js && node test/client-diagnostics.js && node test/transaction-policy.js && node test/typescript-dialect-surface.js && node test/typescript-ddl-surface.js && node test/client-api.js && node test/client-typed-binds.js && node test/operation-control.js && node test/client-observability.js && node test/client-types.js && node test/client-transactions.js",
-    "test:mysql":"node lib/dialects/mysql/test/protocol.js && node lib/dialects/mysql/test/auth.js && node lib/dialects/mysql/test/auth-plugins.js && node lib/dialects/mysql/test/prepared.js && node lib/dialects/mysql/test/typed-bind.js && node lib/dialects/mysql/test/api.js && node lib/dialects/mysql/test/session-reset.js && node lib/dialects/mysql/test/streaming.js && node lib/dialects/mysql/test/operation-control.js && node lib/dialects/mysql/test/local-infile.js && node lib/dialects/mysql/test/diagnostics.js && node lib/dialects/mysql/test/deep-metadata.js && node lib/dialects/mysql/test/dialect.js",
-    "test:sql-core":"node lib/core/test/contract.js && node test/dialect-contracts.js && node test/sql-core-v1-contract.js",
-    "test:postgresql":"node lib/dialects/postgresql/test/contract.js && node lib/dialects/postgresql/test/protocol.js && node lib/dialects/postgresql/test/copy-protocol.js && node lib/dialects/postgresql/test/notifications.js && node lib/dialects/postgresql/test/diagnostics.js && node lib/dialects/postgresql/test/deep-metadata.js && node lib/dialects/postgresql/test/runtime.js && node lib/dialects/postgresql/test/lifecycle.js && node lib/dialects/postgresql/test/cancel.js && node lib/dialects/postgresql/test/pool-transaction.js && node lib/dialects/postgresql/test/portal.js && node lib/dialects/postgresql/test/result-limits.js && node lib/dialects/postgresql/test/type-decoding.js",
-    "test:sqlite":"node lib/dialects/sqlite/test/runtime.js && node lib/dialects/sqlite/test/lifecycle.js && node lib/dialects/sqlite/test/storage.js && node lib/dialects/sqlite/test/maintenance.js && node lib/dialects/sqlite/test/extensibility-security.js && node lib/dialects/sqlite/test/feature-fidelity.js && node lib/dialects/sqlite/test/query-diagnostics.js && node lib/dialects/sqlite/test/changesets.js && node lib/dialects/sqlite/test/resource-governance.js && node lib/dialects/sqlite/test/errors.js && node lib/dialects/sqlite/test/corruption-error-classification.js",
-    "test:sqlite-production":"node lib/dialects/sqlite/test/production-performance.js && node --expose-gc lib/dialects/sqlite/test/production-memory.js && node lib/dialects/sqlite/test/production-concurrency.js && node lib/dialects/sqlite/test/production-corruption.js",
-    "test:sqlserver":"node lib/dialects/sqlserver/test/protocol.js && node lib/dialects/sqlserver/test/login-token.js && node lib/dialects/sqlserver/test/connection.js && node lib/dialects/sqlserver/test/result-stream.js && node lib/dialects/sqlserver/test/type-fidelity.js && node lib/dialects/sqlserver/test/typed-bind.js && node lib/dialects/sqlserver/test/plp-max.js && node lib/dialects/sqlserver/test/collation-codepages.js && node lib/dialects/sqlserver/test/sql-variant.js && node lib/dialects/sqlserver/test/incremental-stream.js && node lib/dialects/sqlserver/test/rpc.js && node lib/dialects/sqlserver/test/legacy-tls-bridge.js && node lib/dialects/sqlserver/test/capability-honesty.js",
-    "test:tier1-evidence":"node tool/check-tier1-evidence.js",
-    "v1:proprietary-audit":"node tool/check-proprietary-v1.js",
-    "v1:release-audit":"node tool/check-release-v1.js",
-    "release:qualify":"node tool/check-stable-release.js && node tool/check-dml-v2-release.js && node tool/check-dml-v3-release.js && node tool/check-ddl-v1-release.js && node tool/check-ddl-v2-release.js && node tool/check-ddl-v3-release.js && node tool/check-ddl-v4-release.js && node tool/check-ddl-v5-release.js && node tool/check-ddl-v6-release.js && node tool/check-ddl-v7-release.js && node tool/check-ddl-v8-release.js && node tool/check-ddl-v9-release.js && node tool/check-ddl-v10-release.js && node tool/check-ddl-v11-release.js && npm run test:tier1-evidence",
-    "verify":"npm run test:platform && npm run test:mysql && npm run test:sql-core && npm run test:postgresql && npm run test:sqlite && npm run test:sqlserver",
-    "verify:proprietary":"npm run verify && npm run v1:proprietary-audit && npm run v1:release-audit",
-    "release:check":"npm run verify:proprietary && npm run release:qualify && npm pack --dry-run",
-    "prepublishOnly":"npm run release:check"
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "types/",
+    "lib/client/",
+    "lib/capabilities/",
+    "lib/core/index.js",
+    "lib/core/index.d.ts",
+    "lib/core/TypedValue.js",
+    "lib/dialects/mysql/index.js",
+    "lib/dialects/mysql/index.d.ts",
+    "lib/dialects/mysql/types.d.ts",
+    "lib/dialects/mysql/lib/",
+    "lib/dialects/postgresql/index.js",
+    "lib/dialects/postgresql/index.d.ts",
+    "lib/dialects/postgresql/lib/",
+    "lib/dialects/sqlite/index.js",
+    "lib/dialects/sqlite/index.d.ts",
+    "lib/dialects/sqlite/lib/",
+    "lib/dialects/sqlserver/index.js",
+    "lib/dialects/sqlserver/index.d.ts",
+    "lib/dialects/sqlserver/lib/",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NuBlox/NuBloxSQL.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "latest"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test:platform": "node test/platform-entry.js && node test/sql-capability-model.js && node test/sql-capability-ontology.js && node test/sql-capability-compatibility.js && node test/sql-capability-runtime.js && node test/sql-capability-rewrite.js && node test/sql-ast-compiler.js && node test/sql-ast-wave3.js && node test/sql-ast-wave4.js && node test/sql-ast-wave4-semantics.js && node test/sql-ast-wave6-advanced-dml.js && node test/sql-ast-wave6-source-composition.js && node test/sql-ast-wave5.js && node test/sql-ast-wave5-lifecycle.js && node test/sql-ast-wave5-column-constraints.js && node test/sql-ast-wave5-object-lifecycle.js && node test/sql-ast-wave5-dependency-concurrent.js && node test/sql-ast-wave5-generated-identity.js && node test/sql-ast-wave5-foreign-keys.js && node test/sql-ast-wave5-index-semantics.js && node test/sql-ast-wave5-index-key-options.js && node test/sql-ast-wave5-ctas.js && node test/sql-ast-wave5-identity-sequence.js && node test/connection-url.js && node test/client-lifecycle.js && node test/config-validation.js && node test/public-errors.js && node test/capability-discovery.js && node test/metadata-introspection.js && node test/portable-metadata-vocabulary.js && node test/client-diagnostics.js && node test/transaction-policy.js && node test/typescript-dialect-surface.js && node test/typescript-ddl-surface.js && node test/client-api.js && node test/client-typed-binds.js && node test/operation-control.js && node test/client-observability.js && node test/client-types.js && node test/client-transactions.js",
+    "test:mysql": "node lib/dialects/mysql/test/protocol.js && node lib/dialects/mysql/test/auth.js && node lib/dialects/mysql/test/auth-plugins.js && node lib/dialects/mysql/test/prepared.js && node lib/dialects/mysql/test/typed-bind.js && node lib/dialects/mysql/test/api.js && node lib/dialects/mysql/test/session-reset.js && node lib/dialects/mysql/test/streaming.js && node lib/dialects/mysql/test/operation-control.js && node lib/dialects/mysql/test/local-infile.js && node lib/dialects/mysql/test/diagnostics.js && node lib/dialects/mysql/test/deep-metadata.js && node lib/dialects/mysql/test/dialect.js",
+    "test:sql-core": "node lib/core/test/contract.js && node test/dialect-contracts.js && node test/sql-core-v1-contract.js",
+    "test:postgresql": "node lib/dialects/postgresql/test/contract.js && node lib/dialects/postgresql/test/protocol.js && node lib/dialects/postgresql/test/copy-protocol.js && node lib/dialects/postgresql/test/notifications.js && node lib/dialects/postgresql/test/diagnostics.js && node lib/dialects/postgresql/test/deep-metadata.js && node lib/dialects/postgresql/test/runtime.js && node lib/dialects/postgresql/test/lifecycle.js && node lib/dialects/postgresql/test/cancel.js && node lib/dialects/postgresql/test/pool-transaction.js && node lib/dialects/postgresql/test/portal.js && node lib/dialects/postgresql/test/result-limits.js && node lib/dialects/postgresql/test/type-decoding.js",
+    "test:sqlite": "node lib/dialects/sqlite/test/runtime.js && node lib/dialects/sqlite/test/lifecycle.js && node lib/dialects/sqlite/test/storage.js && node lib/dialects/sqlite/test/maintenance.js && node lib/dialects/sqlite/test/extensibility-security.js && node lib/dialects/sqlite/test/feature-fidelity.js && node lib/dialects/sqlite/test/query-diagnostics.js && node lib/dialects/sqlite/test/changesets.js && node lib/dialects/sqlite/test/resource-governance.js && node lib/dialects/sqlite/test/errors.js && node lib/dialects/sqlite/test/corruption-error-classification.js",
+    "test:sqlite-production": "node lib/dialects/sqlite/test/production-performance.js && node --expose-gc lib/dialects/sqlite/test/production-memory.js && node lib/dialects/sqlite/test/production-concurrency.js && node lib/dialects/sqlite/test/production-corruption.js",
+    "test:sqlserver": "node lib/dialects/sqlserver/test/protocol.js && node lib/dialects/sqlserver/test/login-token.js && node lib/dialects/sqlserver/test/connection.js && node lib/dialects/sqlserver/test/result-stream.js && node lib/dialects/sqlserver/test/type-fidelity.js && node lib/dialects/sqlserver/test/typed-bind.js && node lib/dialects/sqlserver/test/plp-max.js && node lib/dialects/sqlserver/test/collation-codepages.js && node lib/dialects/sqlserver/test/sql-variant.js && node lib/dialects/sqlserver/test/incremental-stream.js && node lib/dialects/sqlserver/test/rpc.js && node lib/dialects/sqlserver/test/legacy-tls-bridge.js && node lib/dialects/sqlserver/test/capability-honesty.js",
+    "test:tier1-evidence": "node tool/check-tier1-evidence.js",
+    "v1:proprietary-audit": "node tool/check-proprietary-v1.js",
+    "v1:release-audit": "node tool/check-release-v1.js",
+    "release:qualify": "node tool/check-stable-release.js && node tool/check-dml-v2-release.js && node tool/check-dml-v3-release.js && node tool/check-dml-v4-release.js && node tool/check-ddl-v1-release.js && node tool/check-ddl-v2-release.js && node tool/check-ddl-v3-release.js && node tool/check-ddl-v4-release.js && node tool/check-ddl-v5-release.js && node tool/check-ddl-v6-release.js && node tool/check-ddl-v7-release.js && node tool/check-ddl-v8-release.js && node tool/check-ddl-v9-release.js && node tool/check-ddl-v10-release.js && node tool/check-ddl-v11-release.js && npm run test:tier1-evidence",
+    "verify": "npm run test:platform && npm run test:mysql && npm run test:sql-core && npm run test:postgresql && npm run test:sqlite && npm run test:sqlserver",
+    "verify:proprietary": "npm run verify && npm run v1:proprietary-audit && npm run v1:release-audit",
+    "release:check": "npm run verify:proprietary && npm run release:qualify && npm pack --dry-run",
+    "prepublishOnly": "npm run release:check"
   }
 }

@@ -145,7 +145,7 @@ For MySQL, use a normal DELETE and obtain required application data through an e
 
 ### Current DML boundary
 
-`dml-v1` remains the portable INSERT/UPDATE/DELETE foundation. Later released scopes add explicit UPSERT/MERGE semantics (`dml-v2`) and qualified auxiliary-table mutation forms (`dml-v3`). `DEFAULT VALUES`, data-modifying CTEs, richer conflict targets, expanded MERGE actions and vendor-specific multi-table DML remain capability-specific; check `capabilityOntology.implementation(...)` before depending on them.
+`dml-v1` remains the portable INSERT/UPDATE/DELETE foundation. Later released scopes add explicit UPSERT/MERGE semantics (`dml-v2`), qualified single-source auxiliary-table mutation forms (`dml-v3`), and joined/derived auxiliary mutation sources (`dml-v4`). `DEFAULT VALUES`, data-modifying CTEs, richer conflict targets, expanded MERGE actions and vendor-specific multi-table DML remain capability-specific; check `capabilityOntology.implementation(...)` before depending on them.
 
 ## Dynamic table names
 
