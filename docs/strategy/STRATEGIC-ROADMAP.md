@@ -116,6 +116,8 @@ This is foundational for schema migration, metadata fidelity, generated models a
 
 ## Priority 4 — schema diff and migration planning
 
+**Status:** canonical schema snapshot foundation delivered. The next implementation slice is schema diff over deterministic logical keys and semantic fingerprints.
+
 Use the existing metadata, DDL AST and capability planner to build:
 
 ```text
@@ -249,14 +251,15 @@ Recommended next engineering sequence:
 2. **Database structure intelligence** — canonical structure tree, stable object identity and dependency/impact graph delivered; extend toward descriptions and richer object families.
 3. **SQL Server Tier-1 parity plan and first parity slice**.
 4. **Canonical type-system architecture and mapping register** — first released slice delivered; continue advanced type families as required by schema-diff work.
-5. **Schema diff model**.
-6. **Migration planner MVP**.
-7. **Unified data-movement engine**.
-8. **Standalone SQL tooling services**.
-9. **Automation/job execution model**.
-10. **TCL/security/administration language families**, prioritized from the coverage register.
-11. **Reporting/export contracts** after the data pipeline is stable.
-12. Reassess the register before additional narrow DML/DDL depth.
+5. **Canonical schema snapshot** — delivered; deterministic semantic/source fingerprints now provide the diff foundation.
+6. **Schema diff model**.
+7. **Migration planner MVP**.
+8. **Unified data-movement engine**.
+9. **Standalone SQL tooling services**.
+10. **Automation/job execution model**.
+11. **TCL/security/administration language families**, prioritized from the coverage register.
+12. **Reporting/export contracts** after the data pipeline is stable.
+13. Reassess the register before additional narrow DML/DDL depth.
 
 ## Release milestone proposal
 
