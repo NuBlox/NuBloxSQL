@@ -83,6 +83,7 @@ export interface TypeSemanticsApi {
     nativeType: string | null | undefined,
     metadata?: Readonly<Record<string, unknown>>
   ): TypeCompatibilityResult;
+  fromPortableSpec(spec: root.PortableTypeSpec): CanonicalTypeDescriptor;
   annotate<D extends root.Dialect = root.Dialect>(
     snapshot: PortableMetadataSnapshot<D> | Readonly<{ portable: PortableMetadataSnapshot<D> }>
   ): CanonicalTypeAnnotation<D>;
@@ -103,6 +104,7 @@ export function typeCompatibility(
   nativeType: string | null | undefined,
   metadata?: Readonly<Record<string, unknown>>
 ): TypeCompatibilityResult;
+export function canonicalTypeFromPortableSpec(spec: root.PortableTypeSpec): CanonicalTypeDescriptor;
 export function annotateTypes<D extends root.Dialect = root.Dialect>(
   snapshot: PortableMetadataSnapshot<D> | Readonly<{ portable: PortableMetadataSnapshot<D> }>
 ): CanonicalTypeAnnotation<D>;
