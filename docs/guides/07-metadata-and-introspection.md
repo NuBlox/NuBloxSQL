@@ -107,3 +107,33 @@ Use focused introspection for large catalogs when you only need a subset.
 ## Metadata and migrations
 
 Metadata is an inspection API, not a migration engine. Do not infer that a portable metadata shape guarantees portable DDL generation. Use the capability model and vendor-specific rules when translating schema semantics.
+
+## Canonical structure tree
+
+Use `structureTree()` when you need a hierarchical representation rather than flat metadata arrays:
+
+```js
+const tree = await db.structureTree({
+  schema: 'public',
+  deep: true
+});
+```
+
+The released hierarchy is database → schema → table/view/foreign-table → columns/indexes/foreign keys/constraints. Every node retains its portable metadata object, a stable hierarchical `path`, and immutable `children`.
+
+You can also build a tree from an existing snapshot without another database connection:
+
+```js
+const snapshot = await db.introspect({ deep: true });
+const tree = buildStructureTree(snapshot);
+```
+
+Child families can be omitted when a lighter tree is useful:
+
+```js
+const tree = await db.catalog.structureTree({
+  tree: { indexes: false, constraints: false }
+});
+```
+
+This is a data-model API rather than a UI contract. It is intended to support database exploration, structure export, diagrams, comparison and migration tooling without coupling those concerns to a particular interface.
