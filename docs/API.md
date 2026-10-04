@@ -19,6 +19,7 @@ For task-oriented usage see the [NuBloxSQL User Guides](guides/README.md) and [C
 - `transactionPolicy()` — portable transaction-policy description.
 - `capabilityModel` — Tier-1 compatibility, runtime qualification, rewrite and compiler/transpilation APIs.
 - `capabilityOntology` — atomic capability definitions, engine observations and NuBlox implementation coverage.
+- `productCoverage` — whole-product maturity register across runtime, language, intelligence, portability, platform foundations and dialect depth.
 
 ## Capability ontology
 
@@ -341,3 +342,16 @@ The AST keeps `not-matched`, `not-matched-by-target`, and `not-matched-by-source
 `dml-v10` upgrades MERGE `USING` from a table identifier to PostgreSQL's parenthesized `source_query` form. The source is represented with the existing `DerivedTable`/query AST, so joins, filters, expressions, CTEs and bind parameters reuse the qualified SELECT compiler. The released form requires an alias for a query source and deliberately rejects invented direct `USING a JOIN b ...` syntax; joins belong inside the parenthesized query.
 
 Rich sources compose with `dml-v8` action chains and `dml-v9` versioned match/RETURNING features. When a rich source is combined with PostgreSQL 17+ capabilities, the statement remains `dml-v10` while its capability plan still enforces the underlying runtime-version gates.
+
+
+## Product coverage model v2
+
+`productCoverage` is the standalone NuBloxSQL planning and release-coverage API. It is deliberately separate from the SQL capability ontology: the ontology describes SQL capabilities and engine semantics, while product coverage describes NuBloxSQL subsystem maturity.
+
+```js
+const report = sql.productCoverage.report();
+const gaps = sql.productCoverage.gaps();
+const sqlServerParity = sql.productCoverage.area('dialect.sqlserver-parity');
+```
+
+Each area records its product pillar, overall status, per-stage maturity, per-dialect maturity, evidence files and the next known gap. `PRODUCT_COVERAGE_SCHEMA_VERSION` is currently `2`. The machine-readable release snapshot is `docs/releases/product-coverage-v2.json`.
