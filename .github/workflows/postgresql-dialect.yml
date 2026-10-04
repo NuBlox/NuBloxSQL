@@ -23,6 +23,7 @@ on:
       - 'test/compiler-ddl-foreign-keys-live.js'
       - 'test/compiler-ddl-index-semantics-live.js'
       - 'test/compiler-ddl-index-key-options-live.js'
+      - 'test/compiler-ddl-ctas-live.js'
       - 'test/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
@@ -136,6 +137,8 @@ jobs:
         run: node test/compiler-ddl-index-semantics-live.js
       - name: DDL index key option qualification
         run: node test/compiler-ddl-index-key-options-live.js
+      - name: DDL CREATE TABLE AS qualification
+        run: node test/compiler-ddl-ctas-live.js
       - name: Native runtime, extended protocol, cancellation, pooling and portals
         run: node lib/dialects/postgresql/test/live.js
       - name: Native COPY FROM/TO streaming and pool qualification
