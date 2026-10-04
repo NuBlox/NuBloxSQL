@@ -56,7 +56,8 @@ function snapshot(dialect,idType){
   right.tables[0].columns.push(column('users','tenant_id',3,'integer',false));
   var plan=sql.planMigration(sql.diffSchemas(left,right));
   assert.strictEqual(plan.steps[0].safety,'manual-review');
-  assert.strictEqual(plan.steps[0].execution,'automatic');
+  assert.strictEqual(plan.steps[0].execution,'manual');
+  assert.strictEqual(plan.executable,false);
   assert.ok(plan.steps[0].preconditions.some(function(x){return /backfill/i.test(x);}));
 })();
 
