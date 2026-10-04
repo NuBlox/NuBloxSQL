@@ -15,6 +15,7 @@ export type StructureTreeNodeKind =
   | 'column' | 'index' | 'foreign-key' | 'constraint';
 
 export interface StructureTreeNode {
+  readonly id: string;
   readonly kind: StructureTreeNodeKind;
   readonly name: string;
   readonly path: readonly (string | null)[];
@@ -59,14 +60,14 @@ export interface StructureTreeIntrospectionOptions extends root.MetadataScope {
 }
 
 export interface DatabaseStructureTree<D extends root.Dialect = root.Dialect> {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly dialect: D;
   readonly scope: Readonly<root.MetadataScope>;
   readonly summary: StructureTreeSummary;
   readonly databases: readonly StructureTreeNode[];
 }
 
-export const STRUCTURE_TREE_SCHEMA_VERSION: 1;
+export const STRUCTURE_TREE_SCHEMA_VERSION: 2;
 
 export function buildStructureTree<D extends root.Dialect = root.Dialect>(
   snapshot: PortableMetadataSnapshot<D> | Readonly<{ portable: PortableMetadataSnapshot<D> }>,
