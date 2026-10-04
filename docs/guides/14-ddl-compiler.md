@@ -8,7 +8,8 @@ NuBloxSQL provides structured, capability-aware DDL compiler scopes for PostgreS
 - `ddl-v4` — schema-object drops and statement-specific existence modifiers;
 - `ddl-v5` — PostgreSQL concurrent index lifecycle and explicit DROP dependency behavior;
 - `ddl-v6` — generated-expression columns and PostgreSQL SQL-standard identity columns;
-- `ddl-v7` — foreign-key actions, match modes and deferrability semantics.
+- `ddl-v7` — foreign-key actions, match modes and deferrability semantics;
+- `ddl-v8` — expression/functional index keys plus PostgreSQL covering/access-method semantics.
 
 Use these APIs to parse, inspect, validate or transpile supported schema statements. They are not a schema-migration framework, and certification never implies identical storage, affinity, collation, coercion or physical-design semantics.
 
@@ -363,6 +364,24 @@ PostgreSQL exposes the broadest released semantics. MySQL action behavior is cap
 
 Cross-dialect compilation is deliberately conservative. NuBloxSQL does not erase MySQL/PostgreSQL timing differences, fabricate unsupported `MATCH` semantics, lower deferred constraints to immediate constraints, or assume `SET DEFAULT` is valid on an engine where it is not.
 
+## `ddl-v8`: advanced index semantics
+
+`ddl-v8` models index key expressions explicitly.
+
+PostgreSQL and SQLite use the `schema.expressionIndex` family. MySQL uses the distinct `schema.functionalIndex` family and renders functional key parts with the required nested-parenthesis syntax.
+
+PostgreSQL also supports:
+
+```sql
+CREATE INDEX ledger_search_idx
+ON ledger USING btree ((lower(code)))
+INCLUDE (id)
+```
+
+The released access-method set is `btree`, `hash`, `gist`, `spgist`, `gin` and `brin`. User-defined PostgreSQL access methods need catalog-aware qualification and are outside this scope.
+
+SQLite expression indexes require runtime version qualification (3.9.0 or newer). NuBloxSQL does not silently translate PostgreSQL/SQLite expression-index semantics to MySQL functional indexes or vice versa.
+
 ## Current boundary
 
 The released DDL compiler still does **not** claim:
@@ -375,8 +394,9 @@ The released DDL compiler still does **not** claim:
 - automatic MySQL `MODIFY COLUMN` lowering;
 - automatic SQLite table-rebuild migrations;
 - multi-action ALTER TABLE;
-- expression indexes;
-- index methods, included columns or general vendor index options;
+- operator classes/families, index collations and per-key sort/null-order options;
+- MySQL invisible/multi-valued/full-text/spatial index semantics;
+- general vendor index storage/algorithm options;
 - sequence start/increment/cache/cycle options;
 - multi-object drops;
 - concurrent reindex or cross-vendor online-index equivalence;
@@ -387,7 +407,7 @@ Use `capabilityOntology.implementation(feature)` to distinguish database support
 
 ## TypeScript
 
-DDL AST declarations are exported from `types/ddl.d.ts`, including `SqlDdlAst`, ALTER action types, object-drop nodes, `SqlDropDependencyMode`, `SqlAstGeneratedColumn`, `SqlAstIdentityColumn`, foreign-key action/match/initial-mode types and `SqlDdlCompilerScope`. `SqlStatementAst` includes query, DML and DDL statements, so normal discriminated-union narrowing works on `statement.type` and `statement.action.type`.
+DDL AST declarations are exported from `types/ddl.d.ts`, including `SqlDdlAst`, ALTER action types, object-drop nodes, `SqlDropDependencyMode`, `SqlAstGeneratedColumn`, `SqlAstIdentityColumn`, foreign-key action/match/initial-mode types, index-key AST types and `SqlDdlCompilerScope`. `SqlStatementAst` includes query, DML and DDL statements, so normal discriminated-union narrowing works on `statement.type` and `statement.action.type`.
 
 ## Qualification
 
@@ -401,6 +421,6 @@ The DDL compiler is qualified through:
 - packed-package JavaScript and strict TypeScript consumers;
 - Tier-1 evidence and release audits.
 
-Wave 5b exercises add/drop/rename lifecycle. Wave 5c exercises default changes on PostgreSQL/MySQL plus PostgreSQL type/nullability and named constraints. Wave 5d exercises safe existence modifiers and object drops, including engine-specific index identity behavior. Wave 5e exercises PostgreSQL concurrent index creation/removal and explicit CASCADE/RESTRICT dependency behavior. Wave 5f executes stored generated columns on PostgreSQL/MySQL/SQLite, PostgreSQL identity on PostgreSQL 15–18, and virtual generation when PostgreSQL 18 qualifies it.
+Wave 5b exercises add/drop/rename lifecycle. Wave 5c exercises default changes on PostgreSQL/MySQL plus PostgreSQL type/nullability and named constraints. Wave 5d exercises safe existence modifiers and object drops, including engine-specific index identity behavior. Wave 5e exercises PostgreSQL concurrent index creation/removal and explicit CASCADE/RESTRICT dependency behavior. Wave 5f executes stored generated columns on PostgreSQL/MySQL/SQLite, PostgreSQL identity on PostgreSQL 15–18, and virtual generation when PostgreSQL 18 qualifies it. Wave 5g executes foreign-key semantics across Tier-1 engines with explicit vendor boundaries. Wave 5h executes PostgreSQL/SQLite expression indexes, MySQL functional key parts, and PostgreSQL INCLUDE/access-method syntax.
 
 See [Capabilities and SQL portability](11-capabilities-and-portability.md) for capability resolution and [Metadata and introspection](07-metadata-and-introspection.md) for deployed schema state.
