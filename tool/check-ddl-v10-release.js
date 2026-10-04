@@ -24,7 +24,7 @@ try {
     "const pg=sql.capabilityModel.transpileSql('postgresql','postgresql','CREATE TABLE snap AS SELECT 1 AS id');assert(pg.certified&&pg.scope==='ddl-v10'&&/CREATE TABLE/.test(pg.sql));",
     "const my=sql.capabilityModel.transpileSql('mysql','mysql','CREATE TABLE snap AS SELECT 1 AS id');assert(my.certified&&my.scope==='ddl-v10');",
     "const sq=sql.capabilityModel.transpileSql('sqlite','sqlite','CREATE TABLE snap AS SELECT 1 AS id');assert(sq.certified&&sq.scope==='ddl-v10');",
-    "let blocked=false;try{sql.capabilityModel.transpileSql('postgresql','mysql','CREATE TABLE snap AS SELECT 1 AS id');}catch(e){blocked=/result-schema\/type-normalisation/i.test(String(e&&e.message));}assert.strictEqual(blocked,true);"
+    "let blocked=false;try{sql.capabilityModel.transpileSql('postgresql','mysql','CREATE TABLE snap AS SELECT 1 AS id');}catch(e){blocked=String(e&&e.message).includes('result-schema/type-normalisation');}assert.strictEqual(blocked,true);"
   ].join('\n');
   fs.writeFileSync(path.join(temp,'smoke.js'),smoke);
   run(process.execPath,['smoke.js'],{cwd:temp});
