@@ -120,6 +120,42 @@ export interface SqlMergeNotMatchedActionAst {
   readonly values: readonly SqlAstExpression[];
 }
 
+export interface SqlMergeDoNothingActionAst {
+  readonly type: 'MergeDoNothingAction';
+  readonly action: 'nothing';
+}
+
+export interface SqlMergeDeleteActionAst {
+  readonly type: 'MergeDeleteAction';
+  readonly action: 'delete';
+}
+
+export interface SqlMergeUpdateActionV2Ast {
+  readonly type: 'MergeUpdateAction';
+  readonly action: 'update';
+  readonly assignments: readonly SqlAstAssignment[];
+}
+
+export interface SqlMergeInsertActionV2Ast {
+  readonly type: 'MergeInsertAction';
+  readonly action: 'insert';
+  readonly columns: readonly SqlAstIdentifier[];
+  readonly values: readonly SqlAstExpression[];
+}
+
+export type SqlMergeActionV2Ast =
+  | SqlMergeDoNothingActionAst
+  | SqlMergeDeleteActionAst
+  | SqlMergeUpdateActionV2Ast
+  | SqlMergeInsertActionV2Ast;
+
+export interface SqlMergeWhenClauseAst {
+  readonly type: 'MergeWhenClause';
+  readonly match: 'matched' | 'not-matched';
+  readonly condition: SqlAstExpression | null;
+  readonly action: SqlMergeActionV2Ast;
+}
+
 export interface SqlMergeStatementAst {
   readonly type: 'MergeStatement';
   readonly target: SqlAstIdentifier;
@@ -129,11 +165,13 @@ export interface SqlMergeStatementAst {
   readonly on: SqlAstExpression;
   readonly matched: SqlMergeMatchedActionAst | null;
   readonly notMatched: SqlMergeNotMatchedActionAst | null;
+  readonly clauses?: readonly SqlMergeWhenClauseAst[];
+  readonly returning?: readonly SqlAstExpression[];
 }
 
 export type SqlDmlAst = SqlInsertStatementAst | SqlUpdateStatementAst | SqlDeleteStatementAst | SqlUpsertStatementAst | SqlMergeStatementAst | SqlAstMysqlSingleTableUpdateStatement | SqlAstMysqlSingleTableDeleteStatement | SqlAstMysqlMultiTableUpdateStatement | SqlAstMysqlMultiTableDeleteStatement;
 export type SqlStatementAst = SqlQueryAst | SqlDmlAst | SqlDdlAst;
-export type SqlDmlCompilerScope = 'dml-v1' | 'dml-v2' | 'dml-v3' | 'dml-v4' | 'dml-v5' | 'dml-v6' | 'dml-v7';
+export type SqlDmlCompilerScope = 'dml-v1' | 'dml-v2' | 'dml-v3' | 'dml-v4' | 'dml-v5' | 'dml-v6' | 'dml-v7' | 'dml-v8';
 export type SqlStatementCompilerScope = SqlCompilerScope | SqlDmlCompilerScope | SqlDdlCompilerScope;
 export type SqlStatementType = SqlStatementAst['type'];
 
