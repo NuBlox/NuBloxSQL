@@ -34,8 +34,8 @@ assert.strictEqual(sqlServer.status,'partial');
 assert.strictEqual(sqlServer.dialects.sqlserver,'partial');
 
 var migration=sql.productCoverage.area('platform.migrations');
-assert.strictEqual(migration.status,'gap');
-assert.strictEqual(migration.stages.publicApi,'unsupported');
+assert.strictEqual(migration.status,'established');
+assert.strictEqual(migration.stages.publicApi,'implemented');
 
 var schemaDiff=sql.productCoverage.area('platform.schema-diff');
 assert.strictEqual(schemaDiff.status,'established');
@@ -43,7 +43,7 @@ assert.strictEqual(schemaDiff.stages.publicApi,'implemented');
 
 var gaps=sql.productCoverage.gaps();
 assert.strictEqual(gaps.some(function(area){return area.id==='platform.schema-diff';}),false);
-assert.ok(gaps.some(function(area){return area.id==='platform.migrations';}));
+assert.strictEqual(gaps.some(function(area){return area.id==='platform.migrations';}),false);
 assert.ok(gaps.some(function(area){return area.id==='dialect.sqlserver-parity';}));
 
 var impl=sql.capabilityOntology.implementation('statements.select');
