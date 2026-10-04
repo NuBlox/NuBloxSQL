@@ -5,8 +5,10 @@ export type SqlForeignKeyMatch = 'simple' | 'full' | 'partial';
 export type SqlForeignKeyInitialMode = 'deferred' | 'immediate';
 export interface SqlAstForeignKeyReference { readonly type: 'ForeignKeyReference'; readonly table: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; readonly match?: SqlForeignKeyMatch; readonly onDelete?: SqlForeignKeyAction; readonly onUpdate?: SqlForeignKeyAction; readonly deferrable?: boolean; readonly initially?: SqlForeignKeyInitialMode; }
 export interface SqlAstGeneratedColumn { readonly storage: 'stored' | 'virtual'; readonly expression: SqlAstExpression; }
-export interface SqlAstIdentityColumn { readonly mode: 'always' | 'by-default'; }
-export interface SqlAstColumnDefinition { readonly type: 'ColumnDefinition'; readonly name: SqlAstIdentifier; readonly dataType: SqlAstTypeName; readonly nullable: boolean | null; readonly default: SqlAstExpression | null; readonly primaryKey: boolean; readonly unique: boolean; readonly checks: readonly SqlAstExpression[]; readonly references: SqlAstForeignKeyReference | null; readonly generated?: SqlAstGeneratedColumn; readonly identity?: SqlAstIdentityColumn; }
+export interface SqlAstSequenceOptions { readonly start?: number; readonly increment?: number; readonly minValue?: number | null; readonly maxValue?: number | null; readonly cache?: number; readonly cycle?: boolean; }
+export interface SqlAstIdentityColumn { readonly mode: 'always' | 'by-default'; readonly options?: SqlAstSequenceOptions; }
+export interface SqlAstAutoIncrementColumn { readonly strategy: 'mysql-auto-increment' | 'sqlite-rowid-autoincrement'; }
+export interface SqlAstColumnDefinition { readonly type: 'ColumnDefinition'; readonly name: SqlAstIdentifier; readonly dataType: SqlAstTypeName; readonly nullable: boolean | null; readonly default: SqlAstExpression | null; readonly primaryKey: boolean; readonly unique: boolean; readonly checks: readonly SqlAstExpression[]; readonly references: SqlAstForeignKeyReference | null; readonly generated?: SqlAstGeneratedColumn; readonly identity?: SqlAstIdentityColumn; readonly autoIncrement?: SqlAstAutoIncrementColumn; }
 export interface SqlAstPrimaryKeyConstraint { readonly type: 'PrimaryKeyConstraint'; readonly columns: readonly SqlAstIdentifier[]; }
 export interface SqlAstUniqueConstraint { readonly type: 'UniqueConstraint'; readonly columns: readonly SqlAstIdentifier[]; }
 export interface SqlAstCheckConstraint { readonly type: 'CheckConstraint'; readonly expression: SqlAstExpression; }
@@ -24,7 +26,7 @@ export type SqlAstIndexKey = SqlAstIndexColumnKey | SqlAstIndexExpressionKey;
 export interface SqlCreateIndexStatementAst { readonly type: 'CreateIndexStatement'; readonly name: SqlAstIdentifier; readonly table: SqlAstIdentifier; readonly columns: readonly SqlAstIdentifier[]; readonly keys?: readonly SqlAstIndexKey[]; readonly unique: boolean; readonly where: SqlAstExpression | null; readonly ifNotExists?: boolean; readonly concurrently?: boolean; readonly method?: 'btree' | 'hash' | 'gist' | 'spgist' | 'gin' | 'brin' | null; readonly include?: readonly SqlAstIdentifier[]; }
 export interface SqlCreateViewStatementAst { readonly type: 'CreateViewStatement'; readonly name: SqlAstIdentifier; readonly query: SqlQueryAst; }
 export interface SqlCreateSchemaStatementAst { readonly type: 'CreateSchemaStatement'; readonly name: SqlAstIdentifier; readonly ifNotExists?: boolean; }
-export interface SqlCreateSequenceStatementAst { readonly type: 'CreateSequenceStatement'; readonly name: SqlAstIdentifier; readonly ifNotExists?: boolean; }
+export interface SqlCreateSequenceStatementAst { readonly type: 'CreateSequenceStatement'; readonly name: SqlAstIdentifier; readonly ifNotExists?: boolean; readonly options?: SqlAstSequenceOptions; }
 export interface SqlDropTableStatementAst { readonly type: 'DropTableStatement'; readonly name: SqlAstIdentifier; readonly ifExists?: boolean; readonly dependencyMode?: SqlDropDependencyMode; }
 export interface SqlDropViewStatementAst { readonly type: 'DropViewStatement'; readonly name: SqlAstIdentifier; readonly ifExists?: boolean; readonly dependencyMode?: SqlDropDependencyMode; }
 export interface SqlDropIndexStatementAst { readonly type: 'DropIndexStatement'; readonly name: SqlAstIdentifier; readonly table: SqlAstIdentifier | null; readonly ifExists: boolean; readonly concurrently?: boolean; readonly dependencyMode?: SqlDropDependencyMode; }
@@ -46,4 +48,4 @@ export type SqlAlterTableActionAst = SqlAlterTableAddColumnActionAst | SqlAlterT
 export interface SqlAlterTableStatementAst { readonly type: 'AlterTableStatement'; readonly table: SqlAstIdentifier; readonly action: SqlAlterTableActionAst; }
 
 export type SqlDdlAst = SqlCreateTableStatementAst | SqlCreateTableAsStatementAst | SqlCreateIndexStatementAst | SqlCreateViewStatementAst | SqlCreateSchemaStatementAst | SqlCreateSequenceStatementAst | SqlDropTableStatementAst | SqlDropViewStatementAst | SqlDropIndexStatementAst | SqlDropSchemaStatementAst | SqlDropSequenceStatementAst | SqlAlterTableStatementAst;
-export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3' | 'ddl-v4' | 'ddl-v5' | 'ddl-v6' | 'ddl-v7' | 'ddl-v8' | 'ddl-v9' | 'ddl-v10';
+export type SqlDdlCompilerScope = 'ddl-v1' | 'ddl-v2' | 'ddl-v3' | 'ddl-v4' | 'ddl-v5' | 'ddl-v6' | 'ddl-v7' | 'ddl-v8' | 'ddl-v9' | 'ddl-v10' | 'ddl-v11';
