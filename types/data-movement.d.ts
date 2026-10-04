@@ -7,6 +7,7 @@ export type DataMovementStrategy =
   | 'postgresql-copy-csv'
   | 'mysql-local-infile-tsv'
   | 'sqlite-batched-insert'
+  | 'sqlserver-tds-bulk'
   | 'sqlserver-batched-insert'
   | 'portable-batched-insert';
 
