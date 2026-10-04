@@ -26,6 +26,7 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | Capability ontology | Strong | exhaustive-v1 Tier-1 engine observations, runtime qualification, implementation coverage | Expand implementation-stage precision |
 | Portability/rewrite planner | Established | compatibility, rewrite planning, fail-closed behavior | Needs broader semantic transformation architecture |
 | Metadata/introspection | Strong | portable vocabulary, deep PostgreSQL/MySQL metadata, public introspection APIs | Extend consistency and SQL Server parity |
+| Structure intelligence | Established | canonical database/schema/object tree with columns, indexes, foreign keys and constraints | Add dependencies, descriptions and broader object families |
 | Query diagnostics | Strong for Tier 1 | portable diagnostics plus native-plan retention; PostgreSQL/MySQL execution analysis, SQLite plan/opcode diagnostics | Add SQL Server to shared contract |
 | Transactions | Established | client transaction APIs, savepoints, policy and tests | Need deeper isolation/locking capability integration |
 | Streaming/operation control | Strong | async/incremental result handling, cancellation, deadlines, budgets | Maintain |
@@ -36,7 +37,10 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | Triggers | Gap in compiler | engine observations/runtime support where applicable; no complete AST/compiler family | Medium-high |
 | Stored functions/procedures | Gap in compiler | engine observations exist; no coherent procedural SQL compiler | Medium, vendor-heavy |
 | Administration SQL | Gap in compiler | diagnostics/runtime operations exist; EXPLAIN/VACUUM/ANALYZE/PRAGMA/etc. not unified compiler families | Medium-high |
-| Bulk/data movement | Established but fragmented | PostgreSQL COPY, MySQL LOCAL INFILE, SQLite backup/changesets capabilities | Needs product-level abstraction/guide |
+| Bulk/data movement | Partial/fragmented | PostgreSQL COPY, MySQL LOCAL INFILE, SQLite backup/changesets capabilities | Build resumable mapping/validation/checkpoint pipeline |
+| Automation/jobs | Gap | no unified reusable job-plan or CLI execution model | High platform value |
+| Reporting/export | Gap | no first-class report/export contract | Build after unified data movement |
+| Competitive benchmark | Active | `docs/strategy/COMPETITIVE-BENCHMARK.md` | Track breadth without copying external product architecture |
 | Schema diff/migrations | Gap | metadata and portability foundations exist, but no first-class migration planner | Very high platform value |
 | SQL formatting/linting/static analysis | Gap | parser/AST foundations exist | High value for the standalone tooling surface |
 | SQL Server ontology parity | Gap | SQL Server is Tier 2 and outside shared exhaustive ontology/diagnostics contracts | High strategic priority |
