@@ -224,6 +224,7 @@
     "lib/client/MigrationPlanner.js",
     "types/migration-planner.d.ts",
     "test/migration-planner.js",
-    "tool/check-migration-planner-release.js"
+    "tool/check-migration-planner-release.js",
+    "docs/guides/18-migration-planner.md"
   ]
 }
