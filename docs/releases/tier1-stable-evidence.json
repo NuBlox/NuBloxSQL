@@ -229,6 +229,7 @@
     "lib/client/MigrationExecutor.js",
     "types/migration-executor.d.ts",
     "test/migration-executor.js",
-    "tool/check-migration-executor-release.js"
+    "tool/check-migration-executor-release.js",
+    "docs/guides/19-migration-execution-engine.md"
   ]
 }
