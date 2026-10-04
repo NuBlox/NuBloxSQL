@@ -209,6 +209,7 @@
     "lib/client/TypeSemantics.js",
     "types/type-semantics.d.ts",
     "test/canonical-type-semantics.js",
-    "tool/check-type-semantics-release.js"
+    "tool/check-type-semantics-release.js",
+    "docs/guides/15-canonical-type-semantics.md"
   ]
 }
