@@ -69,7 +69,7 @@ These capabilities are retained. The roadmap now fills the missing lifecycle aro
 
 ## Priority 1 — Establish: database bootstrap and administration foundation
 
-**Status:** bootstrap planning/execution plus server identity, database/catalog discovery and prerequisite assessment are delivered. Remaining work is richer database options, configuration/security integration and live bootstrap qualification.
+**Status:** bootstrap planning/execution, server identity/database discovery, prerequisite assessment and first dialect-aware database creation options are delivered. Remaining work is configuration/security integration and live bootstrap qualification.
 
 Build a coherent administration model for a reachable database server/service.
 
