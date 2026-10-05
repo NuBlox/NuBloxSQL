@@ -137,6 +137,9 @@ async function postgresqlTwoScopeExecution(){
   var result=await sql.executeDatabaseBootstrap(server,plan,{
     openDatabaseClient:async function(context){
       assert.strictEqual(context.targetDatabase,'app');
+      assert.strictEqual(Object.isFrozen(context),true);
+      assert.strictEqual(Object.isFrozen(context.serverClient),false);
+      assert.strictEqual(Object.isFrozen(state),false);
       opened=fakeClient('postgresql',state,'database');
       return opened;
     }
@@ -155,7 +158,8 @@ async function postgresqlTwoScopeExecution(){
 
   var rerunOpened=null;
   var rerun=await sql.executeDatabaseBootstrap(server,plan,{
-    openDatabaseClient:async function(){
+    openDatabaseClient:async function(context){
+      assert.strictEqual(Object.isFrozen(context.serverClient),false);
       rerunOpened=fakeClient('postgresql',state,'database');
       return rerunOpened;
     }
