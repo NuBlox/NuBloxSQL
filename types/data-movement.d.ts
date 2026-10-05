@@ -6,6 +6,7 @@ export type DataMovementStrategyPreference = 'auto' | 'native' | 'portable';
 export type DataMovementStrategy =
   | 'postgresql-copy-csv'
   | 'mysql-local-infile-tsv'
+  | 'sqlite-prepared-transaction'
   | 'sqlite-batched-insert'
   | 'sqlserver-tds-bulk'
   | 'sqlserver-batched-insert'
@@ -45,7 +46,7 @@ export interface DataMovementPlan {
   readonly sourceDialect: root.Dialect | null;
   readonly targetDialect: root.Dialect | null;
   readonly reason: string;
-  readonly fallback: 'portable-batched-insert' | null;
+  readonly fallback: 'portable-batched-insert' | 'sqlite-batched-insert' | 'sqlserver-batched-insert' | null;
 }
 
 export interface DataMovementCheckpoint {

@@ -53,7 +53,7 @@ Current planned target strategies are:
 | --- | --- | --- |
 | PostgreSQL | `postgresql-copy-csv` | native COPY FROM STDIN acceleration when the runtime exposes `copyFrom()` |
 | MySQL | `mysql-local-infile-tsv` | native LOAD DATA LOCAL INFILE acceleration only when `localInfile: true` is explicitly configured |
-| SQLite | `sqlite-batched-insert` | bounded portable batched INSERT; no false native bulk-load claim |
+| SQLite | `sqlite-prepared-transaction` | one prepared INSERT reused across the batch inside an atomic SQLite transaction; avoids batch-wide variable growth without claiming a bulk protocol |
 | SQL Server | `sqlserver-tds-bulk` | native TDS BulkLoadBCP acceleration; automatic portable fallback for unsupported value shapes |
 | Other/forced portable | `portable-batched-insert` | cross-dialect fallback |
 
@@ -74,7 +74,7 @@ The v1 pipeline provides:
 - audit records and lifecycle events;
 - cross-dialect execution through the normal NuBloxSQL client API;
 - preflight transfer planning with an explicit reason and fallback;
-- per-batch native PostgreSQL COPY and opt-in MySQL LOCAL INFILE acceleration;
+- per-batch PostgreSQL COPY, opt-in MySQL LOCAL INFILE, SQLite prepared-transaction and SQL Server TDS bulk acceleration;
 - lossless automatic fallback to parameter-bound INSERT for values not supported by native text transport.
 
 Checkpoints represent the largest contiguous processed source prefix. A failed batch therefore never advances the resumable offset and cannot be silently skipped after restart.
@@ -95,7 +95,7 @@ The source query must be deterministic for offset-based resume. Use a stable `OR
 
 ## Native acceleration and checkpoints
 
-Native writers execute one committed batch at a time. A checkpoint advances only after that batch succeeds. The native paths therefore preserve the same largest-contiguous-prefix resume guarantee as the portable path.
+Accelerated writers execute one committed batch at a time. A checkpoint advances only after that batch succeeds. The accelerated paths therefore preserve the same largest-contiguous-prefix resume guarantee as the portable path. SQLite prepares one row INSERT once, executes every row in the batch inside an owned transaction, commits, and only then allows the movement checkpoint to advance.
 
 PostgreSQL COPY and MySQL LOCAL INFILE currently accelerate scalar text-safe values: null, strings, finite numbers, bigint, booleans and valid Date values. In `auto` mode, batches containing values outside that lossless text set (for example structured objects or binary payloads) use the portable parameter-bound fallback. In `native` mode, such a batch fails rather than silently changing representation.
 
@@ -103,6 +103,6 @@ MySQL LOCAL INFILE remains disabled unless the target client was created with `l
 
 ## Current boundary
 
-SQL Server now exposes a qualified native TDS BulkLoadBCP writer for nullable booleans, 32-bit integers, bigint, finite numbers, Unicode strings and binary values, including MAX payloads. Unsupported mixed/object value shapes fall back to the portable parameter-bound path in `auto` mode and fail closed in `native` mode. SQLite deliberately reports its batched INSERT strategy rather than inventing a native bulk protocol that SQLite core does not provide.
+SQL Server exposes a qualified native TDS BulkLoadBCP writer for nullable booleans, 32-bit integers, bigint, finite numbers, Unicode strings and binary values, including MAX payloads. Unsupported mixed/object value shapes fall back to the portable parameter-bound path in `auto` mode and fail closed in `native` mode. SQLite uses a qualified prepared-statement/transaction strategy rather than inventing a native bulk protocol: each batch uses only one row's bind-variable count, rolls back atomically on failure and refuses to run inside an existing outer transaction because that would let a movement checkpoint advance before the surrounding transaction commits.
 
 Durable checkpoint storage, distributed job coordination and scheduling remain responsibilities of the future generic NuBloxSQL job infrastructure.
