@@ -62,6 +62,7 @@ try {
     "if (sql.QUERY_DIAGNOSTICS_SCHEMA_VERSION !== 1) throw new Error('query diagnostics schema mismatch');",
     "if (sql.SQL_CAPABILITY_ONTOLOGY_SCHEMA_VERSION !== 1) throw new Error('capability ontology schema mismatch');",
     "if (sql.DIALECT_REGISTRY_SCHEMA_VERSION !== 1 || sql.DIALECT_REGISTRY_MASTER_PROFILE_COUNT !== 100) throw new Error('dialect registry schema mismatch');",
+    "if (sql.PROFILE_CAPABILITY_OVERLAY_SCHEMA_VERSION !== 1 || !sql.profileCapabilities.validate().valid) throw new Error('profile capability overlay qualification failed');",
     "if (!sql.dialectRegistry.validate().valid || sql.dialectRegistry.report().counts.firstClassDialects !== 25) throw new Error('dialect registry qualification failed');",
     "const ontologyValidation = sql.capabilityOntology.validate();",
     "if (!ontologyValidation.valid || ontologyValidation.definitions < 150) throw new Error('capability ontology qualification failed');",
@@ -129,7 +130,7 @@ try {
   run(npm, ['install', '--no-save', '--ignore-scripts', '--no-audit', '--no-fund', 'typescript@5.9.3', '@types/node@22'], { cwd: temp });
   var typeConsumer = [
     "import sql = require('nubloxsql');",
-    "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient, QueryDiagnosticsOptions, QueryDiagnosticsReport, SqlCapabilityOntologyApi, SqlCapabilityDefinition, SqlCapabilityObservation, SqlCapabilityImplementationCoverage, SqlRuntimeCapabilityReport, SqlRewritePlan, SqlRewriteResult, SqlStatementAst, SqlQueryAst, SqlSelectStatementAst, SqlSetOperationStatementAst, SqlInsertStatementAst, SqlUpdateStatementAst, SqlDeleteStatementAst, SqlAstWithClause, SqlAstDerivedTable, SqlAstSubqueryExpression, SqlAstCaseExpression, SqlAstCastExpression, SqlAstWindowExpression, SqlAstWindowDefinition, SqlStatementCompilerScope, SqlCompiledAst, SqlStatementTranspileResult, DialectRegistryApi, DialectRegistryProduct } from 'nubloxsql';",
+    "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient, QueryDiagnosticsOptions, QueryDiagnosticsReport, SqlCapabilityOntologyApi, SqlCapabilityDefinition, SqlCapabilityObservation, SqlCapabilityImplementationCoverage, SqlRuntimeCapabilityReport, SqlRewritePlan, SqlRewriteResult, SqlStatementAst, SqlQueryAst, SqlSelectStatementAst, SqlSetOperationStatementAst, SqlInsertStatementAst, SqlUpdateStatementAst, SqlDeleteStatementAst, SqlAstWithClause, SqlAstDerivedTable, SqlAstSubqueryExpression, SqlAstCaseExpression, SqlAstCastExpression, SqlAstWindowExpression, SqlAstWindowDefinition, SqlStatementCompilerScope, SqlCompiledAst, SqlStatementTranspileResult, DialectRegistryApi, DialectRegistryProduct, ProfileCapabilityApi, ProfileCapabilityStatus } from 'nubloxsql';",
     "const mysql: MySqlClient = sql.createClient({ dialect: 'mysql', user: 'app', pool: false });",
     "const pg: PostgreSqlClient = sql.createClient({ dialect: 'pg', user: 'app', pool: false });",
     "const sqlite: SqliteClient = sql.createClient({ dialect: 'sqlite', filename: ':memory:', pool: false });",
@@ -143,6 +144,9 @@ try {
     "const mysqlDiagnostic: Promise<QueryDiagnosticsReport> = mysql.diagnose('SELECT 1', { analyze: true });",
     "const ontology: SqlCapabilityOntologyApi = sql.capabilityOntology;",
     "const dialectRegistry: DialectRegistryApi = sql.dialectRegistry;",
+    "const profileCapabilityApi: ProfileCapabilityApi = sql.profileCapabilities;",
+    "const inheritedCapability: ProfileCapabilityStatus = profileCapabilityApi.status('aurora-postgresql', 'statements.select');",
+    "if (inheritedCapability.available !== null) throw new Error('profile capability inheritance must fail closed');",
     "const auroraProfile: DialectRegistryProduct | null = dialectRegistry.product('aurora-postgresql');",
     "if (!auroraProfile || auroraProfile.driver.routable) throw new Error('dialect registry type/runtime contract failed');",
     "const ontologyDefinition: SqlCapabilityDefinition | null = ontology.definition('statements.insert');",
