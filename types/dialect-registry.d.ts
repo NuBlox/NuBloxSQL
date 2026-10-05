@@ -118,3 +118,9 @@ export const DIALECT_REGISTRY_SCHEMA_VERSION: 1;
 export const DIALECT_REGISTRY_MASTER_PROFILE_COUNT: 100;
 export const PRIMARY_SQL_DIALECTS: readonly string[];
 export const dialectRegistry: DialectRegistryApi;
+
+declare module './public' {
+  interface SqlCapabilityModelApi {
+    readonly dialectRegistry: DialectRegistryApi;
+  }
+}
