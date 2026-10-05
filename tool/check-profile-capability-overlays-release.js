@@ -6,6 +6,7 @@ var sql = require('..');
 assert.strictEqual(sql.PROFILE_CAPABILITY_OVERLAY_SCHEMA_VERSION, 1);
 assert.strictEqual(sql.profileCapabilities.validate().valid, true);
 assert.strictEqual(sql.profileCapabilities.validate().profiles, 100);
+assert.strictEqual(sql.profileCapabilities.validate().officialOverlays, 1);
 
 var exact = sql.profileCapabilities.status('postgresql', 'statements.select');
 assert.strictEqual(exact.resolution, 'base-qualified');
@@ -18,6 +19,20 @@ assert.strictEqual(inherited.baseline.support, 'native');
 
 var mariadb = sql.profileCapabilities.definition('mariadb');
 assert.strictEqual(mariadb.baseDialect, 'mysql');
+assert.strictEqual(mariadb.verification, 'documented');
+assert.strictEqual(mariadb.changeCount, 9);
+
+var mariaJson = sql.profileCapabilities.status('mariadb', 'types.json');
+assert.strictEqual(mariaJson.resolution, 'overlay-documented');
+assert.strictEqual(mariaJson.feature.nativeName, 'LONGTEXT COLLATE utf8mb4_bin');
+
+var mariaSequence = sql.profileCapabilities.status('mariadb', 'statements.createSequence', { context: { version: '10.3' } });
+assert.strictEqual(mariaSequence.resolution, 'overlay-documented');
+assert.strictEqual(mariaSequence.feature.support, 'native');
+
+var mariaUuid = sql.profileCapabilities.status('mariadb', 'types.uuid', { context: { version: '10.7' } });
+assert.strictEqual(mariaUuid.resolution, 'overlay-documented');
+assert.strictEqual(mariaUuid.feature.support, 'native');
 
 var unavailable = sql.profileCapabilities.status('sqlserver', 'statements.select');
 assert.strictEqual(unavailable.resolution, 'baseline-unavailable');
