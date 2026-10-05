@@ -20,7 +20,10 @@ The first bootstrap contract supports:
 - audit records;
 - manual-step boundaries;
 - PostgreSQL/SQL Server reconnect boundaries after database creation;
-- client-level convenience methods.
+- client-level convenience methods;
+- server/instance identity discovery;
+- database/catalog enumeration;
+- bootstrap prerequisite assessment.
 
 This release does **not** yet implement:
 
@@ -34,6 +37,52 @@ This release does **not** yet implement:
 - maintenance configuration.
 
 Those remain separate administration capabilities in the product roadmap.
+
+## Discover the server first
+
+```js
+const discovery = await sql.discoverDatabaseServer(serverClient);
+```
+
+The discovery report gives a normalized server identity plus the visible database/catalog inventory while retaining the engine-native rows under `native`.
+
+Normalized identity includes:
+
+```text
+product
+version
+edition
+serverName
+currentDatabase
+currentUser
+```
+
+The inventory deliberately preserves engine differences. PostgreSQL template databases, MySQL schemas/databases, SQLite attached databases and SQL Server database state remain visible instead of being flattened into false equivalence.
+
+A connected client can use the convenience form:
+
+```js
+const discovery = await client.discoverServer();
+```
+
+## Assess prerequisites
+
+```js
+const prerequisites = await sql.assessDatabaseBootstrapPrerequisites(
+  serverClient,
+  plan
+);
+```
+
+The report combines discovery evidence with bootstrap-plan requirements. Its overall status is `ready`, `attention` or `blocked`.
+
+`attention` is intentionally not failure. It is used for boundaries that need explicit operator handling, such as administrative privileges that cannot be proven portably in advance, manual steps, or a required reconnect/open-database callback.
+
+A client can use:
+
+```js
+const prerequisites = await client.assessBootstrapPrerequisites(plan);
+```
 
 ## Plan before execution
 
@@ -188,6 +237,8 @@ const result = await client.executeBootstrap(plan, {
 The root API also exposes:
 
 ```text
+discoverDatabaseServer()
+assessDatabaseBootstrapPrerequisites()
 planDatabaseBootstrap()
 bootstrapAutomaticSteps()
 bootstrapManualSteps()
@@ -215,11 +266,10 @@ The bootstrap capability remains **Partial**, not Established.
 
 The next work should add, in order:
 
-1. server/instance discovery and prerequisite report;
-2. database option modelling such as encoding/collation/ownership where defensible;
-3. configuration discovery and change planning;
-4. security administration for users/logins/roles/privileges;
-5. extension/feature enablement;
-6. live qualification of database creation/bootstrap across the supported engines.
+1. database option modelling such as encoding/collation/ownership where defensible;
+2. configuration discovery and change planning;
+3. security administration for users/logins/roles/privileges;
+4. extension/feature enablement;
+5. live qualification of database creation/bootstrap across the supported engines.
 
 The infrastructure boundary remains fixed: NuBloxSQL manages database lifecycle concerns, not generic cloud or VM provisioning.
