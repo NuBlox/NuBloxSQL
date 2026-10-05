@@ -100,6 +100,58 @@ async function plannerContracts(){
   var escaped=sql.planDatabaseBootstrap({database:'a"b'},{targetDialect:'postgresql'});
   assert.strictEqual(escaped.steps[0].sql,'CREATE DATABASE "a""b"');
 
+  var pgOptions=sql.planDatabaseBootstrap({
+    database:{
+      name:'configured',
+      options:{
+        owner:'app_owner',
+        template:'template0',
+        encoding:'UTF8',
+        collation:'en_GB.UTF-8',
+        ctype:'en_GB.UTF-8',
+        tablespace:'app_space'
+      }
+    }
+  },{targetDialect:'postgresql'});
+  assert.strictEqual(
+    pgOptions.steps[0].sql,
+    'CREATE DATABASE "configured" WITH OWNER = "app_owner" TEMPLATE = "template0" ENCODING = \'UTF8\' LC_COLLATE = \'en_GB.UTF-8\' LC_CTYPE = \'en_GB.UTF-8\' TABLESPACE = "app_space"'
+  );
+
+  var mysqlOptions=sql.planDatabaseBootstrap({
+    database:{name:'configured',options:{characterSet:'utf8mb4',collation:'utf8mb4_0900_ai_ci'}}
+  },{targetDialect:'mysql'});
+  assert.strictEqual(
+    mysqlOptions.steps[0].sql,
+    'CREATE DATABASE IF NOT EXISTS '+tick+'configured'+tick+' CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci'
+  );
+
+  var sqlServerOptions=sql.planDatabaseBootstrap({
+    database:{name:'configured',options:{collation:'Latin1_General_100_CI_AS_SC_UTF8'}}
+  },{targetDialect:'sqlserver'});
+  assert.strictEqual(
+    sqlServerOptions.steps[0].sql,
+    'CREATE DATABASE [configured] COLLATE Latin1_General_100_CI_AS_SC_UTF8'
+  );
+
+  assert.throws(function(){
+    sql.planDatabaseBootstrap({
+      database:{name:'app',options:{owner:'someone'}}
+    },{targetDialect:'mysql'});
+  },/does not support database option\(s\): owner/);
+
+  assert.throws(function(){
+    sql.planDatabaseBootstrap({
+      database:{name:'app.db',options:{collation:'binary'}}
+    },{targetDialect:'sqlite'});
+  },/does not support database option\(s\): collation/);
+
+  assert.throws(function(){
+    sql.planDatabaseBootstrap({
+      database:{name:'app',options:{collation:'utf8mb4; DROP DATABASE app'}}
+    },{targetDialect:'mysql'});
+  },/contains unsupported characters/);
+
   assert.throws(function(){
     sql.planDatabaseBootstrap({database:'app',schemas:['x','x']},{targetDialect:'postgresql'});
   },/duplicate schema/);
