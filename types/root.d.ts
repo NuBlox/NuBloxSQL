@@ -19,3 +19,4 @@ export * from './dialect-registry';
 export * from './profile-capabilities';
 
 export * from './database-bootstrap';
+export * from './server-discovery';
