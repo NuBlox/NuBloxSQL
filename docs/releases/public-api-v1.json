@@ -105,7 +105,11 @@
     "supports",
     "transactionPolicy",
     "typeCompatibility",
-    "typeSemantics"
+    "typeSemantics",
+    "DIALECT_REGISTRY_SCHEMA_VERSION",
+    "DIALECT_REGISTRY_MASTER_PROFILE_COUNT",
+    "PRIMARY_SQL_DIALECTS",
+    "dialectRegistry"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -185,7 +189,10 @@
     "lib/client/MigrationPlanner.js",
     "types/migration-executor.d.ts",
     "lib/client/MigrationExecutor.js",
-    "lib/client/DataMovementPlanner.js"
+    "lib/client/DataMovementPlanner.js",
+    "types/dialect-registry.d.ts",
+    "lib/capabilities/DialectRegistry.js",
+    "lib/capabilities/DialectRegistryData.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
