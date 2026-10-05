@@ -106,7 +106,7 @@
     {
       "id": "administration.configuration",
       "pillar": "administration",
-      "status": "gap"
+      "status": "partial"
     },
     {
       "id": "administration.security",
