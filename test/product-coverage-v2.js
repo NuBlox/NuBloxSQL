@@ -24,6 +24,11 @@ assert.ok(Array.isArray(report.pillars.portability));
 assert.ok(Array.isArray(report.pillars.platform));
 assert.ok(Array.isArray(report.pillars['dialect-depth']));
 
+var dialectRegistry=sql.productCoverage.area('portability.dialect-registry');
+assert.strictEqual(dialectRegistry.status,'established');
+assert.strictEqual(dialectRegistry.stages.publicApi,'implemented');
+assert.strictEqual(dialectRegistry.dialects.sqlserver,'implemented');
+
 var metadata=sql.productCoverage.area('intelligence.metadata');
 assert.strictEqual(metadata.status,'strong');
 assert.strictEqual(metadata.stages.introspection,'implemented');
