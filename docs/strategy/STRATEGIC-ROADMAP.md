@@ -71,6 +71,12 @@ This lets the ontology describe the whole product rather than mainly compiler co
 
 Future dialect work should register identity/inheritance first, then add product-specific capability evidence, driver qualification and compiler/runtime support explicitly.
 
+## Dialect profile capability overlays
+
+**Status:** overlay engine delivered. Registry profiles can now resolve against the nearest implemented capability baseline while inherited capabilities remain `inherited-unverified` until product-specific evidence is supplied. Immutable overlays support additions, overrides, removals and version/edition/deployment constraints.
+
+The official overlay evidence register intentionally starts empty: product differences must be added only with documentation or runtime qualification rather than inferred from compatibility branding.
+
 ## Priority 2 — promote SQL Server toward Tier 1
 
 SQL Server already has meaningful native runtime depth and live qualification.
