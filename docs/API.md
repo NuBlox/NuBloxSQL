@@ -530,3 +530,31 @@ unknown
 ```
 
 NuBloxSQL preserves uncertainty rather than inventing cross-engine equivalence. PostgreSQL `pg_settings` and SQL Server `sys.configurations` provide rich change semantics; MySQL global-variable discovery currently reports mutability/apply semantics as unknown where the discovery source cannot prove them; SQLite exposes a curated read-only PRAGMA configuration view because SQLite has no server configuration catalog.
+
+
+## Database configuration change planning
+
+`DATABASE_CONFIGURATION_PLAN_SCHEMA_VERSION === 1` defines immutable configuration change plans built from a configuration discovery report.
+
+```js
+const discovered = await db.discoverConfiguration();
+
+const plan = db.planConfiguration(discovered, {
+  changes: [
+    { name: 'work_mem', value: '8192' }
+  ]
+});
+```
+
+Plans contain a SHA-256 `planHash`, safety-classified automatic/manual/satisfied steps, native SQL where NuBloxSQL has sufficient evidence, and explicit privilege/reload/restart/reconnect/transaction-boundary requirements.
+
+`configurationAutomaticSteps(plan)` and `configurationManualSteps(plan)` provide filtered plan views.
+
+Current planner behaviour is deliberately conservative:
+
+- PostgreSQL uses `ALTER SYSTEM`, followed by `pg_reload_conf()` or a manual restart boundary according to discovered context.
+- SQL Server uses `sys.sp_configure` plus `RECONFIGURE`, validates numeric bounds from `sys.configurations`, and preserves restart boundaries for non-dynamic options.
+- SQLite renders direct PRAGMA assignments only for discovery entries whose lifecycle is classified as immediate; lifecycle-sensitive PRAGMAs remain manual.
+- MySQL changes remain manual until variable-specific dynamic/persistible evidence is available.
+
+Planning does not execute any change.
