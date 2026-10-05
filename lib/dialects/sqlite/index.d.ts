@@ -40,6 +40,8 @@ export interface SQLiteConnectionOptions {
 export interface SQLiteQueryOptions { readBigInts?: boolean; maxRows?: number; maxRowBytes?: number; maxResultBytes?: number; }
 export interface SQLiteFieldMetadata { readonly name: string; readonly nativeType?: string; readonly extension: Readonly<{ database: string | null; table: string | null; column: string | null; }>; }
 export interface SQLiteCommandResult { readonly kind: 'command'; readonly affectedRows?: number | bigint; readonly rowCount?: number; readonly insertId?: number | bigint; readonly extension?: unknown; }
+export interface SQLitePreparedBatchOptions { transactionMode?: 'deferred' | 'immediate' | 'exclusive'; }
+export interface SQLitePreparedBatchResult { readonly kind: 'command'; readonly affectedRows: bigint; readonly rowCount: number; readonly strategy: 'sqlite-prepared-transaction'; }
 export interface SQLiteRowsResult<Row = Record<string, SQLiteValue>> { readonly kind: 'rows'; readonly rows: readonly Row[]; readonly fields: readonly SQLiteFieldMetadata[]; readonly rowCount: number; readonly extension: Readonly<{ resultBytes: number }>; }
 export class SqliteError extends Error { readonly code?: string; readonly sqliteCode?: number; readonly category: string; readonly retryable: boolean; readonly cause?: unknown; }
 export class SqliteResultLimitError extends SqliteError { readonly limit?: number; readonly observed?: number; }
@@ -233,6 +235,7 @@ export class Connection {
   prepare<Row = Record<string, SQLiteValue>>(sql: string, options?: SQLiteQueryOptions): PreparedStatement<Row>;
   query<Row = Record<string, SQLiteValue>>(sql: string, parameters?: SQLiteParameters, options?: SQLiteQueryOptions): SQLiteRowsResult<Row>;
   run(sql: string, parameters?: SQLiteParameters, options?: SQLiteQueryOptions): SQLiteCommandResult;
+  insertMany(tableParts: readonly string[], columnNames: readonly string[], rows: readonly Record<string, unknown>[], options?: SQLitePreparedBatchOptions): SQLitePreparedBatchResult | null;
   begin(mode?: 'deferred' | 'immediate' | 'exclusive'): SQLiteCommandResult;
   commit(): SQLiteCommandResult;
   rollback(): SQLiteCommandResult;
