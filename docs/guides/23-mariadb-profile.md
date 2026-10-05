@@ -54,6 +54,20 @@ schema.systemVersionedTable
 queries.temporal.systemTime
 ```
 
+### Recursive CTE cycle detection
+
+MariaDB supports recursive-CTE cycle detection with a relaxed `CYCLE ... RESTRICT` grammar from 10.5.2. This is not the full SQL-standard `CYCLE` syntax, so NuBloxSQL records both the support and the semantic restriction.
+
+Official reference:
+
+- https://mariadb.com/docs/server/reference/sql-statements/data-manipulation/selecting-data/common-table-expressions/with
+
+NuBloxSQL path:
+
+```text
+queries.cte.cycle
+```
+
 ### Native UUID type
 
 MariaDB provides a native `UUID` data type from MariaDB 10.7.
@@ -92,13 +106,14 @@ LONGTEXT COLLATE utf8mb4_bin
 
 ### RETURNING
 
-MariaDB documents statement-specific `RETURNING` support including `INSERT ... RETURNING`, `REPLACE ... RETURNING`, and single-table `DELETE ... RETURNING`. MariaDB documentation also identifies `INSERT ... RETURNING` and `REPLACE ... RETURNING` as available from MariaDB 10.5.
+MariaDB documents statement-specific `RETURNING` support including single-table `DELETE ... RETURNING`, `INSERT ... RETURNING`, `REPLACE ... RETURNING`, and—starting in MariaDB 13.0—single-table `UPDATE ... RETURNING`. `DELETE ... RETURNING` predates the 10.5 additions; `INSERT ... RETURNING` and `REPLACE ... RETURNING` are documented from MariaDB 10.5.
 
 Official references:
 
 - https://mariadb.com/docs/server/reference/sql-statements/data-manipulation/inserting-loading-data/insertreturning
 - https://mariadb.com/docs/server/reference/sql-statements/data-manipulation/changing-deleting-data/delete
 - https://mariadb.com/docs/release-notes/community-server/about/compatibility-and-differences/incompatibilities-and-feature-differences-between-mariadb-and-mysql-unmaint/incompatibilities-and-feature-differences-between-mariadb-10-7-and-mysql-8
+- https://mariadb.com/resources/blog/announcing-mariadb-community-server-13-0-ga/
 
 NuBloxSQL records:
 
@@ -106,6 +121,8 @@ NuBloxSQL records:
 syntax.returning          partial
 statements.insertReturning native
 statements.deleteReturning native
+statements.replaceReturning native
+statements.updateReturning native from 13.0
 ```
 
 The general `syntax.returning` capability remains `partial` because MariaDB's support is statement-specific rather than a single PostgreSQL-style DML RETURNING contract.
