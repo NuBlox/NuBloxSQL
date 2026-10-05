@@ -211,7 +211,21 @@ async function clientSurface(){
   var state={databases:Object.create(null),schemas:Object.create(null),executed:[]};
   var adapter={
     descriptor:{capabilities:{},supports:function(){return false;}},
-    createConnection:function(){return fakeClient('postgresql',state,'server');}
+    createConnection:function(){
+      var high=fakeClient('postgresql',state,'server');
+      return {
+        connected:true,
+        async query(statement){
+          var rows=await high.all(statement);
+          return {rows:rows,fields:[],rowCount:rows.length};
+        },
+        async execute(statement){
+          await high.execute(statement);
+          return {rows:[],fields:[],rowCount:0};
+        },
+        async close(){await high.close();}
+      };
+    }
   };
   var client=new sql.Client(adapter,'postgresql',{pool:false});
   var plan=client.planBootstrap({database:'client_db'});
