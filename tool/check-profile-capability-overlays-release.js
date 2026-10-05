@@ -20,7 +20,7 @@ assert.strictEqual(inherited.baseline.support, 'native');
 var mariadb = sql.profileCapabilities.definition('mariadb');
 assert.strictEqual(mariadb.baseDialect, 'mysql');
 assert.strictEqual(mariadb.verification, 'documented');
-assert.strictEqual(mariadb.changeCount, 11);
+assert.strictEqual(mariadb.changeCount, 12);
 
 var mariaJson = sql.profileCapabilities.status('mariadb', 'types.json');
 assert.strictEqual(mariaJson.resolution, 'overlay-documented');
@@ -29,6 +29,10 @@ assert.strictEqual(mariaJson.feature.nativeName, 'LONGTEXT COLLATE utf8mb4_bin')
 var mariaSequence = sql.profileCapabilities.status('mariadb', 'statements.createSequence', { context: { version: '10.3' } });
 assert.strictEqual(mariaSequence.resolution, 'overlay-documented');
 assert.strictEqual(mariaSequence.feature.support, 'native');
+
+var mariaCycle = sql.profileCapabilities.status('mariadb', 'queries.cte.cycle', { context: { version: '10.5.2' } });
+assert.strictEqual(mariaCycle.resolution, 'overlay-documented');
+assert.strictEqual(mariaCycle.feature.nativeName, 'CYCLE ... RESTRICT');
 
 var mariaUuid = sql.profileCapabilities.status('mariadb', 'types.uuid', { context: { version: '10.7' } });
 assert.strictEqual(mariaUuid.resolution, 'overlay-documented');
