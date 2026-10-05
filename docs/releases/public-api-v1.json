@@ -123,7 +123,12 @@
     "bootstrapAutomaticSteps",
     "bootstrapManualSteps",
     "inspectDatabaseBootstrap",
-    "executeDatabaseBootstrap"
+    "executeDatabaseBootstrap",
+    "DATABASE_SERVER_DISCOVERY_SCHEMA_VERSION",
+    "DATABASE_BOOTSTRAP_PREREQUISITE_SCHEMA_VERSION",
+    "DATABASE_BOOTSTRAP_PREREQUISITE_STATUSES",
+    "discoverDatabaseServer",
+    "assessDatabaseBootstrapPrerequisites"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -212,7 +217,9 @@
     "lib/capabilities/ProfileCapabilityOverlayData.js",
     "types/database-bootstrap.d.ts",
     "lib/client/DatabaseBootstrapPlanner.js",
-    "lib/client/DatabaseBootstrapExecutor.js"
+    "lib/client/DatabaseBootstrapExecutor.js",
+    "types/server-discovery.d.ts",
+    "lib/client/DatabaseServerDiscovery.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
