@@ -24,6 +24,8 @@ console.log(sql.DIALECT_REGISTRY_MASTER_PROFILE_COUNT); // 100
 const aurora = sql.dialectRegistry.product('aurora-postgresql');
 
 console.log(aurora.vendor);          // Amazon
+console.log(aurora.profileDialect);  // aurora-postgresql
+console.log(aurora.dialect);         // postgresql
 console.log(aurora.parentDialect);   // postgresql
 console.log(aurora.primaryDialect);  // postgresql
 console.log(aurora.driver.routable); // false
@@ -41,7 +43,8 @@ Each product/profile contains:
 
 - `vendor`;
 - `product`;
-- `dialect`;
+- `profileDialect` (the registry/profile identity);
+- `dialect` (the canonical first-class dialect when one is defined);
 - `parentDialect`;
 - `primaryDialect`;
 - qualified `versions`;
