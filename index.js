@@ -29,6 +29,7 @@ var databaseBootstrapPlannerApi = require('./lib/client/DatabaseBootstrapPlanner
 var databaseBootstrapExecutorApi = require('./lib/client/DatabaseBootstrapExecutor');
 var databaseServerDiscoveryApi = require('./lib/client/DatabaseServerDiscovery');
 var databaseConfigurationApi = require('./lib/client/DatabaseConfiguration');
+var databaseConfigurationPlannerApi = require('./lib/client/DatabaseConfigurationPlanner');
 streamApi.install(clientApi);
 require('./lib/client/SqlServerStreamIntegration').install(streamApi);
 diagnosticsApi.install(clientApi);
@@ -227,6 +228,9 @@ exports.DATABASE_BOOTSTRAP_PREREQUISITE_STATUSES = databaseServerDiscoveryApi.PR
 exports.DATABASE_CONFIGURATION_DISCOVERY_SCHEMA_VERSION = databaseConfigurationApi.SCHEMA_VERSION;
 exports.DATABASE_CONFIGURATION_APPLY_MODES = databaseConfigurationApi.APPLY_MODES;
 exports.DATABASE_CONFIGURATION_SCOPES = databaseConfigurationApi.SCOPES;
+exports.DATABASE_CONFIGURATION_PLAN_SCHEMA_VERSION = databaseConfigurationPlannerApi.SCHEMA_VERSION;
+exports.DATABASE_CONFIGURATION_PLAN_EXECUTION_MODES = databaseConfigurationPlannerApi.EXECUTION;
+exports.DATABASE_CONFIGURATION_PLAN_ACTIONS = databaseConfigurationPlannerApi.ACTIONS;
 exports.planDatabaseBootstrap = databaseBootstrapPlannerApi.plan;
 exports.bootstrapAutomaticSteps = databaseBootstrapPlannerApi.automaticSteps;
 exports.bootstrapManualSteps = databaseBootstrapPlannerApi.manualSteps;
@@ -236,6 +240,9 @@ exports.discoverDatabaseServer = databaseServerDiscoveryApi.discover;
 exports.assessDatabaseBootstrapPrerequisites = databaseServerDiscoveryApi.assessBootstrapPrerequisites;
 exports.discoverDatabaseConfiguration = databaseConfigurationApi.discover;
 exports.findDatabaseConfiguration = databaseConfigurationApi.find;
+exports.planDatabaseConfiguration = databaseConfigurationPlannerApi.plan;
+exports.configurationAutomaticSteps = databaseConfigurationPlannerApi.automaticSteps;
+exports.configurationManualSteps = databaseConfigurationPlannerApi.manualSteps;
 exports.MIGRATION_PLAN_SCHEMA_VERSION = migrationPlannerApi.SCHEMA_VERSION;
 exports.MIGRATION_EXECUTION_MODES = migrationPlannerApi.EXECUTION;
 exports.MIGRATION_TRANSACTION_STRATEGIES = migrationPlannerApi.TRANSACTION;

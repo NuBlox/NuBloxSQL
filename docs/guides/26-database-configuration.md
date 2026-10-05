@@ -182,31 +182,45 @@ Some SQLite settings such as `page_size` and `auto_vacuum` have lifecycle constr
 
 ## Current boundary
 
-This release is **discovery only**.
+This release provides **discovery plus immutable change planning**.
+
+Use discovery evidence to create a deterministic plan:
+
+```js
+const discovered = await db.discoverConfiguration();
+
+const plan = db.planConfiguration(discovered, {
+  changes: [
+    { name: 'work_mem', value: '8192' }
+  ]
+});
+```
+
+Plans expose immutable steps, a SHA-256 plan hash, automatic/manual/satisfied classification, native SQL where safe, and explicit requirements for privileges, transaction boundaries, reload, restart and reconnect.
+
+PostgreSQL plans use `ALTER SYSTEM` and model `pg_reload_conf()` or a manual restart boundary from the discovered context. SQL Server plans use `sys.sp_configure` plus `RECONFIGURE`, with non-dynamic settings followed by a manual restart boundary. Safe SQLite PRAGMAs are rendered directly; lifecycle-sensitive PRAGMAs remain manual. MySQL changes remain manual until NuBloxSQL has stronger variable-specific evidence for dynamic/persistible semantics.
 
 It does not yet:
 
-- change configuration;
-- generate `ALTER SYSTEM`, `SET GLOBAL`, `sp_configure` or PRAGMA mutation plans;
-- persist MySQL variables;
-- edit PostgreSQL configuration files;
-- restart/reload database services;
+- execute configuration change plans;
+- automatically choose `SET GLOBAL`, `SET PERSIST` or `SET PERSIST_ONLY` for MySQL;
+- edit PostgreSQL configuration files directly;
+- restart database services;
 - claim privilege availability;
 - modify operating-system, cloud or container configuration.
 
 That separation is intentional.
 
-The next configuration slice should introduce immutable **change plans** with:
+The next configuration slice should introduce controlled **plan execution** with:
 
-- requested intent;
-- current value evidence;
-- engine-native rendering;
-- mutability validation;
-- scope validation;
-- reload/restart/new-session requirements;
-- approval gates;
 - dry-run;
+- explicit approval gates;
+- manual-step handlers;
+- pre-execution rediscovery/drift checks;
+- controlled native SQL execution;
+- reload handling;
 - post-change verification;
+- restart-boundary reporting;
 - audit output.
 
-Only after that contract is stable should NuBloxSQL execute configuration changes automatically.
+Service restarts must remain explicit/manual unless a future execution environment can prove ownership of that lifecycle boundary.

@@ -133,7 +133,13 @@
     "DATABASE_CONFIGURATION_APPLY_MODES",
     "DATABASE_CONFIGURATION_SCOPES",
     "discoverDatabaseConfiguration",
-    "findDatabaseConfiguration"
+    "findDatabaseConfiguration",
+    "DATABASE_CONFIGURATION_PLAN_SCHEMA_VERSION",
+    "DATABASE_CONFIGURATION_PLAN_EXECUTION_MODES",
+    "DATABASE_CONFIGURATION_PLAN_ACTIONS",
+    "planDatabaseConfiguration",
+    "configurationAutomaticSteps",
+    "configurationManualSteps"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -226,7 +232,9 @@
     "types/server-discovery.d.ts",
     "lib/client/DatabaseServerDiscovery.js",
     "types/database-configuration.d.ts",
-    "lib/client/DatabaseConfiguration.js"
+    "lib/client/DatabaseConfiguration.js",
+    "types/database-configuration-planner.d.ts",
+    "lib/client/DatabaseConfigurationPlanner.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
