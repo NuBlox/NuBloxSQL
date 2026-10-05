@@ -13,3 +13,5 @@ export * from './schema-diff';
 export * from './migration-planner';
 export * from './migration-executor';
 export * from './data-movement';
+
+export * from './dialect-registry';
