@@ -69,6 +69,12 @@ assert.strictEqual(bootstrap.stages.runtime,'implemented');
 assert.strictEqual(bootstrap.stages.introspection,'implemented');
 assert.strictEqual(bootstrap.stages.contractTest,'implemented');
 
+var configuration=sql.productCoverage.area('administration.configuration');
+assert.strictEqual(configuration.status,'partial');
+assert.strictEqual(configuration.stages.publicApi,'implemented');
+assert.strictEqual(configuration.stages.introspection,'implemented');
+assert.strictEqual(configuration.stages.contractTest,'implemented');
+
 var health=sql.productCoverage.area('operations.health-sessions');
 assert.strictEqual(health.status,'partial');
 

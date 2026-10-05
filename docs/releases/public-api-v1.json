@@ -128,7 +128,12 @@
     "DATABASE_BOOTSTRAP_PREREQUISITE_SCHEMA_VERSION",
     "DATABASE_BOOTSTRAP_PREREQUISITE_STATUSES",
     "discoverDatabaseServer",
-    "assessDatabaseBootstrapPrerequisites"
+    "assessDatabaseBootstrapPrerequisites",
+    "DATABASE_CONFIGURATION_DISCOVERY_SCHEMA_VERSION",
+    "DATABASE_CONFIGURATION_APPLY_MODES",
+    "DATABASE_CONFIGURATION_SCOPES",
+    "discoverDatabaseConfiguration",
+    "findDatabaseConfiguration"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -219,7 +224,9 @@
     "lib/client/DatabaseBootstrapPlanner.js",
     "lib/client/DatabaseBootstrapExecutor.js",
     "types/server-discovery.d.ts",
-    "lib/client/DatabaseServerDiscovery.js"
+    "lib/client/DatabaseServerDiscovery.js",
+    "types/database-configuration.d.ts",
+    "lib/client/DatabaseConfiguration.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
