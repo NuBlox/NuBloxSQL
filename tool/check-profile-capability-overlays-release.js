@@ -20,7 +20,7 @@ assert.strictEqual(inherited.baseline.support, 'native');
 var mariadb = sql.profileCapabilities.definition('mariadb');
 assert.strictEqual(mariadb.baseDialect, 'mysql');
 assert.strictEqual(mariadb.verification, 'documented');
-assert.strictEqual(mariadb.changeCount, 9);
+assert.strictEqual(mariadb.changeCount, 11);
 
 var mariaJson = sql.profileCapabilities.status('mariadb', 'types.json');
 assert.strictEqual(mariaJson.resolution, 'overlay-documented');
@@ -33,6 +33,10 @@ assert.strictEqual(mariaSequence.feature.support, 'native');
 var mariaUuid = sql.profileCapabilities.status('mariadb', 'types.uuid', { context: { version: '10.7' } });
 assert.strictEqual(mariaUuid.resolution, 'overlay-documented');
 assert.strictEqual(mariaUuid.feature.support, 'native');
+
+var mariaUpdateReturning = sql.profileCapabilities.status('mariadb', 'statements.updateReturning', { context: { version: '13.0' } });
+assert.strictEqual(mariaUpdateReturning.resolution, 'overlay-documented');
+assert.strictEqual(mariaUpdateReturning.feature.support, 'native');
 
 var unavailable = sql.profileCapabilities.status('sqlserver', 'statements.select');
 assert.strictEqual(unavailable.resolution, 'baseline-unavailable');
