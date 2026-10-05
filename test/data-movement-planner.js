@@ -117,6 +117,43 @@ async function automaticLosslessFallback() {
   await target.close();
 }
 
+async function sqlitePlannerAndExecution() {
+  var target = sql.createClient({ dialect: 'sqlite', pool: false });
+  await target.execute('CREATE TABLE target(id INTEGER PRIMARY KEY, name TEXT, active INTEGER)');
+
+  var moveSpec = {
+    source: { statement: 'SELECT id, name, active FROM source ORDER BY id' },
+    target: { table: 'target', columns: ['id', 'name', 'active'] }
+  };
+  var transferPlan = sql.planDataMovement(source('postgresql', []), target, moveSpec);
+  assert.strictEqual(transferPlan.strategy, 'sqlite-prepared-transaction');
+  assert.strictEqual(transferPlan.accelerated, true);
+  assert.strictEqual(transferPlan.fallback, 'portable-batched-insert');
+
+  var checkpoints = [];
+  var result = await sql.moveData(source('postgresql', [
+    { id: 1, name: 'Ada', active: true },
+    { id: 2, name: 'Grace', active: false },
+    { id: 3, name: null, active: true }
+  ]), target, moveSpec, {
+    batchSize: 2,
+    strategy: 'native',
+    onCheckpoint: function (checkpoint) { checkpoints.push(checkpoint.rowOffset); }
+  });
+
+  assert.strictEqual(result.status, 'succeeded');
+  assert.strictEqual(result.rowsWritten, 3);
+  assert.deepStrictEqual(result.strategiesUsed, ['sqlite-prepared-transaction']);
+  assert.deepStrictEqual(checkpoints, [2, 3]);
+  assert.deepStrictEqual(await target.all('SELECT id, name, active FROM target ORDER BY id'), [
+    { id: 1, name: 'Ada', active: 1 },
+    { id: 2, name: 'Grace', active: 0 },
+    { id: 3, name: null, active: 1 }
+  ]);
+
+  await target.close();
+}
+
 async function sqlServerPlannerAndExecution() {
   var target = sql.createClient({ dialect: 'sqlserver', pool: false, host: 'localhost', user: 'test', password: 'test', database: 'test' });
   var calls = [];
@@ -175,6 +212,7 @@ Promise.resolve()
   .then(plannerGuardrails)
   .then(postgresPlannerAndExecution)
   .then(mysqlPlannerAndExecution)
+  .then(sqlitePlannerAndExecution)
   .then(sqlServerPlannerAndExecution)
   .then(automaticLosslessFallback)
   .then(function () { console.log('NuBloxSQL native data movement planner: PASS'); })
