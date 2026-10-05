@@ -1,312 +1,380 @@
 # NuBloxSQL Strategic Roadmap
 
-This roadmap replaces feature-wave momentum with product-coverage priorities.
+This roadmap is governed by [PRODUCT-DEFINITION.md](PRODUCT-DEFINITION.md).
 
-## Direction
+NuBloxSQL is being built as **one coherent JavaScript/TypeScript API for the complete SQL database lifecycle**, not as a parser project, ORM, workbench UI or race to support the largest number of dialect names.
 
-The competitive capability programme is documented in [COMPETITIVE-BENCHMARK.md](COMPETITIVE-BENCHMARK.md). Database Tour is used as a breadth benchmark for database exploration, SQL tooling, data movement, automation and reporting; NuBloxSQL remains an independent product and does not copy its implementation or UI.
+## Product focus
 
+Executable engine focus:
 
-The immediate objective is to turn NuBloxSQL from a strong multi-dialect database integration package with an increasingly capable compiler into a **balanced database platform**.
+- PostgreSQL;
+- MySQL;
+- SQLite;
+- SQL Server.
 
-The next work should strengthen missing horizontal capabilities before returning to deep vendor grammar edges.
+The dialect/DBMS registry remains future-expansion and knowledge infrastructure. Additional DBMS profile/runtime expansion is frozen until the core lifecycle becomes coherent.
 
-## Priority 0 — freeze statement-family churn
+## Lifecycle direction
 
-Until the items below are reviewed, do not create another `dml-v*` or `ddl-v*` wave merely because an adjacent grammar feature exists.
-
-Existing dml-v1 through dml-v10 and ddl-v1 through ddl-v11 remain released capability scopes. They are not deprecated.
-
-New compiler scopes should require a capability-register justification.
-
-## Priority 1 — capability coverage dashboard
-
-**Status:** implemented as Product Coverage Model v2. The public `productCoverage` API and `docs/releases/product-coverage-v2.json` now provide the machine-readable whole-product register; future roadmap decisions should update this model and its evidence.
-
-Create a machine-readable product coverage register derived from:
-
-- capability ontology definitions and observations;
-- NuBlox implementation stages;
-- runtime tests;
-- live engine qualification;
-- public API manifests;
-- metadata/diagnostics contracts.
-
-The output should answer:
-
-- what the engine supports;
-- what NuBloxSQL observes;
-- what NuBloxSQL implements;
-- at which maturity stage;
-- which dialects are live-qualified;
-- which product pillar owns the capability;
-- what remains missing.
-
-This should become the planning source of truth.
-
-### Required improvement to ontology implementation metadata
-
-Current implementation records are compiler-centric and use a compact stage model.
-
-Expand implementation maturity so it can represent at least:
-
-- parser;
-- AST;
-- semantic validator;
-- renderer;
-- rewrite/portability decision;
-- runtime;
-- introspection;
-- diagnostics;
-- contract test;
-- live qualification;
-- packaged/public;
-- documentation.
-
-This lets the ontology describe the whole product rather than mainly compiler coverage.
-
-## Canonical dialect / DBMS registry
-
-**Status:** first canonical registry delivered. NuBloxSQL now separates vendor, product/profile, version, dialect identity, parent dialect, implementation/routing status, wire protocol and language-surface coverage. The registry contains the 100 research profiles and the initial 25 first-class dialect targets without widening executable routing.
-
-Future dialect work should register identity/inheritance first, then add product-specific capability evidence, driver qualification and compiler/runtime support explicitly.
-
-## Dialect profile capability overlays
-
-**Status:** overlay engine delivered. Registry profiles can now resolve against the nearest implemented capability baseline while inherited capabilities remain `inherited-unverified` until product-specific evidence is supplied. Immutable overlays support additions, overrides, removals and version/edition/deployment constraints.
-
-The official overlay evidence register now contains its first evidence-backed profile: MariaDB over the MySQL baseline. Documented differences include sequences, system-versioned tables, native UUID, MariaDB JSON storage semantics and statement-specific RETURNING. Additional profiles must still be added only from authoritative documentation or runtime qualification.
-
-## Priority 2 — promote SQL Server toward Tier 1
-
-SQL Server already has meaningful native runtime depth and live qualification.
-
-The strategic gap is product parity:
-
-- include SQL Server in the common capability ontology;
-- add portable metadata-vocabulary parity;
-- add shared query-diagnostics contract support;
-- define version qualification policy;
-- add SQL Server to compatibility matrices where evidence exists;
-- determine which compiler subsets can be responsibly promoted.
-
-This yields more product value than another narrow PostgreSQL MERGE extension.
-
-## Priority 3 — canonical type semantics
-
-**Status:** first released canonical type semantics slice delivered. Metadata inference, typed-bind integration and cross-dialect mapping decisions are now public; remaining work is advanced/vendor-specific type families.
-
-Build a product-level type system that connects:
-
-- SQL type AST;
-- typed binds;
-- result decoding;
-- metadata types;
-- dialect type names;
-- precision/scale/length;
-- nullability;
-- temporal semantics;
-- binary/text encodings;
-- JSON;
-- UUID/GUID;
-- arrays where supported;
-- enum/domain/native user-defined types;
-- portability/lossiness.
-
-The type system should produce explicit mapping decisions such as:
+Development should strengthen the lifecycle in this order:
 
 ```text
-native-equivalent
-lossless-map
-lossy-map
-application-convention
-unsupported
-runtime-qualified
+Discover
+  -> Establish
+     -> Build
+        -> Use
+           -> Understand
+              -> Operate
+                 -> Change
+                    -> Retire
 ```
 
-This is foundational for schema migration, metadata fidelity, generated models and cross-dialect correctness.
+The existing repository is strongest in **Build / Use / Understand / Change**.
 
-## Priority 4 — schema diff and migration planning
+The largest strategic deficit is now explicitly **Establish / Operate / Retire**.
 
-**Status:** canonical schema snapshot, schema diff, migration planning and the first migration-execution layer are delivered. The next platform slice is unified data movement plus broader migration renderer/runtime qualification.
+That means initial setup, administration, security, maintenance, backup/recovery, replication/HA visibility, capacity, upgrade readiness, jobs and retirement are not peripheral extras. They are missing parts of the product.
 
-Use the existing metadata, DDL AST and capability planner to build:
+## Frozen work
 
-```text
-database snapshot A
-        |
-        v
-canonical schema model
-        |
-        +--> diff
-        |
-        v
-migration plan
-        |
-        +--> safety classification
-        +--> capability requirements
-        +--> dialect-specific DDL
-        +--> manual-action boundaries
-```
+Until the lifecycle priorities below are substantially addressed:
 
-Initial scope:
+1. do not add another DBMS runtime/profile solely to increase dialect breadth;
+2. do not create another numbered DML/DDL wave merely because adjacent grammar exists;
+3. do not couple NuBloxSQL to SQL Workbench, MetaObject, Enterprise OS or any downstream product;
+4. do not widen into generic cloud or infrastructure-as-code responsibilities.
 
-- schemas/namespaces;
-- tables;
-- columns;
-- types;
-- defaults;
-- nullability;
-- primary/unique/check/foreign-key constraints;
-- indexes;
-- generated/identity behavior.
+Existing registry/profile work remains useful architecture. It is not the current development priority.
 
-Migration planning must distinguish:
+## Existing foundation
 
-- additive;
-- destructive;
-- potentially data-losing;
-- rewrite/rebuild required;
-- lock-sensitive;
-- unsupported automatically.
+Released foundations already include:
 
-This is one of the highest-leverage foundations in the NuBloxSQL platform.
+- PostgreSQL, MySQL and SQLite Tier-1 runtimes;
+- SQL Server native runtime with live version qualification;
+- prepared statements, transactions, streaming and operation control;
+- SQL parser/AST/compiler foundations;
+- metadata and introspection;
+- structure tree and dependency intelligence;
+- query diagnostics;
+- canonical type semantics;
+- canonical schema snapshots;
+- schema diff;
+- migration planning and execution;
+- portable and engine-accelerated data movement;
+- capability ontology, DBMS registry and profile overlay infrastructure.
 
-## Priority 5 — complete major SQL language families
+These capabilities are retained. The roadmap now fills the missing lifecycle around them.
 
-After the platform foundations above, broaden the compiler by **family**, not by isolated clause.
+## Priority 1 — Establish: database bootstrap and administration foundation
 
-Recommended order:
+Build a coherent administration model for a reachable database server/service.
 
-### 5A. Transaction-control SQL
+First scope:
 
-Structured support for:
+- server/instance identity and containment discovery;
+- database/catalog enumeration;
+- database/catalog creation where supported;
+- schema/namespace bootstrap;
+- prerequisites and capability validation;
+- initial configuration discovery;
+- bootstrap plan, dry-run and audit result;
+- explicit infrastructure boundary.
 
-- BEGIN / START TRANSACTION;
-- COMMIT;
-- ROLLBACK;
-- SAVEPOINT;
-- RELEASE SAVEPOINT;
-- transaction characteristics/isolation where defensibly modeled.
+The public design should begin from **intent + plan + engine-native execution**, not from a collection of raw CREATE DATABASE strings.
 
-Connect compiler semantics to the existing runtime transaction policy.
+Target coverage areas:
 
-### 5B. Security/control SQL
+- `administration.bootstrap`;
+- `administration.configuration`.
 
-Structured support for engine-appropriate:
+## Priority 2 — Administration security
 
-- GRANT;
-- REVOKE;
-- roles/users where applicable;
-- ownership/authorization semantics;
-- role/session authorization controls.
+Create an honest cross-engine security-administration model:
 
-Do not normalize unlike account/role models into false equivalence.
+- users/logins;
+- roles;
+- memberships;
+- grants/revokes;
+- object privileges;
+- ownership;
+- authentication-relevant database settings;
+- security inspection;
+- change planning and audit.
 
-### 5C. Views and materialized views
+Do not force PostgreSQL roles, MySQL accounts and SQL Server logins/users into false equivalence.
 
-Complete lifecycle and options for:
+Target coverage area:
 
-- CREATE/ALTER/DROP VIEW;
-- materialized views where supported;
-- refresh semantics;
-- check options/security behavior where relevant;
-- dependency behavior.
+- `administration.security`.
 
-### 5D. Administration/query-plan statements
+This should share foundations with the future DCL compiler rather than producing parallel concepts.
 
-Model important operational SQL families:
+## Priority 3 — Operate: health, sessions and maintenance
 
-- EXPLAIN;
-- ANALYZE;
-- VACUUM;
-- REINDEX;
-- engine-specific maintenance commands;
-- PRAGMA as a SQLite-specific family where appropriate.
+Create the first coherent database-operations surface.
 
-Connect these to diagnostics APIs instead of building parallel concepts.
+Health/diagnostic scope:
 
-### 5E. Triggers and programmability
+- connection/session inventory;
+- running operations;
+- long-running queries;
+- locks;
+- blocking;
+- deadlock evidence;
+- transaction state;
+- database health summary;
+- native diagnostics retained.
 
-Only after the broader common platform is stronger:
+Maintenance scope:
 
-- triggers;
-- stored functions;
-- procedures;
-- anonymous blocks;
-- vendor procedural languages.
+- statistics/analyze;
+- vacuum/optimize equivalents;
+- index/reindex maintenance;
+- integrity checks;
+- engine-specific maintenance boundaries.
 
-These are high-complexity and highly vendor-specific, so they should not displace the earlier cross-product foundations.
+Target coverage areas:
 
-## MySQL official-document parity
+- `operations.health-sessions`;
+- `operations.maintenance`.
 
-The MySQL runtime should be reviewed continuously against the supported official MySQL 8.4 and 9.7 manuals. The maintained gap register is [MYSQL-OFFICIAL-DOC-PARITY.md](MYSQL-OFFICIAL-DOC-PARITY.md). Connection attributes are the first completed parity slice; connection compression, session-state tracking/EOF deprecation, query attributes and Unix-socket transport are the next runtime candidates.
+## Priority 4 — Backup, restore and recovery
 
-## Priority 6 — standalone SQL tooling foundations
+Define the backup/recovery architecture before execution automation.
 
-Leverage the parser/AST/intelligence layer for tooling capabilities:
+The common layer should model:
 
-- syntax diagnostics;
-- AST inspection;
+- backup intent;
+- backup type;
+- target/location abstraction;
+- consistency requirements;
+- point-in-time/recovery metadata;
+- restore plan;
+- verification;
+- retention metadata;
+- destructive-operation gates.
+
+Native mechanisms remain explicit.
+
+Examples include PostgreSQL WAL/logical/physical concepts, MySQL binary-log/physical/logical mechanisms, SQL Server FULL/DIFFERENTIAL/LOG chains, and SQLite backup/file/WAL semantics.
+
+Target coverage area:
+
+- `operations.backup-recovery`.
+
+## Priority 5 — Promote SQL Server toward Tier 1
+
+SQL Server remains the one supported runtime outside the common Tier-1 product model.
+
+Close:
+
+- common capability ontology;
+- metadata parity;
+- diagnostics parity;
+- version policy;
+- supported compiler subsets;
+- compatibility matrices.
+
+Target coverage area:
+
+- `dialect.sqlserver-parity`.
+
+This work strengthens one of the four supported engines and therefore outranks new DBMS profiles.
+
+## Priority 6 — Jobs and durable execution infrastructure
+
+Create reusable database job infrastructure for long-running and scheduled lifecycle work.
+
+Required foundations:
+
+- job definition;
+- immutable plan;
+- state;
+- checkpoints;
+- attempts;
+- resumability;
+- cancellation;
+- audit;
+- logs/events;
+- scheduling contract;
+- lease/lock model;
+- idempotency.
+
+Use it for:
+
+- backup;
+- restore;
+- maintenance;
+- large data movement;
+- migration backfills;
+- health collection;
+- scheduled integrity checks;
+- future operational workflows.
+
+Target coverage area:
+
+- `automation.jobs`.
+
+## Priority 7 — Replication, HA, capacity and upgrade readiness
+
+Build observation and planning before control.
+
+Replication/HA:
+
+- topology;
+- role/primary/replica state;
+- lag;
+- health;
+- failover evidence;
+- recovery posture.
+
+Capacity/storage:
+
+- database size;
+- table/index size;
+- growth;
+- native resource limits;
+- storage pressure;
+- capacity evidence.
+
+Upgrade readiness:
+
+- current/target version;
+- capability changes;
+- deprecated/removed behavior;
+- configuration changes;
+- schema/type compatibility;
+- migration prerequisites;
+- risk report.
+
+Target coverage areas:
+
+- `operations.replication-ha`;
+- `operations.capacity-storage`;
+- `operations.upgrade-readiness`.
+
+## Priority 8 — Complete change-management foundations
+
+Continue existing strong engineering areas where lifecycle work depends on them:
+
+- durable external migration checkpoints;
+- large-transfer qualification;
+- richer migration renderer coverage;
+- richer canonical types;
+- richer dependency/object families;
+- lock and safety policies;
+- data backfill orchestration.
+
+Target areas:
+
+- schema snapshot/diff;
+- migrations;
+- migration execution;
+- data movement;
+- type semantics.
+
+## Priority 9 — Lifecycle retirement
+
+Define explicit end-of-life workflows:
+
+- final export;
+- archive;
+- final backup;
+- backup verification;
+- access revocation;
+- job/integration shutdown;
+- evidence capture;
+- explicitly approved drop/decommission steps.
+
+Target coverage area:
+
+- `lifecycle.retirement`.
+
+Retirement must be approval-gated and auditable because it is inherently destructive.
+
+## Priority 10 — SQL tooling
+
+Use the existing SQL engine for standalone developer tooling:
+
 - formatting;
 - linting;
+- static diagnostics;
+- compatibility warnings;
 - capability warnings;
-- version compatibility warnings;
-- query-plan integration;
 - metadata-aware completion primitives;
 - safe rewrite suggestions.
 
-This strengthens NuBloxSQL as a complete database platform rather than only an execution runtime.
+Target coverage area:
 
+- `tooling.sql`.
 
-## Near-term implementation sequence
+## Priority 11 — Remaining SQL language families
 
-Recommended next engineering sequence:
+Complete language families when they directly strengthen lifecycle capabilities:
 
-1. **Product coverage model v2** — machine-readable whole-product implementation stages.
-2. **Database structure intelligence** — canonical structure tree, stable object identity and dependency/impact graph delivered; extend toward descriptions and richer object families.
-3. **SQL Server Tier-1 parity plan and first parity slice**.
-4. **Canonical type-system architecture and mapping register** — first released slice delivered; continue advanced type families as required by schema-diff work.
-5. **Canonical schema snapshot** — delivered; deterministic semantic/source fingerprints now provide the diff foundation.
-6. **Schema diff model** — first released layer delivered; continue rename inference and richer vendor objects as migration planning requires.
-7. **Migration planner MVP** — delivered; extend renderer coverage and runtime qualification as the execution layer is built.
-8. **Migration execution engine** — delivered; continue persistent checkpoints, richer lock policy and backfill orchestration through generic job infrastructure.
-9. **Unified data-movement engine** — portable resumable pipeline plus PostgreSQL COPY, opt-in MySQL LOCAL INFILE, SQLite prepared-transaction batching and SQL Server TDS BulkLoadBCP transfer planning delivered; continue durable checkpoints and large-transfer qualification.
-10. **Standalone SQL tooling services**.
-11. **Automation/job execution model**.
-12. **TCL/security/administration language families**, prioritized from the coverage register.
-13. **Reporting/export contracts** after the data pipeline is stable.
-14. Reassess the register before additional narrow DML/DDL depth.
+1. TCL for transaction administration and scripting;
+2. DCL/security SQL for administration;
+3. administration SQL;
+4. views/materialized views;
+5. triggers and programmability.
 
-## Release milestone proposal
+Language work should be pulled by product requirements rather than isolated grammar completeness.
+
+## Deferred — additional DBMS profiles and runtimes
+
+MariaDB remains the first documented non-runtime profile overlay.
+
+Further profile research or runtime promotion—CockroachDB, Aurora, TiDB, YugabyteDB and others—is deferred until:
+
+- bootstrap/administration architecture exists;
+- health/maintenance architecture exists;
+- backup/recovery architecture exists;
+- SQL Server Tier-1 status is resolved;
+- the four supported engines have coherent lifecycle coverage.
+
+## Infrastructure boundary
+
+NuBloxSQL begins once there is a database server/service endpoint or database file to manage.
+
+NuBloxSQL may manage database-specific configuration and lifecycle operations. It does not replace Terraform, cloud control planes, Kubernetes or general operating-system administration.
+
+## Release milestone direction
 
 ### 1.1.x
 
-Keep the current release stable and use patch/minor work for correctness, qualification and narrowly scoped compatibility fixes.
+Maintain stability. Use patch/minor work for correctness, qualification and narrowly scoped improvements.
 
 ### 2.0 readiness
 
-A 2.0 release candidate should require:
+NuBloxSQL 2.0 should represent a **complete database lifecycle architecture**, not merely more SQL grammar.
 
-- whole-product capability coverage register;
-- SQL Server promotion decision with defined parity status;
-- canonical type semantics;
-- first-class schema diff/migration architecture;
-- stable runtime/introspection/diagnostics contracts;
-- compiler family roadmap based on coverage gaps;
-- clean JS/TypeScript package qualification;
-- supported-engine live matrices;
-- documented standalone product contracts for runtime, language, metadata, diagnostics, portability and tooling.
+Minimum architectural requirements:
 
-## Decision rule for future work
+- canonical product/lifecycle definition;
+- lifecycle coverage register;
+- supported-engine boundaries;
+- SQL Server Tier-1 decision/parity;
+- administration/bootstrap contracts;
+- security-administration model;
+- health/maintenance model;
+- backup/recovery architecture;
+- job/execution architecture;
+- stable runtime/intelligence/engineering contracts;
+- supported-engine qualification;
+- clear infrastructure boundary;
+- documented retirement model;
+- clean JS/TypeScript package qualification.
 
-Before starting a new feature, answer:
+Not every lifecycle capability must be fully automated at 2.0, but every major domain must have a coherent contract and evidence model.
 
-1. Which product pillar does it improve?
-2. Which capability-register gap does it close?
-3. Which NuBloxSQL product capability becomes materially stronger?
-4. Is there a broader reusable abstraction that should be built first?
-5. What live evidence will prove it?
-6. Is this higher value than the largest currently open product gap?
+## Feature admission rule
 
-If those questions do not justify the work, it should not be the next milestone.
+Every new feature must answer the ten questions in [PRODUCT-DEFINITION.md](PRODUCT-DEFINITION.md#product-decision-gate).
+
+The key test is:
+
+> **Does this materially improve NuBloxSQL's ability to discover, establish, build, use, understand, operate, change or retire SQL databases?**
+
+If not, it is not a NuBloxSQL priority.
