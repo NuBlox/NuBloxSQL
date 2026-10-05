@@ -19,6 +19,9 @@ export interface SslOptions {
   [key: string]: unknown;
 }
 
+export type ConnectionAttributeValue = string | number | bigint | boolean;
+export type ConnectionAttributes = Readonly<Record<string, ConnectionAttributeValue>>;
+
 export interface ConnectionConfig {
   host?: string;
   port?: number;
@@ -37,6 +40,7 @@ export interface ConnectionConfig {
   localInfile?: boolean;
   localInfileMaxBytes?: number;
   localInfileChunkBytes?: number;
+  connectionAttributes?: boolean | ConnectionAttributes;
   serverPublicKey?: string;
   getServerPublicKey?: boolean;
   allowCleartextAuth?: boolean;
@@ -272,6 +276,7 @@ export class Connection {
   constructor(config: ConnectionConfig);
 
   readonly config: ConnectionConfig;
+  readonly connectionAttributes: Readonly<Record<string, string>> | null;
   readonly maxRows: number;
   readonly maxResultBytes: number;
   readonly maxRowBytes: number;
@@ -392,5 +397,6 @@ export const DEFAULT_LIMITS: Readonly<{
 
 export const DEFAULT_LOCAL_INFILE_MAX_BYTES: number;
 export const DEFAULT_LOCAL_INFILE_CHUNK_BYTES: number;
+export const MAX_CONNECTION_ATTRIBUTES_BYTES: number;
 
 export const protocol: Readonly<Record<string, unknown>>;

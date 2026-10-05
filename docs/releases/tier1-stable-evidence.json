@@ -46,7 +46,8 @@
         "lib/dialects/mysql/test/operation-control.js",
         "lib/dialects/mysql/test/local-infile.js",
         "lib/dialects/mysql/test/diagnostics.js",
-        "lib/dialects/mysql/test/deep-metadata.js"
+        "lib/dialects/mysql/test/deep-metadata.js",
+        "lib/dialects/mysql/test/live.js"
       ]
     },
     "sqlite": {
