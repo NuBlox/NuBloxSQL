@@ -29,6 +29,11 @@ assert.strictEqual(dialectRegistry.status,'established');
 assert.strictEqual(dialectRegistry.stages.publicApi,'implemented');
 assert.strictEqual(dialectRegistry.dialects.sqlserver,'implemented');
 
+var profileOverlays=sql.productCoverage.area('portability.profile-overlays');
+assert.strictEqual(profileOverlays.status,'established');
+assert.strictEqual(profileOverlays.stages.validator,'implemented');
+assert.strictEqual(profileOverlays.stages.diagnostics,'implemented');
+
 var metadata=sql.productCoverage.area('intelligence.metadata');
 assert.strictEqual(metadata.status,'strong');
 assert.strictEqual(metadata.stages.introspection,'implemented');
