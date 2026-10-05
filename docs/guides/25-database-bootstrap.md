@@ -23,7 +23,8 @@ The first bootstrap contract supports:
 - client-level convenience methods;
 - server/instance identity discovery;
 - database/catalog enumeration;
-- bootstrap prerequisite assessment.
+- bootstrap prerequisite assessment;
+- dialect-aware database creation options with fail-closed validation.
 
 This release does **not** yet implement:
 
@@ -118,6 +119,59 @@ Execution modes are:
 - `automatic` — NuBloxSQL can execute the step safely within the defined boundary;
 - `manual` — the engine concept cannot be represented safely without caller input;
 - `satisfied` — the requested intent is already fulfilled by the engine/runtime model.
+
+## Database creation options
+
+Database options are expressed as intent on the database specification. NuBloxSQL only accepts options it can render honestly for the selected engine.
+
+PostgreSQL:
+
+```js
+const plan = sql.planDatabaseBootstrap({
+  database: {
+    name: 'app',
+    options: {
+      owner: 'app_owner',
+      template: 'template0',
+      encoding: 'UTF8',
+      collation: 'en_GB.UTF-8',
+      ctype: 'en_GB.UTF-8',
+      tablespace: 'app_space'
+    }
+  }
+}, { targetDialect: 'postgresql' });
+```
+
+MySQL:
+
+```js
+const plan = sql.planDatabaseBootstrap({
+  database: {
+    name: 'app',
+    options: {
+      characterSet: 'utf8mb4',
+      collation: 'utf8mb4_0900_ai_ci'
+    }
+  }
+}, { targetDialect: 'mysql' });
+```
+
+SQL Server currently exposes database collation:
+
+```js
+const plan = sql.planDatabaseBootstrap({
+  database: {
+    name: 'app',
+    options: {
+      collation: 'Latin1_General_100_CI_AS_SC_UTF8'
+    }
+  }
+}, { targetDialect: 'sqlserver' });
+```
+
+SQLite has no `CREATE DATABASE` statement, so creation options are rejected rather than translated into unrelated PRAGMAs or file-system behaviour.
+
+Unsupported option/dialect combinations fail during planning. NuBloxSQL does not silently ignore them.
 
 ## Inspect first
 
@@ -266,10 +320,9 @@ The bootstrap capability remains **Partial**, not Established.
 
 The next work should add, in order:
 
-1. database option modelling such as encoding/collation/ownership where defensible;
-2. configuration discovery and change planning;
-3. security administration for users/logins/roles/privileges;
-4. extension/feature enablement;
-5. live qualification of database creation/bootstrap across the supported engines.
+1. configuration discovery and change planning;
+2. security administration for users/logins/roles/privileges;
+3. extension/feature enablement;
+4. live qualification of database creation/bootstrap across the supported engines.
 
 The infrastructure boundary remains fixed: NuBloxSQL manages database lifecycle concerns, not generic cloud or VM provisioning.
