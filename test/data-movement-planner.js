@@ -128,7 +128,7 @@ async function sqlitePlannerAndExecution() {
   var transferPlan = sql.planDataMovement(source('postgresql', []), target, moveSpec);
   assert.strictEqual(transferPlan.strategy, 'sqlite-prepared-transaction');
   assert.strictEqual(transferPlan.accelerated, true);
-  assert.strictEqual(transferPlan.fallback, 'portable-batched-insert');
+  assert.strictEqual(transferPlan.fallback, 'sqlite-batched-insert');
 
   var checkpoints = [];
   var result = await sql.moveData(source('postgresql', [
@@ -150,6 +150,20 @@ async function sqlitePlannerAndExecution() {
     { id: 2, name: 'Grace', active: 0 },
     { id: 3, name: null, active: 1 }
   ]);
+
+  await target.execute('CREATE TABLE rollback_target(id INTEGER PRIMARY KEY, code TEXT UNIQUE NOT NULL)');
+  var rollbackSpec = {
+    source: { statement: 'SELECT id, code FROM source ORDER BY id' },
+    target: { table: 'rollback_target', columns: ['id', 'code'] }
+  };
+  var failed = await sql.moveData(source('postgresql', [
+    { id: 1, code: 'duplicate' },
+    { id: 2, code: 'duplicate' }
+  ]), target, rollbackSpec, { batchSize: 2, strategy: 'native' });
+  assert.strictEqual(failed.status, 'failed');
+  assert.strictEqual(failed.rowsWritten, 0);
+  assert.strictEqual(failed.checkpoint.rowOffset, 0);
+  assert.strictEqual((await target.one('SELECT COUNT(*) AS count FROM rollback_target')).count, 0);
 
   await target.close();
 }
