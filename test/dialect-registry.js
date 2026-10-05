@@ -59,6 +59,8 @@ assert.strictEqual(sqlserver.driver.routable, true);
 assert.strictEqual(sqlserver.language.capabilities, 'partial');
 
 var aurora = sql.dialectRegistry.product('aurora-postgresql');
+assert.strictEqual(aurora.profileDialect, 'aurora-postgresql');
+assert.strictEqual(aurora.dialect, 'postgresql');
 assert.strictEqual(aurora.parentDialect, 'postgresql');
 assert.strictEqual(aurora.primaryDialect, 'postgresql');
 assert.strictEqual(aurora.driver.routable, false);
@@ -71,6 +73,8 @@ assert.strictEqual(spannerPostgres.kind, 'compatibility-interface');
 assert.strictEqual(spannerPostgres.parentDialect, 'postgresql');
 
 var bigqueryLegacy = sql.dialectRegistry.product('bigquery-legacy');
+assert.strictEqual(bigqueryLegacy.profileDialect, 'bigquery-legacy');
+assert.strictEqual(bigqueryLegacy.dialect, 'bigquery');
 assert.strictEqual(bigqueryLegacy.parentDialect, 'bigquery');
 assert.strictEqual(bigqueryLegacy.driver.routable, false);
 
