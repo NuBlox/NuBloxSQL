@@ -65,14 +65,18 @@ const db = createClient({
   user: 'app',
   password: process.env.DB_PASSWORD,
   database: 'app',
+  connectionAttributes: {
+    service: 'orders-api',
+    environment: 'production'
+  },
   ssl: { mode: 'require', rejectUnauthorized: true },
   pool: { max: 20 }
 });
 ```
 
-Native configuration includes packet/result limits, stream high-water mark, LOCAL INFILE policy, server public-key controls and guarded cleartext-authentication opt-in.
+Native configuration includes packet/result limits, stream high-water mark, connection attributes, LOCAL INFILE policy, server public-key controls and guarded cleartext-authentication opt-in. NuBloxSQL sends standard internal connector attributes by default and accepts application attributes whose names do not begin with `_`; set `connectionAttributes: false` to disable them.
 
-Native runtime depth includes prepared execution, reset/session handling, streaming, operation control, secure LOCAL INFILE, structured EXPLAIN/EXPLAIN ANALYZE, authentication-plugin qualification and deep INFORMATION_SCHEMA/Performance Schema metadata.
+Native runtime depth includes prepared execution, reset/session handling, streaming, operation control, connection-attribute negotiation, secure LOCAL INFILE, structured EXPLAIN/EXPLAIN ANALYZE, authentication-plugin qualification and deep INFORMATION_SCHEMA/Performance Schema metadata.
 
 Cleartext authentication is guarded. Do not enable `allowCleartextAuth` unless the authentication path and transport security are understood and explicitly required.
 
