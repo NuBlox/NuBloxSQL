@@ -46,7 +46,7 @@ export interface DataMovementPlan {
   readonly sourceDialect: root.Dialect | null;
   readonly targetDialect: root.Dialect | null;
   readonly reason: string;
-  readonly fallback: 'portable-batched-insert' | null;
+  readonly fallback: 'portable-batched-insert' | 'sqlite-batched-insert' | 'sqlserver-batched-insert' | null;
 }
 
 export interface DataMovementCheckpoint {
