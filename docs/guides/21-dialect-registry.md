@@ -35,7 +35,7 @@ Registry membership does **not** expand the executable `DIALECTS` map. An entry 
 
 ### Master profiles
 
-The registry contains 100 source profiles covering the commercially and technically significant SQL systems captured by the project research.
+The registry contains 100 source profiles covering the commercially and technically significant SQL systems captured by the project research. Vendor labels are normalized project metadata derived from the supplied product/platform names; they are not an independently verified legal-ownership register.
 
 Each product/profile contains:
 
