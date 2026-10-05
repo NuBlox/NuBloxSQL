@@ -2,7 +2,7 @@
   "name": "nubloxsql",
   "version": "1.1.0",
   "private": false,
-  "description": "One NuBloxSQL entry point for multi-dialect SQL database integration.",
+  "description": "One coherent JavaScript/TypeScript API for the complete SQL database lifecycle.",
   "license": "SEE LICENSE IN LICENSE",
   "author": "Stephen J T Spittal",
   "main": "index.js",
