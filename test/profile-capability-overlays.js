@@ -39,7 +39,7 @@ assert.strictEqual(mariadb.canonicalDialect, 'mariadb');
 assert.strictEqual(mariadb.baseDialect, 'mysql');
 assert.deepStrictEqual(Array.from(mariadb.inheritance), ['mariadb','mysql']);
 assert.strictEqual(mariadb.verification, 'documented');
-assert.strictEqual(mariadb.changeCount, 9);
+assert.strictEqual(mariadb.changeCount, 11);
 
 var mariaJson = sql.profileCapabilities.status('mariadb', 'types.json');
 assert.strictEqual(mariaJson.resolution, 'overlay-documented');
@@ -82,9 +82,20 @@ var mariaInsertReturning = sql.profileCapabilities.status('mariadb', 'statements
 assert.strictEqual(mariaInsertReturning.resolution, 'overlay-documented');
 assert.strictEqual(mariaInsertReturning.feature.support, 'native');
 
-var mariaDeleteReturning = sql.profileCapabilities.status('mariadb', 'statements.deleteReturning');
+var mariaDeleteReturning = sql.profileCapabilities.status('mariadb', 'statements.deleteReturning', { context: { version: '10.0' } });
 assert.strictEqual(mariaDeleteReturning.resolution, 'overlay-documented');
 assert.strictEqual(mariaDeleteReturning.feature.support, 'native');
+
+var mariaReplaceReturning = sql.profileCapabilities.status('mariadb', 'statements.replaceReturning', { context: { version: '10.5' } });
+assert.strictEqual(mariaReplaceReturning.resolution, 'overlay-documented');
+assert.strictEqual(mariaReplaceReturning.feature.support, 'native');
+
+var mariaUpdateReturning129 = sql.profileCapabilities.status('mariadb', 'statements.updateReturning', { context: { version: '12.9' } });
+assert.strictEqual(mariaUpdateReturning129.resolution, 'capability-absent');
+
+var mariaUpdateReturning130 = sql.profileCapabilities.status('mariadb', 'statements.updateReturning', { context: { version: '13.0' } });
+assert.strictEqual(mariaUpdateReturning130.resolution, 'overlay-documented');
+assert.strictEqual(mariaUpdateReturning130.feature.support, 'native');
 
 var cockroach = sql.profileCapabilities.definition('cockroachdb');
 assert.strictEqual(cockroach.canonicalDialect, 'cockroachdb');
