@@ -248,6 +248,12 @@
     "docs/strategy/PRODUCT-DEFINITION.md",
     "docs/strategy/PRODUCT-VISION.md",
     "docs/releases/product-lifecycle-v1.json",
-    "tool/check-product-definition-release.js"
+    "tool/check-product-definition-release.js",
+    "lib/client/DatabaseBootstrapPlanner.js",
+    "lib/client/DatabaseBootstrapExecutor.js",
+    "types/database-bootstrap.d.ts",
+    "test/database-bootstrap.js",
+    "docs/guides/25-database-bootstrap.md",
+    "tool/check-database-bootstrap-release.js"
   ]
 }
