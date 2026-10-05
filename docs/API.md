@@ -505,3 +505,28 @@ const prerequisites = await db.assessBootstrapPrerequisites(plan);
 ```
 
 Prerequisite status is `ready`, `attention` or `blocked`. NuBloxSQL reports administrative privilege requirements as an explicit attention boundary rather than claiming portable privilege certainty where the engines expose materially different security models.
+
+
+## Database configuration discovery
+
+`DATABASE_CONFIGURATION_DISCOVERY_SCHEMA_VERSION === 1` defines the first administration-configuration contract.
+
+```js
+const report = await db.discoverConfiguration();
+const workMem = sql.findDatabaseConfiguration(report, 'work_mem');
+```
+
+Each setting exposes a normalized `name`, `value`, `scope`, `apply` mode, mutability, restart requirement, source/description where available, and the complete source row under `native`.
+
+Apply modes are:
+
+```text
+immediate
+reload
+restart
+new-session
+immutable
+unknown
+```
+
+NuBloxSQL preserves uncertainty rather than inventing cross-engine equivalence. PostgreSQL `pg_settings` and SQL Server `sys.configurations` provide rich change semantics; MySQL global-variable discovery currently reports mutability/apply semantics as unknown where the discovery source cannot prove them; SQLite exposes a curated read-only PRAGMA configuration view because SQLite has no server configuration catalog.
