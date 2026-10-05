@@ -44,6 +44,7 @@ export interface DialectRegistryProduct {
   readonly id: string;
   readonly vendor: string;
   readonly product: string;
+  readonly profileDialect: string;
   readonly dialect: string;
   readonly parentDialect: string | null;
   readonly primaryDialect: string | null;
