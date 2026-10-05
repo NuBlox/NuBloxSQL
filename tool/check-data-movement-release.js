@@ -27,7 +27,9 @@ try {
     "assert.strictEqual(typeof sql.moveData,'function');",
     "assert.strictEqual(typeof sql.resumeDataMovement,'function');",
     "assert.strictEqual(typeof sql.planDataMovement,'function');",
-    "assert.ok(sql.DATA_MOVEMENT_STRATEGIES.includes('postgresql-copy-csv'));"
+    "assert.ok(sql.DATA_MOVEMENT_STRATEGIES.includes('postgresql-copy-csv'));",
+    "assert.ok(sql.DATA_MOVEMENT_STRATEGIES.includes('sqlite-prepared-transaction'));",
+    "assert.ok(sql.DATA_MOVEMENT_STRATEGIES.includes('sqlserver-tds-bulk'));"
   ].join('\n');
   fs.writeFileSync(path.join(temp, 'smoke.js'), smoke);
   run(process.execPath, ['smoke.js'], { cwd: temp });
