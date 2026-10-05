@@ -206,7 +206,8 @@ Bootstrap is intentionally conservative:
 5. SQLite non-equivalence becomes a manual boundary;
 6. dry-run is first-class;
 7. every execution produces an audit trail;
-8. the plan is hashed so callers can identify exactly what was approved.
+8. callback context envelopes are immutable, but live client/runtime resources are never frozen or mutated by NuBloxSQL;
+9. the plan is hashed so callers can identify exactly what was approved.
 
 ## Next bootstrap slices
 
