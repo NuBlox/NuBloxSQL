@@ -32,3 +32,5 @@ Use these guides together with the [support matrix](../SUPPORT.md), [public API 
 The guides describe only released APIs and supported behaviour. Engine-specific APIs are called out explicitly and must not be assumed portable. Where NuBloxSQL exposes both a portable view and native engine detail, the native detail remains available so database-specific semantics are not hidden.
 
 Historical development notes are preserved under `docs/archive/` and are not part of the current user contract.
+
+- [Canonical dialect registry](21-dialect-registry.md)
