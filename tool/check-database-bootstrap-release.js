@@ -33,6 +33,18 @@ assert.strictEqual(mysql.steps[1].execution, 'satisfied');
 assert.strictEqual(mysql.steps[2].scope, 'server');
 assert.strictEqual(mysql.steps[2].requirements.databaseEquivalent, true);
 
+var configured = sql.planDatabaseBootstrap({
+  database: {
+    name: 'configured_release',
+    options: {
+      owner: 'app_owner',
+      encoding: 'UTF8',
+      collation: 'en_GB.UTF-8'
+    }
+  }
+}, { targetDialect: 'postgresql' });
+assert.strictEqual(configured.steps[0].sql, 'CREATE DATABASE "configured_release" WITH OWNER = "app_owner" ENCODING = \'UTF8\' LC_COLLATE = \'en_GB.UTF-8\'');
+
 var sqlserver = sql.planDatabaseBootstrap({
   database: 'release_bootstrap',
   schemas: ['app']
