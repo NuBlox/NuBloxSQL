@@ -14,7 +14,8 @@ Use guides to understand the contract; use cookbook recipes to see several APIs 
 
 ## Product strategy
 
-- [Product vision](strategy/PRODUCT-VISION.md) — the five product pillars and governing architectural principles.
+- [Canonical product definition](strategy/PRODUCT-DEFINITION.md) — authoritative product boundary, complete lifecycle, users, supported-engine focus, infrastructure boundary and feature-admission rules.
+- [Product vision](strategy/PRODUCT-VISION.md) — concise vision for the complete database lifecycle.
 - [Product capability register](strategy/PRODUCT-CAPABILITY-REGISTER.md) — whole-product coverage assessment and maturity model.
 - [Strategic roadmap](strategy/STRATEGIC-ROADMAP.md) — prioritized path toward NuBloxSQL 2.0 based on product gaps rather than statement-family momentum.
 - [Competitive capability benchmark](strategy/COMPETITIVE-BENCHMARK.md) — external breadth benchmark and NuBloxSQL capability programme.
@@ -30,6 +31,8 @@ Use guides to understand the contract; use cookbook recipes to see several APIs 
 
 - `releases/public-api-v1.json` — packaged public API and package-surface contract.
 - `releases/tier1-stable-evidence.json` — Tier-1 qualification evidence manifest.
+- `releases/product-coverage-v2.json` — executable whole-product coverage snapshot.
+- `releases/product-lifecycle-v1.json` — canonical eight-phase lifecycle and seven-domain product contract.
 
 These contracts are consumed by repository release tooling and are not informal documentation.
 
