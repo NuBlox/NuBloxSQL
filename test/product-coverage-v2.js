@@ -23,6 +23,9 @@ assert.ok(Array.isArray(report.pillars.intelligence));
 assert.ok(Array.isArray(report.pillars.portability));
 assert.ok(Array.isArray(report.pillars.platform));
 assert.ok(Array.isArray(report.pillars['dialect-depth']));
+assert.ok(Array.isArray(report.pillars.administration));
+assert.ok(Array.isArray(report.pillars.operations));
+assert.ok(Array.isArray(report.pillars.lifecycle));
 
 var dialectRegistry=sql.productCoverage.area('portability.dialect-registry');
 assert.strictEqual(dialectRegistry.status,'established');
@@ -59,10 +62,28 @@ var migrationExecution=sql.productCoverage.area('platform.migration-execution');
 assert.strictEqual(migrationExecution.status,'established');
 assert.strictEqual(migrationExecution.stages.runtime,'implemented');
 
+var bootstrap=sql.productCoverage.area('administration.bootstrap');
+assert.strictEqual(bootstrap.status,'gap');
+
+var health=sql.productCoverage.area('operations.health-sessions');
+assert.strictEqual(health.status,'partial');
+
+var maintenance=sql.productCoverage.area('operations.maintenance');
+assert.strictEqual(maintenance.status,'partial');
+
+var backup=sql.productCoverage.area('operations.backup-recovery');
+assert.strictEqual(backup.status,'gap');
+
+var retirement=sql.productCoverage.area('lifecycle.retirement');
+assert.strictEqual(retirement.status,'gap');
+
 var gaps=sql.productCoverage.gaps();
 assert.strictEqual(gaps.some(function(area){return area.id==='platform.schema-diff';}),false);
 assert.strictEqual(gaps.some(function(area){return area.id==='platform.migrations';}),false);
 assert.ok(gaps.some(function(area){return area.id==='dialect.sqlserver-parity';}));
+['administration.bootstrap','administration.configuration','administration.security','operations.backup-recovery','operations.replication-ha','operations.capacity-storage','operations.upgrade-readiness','lifecycle.retirement'].forEach(function(id){
+  assert.ok(gaps.some(function(area){return area.id===id;}),'expected lifecycle gap '+id);
+});
 
 var impl=sql.capabilityOntology.implementation('statements.select');
 ['parser','ast','validator','renderer','rewrite','runtime','introspection','diagnostics','contractTest','liveQualification','packagedPublic','documentation'].forEach(function(stage){

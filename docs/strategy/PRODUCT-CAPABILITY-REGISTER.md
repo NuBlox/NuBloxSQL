@@ -25,7 +25,7 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | DDL compiler | Strong foundation | CREATE/DROP/ALTER lifecycle, constraints, generated/identity, FK semantics, indexes, CTAS, sequence options | Broaden object families |
 | Capability ontology | Strong | exhaustive-v1 Tier-1 engine observations, runtime qualification, implementation coverage | Expand implementation-stage precision |
 | Dialect / DBMS registry | Established | canonical 100-profile registry, 25 first-class targets, parent-dialect inheritance, versions/driver/wire/language surface metadata | Add product-specific evidence before promoting compatibility profiles to routable support |
-| Profile capability overlays | Established | fail-closed baseline inheritance, immutable add/override/remove overlays, version/edition/deployment constraints, explicit evidence/resolution states; first documented MariaDB-over-MySQL overlay | Expand evidence-backed profiles and add live qualification before any profile becomes routable |
+| Profile capability overlays | Established | fail-closed baseline inheritance, immutable add/override/remove overlays, version/edition/deployment constraints, explicit evidence/resolution states; first documented MariaDB-over-MySQL overlay | Freeze further profile expansion while complete-lifecycle gaps are addressed |
 | Portability/rewrite planner | Established | compatibility, rewrite planning, fail-closed behavior | Needs broader semantic transformation architecture |
 | Metadata/introspection | Strong | portable vocabulary, deep PostgreSQL/MySQL metadata, public introspection APIs | Extend consistency and SQL Server parity |
 | Structure intelligence | Established | canonical database/schema/object tree with stable object IDs, columns, indexes, foreign keys and constraints | Add descriptions and broader object families |
@@ -41,6 +41,16 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | Stored functions/procedures | Gap in compiler | engine observations exist; no coherent procedural SQL compiler | Medium, vendor-heavy |
 | Administration SQL | Gap in compiler | diagnostics/runtime operations exist; EXPLAIN/VACUUM/ANALYZE/PRAGMA/etc. not unified compiler families | Medium-high |
 | Bulk/data movement | Established foundation | portable cross-dialect mapping, batching, validation, checkpoints/resume and audit/events; transfer planner; PostgreSQL COPY, opt-in MySQL LOCAL INFILE, SQLite prepared-transaction batching and SQL Server TDS BulkLoadBCP acceleration | Add live large-transfer qualification and durable external checkpoint storage |
+| Database bootstrap / initial setup | Gap | lifecycle/product definition and partial discovery primitives exist; no coherent bootstrap public API | Priority 1: prerequisites, database/catalog creation, schema bootstrap and audited setup plans |
+| Database/server configuration | Gap | engine configuration can be queried in places but no common administration contract exists | Priority 1: discover/change configuration with scope/reload/restart semantics |
+| Security administration | Gap | authentication/runtime support exists; users/logins/roles/privileges are not a coherent administration surface | Priority 2: administration model integrated with future DCL |
+| Operational health / sessions | Partial | diagnostics and native metadata provide pieces | Priority 3: sessions, running work, blocking, locks, deadlocks and health summary |
+| Maintenance | Partial | SQLite has substantial maintenance support; other engines expose capabilities without one common operational API | Priority 3: analyze/statistics, vacuum/optimize, reindex and integrity intents |
+| Backup / restore / recovery | Gap | no first-class common contract | Priority 4: plan, execute boundary, restore and verification model |
+| Replication / HA | Gap | engine knowledge exists in places; no lifecycle subsystem | Priority 7: topology/role/lag/health observation before control |
+| Capacity / storage | Gap | metadata exposes fragments; no coherent capacity model | Priority 7: size, growth, limits and pressure evidence |
+| Upgrade readiness | Gap | version/capability knowledge exists but no upgrade assessment | Priority 7: source/target version compatibility and risk assessment |
+| Retirement | Gap | no coherent archive/revoke/decommission contract | Priority 9: approval-gated, auditable retirement workflows |
 | Automation/jobs | Gap | no unified reusable job-plan or CLI execution model | High platform value |
 | Reporting/export | Gap | no first-class report/export contract | Build after unified data movement |
 | Competitive benchmark | Active | `docs/strategy/COMPETITIVE-BENCHMARK.md` | Track breadth without copying external product architecture |

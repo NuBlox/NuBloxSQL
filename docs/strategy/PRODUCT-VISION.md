@@ -1,152 +1,111 @@
 # NuBloxSQL Product Vision
 
-## Purpose
+The canonical product boundary is defined in [PRODUCT-DEFINITION.md](PRODUCT-DEFINITION.md). This document states the product vision in compact form.
 
-NuBloxSQL is a NuBlox-owned database platform for Node.js.
+## Vision
 
-Its purpose is not merely to parse or render SQL. It provides one coherent developer surface over multiple database engines while preserving the semantics that make each engine different.
+> **NuBloxSQL will become the most complete database engineering and management platform for JavaScript and TypeScript: one coherent API across the complete SQL database lifecycle, with deep native support for each database engine rather than lowest-common-denominator abstraction.**
 
-The governing design rule is:
+Short form:
+
+> **NuBloxSQL — one API for the complete SQL database lifecycle.**
+
+Governing design rule:
 
 > **One developer API, honest dialect semantics.**
 
-NuBloxSQL is an independent database integration platform with its own public contract, architecture, release lifecycle and product roadmap.
+## Lifecycle
 
-## Product architecture
+NuBloxSQL spans eight lifecycle phases:
 
-NuBloxSQL has five product pillars.
+```text
+Discover
+   ↓
+Establish
+   ↓
+Build
+   ↓
+Use
+   ↓
+Understand
+   ↓
+Operate
+   ↓
+Change
+   ↓
+Retire
+```
 
-### 1. Database runtime
+This begins before application queries exist. Initial database setup, configuration, security, operational baselining and administration are first-class database-management concerns.
 
-The runtime owns connection lifecycle and execution:
+It continues after application development through maintenance, backup, recovery, replication/HA visibility, capacity management, upgrades, migrations and eventual retirement.
 
-- client and pool creation;
-- connection URLs and configuration;
-- prepared statements and typed binding;
-- transactions, savepoints and retry policy;
-- streaming and incremental result handling;
-- cancellation, timeouts, deadlines and result budgets;
-- protocol-specific behavior;
-- portable errors with native diagnostics retained;
-- observability and resource governance.
+## Product domains
 
-### 2. SQL language platform
+The product is organised into seven domains:
 
-The language platform owns SQL understanding and generation:
+1. **Connectivity and runtime** — connections, pools, protocols, authentication, TLS, queries, prepared statements, transactions, streaming and operation control.
+2. **SQL language** — parser, AST, semantic validation, compilation, rendering and dialect-aware SQL language families.
+3. **Database intelligence** — metadata, structure, dependencies, capabilities, diagnostics, plans, configuration and limits.
+4. **Database engineering** — types, schema snapshots, schema diff, migrations, data movement and compatibility assessment.
+5. **Database administration** — database/schema bootstrap, users/logins/roles, privileges, configuration, extensions/features and administrative controls.
+6. **Database operations** — health, sessions, locks, maintenance, backup/restore, recovery, replication/HA visibility, capacity, integrity, audit and jobs.
+7. **Portability and governance** — dialect/version knowledge, capability evidence, compatibility decisions, risk/policy and qualification state.
 
-- tokenizer;
-- dialect-aware parser;
-- structured AST;
-- semantic validation;
-- capability analysis;
-- rewrite/compatibility planning;
-- renderer/compiler;
-- parameter-origin preservation;
-- version-qualified vendor semantics.
+## Supported engines
 
-This subsystem must cover queries, DML, DDL, transaction control, security/control statements, programmability and administration according to product priority. It must not become the entire product.
-
-### 3. Database intelligence
-
-The intelligence layer makes a database understandable:
-
-- metadata and schema introspection;
-- portable metadata vocabulary;
-- native-rich metadata retention;
-- query diagnostics and execution plans;
-- capability discovery;
-- engine/version detection;
-- limits and runtime feature discovery;
-- statistics and operational diagnostics where defensible.
-
-### 4. Portability and compatibility
-
-NuBloxSQL should explain whether SQL and database behavior can move between engines.
-
-The portability engine owns:
-
-- atomic capability ontology;
-- engine observations;
-- implementation coverage;
-- runtime qualification;
-- compatibility matrices;
-- rewrite decisions;
-- migration-surface analysis;
-- fail-closed behavior when semantic equivalence is not defensible.
-
-Portability does **not** mean forcing unlike features into a common syntax.
-
-### 5. Dialect depth
-
-Each supported engine must retain native depth.
-
-Current engine families:
+The executable product focus is deliberately limited to:
 
 - PostgreSQL;
 - MySQL;
 - SQLite;
 - SQL Server.
 
-A portable API should exist where semantics genuinely align. Engine-native access should remain available where hiding differences would reduce correctness or capability.
+The larger dialect/DBMS registry is a knowledge and future-expansion mechanism. It is not the product pitch and does not imply runtime support.
 
-## Architectural relationship
+## Scope boundary
 
-```text
-        NuBloxSQL
-            |
-   +--------+---------+----------+-------------+
-   |                  |          |             |
-Runtime           Language   Intelligence   Portability
-   |                  |          |             |
-   +------------------+----------+-------------+
-                      |
-         Native dialect implementations
-       PostgreSQL / MySQL / SQLite / SQL Server
-```
+NuBloxSQL owns database lifecycle management once a database server/service or database file is available to manage.
 
+NuBloxSQL is not Terraform, a cloud control plane, Kubernetes, an operating-system package manager, an ORM, an ERP or a workbench UI.
 
+A future SQL Workbench, CLI, IDE or enterprise application may use NuBloxSQL. NuBloxSQL must not depend on those downstream products.
 
-## Product principles
+## North star
 
-1. **Correctness before convenience.** Unsupported or semantically unsafe translations fail closed.
-2. **Native depth without API fragmentation.** A single package may expose common and native-specific surfaces.
-3. **Evidence-backed claims.** Released capability claims require implementation and automated qualification.
-4. **Version awareness.** Database capability changes across versions must be represented explicitly.
-5. **No parser-first roadmap.** Development priority is decided from product coverage, platform value and risk reduction rather than the next available grammar feature.
-6. **Reusable foundations.** New language support should extend shared AST, compiler, capability and binder infrastructure rather than creating isolated statement parsers.
-7. **Standalone product value.** Every major capability should strengthen NuBloxSQL itself as a coherent database platform.
-8. **Operational quality is product functionality.** Pooling, cancellation, memory behavior, protocol correctness, observability and recovery are first-class concerns.
-9. **Portable views retain native evidence.** Normalization must not discard engine-specific detail.
-10. **One public release surface.** The package remains a coherent product rather than a collection of unrelated dialect packages.
-
-## Completion model
-
-A capability is not considered fully delivered merely because syntax parses.
-
-The maturity path is:
+A user should be able to adopt NuBloxSQL for connectivity and keep the same platform as requirements grow:
 
 ```text
-Observed
-  -> Parsed
-  -> Structured AST
-  -> Semantically validated
-  -> Rendered
-  -> Capability-mapped
-  -> Runtime-qualified where required
-  -> Cross-dialect behavior decided
-  -> Contract-tested
-  -> Live-engine-qualified
-  -> Packaged and documented
+connect
+query
+inspect
+configure
+secure
+build
+diagnose
+maintain
+backup
+recover
+migrate
+move
+automate
+retire
 ```
 
-Different product pillars have analogous evidence paths. Runtime capabilities require protocol/runtime qualification; metadata capabilities require fidelity checks; diagnostics require native-plan retention and portable normalization evidence.
+Each common intent should have a coherent NuBloxSQL concept while engine-specific mechanisms and restrictions remain visible.
 
-## Strategic milestone
+## Strategic focus
 
-The next strategic milestone is:
+The immediate product priority is no longer expansion into more DBMS profiles.
 
-> **NuBloxSQL 2.0 — Complete Tier-1 SQL Platform Architecture**
+The priorities are:
 
-This milestone is not defined by adding more numbered DML or DDL waves. It is defined by balanced, release-qualified product coverage across the runtime, language, intelligence, portability and dialect-depth pillars.
+1. represent the complete lifecycle in the product capability model;
+2. close database administration and operations gaps;
+3. maintain and deepen PostgreSQL, MySQL, SQLite and SQL Server;
+4. promote SQL Server toward Tier-1 parity;
+5. strengthen migration, data movement and automation;
+6. build missing security/TCL/administration SQL families where they serve lifecycle capabilities;
+7. resume additional DBMS profile/runtime expansion only after the core lifecycle is coherent.
 
-The development roadmap must therefore be generated from the product capability register rather than from statement-family momentum.
+The detailed product boundary, lifecycle phases, user model, infrastructure boundary, support semantics and feature-admission rules are authoritative in [PRODUCT-DEFINITION.md](PRODUCT-DEFINITION.md).

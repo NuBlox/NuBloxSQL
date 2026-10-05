@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "product": "NuBloxSQL",
+  "promise": "One coherent API for the complete SQL database lifecycle.",
+  "designRule": "One developer API, honest dialect semantics.",
+  "supportedEngines": [
+    "postgresql",
+    "mysql",
+    "sqlite",
+    "sqlserver"
+  ],
+  "phases": [
+    {
+      "id": "discover",
+      "order": 1,
+      "purpose": "Understand an existing database environment before changing it."
+    },
+    {
+      "id": "establish",
+      "order": 2,
+      "purpose": "Bootstrap and configure a reachable database server/service for use."
+    },
+    {
+      "id": "build",
+      "order": 3,
+      "purpose": "Create database structures and initial data safely."
+    },
+    {
+      "id": "use",
+      "order": 4,
+      "purpose": "Execute application workloads through the runtime."
+    },
+    {
+      "id": "understand",
+      "order": 5,
+      "purpose": "Inspect metadata, structure, dependencies, capabilities and diagnostics."
+    },
+    {
+      "id": "operate",
+      "order": 6,
+      "purpose": "Maintain, secure, monitor, back up and recover production databases."
+    },
+    {
+      "id": "change",
+      "order": 7,
+      "purpose": "Evolve schemas, data, versions, configuration and capacity safely."
+    },
+    {
+      "id": "retire",
+      "order": 8,
+      "purpose": "Archive, revoke, decommission and evidence database retirement."
+    }
+  ],
+  "domains": [
+    {
+      "id": "runtime",
+      "name": "Connectivity and runtime"
+    },
+    {
+      "id": "language",
+      "name": "SQL language"
+    },
+    {
+      "id": "intelligence",
+      "name": "Database intelligence"
+    },
+    {
+      "id": "engineering",
+      "name": "Database engineering"
+    },
+    {
+      "id": "administration",
+      "name": "Database administration"
+    },
+    {
+      "id": "operations",
+      "name": "Database operations"
+    },
+    {
+      "id": "portability-governance",
+      "name": "Portability and governance"
+    }
+  ],
+  "infrastructureBoundary": {
+    "owns": [
+      "database/server discovery",
+      "database bootstrap",
+      "database/catalog/schema creation",
+      "database configuration",
+      "database security administration",
+      "database maintenance",
+      "backup/recovery integration",
+      "replication/HA visibility",
+      "database retirement"
+    ],
+    "doesNotOwn": [
+      "cloud account/subscription creation",
+      "generic VM provisioning",
+      "VPC/VNET creation",
+      "general firewall administration",
+      "Kubernetes cluster management",
+      "corporate DNS administration",
+      "general infrastructure-as-code"
+    ]
+  },
+  "authoritativeDocument": "docs/strategy/PRODUCT-DEFINITION.md"
+}
