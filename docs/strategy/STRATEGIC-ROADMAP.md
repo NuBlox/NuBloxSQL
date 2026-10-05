@@ -226,6 +226,10 @@ Only after the broader common platform is stronger:
 
 These are high-complexity and highly vendor-specific, so they should not displace the earlier cross-product foundations.
 
+## MySQL official-document parity
+
+The MySQL runtime should be reviewed continuously against the supported official MySQL 8.4 and 9.7 manuals. The maintained gap register is [MYSQL-OFFICIAL-DOC-PARITY.md](MYSQL-OFFICIAL-DOC-PARITY.md). Connection attributes are the first completed parity slice; connection compression, session-state tracking/EOF deprecation, query attributes and Unix-socket transport are the next runtime candidates.
+
 ## Priority 6 — standalone SQL tooling foundations
 
 Leverage the parser/AST/intelligence layer for tooling capabilities:
