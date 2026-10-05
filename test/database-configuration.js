@@ -52,6 +52,7 @@ async function sqlserver(){
   assert.strictEqual(report.settings[0].apply,'immediate');
   assert.strictEqual(report.settings[0].restartRequired,false);
   assert.strictEqual(report.settings[1].apply,'restart');
+  assert.strictEqual(report.settings[1].mutable,true);
   assert.strictEqual(report.settings[1].restartRequired,true);
 }
 
