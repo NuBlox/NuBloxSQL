@@ -231,6 +231,12 @@
     "types/migration-executor.d.ts",
     "test/migration-executor.js",
     "tool/check-migration-executor-release.js",
-    "docs/guides/19-migration-execution-engine.md"
+    "docs/guides/19-migration-execution-engine.md",
+    "lib/capabilities/DialectRegistry.js",
+    "lib/capabilities/DialectRegistryData.js",
+    "types/dialect-registry.d.ts",
+    "test/dialect-registry.js",
+    "docs/guides/21-dialect-registry.md",
+    "tool/check-dialect-registry-release.js"
   ]
 }

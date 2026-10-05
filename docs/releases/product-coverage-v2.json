@@ -44,6 +44,11 @@
       "status": "strong"
     },
     {
+      "id": "portability.dialect-registry",
+      "pillar": "portability",
+      "status": "established"
+    },
+    {
       "id": "portability.ontology",
       "pillar": "portability",
       "status": "strong"
