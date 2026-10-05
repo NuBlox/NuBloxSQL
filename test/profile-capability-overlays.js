@@ -39,7 +39,7 @@ assert.strictEqual(mariadb.canonicalDialect, 'mariadb');
 assert.strictEqual(mariadb.baseDialect, 'mysql');
 assert.deepStrictEqual(Array.from(mariadb.inheritance), ['mariadb','mysql']);
 assert.strictEqual(mariadb.verification, 'documented');
-assert.strictEqual(mariadb.changeCount, 11);
+assert.strictEqual(mariadb.changeCount, 12);
 
 var mariaJson = sql.profileCapabilities.status('mariadb', 'types.json');
 assert.strictEqual(mariaJson.resolution, 'overlay-documented');
@@ -64,6 +64,14 @@ assert.strictEqual(mariaTemporal.resolution, 'overlay-documented');
 assert.strictEqual(mariaTemporal.available, true);
 assert.strictEqual(mariaTemporal.feature.nativeName, 'WITH SYSTEM VERSIONING');
 
+var mariaCycle1051 = sql.profileCapabilities.status('mariadb', 'queries.cte.cycle', { context: { version: '10.5.1' } });
+assert.strictEqual(mariaCycle1051.resolution, 'inherited-unverified');
+
+var mariaCycle1052 = sql.profileCapabilities.status('mariadb', 'queries.cte.cycle', { context: { version: '10.5.2' } });
+assert.strictEqual(mariaCycle1052.resolution, 'overlay-documented');
+assert.strictEqual(mariaCycle1052.feature.support, 'native');
+assert.strictEqual(mariaCycle1052.feature.nativeName, 'CYCLE ... RESTRICT');
+
 var mariaUuid106 = sql.profileCapabilities.status('mariadb', 'types.uuid', { context: { version: '10.6' } });
 assert.strictEqual(mariaUuid106.resolution, 'inherited-unverified');
 
@@ -71,8 +79,9 @@ var mariaUuid107 = sql.profileCapabilities.status('mariadb', 'types.uuid', { con
 assert.strictEqual(mariaUuid107.resolution, 'overlay-documented');
 assert.strictEqual(mariaUuid107.feature.support, 'native');
 
-var mariaReturning104 = sql.profileCapabilities.status('mariadb', 'syntax.returning', { context: { version: '10.4' } });
-assert.strictEqual(mariaReturning104.resolution, 'inherited-unverified');
+var mariaReturning100 = sql.profileCapabilities.status('mariadb', 'syntax.returning', { context: { version: '10.0' } });
+assert.strictEqual(mariaReturning100.resolution, 'overlay-documented');
+assert.strictEqual(mariaReturning100.feature.support, 'partial');
 
 var mariaReturning105 = sql.profileCapabilities.status('mariadb', 'syntax.returning', { context: { version: '10.5' } });
 assert.strictEqual(mariaReturning105.resolution, 'overlay-documented');
