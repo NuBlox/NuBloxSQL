@@ -39,7 +39,7 @@ assert.strictEqual(sql.productCoverage.area('platform.migration-execution').stat
 assert.strictEqual(sql.productCoverage.gaps().some(function(area){return area.id==='platform.migration-execution';}),false);
 assert.strictEqual(sql.productCoverage.area('platform.migration-execution').status,'established');
 assert.strictEqual(sql.productCoverage.gaps().some(function(area){return area.id==='platform.migration-execution';}),false);
-['dialect.sqlserver-parity'].forEach(function(id){
+['dialect.sqlserver-parity','administration.bootstrap','administration.configuration','administration.security','operations.backup-recovery','operations.replication-ha','operations.capacity-storage','operations.upgrade-readiness','lifecycle.retirement'].forEach(function(id){
   assert(sql.productCoverage.gaps().some(function(area){return area.id===id;}),'expected strategic gap missing: '+id);
 });
 
