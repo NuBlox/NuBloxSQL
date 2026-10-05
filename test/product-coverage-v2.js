@@ -63,7 +63,10 @@ assert.strictEqual(migrationExecution.status,'established');
 assert.strictEqual(migrationExecution.stages.runtime,'implemented');
 
 var bootstrap=sql.productCoverage.area('administration.bootstrap');
-assert.strictEqual(bootstrap.status,'gap');
+assert.strictEqual(bootstrap.status,'partial');
+assert.strictEqual(bootstrap.stages.publicApi,'implemented');
+assert.strictEqual(bootstrap.stages.runtime,'implemented');
+assert.strictEqual(bootstrap.stages.contractTest,'implemented');
 
 var health=sql.productCoverage.area('operations.health-sessions');
 assert.strictEqual(health.status,'partial');

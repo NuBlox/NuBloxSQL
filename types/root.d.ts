@@ -17,3 +17,5 @@ export * from './data-movement';
 export * from './dialect-registry';
 
 export * from './profile-capabilities';
+
+export * from './database-bootstrap';

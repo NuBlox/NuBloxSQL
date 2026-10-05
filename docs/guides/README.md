@@ -38,3 +38,5 @@ Historical development notes are preserved under `docs/archive/` and are not par
 - [Dialect profile capability overlays](22-profile-capability-overlays.md)
 
 - [MariaDB profile over MySQL](23-mariadb-profile.md)
+
+- [Database bootstrap foundation](25-database-bootstrap.md)

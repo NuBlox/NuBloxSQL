@@ -101,7 +101,7 @@
     {
       "id": "administration.bootstrap",
       "pillar": "administration",
-      "status": "gap"
+      "status": "partial"
     },
     {
       "id": "administration.configuration",

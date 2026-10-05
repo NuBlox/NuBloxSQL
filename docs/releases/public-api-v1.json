@@ -113,7 +113,17 @@
     "PROFILE_CAPABILITY_OVERLAY_SCHEMA_VERSION",
     "PROFILE_CAPABILITY_CHANGE_TYPES",
     "PROFILE_CAPABILITY_RESOLUTIONS",
-    "profileCapabilities"
+    "profileCapabilities",
+    "DATABASE_BOOTSTRAP_PLAN_SCHEMA_VERSION",
+    "DATABASE_BOOTSTRAP_EXECUTION_MODES",
+    "DATABASE_BOOTSTRAP_SCOPES",
+    "DATABASE_BOOTSTRAP_EXECUTION_SCHEMA_VERSION",
+    "DATABASE_BOOTSTRAP_STATUSES",
+    "planDatabaseBootstrap",
+    "bootstrapAutomaticSteps",
+    "bootstrapManualSteps",
+    "inspectDatabaseBootstrap",
+    "executeDatabaseBootstrap"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -199,7 +209,10 @@
     "lib/capabilities/DialectRegistryData.js",
     "types/profile-capabilities.d.ts",
     "lib/capabilities/ProfileCapabilityOverlay.js",
-    "lib/capabilities/ProfileCapabilityOverlayData.js"
+    "lib/capabilities/ProfileCapabilityOverlayData.js",
+    "types/database-bootstrap.d.ts",
+    "lib/client/DatabaseBootstrapPlanner.js",
+    "lib/client/DatabaseBootstrapExecutor.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",

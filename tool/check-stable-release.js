@@ -63,6 +63,9 @@ try {
     "if (sql.SQL_CAPABILITY_ONTOLOGY_SCHEMA_VERSION !== 1) throw new Error('capability ontology schema mismatch');",
     "if (sql.DIALECT_REGISTRY_SCHEMA_VERSION !== 1 || sql.DIALECT_REGISTRY_MASTER_PROFILE_COUNT !== 100) throw new Error('dialect registry schema mismatch');",
     "if (sql.PROFILE_CAPABILITY_OVERLAY_SCHEMA_VERSION !== 1 || !sql.profileCapabilities.validate().valid) throw new Error('profile capability overlay qualification failed');",
+    "if (sql.DATABASE_BOOTSTRAP_PLAN_SCHEMA_VERSION !== 1 || sql.DATABASE_BOOTSTRAP_EXECUTION_SCHEMA_VERSION !== 1) throw new Error('database bootstrap schema mismatch');",
+    "const bootstrapPlan = sql.planDatabaseBootstrap({ database: 'release_bootstrap', schemas: ['app'] }, { targetDialect: 'postgresql' });",
+    "if (!bootstrapPlan.planHash || bootstrapPlan.summary.steps !== 2 || !bootstrapPlan.requires.databaseClientAfterCreate) throw new Error('database bootstrap planning qualification failed');",
     "if (!sql.dialectRegistry.validate().valid || sql.dialectRegistry.report().counts.firstClassDialects !== 25) throw new Error('dialect registry qualification failed');",
     "const ontologyValidation = sql.capabilityOntology.validate();",
     "if (!ontologyValidation.valid || ontologyValidation.definitions < 150) throw new Error('capability ontology qualification failed');",
@@ -130,7 +133,7 @@ try {
   run(npm, ['install', '--no-save', '--ignore-scripts', '--no-audit', '--no-fund', 'typescript@5.9.3', '@types/node@22'], { cwd: temp });
   var typeConsumer = [
     "import sql = require('nubloxsql');",
-    "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient, QueryDiagnosticsOptions, QueryDiagnosticsReport, SqlCapabilityOntologyApi, SqlCapabilityDefinition, SqlCapabilityObservation, SqlCapabilityImplementationCoverage, SqlRuntimeCapabilityReport, SqlRewritePlan, SqlRewriteResult, SqlStatementAst, SqlQueryAst, SqlSelectStatementAst, SqlSetOperationStatementAst, SqlInsertStatementAst, SqlUpdateStatementAst, SqlDeleteStatementAst, SqlAstWithClause, SqlAstDerivedTable, SqlAstSubqueryExpression, SqlAstCaseExpression, SqlAstCastExpression, SqlAstWindowExpression, SqlAstWindowDefinition, SqlStatementCompilerScope, SqlCompiledAst, SqlStatementTranspileResult, DialectRegistryApi, DialectRegistryProduct, ProfileCapabilityApi, ProfileCapabilityStatus } from 'nubloxsql';",
+    "import type { MySqlClient, PostgreSqlClient, SqliteClient, SqlServerClient, QueryDiagnosticsOptions, QueryDiagnosticsReport, SqlCapabilityOntologyApi, SqlCapabilityDefinition, SqlCapabilityObservation, SqlCapabilityImplementationCoverage, SqlRuntimeCapabilityReport, SqlRewritePlan, SqlRewriteResult, SqlStatementAst, SqlQueryAst, SqlSelectStatementAst, SqlSetOperationStatementAst, SqlInsertStatementAst, SqlUpdateStatementAst, SqlDeleteStatementAst, SqlAstWithClause, SqlAstDerivedTable, SqlAstSubqueryExpression, SqlAstCaseExpression, SqlAstCastExpression, SqlAstWindowExpression, SqlAstWindowDefinition, SqlStatementCompilerScope, SqlCompiledAst, SqlStatementTranspileResult, DialectRegistryApi, DialectRegistryProduct, ProfileCapabilityApi, ProfileCapabilityStatus, DatabaseBootstrapPlan, DatabaseBootstrapExecutionResult } from 'nubloxsql';",
     "const mysql: MySqlClient = sql.createClient({ dialect: 'mysql', user: 'app', pool: false });",
     "const pg: PostgreSqlClient = sql.createClient({ dialect: 'pg', user: 'app', pool: false });",
     "const sqlite: SqliteClient = sql.createClient({ dialect: 'sqlite', filename: ':memory:', pool: false });",
@@ -145,6 +148,8 @@ try {
     "const ontology: SqlCapabilityOntologyApi = sql.capabilityOntology;",
     "const dialectRegistry: DialectRegistryApi = sql.dialectRegistry;",
     "const profileCapabilityApi: ProfileCapabilityApi = sql.profileCapabilities;",
+    "const bootstrapPlan: DatabaseBootstrapPlan = sql.planDatabaseBootstrap({ database: 'typed_bootstrap' }, { targetDialect: 'postgresql' });",
+    "const bootstrapResult: Promise<DatabaseBootstrapExecutionResult> = pg.executeBootstrap(bootstrapPlan, { dryRun: true });",
     "const inheritedCapability: ProfileCapabilityStatus = profileCapabilityApi.status('aurora-postgresql', 'statements.select');",
     "if (inheritedCapability.available !== null) throw new Error('profile capability inheritance must fail closed');",
     "const auroraProfile: DialectRegistryProduct | null = dialectRegistry.product('aurora-postgresql');",
@@ -192,7 +197,7 @@ try {
     "void governance; void budget; void diagnosticOptions; void diagnosticReport; void pgDiagnostic; void mysqlDiagnostic; void ontology; void ontologyDefinition; void ontologyObservation; void ontologyCoverage; void staticRuntime; void liveRuntime; void rewritePlan; void rewritten; void parsedStatement; void parsedAst; void ast; void compiled; void transpiled; void parsedCteStatement; void cteAst; void cteWith; void queryScope; void derivedStatement; void derivedQuery; void derived; void scalarStatement; void scalar; void setStatement; void setNode; void wave3Statement; void caseNode; void castNode; void windowNode; void windowDefinitions; void insertAst; void updateAst; void deleteAst; void dmlScope; void dmlCompiled; void dmlTranspiled;",
     "sqlite.transaction(async tx => { const d: 'sqlite' = tx.dialect; void d; await tx.diagnose('SELECT 1'); });",
     "sql.capabilityReport('pg').dialect satisfies 'postgresql'; sql.transactionPolicy('mssql').dialect satisfies 'sqlserver';",
-    "void sqliteDialect; void pgDialect; void mysqlDialect; void sqlServerDialect;"
+    "void sqliteDialect; void pgDialect; void mysqlDialect; void sqlServerDialect; void bootstrapPlan; void bootstrapResult;"
   ].join('\n');
   fs.writeFileSync(path.join(temp, 'consumer.ts'), typeConsumer);
   var tsc = path.join(temp, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
