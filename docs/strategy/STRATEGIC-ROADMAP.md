@@ -65,6 +65,12 @@ Expand implementation maturity so it can represent at least:
 
 This lets the ontology describe the whole product rather than mainly compiler coverage.
 
+## Canonical dialect / DBMS registry
+
+**Status:** first canonical registry delivered. NuBloxSQL now separates vendor, product/profile, version, dialect identity, parent dialect, implementation/routing status, wire protocol and language-surface coverage. The registry contains the 100 research profiles and the initial 25 first-class dialect targets without widening executable routing.
+
+Future dialect work should register identity/inheritance first, then add product-specific capability evidence, driver qualification and compiler/runtime support explicitly.
+
 ## Priority 2 — promote SQL Server toward Tier 1
 
 SQL Server already has meaningful native runtime depth and live qualification.
