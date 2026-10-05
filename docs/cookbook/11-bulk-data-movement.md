@@ -59,31 +59,35 @@ async function importMySql(config, csvText) {
 
 Enable LOCAL INFILE only on clients that need it. Keep source size and filename checks explicit.
 
-## SQLite transactional batch
+## SQLite prepared transactional batch
 
-SQLite does not need a network bulk-loader for normal embedded use. A prepared statement inside one transaction avoids per-row commit overhead.
+SQLite does not need a network bulk-loader for normal embedded use. NuBloxSQL's SQLite runtime provides a prepared batch writer that prepares one row INSERT, reuses it across the batch, and owns one transaction for that batch.
 
 ```js
 const { createConnection } = require('nubloxsql');
 
 const db = createConnection('sqlite', { filename: 'app.db' });
-const insert = db.prepare(
-  'INSERT INTO staging_orders (id, customer_id, total) VALUES (?, ?, ?)'
-);
 
-db.begin('immediate');
 try {
-  for (const row of rows) {
-    insert.run([row.id, row.customerId, row.total]);
-  }
-  db.commit();
-} catch (error) {
-  db.rollback();
-  throw error;
+  const result = db.insertMany(
+    ['staging_orders'],
+    ['id', 'customer_id', 'total'],
+    rows.map((row) => ({
+      id: row.id,
+      customer_id: row.customerId,
+      total: row.total
+    }))
+  );
+
+  console.log(result.rowCount);
 } finally {
   db.close();
 }
 ```
+
+The default transaction mode is `IMMEDIATE`. Use `{ transactionMode: 'deferred' }` or `{ transactionMode: 'exclusive' }` only when the workload requires it.
+
+This strategy keeps the prepared statement's bind-variable count proportional to one row instead of the whole batch. It also rolls the complete batch back on failure. `insertMany()` refuses to run inside an already-active transaction because the data-movement checkpoint contract requires the batch commit to occur before its checkpoint advances.
 
 Chunk extremely large jobs into bounded transactions when one giant transaction would create unacceptable WAL/journal growth or recovery time.
 
