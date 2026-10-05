@@ -99,6 +99,56 @@
       "status": "partial"
     },
     {
+      "id": "administration.bootstrap",
+      "pillar": "administration",
+      "status": "gap"
+    },
+    {
+      "id": "administration.configuration",
+      "pillar": "administration",
+      "status": "gap"
+    },
+    {
+      "id": "administration.security",
+      "pillar": "administration",
+      "status": "gap"
+    },
+    {
+      "id": "operations.health-sessions",
+      "pillar": "operations",
+      "status": "partial"
+    },
+    {
+      "id": "operations.maintenance",
+      "pillar": "operations",
+      "status": "partial"
+    },
+    {
+      "id": "operations.backup-recovery",
+      "pillar": "operations",
+      "status": "gap"
+    },
+    {
+      "id": "operations.replication-ha",
+      "pillar": "operations",
+      "status": "gap"
+    },
+    {
+      "id": "operations.capacity-storage",
+      "pillar": "operations",
+      "status": "gap"
+    },
+    {
+      "id": "operations.upgrade-readiness",
+      "pillar": "operations",
+      "status": "gap"
+    },
+    {
+      "id": "lifecycle.retirement",
+      "pillar": "lifecycle",
+      "status": "gap"
+    },
+    {
       "id": "automation.jobs",
       "pillar": "platform",
       "status": "gap"
