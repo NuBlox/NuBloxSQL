@@ -6,10 +6,21 @@ export type DatabaseBootstrapStatus =
   | 'needed' | 'exists' | 'satisfied' | 'manual' | 'deferred'
   | 'planned' | 'skipped' | 'succeeded' | 'failed' | 'blocked';
 
+export interface DatabaseBootstrapDatabaseOptions {
+  readonly owner?: string;
+  readonly template?: string;
+  readonly encoding?: string;
+  readonly collation?: string;
+  readonly ctype?: string;
+  readonly tablespace?: string;
+  readonly characterSet?: string;
+}
+
 export interface DatabaseBootstrapDatabaseSpec {
   readonly name: string;
   readonly create?: boolean;
   readonly ifNotExists?: boolean;
+  readonly options?: Readonly<DatabaseBootstrapDatabaseOptions>;
 }
 
 export interface DatabaseBootstrapSchemaSpec {
