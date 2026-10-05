@@ -109,7 +109,11 @@
     "DIALECT_REGISTRY_SCHEMA_VERSION",
     "DIALECT_REGISTRY_MASTER_PROFILE_COUNT",
     "PRIMARY_SQL_DIALECTS",
-    "dialectRegistry"
+    "dialectRegistry",
+    "PROFILE_CAPABILITY_OVERLAY_SCHEMA_VERSION",
+    "PROFILE_CAPABILITY_CHANGE_TYPES",
+    "PROFILE_CAPABILITY_RESOLUTIONS",
+    "profileCapabilities"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -192,7 +196,10 @@
     "lib/client/DataMovementPlanner.js",
     "types/dialect-registry.d.ts",
     "lib/capabilities/DialectRegistry.js",
-    "lib/capabilities/DialectRegistryData.js"
+    "lib/capabilities/DialectRegistryData.js",
+    "types/profile-capabilities.d.ts",
+    "lib/capabilities/ProfileCapabilityOverlay.js",
+    "lib/capabilities/ProfileCapabilityOverlayData.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",

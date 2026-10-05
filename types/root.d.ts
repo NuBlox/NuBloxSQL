@@ -15,3 +15,5 @@ export * from './migration-executor';
 export * from './data-movement';
 
 export * from './dialect-registry';
+
+export * from './profile-capabilities';

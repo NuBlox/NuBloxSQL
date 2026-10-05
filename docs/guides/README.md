@@ -34,3 +34,5 @@ The guides describe only released APIs and supported behaviour. Engine-specific 
 Historical development notes are preserved under `docs/archive/` and are not part of the current user contract.
 
 - [Canonical dialect registry](21-dialect-registry.md)
+
+- [Dialect profile capability overlays](22-profile-capability-overlays.md)

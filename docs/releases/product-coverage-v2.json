@@ -49,6 +49,11 @@
       "status": "established"
     },
     {
+      "id": "portability.profile-overlays",
+      "pillar": "portability",
+      "status": "established"
+    },
+    {
       "id": "portability.ontology",
       "pillar": "portability",
       "status": "strong"
