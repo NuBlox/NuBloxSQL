@@ -30,6 +30,8 @@ report.products.forEach(function (entry) {
   });
 });
 
+assert.strictEqual(sql.dialectRegistry.product('aurora-postgresql').profileDialect, 'aurora-postgresql');
+assert.strictEqual(sql.dialectRegistry.product('aurora-postgresql').dialect, 'postgresql');
 assert.strictEqual(sql.dialectRegistry.product('aurora-postgresql').driver.routable, false);
 assert.strictEqual(sql.dialectRegistry.product('aurora-postgresql').driver.candidateAdapter, 'postgresql');
 assert.strictEqual(sql.dialectRegistry.product('spanner-postgresql').parentDialect, 'postgresql');
