@@ -1,6 +1,6 @@
 # NuBloxSQL
 
-NuBloxSQL is a single-entry SQL database integration platform for Node.js.
+NuBloxSQL is a JavaScript and TypeScript database engineering and management platform: one coherent API across the complete SQL database lifecycle.
 
 ```bash
 npm install nubloxsql
@@ -36,7 +36,7 @@ Node.js **22 or newer** is required.
 
 ## Public contract
 
-NuBloxSQL provides one package and one public entry point for:
+NuBloxSQL provides one package and one public entry point. The released surface already covers:
 
 - client and pool creation;
 - tagged SQL, identifier quoting and parameter binding;
@@ -49,6 +49,8 @@ NuBloxSQL provides one package and one public entry point for:
 - an executable atomic SQL capability ontology separating engine support from NuBlox compiler coverage;
 - direct native-dialect access where portability would hide important engine behaviour.
 
+The complete product direction extends this same model across discovery, initial setup, administration, operation, backup/recovery, migration, automation and retirement. These lifecycle domains are roadmap scope; they are not all released APIs today.
+
 The design rule is: **one developer API, honest dialect semantics**.
 
 ## User documentation
@@ -59,6 +61,7 @@ Use the [NuBloxSQL Cookbook](docs/cookbook/README.md) for worked applications an
 
 Product direction is defined in:
 
+- [Canonical product definition](docs/strategy/PRODUCT-DEFINITION.md)
 - [Product vision](docs/strategy/PRODUCT-VISION.md)
 - [Product capability register](docs/strategy/PRODUCT-CAPABILITY-REGISTER.md)
 - [Strategic roadmap](docs/strategy/STRATEGIC-ROADMAP.md)
