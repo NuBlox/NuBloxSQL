@@ -243,6 +243,7 @@
     "types/profile-capabilities.d.ts",
     "test/profile-capability-overlays.js",
     "docs/guides/22-profile-capability-overlays.md",
-    "tool/check-profile-capability-overlays-release.js"
+    "tool/check-profile-capability-overlays-release.js",
+    "docs/guides/23-mariadb-profile.md"
   ]
 }

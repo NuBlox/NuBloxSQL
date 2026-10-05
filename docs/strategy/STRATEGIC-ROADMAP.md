@@ -75,7 +75,7 @@ Future dialect work should register identity/inheritance first, then add product
 
 **Status:** overlay engine delivered. Registry profiles can now resolve against the nearest implemented capability baseline while inherited capabilities remain `inherited-unverified` until product-specific evidence is supplied. Immutable overlays support additions, overrides, removals and version/edition/deployment constraints.
 
-The official overlay evidence register intentionally starts empty: product differences must be added only with documentation or runtime qualification rather than inferred from compatibility branding.
+The official overlay evidence register now contains its first evidence-backed profile: MariaDB over the MySQL baseline. Documented differences include sequences, system-versioned tables, native UUID, MariaDB JSON storage semantics and statement-specific RETURNING. Additional profiles must still be added only from authoritative documentation or runtime qualification.
 
 ## Priority 2 — promote SQL Server toward Tier 1
 

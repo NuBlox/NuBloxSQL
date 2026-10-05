@@ -85,7 +85,7 @@ const overlay = sql.profileCapabilities.compile('aurora-postgresql', {
 
 `compile()` is pure. It does not mutate NuBloxSQL's official evidence register. It validates the change set and returns an immutable overlay that can be supplied to `status()`, `supports()`, `diff()` or `report()`.
 
-Verified official profile overlays belong in `lib/capabilities/ProfileCapabilityOverlayData.js` and should only be added with product-specific evidence.
+Verified official profile overlays belong in `lib/capabilities/ProfileCapabilityOverlayData.js` and should only be added with product-specific evidence. The first official overlay is MariaDB-over-MySQL; see [MariaDB profile over MySQL](23-mariadb-profile.md).
 
 ## Conditional differences
 
