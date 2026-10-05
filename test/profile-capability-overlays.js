@@ -140,11 +140,10 @@ assert.throws(function () {
   });
 }, /existing baseline capability/);
 
-var badAdd = sql.profileCapabilities.compile('aurora-postgresql', {
-  changes: [{ path: 'extensions.__missingOverride', operation: 'override', support: 'native' }]
-});
 assert.throws(function () {
-  sql.profileCapabilities.status('aurora-postgresql', 'extensions.__missingOverride', { overlay: badAdd });
+  sql.profileCapabilities.compile('aurora-postgresql', {
+    changes: [{ path: 'extensions.__missingOverride', operation: 'override', support: 'native' }]
+  });
 }, /missing baseline capability/);
 
 assert.throws(function () {
