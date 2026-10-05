@@ -17,7 +17,7 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | --- | --- | --- | --- |
 | Package/public API | Strong | single `nubloxsql` entry point, release-surface checks, clean-install JS/TS consumers | Maintain |
 | PostgreSQL runtime | Strong | native protocol, COPY, notifications, cancellation, pooling, portals, result limits, type decoding, diagnostics, deep metadata | Maintain and deepen selectively |
-| MySQL runtime | Strong | protocol/auth, prepared statements, typed binds, reset, streaming, control, LOCAL INFILE, diagnostics, deep metadata | Maintain and deepen selectively |
+| MySQL runtime | Strong | protocol/auth, prepared statements, typed binds, connection attributes, reset, streaming, control, LOCAL INFILE, diagnostics, deep metadata | Follow `MYSQL-OFFICIAL-DOC-PARITY.md`: compression, session tracking/EOF deprecation, query attributes and Unix sockets next |
 | SQLite runtime | Strong | lifecycle, WAL/storage, maintenance, changesets, resource governance, corruption hardening, performance/memory/concurrency qualification | Maintain |
 | SQL Server runtime | Established | native TDS, TLS, RPC, streaming, types, collation, sql_variant, live 2019/2022/2025 suites | Promote toward Tier 1 |
 | Query compiler | Established | SELECT foundation, CTEs, subqueries, set operators, CASE/CAST, windows | Broaden before more MERGE detail |
