@@ -487,3 +487,21 @@ const result = await db.executeMigration(plan, {
 ```
 
 Execution supports dry-run, approval modes, resumable checkpoints, optional compensating rollback (`failurePolicy: 'compensate'`), opt-in single-transaction execution where the plan allows it, operation timeout/cancellation options, lifecycle hooks, immutable audit records, and semantic-hash post-verification against an expected schema snapshot. Manual steps block execution before any SQL runs unless a `manualHandler` is supplied.
+
+
+## Database server discovery and bootstrap prerequisites
+
+`DATABASE_SERVER_DISCOVERY_SCHEMA_VERSION === 1` exposes normalized server/instance identity and visible database/catalog inventory for PostgreSQL, MySQL, SQLite and SQL Server while retaining native evidence.
+
+```js
+const discovery = await db.discoverServer();
+```
+
+Use `assessDatabaseBootstrapPrerequisites()` or `client.assessBootstrapPrerequisites()` with an immutable bootstrap plan to combine server discovery with plan requirements before execution.
+
+```js
+const plan = db.planBootstrap({ database: 'app', schemas: ['app'] });
+const prerequisites = await db.assessBootstrapPrerequisites(plan);
+```
+
+Prerequisite status is `ready`, `attention` or `blocked`. NuBloxSQL reports administrative privilege requirements as an explicit attention boundary rather than claiming portable privilege certainty where the engines expose materially different security models.
