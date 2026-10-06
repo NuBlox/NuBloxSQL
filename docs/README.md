@@ -45,3 +45,7 @@ The root README, this directory's current documents, `docs/guides/`, `docs/cookb
 Everything under [`archive/`](archive/) is historical material retained for traceability. Archived files may contain superseded status, package names, plans, assumptions or qualification narratives. **Do not use archived material as current release guidance.**
 
 If an archived statement conflicts with current release documentation, declarations or release tooling, the archived statement is obsolete.
+
+## Applications
+
+- [NuBlox Shell](strategy/NUBLOX-SHELL.md) — terminal application architecture and roadmap.
