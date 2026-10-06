@@ -60,6 +60,6 @@
     "verify:proprietary": "npm run verify && npm run v1:proprietary-audit && npm run v1:release-audit",
     "release:check": "npm run verify:proprietary && npm run release:qualify && npm pack --dry-run",
     "prepublishOnly": "npm run release:check",
-    "test:shell": "node packages/shell/test/shell-contract.js && node tool/check-shell-release.js"
+    "test:shell": "node shell/test/shell-contract.js && node tool/check-shell-release.js"
   }
 }
