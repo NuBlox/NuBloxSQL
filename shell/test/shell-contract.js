@@ -1,7 +1,7 @@
 'use strict';
 
 var assert=require('assert');
-var root=require('../../..');
+var root=require('../..');
 var Shell=require('../lib/Shell').Shell;
 var output=require('../lib/Output');
 var cli=require('../lib/Cli');
