@@ -4,7 +4,15 @@ var Shell=require('./lib/Shell').Shell;
 var cli=require('./lib/Cli');
 
 function loadNuBloxSQL(){
-  return require('nubloxsql');
+  try{return require('nubloxsql');}
+  catch(error){
+    if(!error||error.code!=='MODULE_NOT_FOUND'||String(error.message).indexOf("'nubloxsql'")===-1)throw error;
+    try{
+      var rootPackage=require('../../package.json');
+      if(rootPackage&&rootPackage.name==='nubloxsql')return require('../..');
+    }catch(ignore){}
+    throw error;
+  }
 }
 
 function createShell(options){
