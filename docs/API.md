@@ -558,3 +558,27 @@ Current planner behaviour is deliberately conservative:
 - MySQL changes remain manual until variable-specific dynamic/persistible evidence is available.
 
 Planning does not execute any change.
+
+
+## Database configuration execution
+
+`DATABASE_CONFIGURATION_EXECUTION_SCHEMA_VERSION === 1` controls execution of immutable configuration plans.
+
+```js
+const discovered = await db.discoverConfiguration();
+const plan = db.planConfiguration(discovered, {
+  changes: [{ name: 'work_mem', value: '8192' }]
+});
+
+const inspection = await db.inspectConfigurationPlan(plan);
+
+const result = await db.executeConfiguration(plan, {
+  approvedPlanHash: plan.planHash
+});
+```
+
+Execution performs a fresh preflight discovery and refuses to mutate when the current setting has drifted from the value captured by the plan. Non-dry-run execution requires the exact `approvedPlanHash` by default.
+
+Automatic and manual steps are followed by dialect-aware verification. PostgreSQL can verify `ALTER SYSTEM` persistence through `pg_file_settings`; SQL Server distinguishes configured and effective values so restart-bound changes are not falsely rejected; SQLite is rediscovered after safe PRAGMA changes. Restart/new-session boundaries require `openVerificationClient` for a definitive success result. Without fresh verification, the result is `pending-verification`, never falsely `succeeded`.
+
+Database-service restarts remain manual lifecycle boundaries.
