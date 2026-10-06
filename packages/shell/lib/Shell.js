@@ -47,7 +47,16 @@ Shell.prototype.executeLine=async function executeLine(line){
 Shell.prototype.render=function render(result){
   if(!result||result.kind==='empty'||result.kind==='quit')return '';
   if(result.kind==='text')return String(result.value);
-  if(result.kind==='data')return output.render(result.value,this.format);
+  if(result.kind==='describe'&&this.format==='table'){
+    return [
+      'TABLE',output.render(result.value.table||[],this.format),
+      '', 'COLUMNS',output.render(result.value.columns||[],this.format),
+      '', 'INDEXES',output.render(result.value.indexes||[],this.format),
+      '', 'FOREIGN KEYS',output.render(result.value.foreignKeys||[],this.format),
+      '', 'CONSTRAINTS',output.render(result.value.constraints||[],this.format)
+    ].join('\n');
+  }
+  if(result.kind==='data'||result.kind==='describe')return output.render(result.value,this.format);
   return output.render(result,this.format);
 };
 
