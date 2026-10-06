@@ -31,6 +31,8 @@
     "nubloxsql": "^1.1.0"
   },
   "scripts": {
-    "test": "node test/shell-contract.js"
+    "test": "node test/shell-contract.js",
+    "release:check": "npm test && npm pack --dry-run",
+    "prepublishOnly": "npm run release:check"
   }
 }
