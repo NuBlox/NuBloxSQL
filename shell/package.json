@@ -19,7 +19,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NuBlox/NuBloxSQL.git",
-    "directory": "packages/shell"
+    "directory": "shell"
   },
   "publishConfig": {
     "access": "public"
