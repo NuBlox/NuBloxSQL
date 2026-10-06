@@ -139,7 +139,13 @@
     "DATABASE_CONFIGURATION_PLAN_ACTIONS",
     "planDatabaseConfiguration",
     "configurationAutomaticSteps",
-    "configurationManualSteps"
+    "configurationManualSteps",
+    "DATABASE_CONFIGURATION_EXECUTION_SCHEMA_VERSION",
+    "DATABASE_CONFIGURATION_EXECUTION_STATUSES",
+    "DATABASE_CONFIGURATION_EXECUTION_STEP_STATUSES",
+    "DATABASE_CONFIGURATION_APPROVAL_MODES",
+    "inspectDatabaseConfigurationPlan",
+    "executeDatabaseConfiguration"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -234,7 +240,9 @@
     "types/database-configuration.d.ts",
     "lib/client/DatabaseConfiguration.js",
     "types/database-configuration-planner.d.ts",
-    "lib/client/DatabaseConfigurationPlanner.js"
+    "lib/client/DatabaseConfigurationPlanner.js",
+    "types/database-configuration-executor.d.ts",
+    "lib/client/DatabaseConfigurationExecutor.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",

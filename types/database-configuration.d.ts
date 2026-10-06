@@ -9,6 +9,8 @@ export type DatabaseConfigurationScope =
 export interface DatabaseConfigurationSetting {
   readonly name: string;
   readonly value: unknown;
+  readonly configuredValue: unknown;
+  readonly effectiveValue: unknown;
   readonly scope: DatabaseConfigurationScope;
   readonly apply: DatabaseConfigurationApplyMode;
   readonly mutable: boolean | null;

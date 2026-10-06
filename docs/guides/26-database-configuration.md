@@ -224,3 +224,24 @@ The next configuration slice should introduce controlled **plan execution** with
 - audit output.
 
 Service restarts must remain explicit/manual unless a future execution environment can prove ownership of that lifecycle boundary.
+
+
+## Controlled execution
+
+Configuration plans can now be inspected and executed:
+
+```js
+const inspection = await db.inspectConfigurationPlan(plan);
+
+const result = await db.executeConfiguration(plan, {
+  approvedPlanHash: plan.planHash
+});
+```
+
+Before mutation, NuBloxSQL rediscovers configuration and compares each planned setting with the value captured at planning time. Any difference returns `drifted` and performs no configuration SQL.
+
+The default approval mode is `required`. The caller must provide the exact immutable `planHash` as `approvedPlanHash`. `approvalMode: 'none'` is available only as an explicit opt-out.
+
+Execution verifies every applied step where possible. A failed comparison returns `failed`; an unavailable fresh-session/restart verification returns `pending-verification`. A restart is never performed automatically. Callers may implement manual lifecycle work with `manualHandler` and provide a fresh post-restart/session client with `openVerificationClient`.
+
+`dryRun: true` performs drift preflight and returns the planned audit without executing mutations.

@@ -32,7 +32,7 @@ export interface DatabaseConfigurationPlanStep {
   readonly execution: DatabaseConfigurationPlanExecution;
   readonly sql: string | null;
   readonly verification: Readonly<{
-    mode: 'setting-equals';
+    mode: 'effective-setting-equals' | 'configured-setting-equals' | 'postgres-file-setting-equals';
     name: string;
     value: unknown;
   }> | null;

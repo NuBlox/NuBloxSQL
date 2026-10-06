@@ -22,3 +22,4 @@ export * from './database-bootstrap';
 export * from './server-discovery';
 export * from './database-configuration';
 export * from './database-configuration-planner';
+export * from './database-configuration-executor';
