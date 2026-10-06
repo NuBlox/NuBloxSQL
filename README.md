@@ -53,6 +53,15 @@ The complete product direction extends this same model across discovery, initial
 
 The design rule is: **one developer API, honest dialect semantics**.
 
+## Official applications
+
+NuBloxSQL is the platform beneath official NuBlox database tools.
+
+- **NuBlox Shell** (`packages/shell`) — interactive REPL and automation-friendly CLI built only on the public `nubloxsql` API.
+- **NuBlox SQL Workbench** — planned graphical database engineering/management application using the same public platform boundary.
+
+The Shell's architecture and roadmap are defined in [NuBlox Shell](docs/strategy/NUBLOX-SHELL.md).
+
 ## User documentation
 
 Start with the [NuBloxSQL User Guides](docs/guides/README.md) for detailed API and operational guidance.
