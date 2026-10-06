@@ -10,8 +10,8 @@ var HELP=[
   '\\server                   Discover current database server/runtime',
   '\\databases                List visible databases/catalogs',
   '\\schemas [database]       List schemas',
-  '\\tables [schema]          List tables/views',
-  '\\describe <table>         Describe a table and its related metadata',
+  '\\tables [schema] [db]     List tables/views',
+  '\\describe <table>         Describe table; schema.table and db.schema.table supported',
   '\\config [setting]         Discover configuration or one setting',
   '\\format <format>          table | json | jsonl | csv',
   '\\quit                     Exit NuBlox Shell',
@@ -86,12 +86,21 @@ async function command(shell,line){
   }
   if(name==='tables'){
     var schema=tokens.shift();
-    return {kind:'data',value:await client.metadata.tables(schema?{schema:schema}:{})};
+    var db=tokens.shift();
+    var tableScope={};
+    if(schema)tableScope.schema=schema;
+    if(db)tableScope.database=db;
+    return {kind:'data',value:await client.metadata.tables(tableScope)};
   }
   if(name==='describe'||name==='desc'){
-    var table=tokens.shift();
-    if(!table)throw new TypeError('Usage: \\describe <table>');
+    var reference=tokens.shift();
+    if(!reference)throw new TypeError('Usage: \\describe <table>');
+    var parts=reference.split('.');
+    var table=parts.pop();
     var scope={};
+    if(parts.length===1)scope.schema=parts[0];
+    else if(parts.length===2){scope.database=parts[0];scope.schema=parts[1];}
+    else if(parts.length>2)throw new TypeError('NuBlox Shell table reference must be table, schema.table or database.schema.table');
     var tableMeta=await client.metadata.table(table,scope);
     if(!tableMeta)return {kind:'data',value:{table:null,columns:[],indexes:[],foreignKeys:[],constraints:[]}};
     var values=await Promise.all([
@@ -100,7 +109,7 @@ async function command(shell,line){
       client.metadata.foreignKeys(table,scope),
       client.metadata.constraints(table,scope)
     ]);
-    return {kind:'data',value:{
+    return {kind:'describe',value:{
       table:tableMeta,
       columns:values[0],
       indexes:values[1],
