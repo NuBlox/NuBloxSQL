@@ -134,9 +134,6 @@ export interface EngineInstallationPlan {
   readonly steps: readonly EngineLifecyclePlanStep[];
 }
 
-export interface EngineInstallationPlanOptions {
-  readonly allowSideBySide?: boolean;
-}
 
 export interface EngineInitializationSpecification {
   readonly dataDirectory?: string;
@@ -191,8 +188,7 @@ export function inspectEngineTarget(
 ): Promise<InstallationProviderTargetInspection>;
 export function planEngineInstallation(
   selection: EngineSelection,
-  target: InstallationProviderTargetInspection,
-  options?: EngineInstallationPlanOptions
+  target: InstallationProviderTargetInspection
 ): EngineInstallationPlan;
 export function engineInstallationProviderSteps(plan: EngineInstallationPlan): readonly EngineLifecyclePlanStep[];
 export function engineInstallationExternalSteps(plan: EngineInstallationPlan): readonly EngineLifecyclePlanStep[];
