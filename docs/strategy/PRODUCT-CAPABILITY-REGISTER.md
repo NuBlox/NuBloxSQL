@@ -41,16 +41,19 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | Stored functions/procedures | Gap in compiler | engine observations exist; no coherent procedural SQL compiler | Medium, vendor-heavy |
 | Administration SQL | Gap in compiler | diagnostics/runtime operations exist; EXPLAIN/VACUUM/ANALYZE/PRAGMA/etc. not unified compiler families | Medium-high |
 | Bulk/data movement | Established foundation | portable cross-dialect mapping, batching, validation, checkpoints/resume and audit/events; transfer planner; PostgreSQL COPY, opt-in MySQL LOCAL INFILE, SQLite prepared-transaction batching and SQL Server TDS BulkLoadBCP acceleration | Add live large-transfer qualification and durable external checkpoint storage |
+| Engine selection / installation | Gap | lifecycle architecture now defined; no public installation-provider or install-plan API yet | Priority 1: provider model, immutable plans, verification and host-mutation boundary |
+| Runtime / cluster initialization | Gap | lifecycle architecture now defined; engine-specific first-run semantics documented conceptually | Priority 1: initialization intent, readiness checks, execution and verification |
 | Database bootstrap / initial setup | Partial | public planner/executor foundation for database/schema establishment, precondition inspection, dry-run, verification and audit across the four supported engines | Next: prerequisite/server discovery, database options, configuration/security integration and live qualification |
-| Database/server configuration | Partial | public discovery plus immutable change planning normalize setting value, scope, apply mode, mutability, restart evidence and native SQL/manual boundaries across PostgreSQL, MySQL, SQLite and SQL Server | Next: safe execution, stronger MySQL mutability evidence and live qualification |
-| Security administration | Gap | authentication/runtime support exists; users/logins/roles/privileges are not a coherent administration surface | Priority 2: administration model integrated with future DCL |
-| Operational health / sessions | Partial | diagnostics and native metadata provide pieces | Priority 3: sessions, running work, blocking, locks, deadlocks and health summary |
-| Maintenance | Partial | SQLite has substantial maintenance support; other engines expose capabilities without one common operational API | Priority 3: analyze/statistics, vacuum/optimize, reindex and integrity intents |
-| Backup / restore / recovery | Gap | no first-class common contract | Priority 4: plan, execute boundary, restore and verification model |
-| Replication / HA | Gap | engine knowledge exists in places; no lifecycle subsystem | Priority 7: topology/role/lag/health observation before control |
-| Capacity / storage | Gap | metadata exposes fragments; no coherent capacity model | Priority 7: size, growth, limits and pressure evidence |
-| Upgrade readiness | Gap | version/capability knowledge exists but no upgrade assessment | Priority 7: source/target version compatibility and risk assessment |
-| Retirement | Gap | no coherent archive/revoke/decommission contract | Priority 9: approval-gated, auditable retirement workflows |
+| Database/server configuration | Partial | public discovery, immutable change planning and controlled execution provide drift detection, plan-hash approval, verification and native SQL/manual boundaries across PostgreSQL, MySQL, SQLite and SQL Server | Next: stronger MySQL mutability evidence and live qualification |
+| Security administration | Gap | authentication/runtime support exists; users/logins/roles/privileges are not a coherent administration surface | Priority 3: administration model integrated with future DCL |
+| Operational health / sessions | Partial | diagnostics and native metadata provide pieces | Priority 4: sessions, running work, blocking, locks, deadlocks and health summary |
+| Maintenance | Partial | SQLite has substantial maintenance support; other engines expose capabilities without one common operational API | Priority 4: analyze/statistics, vacuum/optimize, reindex and integrity intents |
+| Backup / restore / recovery | Gap | no first-class common contract | Priority 5: plan, execute boundary, restore and verification model |
+| Replication / HA | Gap | engine knowledge exists in places; no lifecycle subsystem | Priority 8: topology/role/lag/health observation before control |
+| Capacity / storage | Gap | metadata exposes fragments; no coherent capacity model | Priority 8: size, growth, limits and pressure evidence |
+| Upgrade readiness | Gap | version/capability knowledge exists but no upgrade assessment | Priority 8: source/target version compatibility and risk assessment |
+| Engine/runtime upgrade | Gap | upgrade lifecycle architecture exists but no public planner/executor | Priority 9: vendor-path planning, backup gates, durable execution and post-upgrade verification |
+| Retirement | Gap | no coherent archive/revoke/decommission contract | Priority 11: approval-gated, auditable retirement and uninstall workflows |
 | Automation/jobs | Gap | no unified reusable job-plan or CLI execution model | High platform value |
 | Reporting/export | Gap | no first-class report/export contract | Build after unified data movement |
 | Competitive benchmark | Active | `docs/strategy/COMPETITIVE-BENCHMARK.md` | Track breadth without copying external product architecture |
