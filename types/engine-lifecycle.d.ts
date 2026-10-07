@@ -135,7 +135,7 @@ export interface EngineLifecyclePlanStep {
   readonly execution: EngineLifecycleExecutionMode;
   readonly requirements: Readonly<EngineLifecycleStepRequirements>;
   readonly notes: string | null;
-  readonly evidence: InstallationProviderInstalledEvidence | InstallationProviderResourceEvidence | null;
+  readonly evidence: Readonly<Record<string, unknown>> | null;
 }
 
 export interface EngineInstallationPlan {
@@ -268,7 +268,7 @@ export interface EngineLifecycleVerification {
   readonly ok: boolean;
   readonly inspectionHash: string;
   readonly reason: string | null;
-  readonly evidence: Readonly<Record<string, unknown>> | null;
+  readonly evidence: InstallationProviderInstalledEvidence | InstallationProviderResourceEvidence | null;
 }
 
 export interface EngineLifecycleExecutionAuditRecord {
