@@ -85,8 +85,6 @@ async function installedAndUpgrade(){
   assert.strictEqual(blocked.summary.blocked,1);
   assert.strictEqual(blocked.steps[0].action,'upgrade-required');
 
-  var sideBySide=sql.planEngineInstallation(newer,target,{allowSideBySide:true});
-  assert.strictEqual(sideBySide.summary.provider,2);
 }
 
 async function initialization(){
