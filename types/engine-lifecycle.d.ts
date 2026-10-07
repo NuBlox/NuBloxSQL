@@ -41,6 +41,7 @@ export interface EngineSelection {
 export interface InstallationProviderInstalledEvidence {
   readonly engine: EngineLifecycleEngine;
   readonly version: string;
+  readonly state: string;
   readonly edition: string | null;
   readonly distribution: string | null;
   readonly components: readonly string[];
