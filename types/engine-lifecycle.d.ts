@@ -27,6 +27,7 @@ export interface EngineSelectionSpecification {
 export interface EngineSelection {
   readonly schemaVersion: 1;
   readonly selectionHash: string;
+  readonly targetInspectionHash: string;
   readonly engine: EngineLifecycleEngine;
   readonly dialect: EngineLifecycleEngine;
   readonly targetVersion: string;
@@ -56,6 +57,7 @@ export interface InstallationProviderResourceEvidence {
 
 export interface InstallationProviderTargetInspection {
   readonly schemaVersion: 1;
+  readonly inspectionHash: string;
   readonly provider: InstallationProviderDescriptor;
   readonly targetId: string | null;
   readonly platform: Readonly<{
@@ -147,6 +149,7 @@ export interface EngineInitializationPlan {
   readonly schemaVersion: 1;
   readonly planHash: string;
   readonly selectionHash: string;
+  readonly targetInspectionHash: string;
   readonly engine: EngineLifecycleEngine;
   readonly targetVersion: string;
   readonly targetId: string | null;
