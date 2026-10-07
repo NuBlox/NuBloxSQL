@@ -42,3 +42,5 @@ Historical development notes are preserved under `docs/archive/` and are not par
 - [Database bootstrap foundation](25-database-bootstrap.md)
 
 - [Database configuration discovery](26-database-configuration.md)
+
+- [Engine lifecycle foundation](27-engine-lifecycle-foundation.md) — engine selection, provider target inspection, installation planning and initialization planning.
