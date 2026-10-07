@@ -50,6 +50,7 @@ async function targetInspection(){
   });
   var target=await sql.inspectEngineTarget(p,{purpose:'test'});
   assert.strictEqual(target.provider.id,'test-provider');
+  assert.strictEqual(target.inspectionHash.length,64);
   assert.strictEqual(target.platform.os,'linux');
   assert.strictEqual(target.installed[0].engine,'postgresql');
   assert.strictEqual(target.installed[0].version,'18');
@@ -64,6 +65,7 @@ async function freshInstall(){
   var target=await sql.inspectEngineTarget(provider());
   var plan=sql.planEngineInstallation(selected,target);
   assert.strictEqual(plan.executable,true);
+  assert.strictEqual(plan.targetInspectionHash,target.inspectionHash);
   assert.strictEqual(plan.summary.provider,2);
   assert.strictEqual(plan.summary.blocked,0);
   assert.strictEqual(plan.steps[0].action,'install-runtime');
@@ -98,6 +100,7 @@ async function initialization(){
   }));
   var plan=sql.planEngineInitialization(selected,installed,{dataDirectory:'/var/lib/postgresql/18/main'});
   assert.strictEqual(plan.executable,true);
+  assert.strictEqual(plan.targetInspectionHash,installed.inspectionHash);
   assert.strictEqual(plan.resourceKey,'cluster:/var/lib/postgresql/18/main');
   assert.strictEqual(plan.summary.provider,2);
 
