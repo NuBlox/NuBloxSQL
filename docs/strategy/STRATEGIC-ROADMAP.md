@@ -20,21 +20,24 @@ The dialect/DBMS registry remains future-expansion and knowledge infrastructure.
 Development should strengthen the lifecycle in this order:
 
 ```text
-Discover
-  -> Establish
-     -> Build
-        -> Use
-           -> Understand
-              -> Operate
-                 -> Change
-                    -> Retire
+Select
+  -> Install
+     -> Initialize
+        -> Discover
+           -> Establish
+              -> Build
+                 -> Use
+                    -> Understand
+                       -> Operate
+                          -> Change
+                             -> Retire
 ```
 
 The existing repository is strongest in **Build / Use / Understand / Change**.
 
-The largest strategic deficit is now explicitly **Establish / Operate / Retire**.
+The largest strategic deficit is now explicitly **Install / Initialize / Establish / Operate / Retire**.
 
-That means initial setup, administration, security, maintenance, backup/recovery, replication/HA visibility, capacity, upgrade readiness, jobs and retirement are not peripheral extras. They are missing parts of the product.
+That means database-engine installation, first-run initialization, administration, security, maintenance, backup/recovery, replication/HA visibility, capacity, engine upgrade, jobs and retirement are not peripheral extras. They are missing parts of the product.
 
 ## Frozen work
 
@@ -67,7 +70,40 @@ Released foundations already include:
 
 These capabilities are retained. The roadmap now fills the missing lifecycle around them.
 
-## Priority 1 — Establish: database bootstrap and administration foundation
+## Priority 1 — Engine selection, installation and initialization
+
+Build the lifecycle foundation that exists before a database endpoint is reachable.
+
+First scope:
+
+- engine/version/edition/distribution selection evidence;
+- supported-platform and prerequisite assessment;
+- installation-strategy model;
+- installation-provider interface;
+- immutable engine installation plans;
+- automatic/manual/external/satisfied/blocked step classification;
+- privilege, license, restart/reboot and destructive-operation requirements;
+- engine installation verification;
+- cluster/instance/data-directory/database-file initialization plans;
+- start/readiness verification;
+- audit and plan-hash approval;
+- explicit host/infrastructure execution boundary.
+
+Engine-specific qualification must cover the four supported engines without forcing them into one installation mechanism:
+
+- PostgreSQL package/source/binary and cluster initialization semantics;
+- MySQL distribution installation, data-directory initialization and post-install setup;
+- SQL Server Setup instance/feature installation semantics;
+- SQLite embedded library/CLI/runtime and database-file creation semantics.
+
+Target coverage areas:
+
+- `lifecycle.installation`;
+- `lifecycle.initialization`.
+
+The Shell may expose `\\engine install` and `\\engine initialize` only after these capabilities exist in the public NuBloxSQL API.
+
+## Priority 2 — Establish: database bootstrap and administration foundation
 
 **Status:** bootstrap planning/execution, server identity/database discovery, prerequisite assessment, dialect-aware database creation options, configuration discovery and immutable configuration change planning are delivered. Remaining work is safe configuration execution, security integration and live administration qualification.
 
@@ -91,7 +127,7 @@ Target coverage areas:
 - `administration.bootstrap`;
 - `administration.configuration`.
 
-## Priority 2 — Administration security
+## Priority 3 — Administration security
 
 Create an honest cross-engine security-administration model:
 
@@ -113,7 +149,7 @@ Target coverage area:
 
 This should share foundations with the future DCL compiler rather than producing parallel concepts.
 
-## Priority 3 — Operate: health, sessions and maintenance
+## Priority 4 — Operate: health, sessions and maintenance
 
 Create the first coherent database-operations surface.
 
@@ -142,7 +178,7 @@ Target coverage areas:
 - `operations.health-sessions`;
 - `operations.maintenance`.
 
-## Priority 4 — Backup, restore and recovery
+## Priority 5 — Backup, restore and recovery
 
 Define the backup/recovery architecture before execution automation.
 
@@ -166,7 +202,7 @@ Target coverage area:
 
 - `operations.backup-recovery`.
 
-## Priority 5 — Promote SQL Server toward Tier 1
+## Priority 6 — Promote SQL Server toward Tier 1
 
 SQL Server remains the one supported runtime outside the common Tier-1 product model.
 
@@ -185,7 +221,7 @@ Target coverage area:
 
 This work strengthens one of the four supported engines and therefore outranks new DBMS profiles.
 
-## Priority 6 — Jobs and durable execution infrastructure
+## Priority 7 — Jobs and durable execution infrastructure
 
 Create reusable database job infrastructure for long-running and scheduled lifecycle work.
 
@@ -219,7 +255,7 @@ Target coverage area:
 
 - `automation.jobs`.
 
-## Priority 7 — Replication, HA, capacity and upgrade readiness
+## Priority 8 — Replication, HA, capacity and upgrade readiness
 
 Build observation and planning before control.
 
@@ -257,7 +293,29 @@ Target coverage areas:
 - `operations.capacity-storage`;
 - `operations.upgrade-readiness`.
 
-## Priority 8 — Complete change-management foundations
+## Priority 9 — Engine upgrade execution
+
+Build engine/runtime upgrade control only after upgrade-readiness, backup/recovery and durable-job foundations exist.
+
+Required scope:
+
+- current/target version path validation;
+- vendor-supported upgrade strategy selection;
+- backup/recovery evidence gates;
+- immutable upgrade plans;
+- in-place, side-by-side, rolling, logical and replication-assisted strategy representation where applicable;
+- service interruption/restart requirements;
+- pre-upgrade compatibility validation;
+- execution checkpoints and resumability;
+- post-upgrade verification;
+- rollback/recovery evidence;
+- edition/compatibility-level changes where engine-native.
+
+Target coverage area:
+
+- `lifecycle.engine-upgrade`.
+
+## Priority 9 — Complete change-management foundations
 
 Continue existing strong engineering areas where lifecycle work depends on them:
 
@@ -277,7 +335,7 @@ Target areas:
 - data movement;
 - type semantics.
 
-## Priority 9 — Lifecycle retirement
+## Priority 10 — Lifecycle retirement
 
 Define explicit end-of-life workflows:
 
@@ -296,7 +354,7 @@ Target coverage area:
 
 Retirement must be approval-gated and auditable because it is inherently destructive.
 
-## Priority 10 — SQL tooling
+## Priority 11 — SQL tooling
 
 Use the existing SQL engine for standalone developer tooling:
 
@@ -312,7 +370,7 @@ Target coverage area:
 
 - `tooling.sql`.
 
-## Priority 11 — Remaining SQL language families
+## Priority 12 — Remaining SQL language families
 
 Complete language families when they directly strengthen lifecycle capabilities:
 
@@ -338,9 +396,7 @@ Further profile research or runtime promotion—CockroachDB, Aurora, TiDB, Yugab
 
 ## Infrastructure boundary
 
-NuBloxSQL begins once there is a database server/service endpoint or database file to manage.
-
-NuBloxSQL may manage database-specific configuration and lifecycle operations. It does not replace Terraform, cloud control planes, Kubernetes or general operating-system administration.
+NuBloxSQL begins at database-engine selection and may manage database-specific installation, initialization, upgrade and decommissioning through explicit providers. It does not replace Terraform, cloud control planes, Kubernetes, generic VM provisioning or general operating-system administration.
 
 ## Release milestone direction
 
@@ -354,7 +410,8 @@ NuBloxSQL 2.0 should represent a **complete database lifecycle architecture**, n
 
 Minimum architectural requirements:
 
-- canonical product/lifecycle definition;
+- canonical eleven-phase end-to-end product/lifecycle definition;
+- engine installation-provider and initialization contracts;
 - lifecycle coverage register;
 - supported-engine boundaries;
 - SQL Server Tier-1 decision/parity;
@@ -366,7 +423,8 @@ Minimum architectural requirements:
 - stable runtime/intelligence/engineering contracts;
 - supported-engine qualification;
 - clear infrastructure boundary;
-- documented retirement model;
+- engine upgrade contract;
+- documented retirement/decommission model;
 - clean JS/TypeScript package qualification.
 
 Not every lifecycle capability must be fully automated at 2.0, but every major domain must have a coherent contract and evidence model.
@@ -377,6 +435,6 @@ Every new feature must answer the ten questions in [PRODUCT-DEFINITION.md](PRODU
 
 The key test is:
 
-> **Does this materially improve NuBloxSQL's ability to discover, establish, build, use, understand, operate, change or retire SQL databases?**
+> **Does this materially improve NuBloxSQL's ability to select, install, initialize, discover, establish, build, use, understand, operate, change or retire SQL database engines and resources?**
 
 If not, it is not a NuBloxSQL priority.
