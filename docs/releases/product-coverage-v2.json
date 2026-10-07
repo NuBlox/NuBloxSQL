@@ -144,6 +144,21 @@
       "status": "gap"
     },
     {
+      "id": "lifecycle.installation",
+      "pillar": "lifecycle",
+      "status": "gap"
+    },
+    {
+      "id": "lifecycle.initialization",
+      "pillar": "lifecycle",
+      "status": "gap"
+    },
+    {
+      "id": "lifecycle.engine-upgrade",
+      "pillar": "lifecycle",
+      "status": "gap"
+    },
+    {
       "id": "lifecycle.retirement",
       "pillar": "lifecycle",
       "status": "gap"
