@@ -44,3 +44,5 @@ Historical development notes are preserved under `docs/archive/` and are not par
 - [Database configuration discovery](26-database-configuration.md)
 
 - [Engine lifecycle foundation](27-engine-lifecycle-foundation.md) — engine selection, provider target inspection, installation planning and initialization planning.
+
+- [Controlled engine lifecycle execution](28-engine-lifecycle-execution.md) — plan-hash approval, drift detection, constrained provider execution and target-state verification.
