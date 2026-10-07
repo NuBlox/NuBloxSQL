@@ -32,7 +32,8 @@ Use guides to understand the contract; use cookbook recipes to see several APIs 
 - `releases/public-api-v1.json` — packaged public API and package-surface contract.
 - `releases/tier1-stable-evidence.json` — Tier-1 qualification evidence manifest.
 - `releases/product-coverage-v2.json` — executable whole-product coverage snapshot.
-- `releases/product-lifecycle-v1.json` — canonical eight-phase lifecycle and seven-domain product contract.
+- `releases/product-lifecycle-v2.json` — canonical eleven-phase end-to-end lifecycle and eight-domain product contract.
+- `releases/product-lifecycle-v1.json` — historical reachable-server lifecycle contract retained for traceability.
 
 These contracts are consumed by repository release tooling and are not informal documentation.
 
@@ -49,3 +50,5 @@ If an archived statement conflicts with current release documentation, declarati
 ## Applications
 
 - [NuBlox Shell](strategy/NUBLOX-SHELL.md) — terminal application architecture and roadmap.
+
+- [End-to-end database lifecycle](strategy/END-TO-END-DATABASE-LIFECYCLE.md) — engine selection and installation through retirement/decommission.

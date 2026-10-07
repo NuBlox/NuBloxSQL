@@ -6,7 +6,7 @@ If a proposed feature, roadmap item, design discussion or implementation conflic
 
 ## Product in one sentence
 
-> **NuBloxSQL is a comprehensive JavaScript and TypeScript database engineering and management platform that provides one coherent API across the complete SQL database lifecycle—from discovery and initial setup through development, operation, migration, recovery and retirement—while preserving the native semantics of every supported database engine.**
+> **NuBloxSQL is a comprehensive JavaScript and TypeScript database engineering and management platform that provides one coherent API across the complete SQL database lifecycle—from engine selection, installation and initialization through discovery, development, operation, upgrade, recovery and retirement—while preserving the native semantics of every supported database engine.**
 
 Short form:
 
@@ -82,27 +82,56 @@ A database/profile becomes supported only after the relevant driver, semantics, 
 
 ## Complete lifecycle
 
-NuBloxSQL owns the database lifecycle from the point at which a database server/service is reachable through to safe retirement.
+NuBloxSQL owns the database-specific lifecycle from **engine/runtime selection and installation through final retirement and decommissioning**.
 
-### Phase 1 — Discover
+The canonical lifecycle is:
 
-Understand an existing environment before changing it:
+```text
+Select
+  -> Install
+     -> Initialize
+        -> Discover
+           -> Establish
+              -> Build
+                 -> Use
+                    -> Understand
+                       -> Operate
+                          -> Change
+                             -> Retire
+```
 
-- detect engine and version;
+The phases are ordered for planning, but mature systems continuously loop through Understand, Operate and Change.
+
+### Phase 1 — Select
+
+Choose the engine, dialect, target version, edition/distribution, platform compatibility, installation strategy, required components and support horizon. Produce explicit compatibility evidence rather than assuming that a known dialect is deployable on a target environment.
+
+### Phase 2 — Install
+
+Acquire and install the database engine/runtime using an explicit installation provider. NuBloxSQL owns database-specific installation intent, prerequisites, planning, safety classification, verification and audit. Host mutation occurs only through an explicit provider or manual plan.
+
+### Phase 3 — Initialize
+
+Turn installed software into a viable database runtime: initialize PostgreSQL clusters or MySQL data directories, configure SQL Server instances, create/open SQLite files, establish initial administrative identity, start/readiness state and first-run database-owned settings.
+
+### Phase 4 — Discover
+
+Understand an initialized or existing environment before changing it:
+
+- detect engine, version, edition/distribution and instance/cluster identity;
 - inspect connectivity and TLS;
 - discover databases/catalogs;
 - inspect server/instance configuration;
-- inspect installed capabilities/extensions;
+- inspect installed capabilities/extensions/components;
 - inspect topology;
 - inspect storage and limits where available;
 - establish health and compatibility baseline.
 
-### Phase 2 — Establish
+### Phase 5 — Establish
 
-Bring a reachable database server/service into a usable application state:
+Bring the discovered runtime into a usable operational baseline:
 
 - validate prerequisites;
-- bootstrap connectivity;
 - create databases/catalogs where the engine permits;
 - create schemas/namespaces;
 - configure database/server settings where safely supported;
@@ -111,9 +140,9 @@ Bring a reachable database server/service into a usable application state:
 - grant/revoke privileges;
 - enable engine features/extensions;
 - define storage/database options where applicable;
-- establish initial operational baseline.
+- establish initial operational, backup and recovery baseline.
 
-### Phase 3 — Build
+### Phase 6 — Build
 
 Create the application/database structure:
 
@@ -125,7 +154,7 @@ Create the application/database structure:
 - snapshot the baseline;
 - create and apply migrations.
 
-### Phase 4 — Use
+### Phase 7 — Use
 
 Execute application workloads:
 
@@ -138,9 +167,9 @@ Execute application workloads:
 - control deadlines/timeouts;
 - use engine-native mechanisms where appropriate.
 
-### Phase 5 — Understand
+### Phase 8 — Understand
 
-Make the database intelligible:
+Make the database estate intelligible:
 
 - metadata and introspection;
 - canonical structure tree;
@@ -151,9 +180,9 @@ Make the database intelligible:
 - diagnostics;
 - statistics;
 - engine/version differences;
-- compatibility analysis.
+- configuration, drift and compatibility analysis.
 
-### Phase 6 — Operate
+### Phase 9 — Operate
 
 Run the database safely in production:
 
@@ -170,47 +199,65 @@ Run the database safely in production:
 - backup;
 - restore;
 - recovery verification;
-- replication visibility;
-- high-availability visibility;
+- replication/high-availability visibility;
 - audit;
 - security administration;
 - scheduled database jobs.
 
-### Phase 7 — Change
+### Phase 10 — Change
 
-Evolve the system safely:
+Evolve both managed databases and the engine/runtime safely:
 
-- schema snapshots;
-- schema diff;
-- migration planning;
-- migration execution;
-- data movement;
-- data transformation;
-- upgrade-readiness checks;
-- version compatibility analysis;
-- configuration change;
-- capacity change;
-- recovery and failover workflows where safely supported.
+- schema snapshots, diff and migration;
+- data movement/transformation;
+- configuration and security changes;
+- capacity/topology changes;
+- patch/minor updates;
+- major-version upgrades;
+- edition changes;
+- in-place, side-by-side, rolling, logical or replication-assisted migrations;
+- upgrade-readiness and compatibility checks;
+- post-upgrade validation;
+- rollback/recovery planning.
 
-### Phase 8 — Retire
+### Phase 11 — Retire
 
-Close a database lifecycle deliberately:
+Close the database lifecycle deliberately:
 
-- final export;
-- archive;
-- final backup;
-- restore verification where required;
-- revoke access;
-- disable jobs/integrations;
-- remove database-level secrets/references where owned by NuBloxSQL;
-- drop database/schema objects where explicitly approved;
-- retain audit/evidence of retirement.
+- dependency/consumer inventory;
+- final export/archive;
+- final backup and restore verification;
+- access revocation;
+- job/integration shutdown;
+- explicitly approved database/schema drop;
+- service/instance shutdown;
+- engine/runtime uninstall through an explicit provider when requested;
+- separately approved removal of database-owned files/data directories;
+- final absence verification;
+- retained audit/evidence of retirement.
+
+The detailed lifecycle architecture is defined in [END-TO-END-DATABASE-LIFECYCLE.md](END-TO-END-DATABASE-LIFECYCLE.md).
 
 ## Product domains
 
-The lifecycle is implemented through seven product domains.
+The lifecycle is implemented through eight product domains.
 
-### 1. Connectivity and runtime
+### 1. Engine lifecycle and installation
+
+Owns:
+
+- engine/version/edition selection evidence;
+- installation-source/distribution modelling;
+- database-specific installation prerequisites;
+- installation providers;
+- engine installation planning/execution/verification;
+- runtime/cluster/instance initialization;
+- engine upgrade planning/execution/verification;
+- repair/reconfigure integration where supported;
+- engine/runtime decommission and uninstall planning;
+- destructive decommission gates and evidence.
+
+### 2. Connectivity and runtime
 
 Owns:
 
@@ -226,7 +273,7 @@ Owns:
 - errors and retry semantics;
 - observability and resource governance.
 
-### 2. SQL language
+### 3. SQL language
 
 Owns:
 
@@ -239,7 +286,7 @@ Owns:
 - rewrite/transpilation;
 - DQL, DML, DDL, TCL, DCL, administration and procedural SQL according to product priority.
 
-### 3. Database intelligence
+### 4. Database intelligence
 
 Owns:
 
@@ -254,7 +301,7 @@ Owns:
 - capability discovery;
 - configuration/limit discovery.
 
-### 4. Database engineering
+### 5. Database engineering
 
 Owns:
 
@@ -267,9 +314,9 @@ Owns:
 - transformation/validation;
 - compatibility assessment.
 
-### 5. Database administration
+### 6. Database administration
 
-Owns database/server administration after a database service or server endpoint exists:
+Owns database/server administration after the engine/runtime has been initialized:
 
 - database/catalog creation;
 - schema bootstrap;
@@ -281,7 +328,7 @@ Owns database/server administration after a database service or server endpoint 
 - maintenance configuration;
 - administrative SQL and APIs.
 
-### 6. Database operations
+### 7. Database operations
 
 Owns operational management:
 
@@ -299,7 +346,7 @@ Owns operational management:
 - scheduling/job execution;
 - upgrade readiness.
 
-### 7. Portability and governance
+### 8. Portability and governance
 
 Owns:
 
@@ -314,9 +361,20 @@ Owns:
 
 ## Infrastructure boundary
 
-NuBloxSQL manages databases, database servers/instances and database-service configuration where those concerns are exposed through a database protocol, database API, supported executable integration or explicit adapter.
+NuBloxSQL owns **database-specific lifecycle management**, including engine installation and decommissioning, when the action can be expressed through a supported database installation provider or explicit manual/external plan.
 
-NuBloxSQL is **not** a general infrastructure-as-code platform.
+NuBloxSQL is **not** a general infrastructure-as-code or operating-system management platform.
+
+NuBloxSQL may own:
+
+- database-engine/version/distribution selection evidence;
+- database-specific installation prerequisites;
+- PostgreSQL/MySQL/SQL Server/SQLite installation plans;
+- explicit package/installer/container/source actions through providers;
+- database cluster/instance/data-directory/file initialization;
+- database-service start/stop/readiness operations where a provider owns that boundary;
+- database-specific repair/reconfigure/upgrade/uninstall actions;
+- all existing database administration, operations, engineering and retirement concerns.
 
 Out of scope as core NuBloxSQL responsibilities:
 
@@ -324,14 +382,13 @@ Out of scope as core NuBloxSQL responsibilities:
 - provisioning generic virtual machines;
 - creating VPCs/VNETs;
 - configuring general-purpose firewalls;
-- managing Kubernetes clusters;
+- managing Kubernetes clusters themselves;
 - buying or allocating generic cloud infrastructure;
 - corporate DNS administration;
-- operating-system package management unrelated to a database integration.
+- arbitrary operating-system package management unrelated to a database lifecycle provider;
+- general remote-shell orchestration.
 
-Those tasks belong to infrastructure platforms such as Terraform, cloud control planes, Kubernetes or operating-system tooling.
-
-NuBloxSQL may integrate with them, consume their outputs, or provide database-specific bootstrap steps once a reachable database/server/service exists.
+Infrastructure systems such as Terraform, cloud control planes, Kubernetes and host-management tooling may provide the environment or act as execution providers. NuBloxSQL owns the **database intent, engine-native plan, verification and evidence** at that boundary.
 
 ## Server/instance model
 
@@ -397,7 +454,7 @@ NuBloxSQL is not:
 - an ERP;
 - a replacement SQL database engine;
 - a lowest-common-denominator abstraction;
-- a general cloud/IaC platform;
+- a general cloud/IaC or arbitrary operating-system management platform;
 - a requirement to implement every dialect in the registry.
 
 Downstream products such as a future SQL Workbench may use NuBloxSQL, but NuBloxSQL must have no dependency on them.
@@ -466,8 +523,8 @@ Until the complete lifecycle gaps are represented and prioritised:
 
 ## Product promise
 
-A developer or database engineer should be able to start with NuBloxSQL for database connectivity and continue using the same platform as their needs expand into schema engineering, administration, operations, migration, recovery and automation.
+A developer or database engineer should be able to start with NuBloxSQL while selecting and installing a database engine and continue using the same platform through initialization, connectivity, schema engineering, administration, operations, upgrades, migration, recovery and retirement.
 
 The long-term outcome is:
 
-> **Connect. Discover. Establish. Build. Use. Understand. Operate. Change. Retire.**
+> **Select. Install. Initialize. Discover. Establish. Build. Use. Understand. Operate. Change. Retire.**

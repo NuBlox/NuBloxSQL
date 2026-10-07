@@ -84,6 +84,15 @@ assert.strictEqual(maintenance.status,'partial');
 var backup=sql.productCoverage.area('operations.backup-recovery');
 assert.strictEqual(backup.status,'gap');
 
+var installation=sql.productCoverage.area('lifecycle.installation');
+assert.strictEqual(installation.status,'gap');
+
+var initialization=sql.productCoverage.area('lifecycle.initialization');
+assert.strictEqual(initialization.status,'gap');
+
+var engineUpgrade=sql.productCoverage.area('lifecycle.engine-upgrade');
+assert.strictEqual(engineUpgrade.status,'gap');
+
 var retirement=sql.productCoverage.area('lifecycle.retirement');
 assert.strictEqual(retirement.status,'gap');
 
@@ -91,7 +100,7 @@ var gaps=sql.productCoverage.gaps();
 assert.strictEqual(gaps.some(function(area){return area.id==='platform.schema-diff';}),false);
 assert.strictEqual(gaps.some(function(area){return area.id==='platform.migrations';}),false);
 assert.ok(gaps.some(function(area){return area.id==='dialect.sqlserver-parity';}));
-['administration.bootstrap','administration.configuration','administration.security','operations.backup-recovery','operations.replication-ha','operations.capacity-storage','operations.upgrade-readiness','lifecycle.retirement'].forEach(function(id){
+['lifecycle.installation','lifecycle.initialization','lifecycle.engine-upgrade','administration.bootstrap','administration.configuration','administration.security','operations.backup-recovery','operations.replication-ha','operations.capacity-storage','operations.upgrade-readiness','lifecycle.retirement'].forEach(function(id){
   assert.ok(gaps.some(function(area){return area.id===id;}),'expected lifecycle gap '+id);
 });
 

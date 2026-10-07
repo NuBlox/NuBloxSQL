@@ -61,6 +61,30 @@ NuBlox commands use a backslash prefix so native SQL remains native SQL:
 \quit
 ```
 
+## End-to-end lifecycle command direction
+
+NuBlox Shell should expose the public NuBloxSQL lifecycle progressively rather than inventing database logic inside the CLI.
+
+Directional command families:
+
+```text
+select       -> \engine select, \engine catalog
+install      -> \engine install inspect|plan|apply
+initialize   -> \engine initialize inspect|plan|apply
+discover     -> \server, \databases, \schemas, \tables, \describe
+establish    -> \config, \security, \bootstrap
+build        -> native SQL, \migration, \seed
+use          -> native SQL, transactions, scripts
+understand   -> \describe, \dependencies, \diagnose, \snapshot
+operate      -> \health, \sessions, \locks, \maintenance, \backup, \restore
+change       -> \diff, \migration, \config, \engine upgrade
+retire       -> \retire inspect|plan|apply, \engine uninstall
+```
+
+These names are directional until corresponding public APIs exist.
+
+The Shell must not implement package-manager commands, SQL Server Setup semantics, PostgreSQL cluster initialization, MySQL upgrade rules or SQLite file-lifecycle behaviour directly. Those capabilities belong in NuBloxSQL engine-lifecycle APIs and installation providers; Shell only renders and invokes those public contracts.
+
 ## Next increments
 
 The next Shell slices should expose existing NuBloxSQL lifecycle contracts rather than inventing new database logic:

@@ -8,7 +8,7 @@ var sql = require(root);
 
 var definitionPath = path.join(root, 'docs/strategy/PRODUCT-DEFINITION.md');
 var visionPath = path.join(root, 'docs/strategy/PRODUCT-VISION.md');
-var lifecyclePath = path.join(root, 'docs/releases/product-lifecycle-v1.json');
+var lifecyclePath = path.join(root, 'docs/releases/product-lifecycle-v2.json');
 
 assert(fs.existsSync(definitionPath), 'canonical product definition is missing');
 assert(fs.existsSync(visionPath), 'product vision is missing');
@@ -22,22 +22,25 @@ assert(definition.includes('one API for the complete SQL database lifecycle'), '
 assert(definition.includes('One developer API, honest dialect semantics.'), 'governing design rule missing');
 assert(definition.includes('## Infrastructure boundary'), 'infrastructure boundary missing');
 assert(definition.includes('## Product decision gate'), 'product decision gate missing');
-assert(vision.includes('Discover') && vision.includes('Retire'), 'vision must span the complete lifecycle');
+assert(vision.includes('Select') && vision.includes('Install') && vision.includes('Initialize') && vision.includes('Discover') && vision.includes('Retire'), 'vision must span the complete end-to-end lifecycle');
 
-assert.strictEqual(lifecycle.schemaVersion, 1);
+assert.strictEqual(lifecycle.schemaVersion, 2);
 assert.deepStrictEqual(lifecycle.supportedEngines, ['postgresql','mysql','sqlite','sqlserver']);
-assert.strictEqual(lifecycle.phases.length, 8);
+assert.strictEqual(lifecycle.phases.length, 11);
 assert.deepStrictEqual(
   lifecycle.phases.map(function (entry) { return entry.id; }),
-  ['discover','establish','build','use','understand','operate','change','retire']
+  ['select','install','initialize','discover','establish','build','use','understand','operate','change','retire']
 );
-assert.strictEqual(lifecycle.domains.length, 7);
+assert.strictEqual(lifecycle.domains.length, 8);
 assert.deepStrictEqual(
   lifecycle.domains.map(function (entry) { return entry.id; }),
-  ['runtime','language','intelligence','engineering','administration','operations','portability-governance']
+  ['engine-lifecycle','runtime','language','intelligence','engineering','administration','operations','portability-governance']
 );
 
 [
+  'lifecycle.installation',
+  'lifecycle.initialization',
+  'lifecycle.engine-upgrade',
   'administration.bootstrap',
   'administration.configuration',
   'administration.security',
@@ -53,6 +56,9 @@ assert.deepStrictEqual(
 });
 
 [
+  'lifecycle.installation',
+  'lifecycle.initialization',
+  'lifecycle.engine-upgrade',
   'administration.bootstrap',
   'administration.configuration',
   'administration.security',
