@@ -612,4 +612,33 @@ An installation provider must implement `inspectTarget(request)` and declare the
 
 Installation and initialization plans are immutable and carry both a `planHash` and the `targetInspectionHash` used to create them. A different installed engine version is treated as an upgrade boundary and blocks fresh-install planning.
 
-The current release does not execute host mutation. Steps are classified as `provider`, `external`, `manual`, `satisfied`, or `blocked`.
+Steps are classified as `provider`, `external`, `manual`, `satisfied`, or `blocked`.
+
+## Controlled engine lifecycle execution
+
+`ENGINE_LIFECYCLE_EXECUTION_SCHEMA_VERSION === 1` executes approved installation/initialization plans through explicit providers.
+
+```js
+const inspection = await sql.inspectEngineInstallationPlan(provider, installPlan);
+
+const installed = await sql.executeEngineInstallation(provider, installPlan, {
+  approvedPlanHash: installPlan.planHash
+});
+
+const initialized = await sql.executeEngineInitialization(provider, initializePlan, {
+  approvedPlanHash: initializePlan.planHash,
+  resolveInputs: async () => ({
+    password: process.env.DB_BOOTSTRAP_PASSWORD
+  })
+});
+```
+
+Before mutation, NuBloxSQL reinspects the target and requires the current `inspectionHash` to match the hash captured by the immutable plan. Drift returns `drifted` and performs no mutation.
+
+Provider mutation is constrained to NuBlox lifecycle actions through `executeAction(request)`; the executor does not expose arbitrary shell commands. Provider success is followed by a fresh `inspectTarget()` call, and the result is only `succeeded` when normalized installed/resource evidence proves the requested state.
+
+Runtime-only inputs supplied by `resolveInputs` are not copied into plans or audit results. Initialization planning rejects secret-like option keys, and provider-returned audit evidence containing secret-like fields is rejected.
+
+Restart/reboot boundaries return `pending-restart` or `pending-reboot`; callers must complete the external boundary, reinspect and build a fresh plan rather than resuming against stale target evidence.
+
+SQL Server install execution requires explicit `licenseAcceptance: { accepted: true }` evidence.

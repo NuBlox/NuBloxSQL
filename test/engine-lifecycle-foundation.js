@@ -54,6 +54,7 @@ async function targetInspection(){
   assert.strictEqual(target.platform.os,'linux');
   assert.strictEqual(target.installed[0].engine,'postgresql');
   assert.strictEqual(target.installed[0].version,'18');
+  assert.strictEqual(target.installed[0].state,'ready');
   assert.strictEqual(target.resources[0].state,'ready');
   assert.strictEqual(sql.installationProviderDescriptor(p).actions.length,5);
 }
@@ -105,7 +106,7 @@ async function initialization(){
   assert.strictEqual(plan.summary.provider,2);
 
   var ready=await sql.inspectEngineTarget(provider({
-    installed:[{engine:'postgresql',version:'18'}],
+    installed:[{engine:'postgresql',version:'18',state:'ready'}],
     resources:[{engine:'postgresql',key:'cluster:/var/lib/postgresql/18/main',state:'ready'}]
   }));
   var satisfied=sql.planEngineInitialization(selected,ready,{dataDirectory:'/var/lib/postgresql/18/main'});
@@ -145,7 +146,8 @@ async function externalBoundary(){
   var target=await sql.inspectEngineTarget(p);
   var plan=sql.planEngineInstallation(selected,target);
   assert.strictEqual(plan.executable,false);
-  assert.strictEqual(plan.summary.external,2);
+  assert.strictEqual(plan.summary.external,1);
+  assert.strictEqual(plan.summary.provider,1);
 }
 
 Promise.resolve()
