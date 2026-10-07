@@ -50,3 +50,5 @@ If an archived statement conflicts with current release documentation, declarati
 ## Applications
 
 - [NuBlox Shell](strategy/NUBLOX-SHELL.md) — terminal application architecture and roadmap.
+
+- [End-to-end database lifecycle](strategy/END-TO-END-DATABASE-LIFECYCLE.md) — engine selection and installation through retirement/decommission.
