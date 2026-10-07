@@ -254,9 +254,7 @@
     "types/database-bootstrap.d.ts",
     "test/database-bootstrap.js",
     "docs/guides/25-database-bootstrap.md",
-    "tool/check-database-bootstrap-release.js"
-  ],
-  "lifecycleV2": [
+    "tool/check-database-bootstrap-release.js",
     "docs/strategy/END-TO-END-DATABASE-LIFECYCLE.md",
     "docs/releases/product-lifecycle-v2.json"
   ]
