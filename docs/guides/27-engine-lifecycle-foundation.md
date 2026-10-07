@@ -98,7 +98,7 @@ NuBloxSQL core does not obtain an arbitrary shell merely because a provider exis
 const target = await sql.inspectEngineTarget(provider);
 ```
 
-The returned report normalizes:
+The returned report is immutable, carries an SHA-256 `inspectionHash`, and normalizes:
 
 - provider identity and declared actions;
 - target identity;
@@ -219,7 +219,8 @@ The current foundation enforces these boundaries:
 5. initialization is blocked until the selected engine version is reported installed;
 6. already initialized resources become `satisfied`;
 7. host mutation, elevation, license acceptance, possible reboot and service lifecycle requirements remain explicit plan metadata;
-8. plans are immutable and SHA-256 hashed.
+8. selections, target inspections and plans are immutable and SHA-256 hashed;
+9. installation/initialization plans are bound to the exact `targetInspectionHash`, providing the future executor with a drift-detection anchor.
 
 ## Why execution is not included yet
 
