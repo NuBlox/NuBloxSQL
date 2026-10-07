@@ -523,7 +523,7 @@ Until the complete lifecycle gaps are represented and prioritised:
 
 ## Product promise
 
-A developer or database engineer should be able to start with NuBloxSQL for database connectivity and continue using the same platform as their needs expand into schema engineering, administration, operations, migration, recovery and automation.
+A developer or database engineer should be able to start with NuBloxSQL while selecting and installing a database engine and continue using the same platform through initialization, connectivity, schema engineering, administration, operations, upgrades, migration, recovery and retirement.
 
 The long-term outcome is:
 
