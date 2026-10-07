@@ -72,6 +72,8 @@ These capabilities are retained. The roadmap now fills the missing lifecycle aro
 
 ## Priority 1 — Engine selection, installation and initialization
 
+**Status:** engine selection, installation-provider target inspection, immutable installation planning and immutable initialization planning are delivered. Remaining work is provider execution, prerequisite evidence, live provider qualification and verified first-run execution.
+
 Build the lifecycle foundation that exists before a database endpoint is reachable.
 
 First scope:
