@@ -145,7 +145,23 @@
     "DATABASE_CONFIGURATION_EXECUTION_STEP_STATUSES",
     "DATABASE_CONFIGURATION_APPROVAL_MODES",
     "inspectDatabaseConfigurationPlan",
-    "executeDatabaseConfiguration"
+    "executeDatabaseConfiguration",
+    "ENGINE_LIFECYCLE_SCHEMA_VERSION",
+    "ENGINE_LIFECYCLE_ENGINES",
+    "ENGINE_LIFECYCLE_EXECUTION_MODES",
+    "INSTALLATION_PROVIDER_SCHEMA_VERSION",
+    "INSTALLATION_PROVIDER_ACTIONS",
+    "ENGINE_INSTALLATION_PLAN_SCHEMA_VERSION",
+    "ENGINE_INITIALIZATION_PLAN_SCHEMA_VERSION",
+    "engineLifecycleProfile",
+    "selectDatabaseEngine",
+    "validateInstallationProvider",
+    "installationProviderDescriptor",
+    "inspectEngineTarget",
+    "planEngineInstallation",
+    "engineInstallationProviderSteps",
+    "engineInstallationExternalSteps",
+    "planEngineInitialization"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -242,7 +258,12 @@
     "types/database-configuration-planner.d.ts",
     "lib/client/DatabaseConfigurationPlanner.js",
     "types/database-configuration-executor.d.ts",
-    "lib/client/DatabaseConfigurationExecutor.js"
+    "lib/client/DatabaseConfigurationExecutor.js",
+    "types/engine-lifecycle.d.ts",
+    "lib/lifecycle/EngineLifecycle.js",
+    "lib/lifecycle/InstallationProvider.js",
+    "lib/lifecycle/EngineInstallationPlanner.js",
+    "lib/lifecycle/EngineInitializationPlanner.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
