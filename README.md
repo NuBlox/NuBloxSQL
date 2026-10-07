@@ -49,7 +49,7 @@ NuBloxSQL provides one package and one public entry point. The released surface 
 - an executable atomic SQL capability ontology separating engine support from NuBlox compiler coverage;
 - direct native-dialect access where portability would hide important engine behaviour.
 
-The complete product direction extends this same model across discovery, initial setup, administration, operation, backup/recovery, migration, automation and retirement. These lifecycle domains are roadmap scope; they are not all released APIs today.
+The complete product direction extends this same model from database-engine selection, installation and initialization through discovery, establishment, development, operation, upgrade, backup/recovery, migration, automation and retirement/decommissioning. These lifecycle domains are roadmap scope; they are not all released APIs today.
 
 The design rule is: **one developer API, honest dialect semantics**.
 
@@ -72,6 +72,7 @@ Product direction is defined in:
 
 - [Canonical product definition](docs/strategy/PRODUCT-DEFINITION.md)
 - [Product vision](docs/strategy/PRODUCT-VISION.md)
+- [End-to-end database lifecycle](docs/strategy/END-TO-END-DATABASE-LIFECYCLE.md)
 - [Product capability register](docs/strategy/PRODUCT-CAPABILITY-REGISTER.md)
 - [Strategic roadmap](docs/strategy/STRATEGIC-ROADMAP.md)
 - [Competitive capability benchmark](docs/strategy/COMPETITIVE-BENCHMARK.md)
