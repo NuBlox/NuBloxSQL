@@ -89,12 +89,16 @@ assert.strictEqual(installation.status,'partial');
 assert.strictEqual(installation.stages.publicApi,'implemented');
 assert.strictEqual(installation.stages.validator,'implemented');
 assert.strictEqual(installation.stages.contractTest,'implemented');
+assert.strictEqual(installation.stages.runtime,'partial');
+assert.strictEqual(installation.stages.diagnostics,'implemented');
 
 var initialization=sql.productCoverage.area('lifecycle.initialization');
 assert.strictEqual(initialization.status,'partial');
 assert.strictEqual(initialization.stages.publicApi,'implemented');
 assert.strictEqual(initialization.stages.validator,'implemented');
 assert.strictEqual(initialization.stages.contractTest,'implemented');
+assert.strictEqual(initialization.stages.runtime,'partial');
+assert.strictEqual(initialization.stages.diagnostics,'implemented');
 
 var engineUpgrade=sql.productCoverage.area('lifecycle.engine-upgrade');
 assert.strictEqual(engineUpgrade.status,'gap');
