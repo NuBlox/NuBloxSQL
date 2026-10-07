@@ -105,7 +105,7 @@ The Shell may expose `\\engine install` and `\\engine initialize` only after the
 
 ## Priority 2 — Establish: database bootstrap and administration foundation
 
-**Status:** bootstrap planning/execution, server identity/database discovery, prerequisite assessment, dialect-aware database creation options, configuration discovery and immutable configuration change planning are delivered. Remaining work is safe configuration execution, security integration and live administration qualification.
+**Status:** bootstrap planning/execution, server identity/database discovery, prerequisite assessment, dialect-aware database creation options, configuration discovery, immutable configuration change planning and controlled configuration execution are delivered. Remaining work is security integration, stronger MySQL configuration evidence and live administration qualification.
 
 Build a coherent administration model for a reachable database server/service.
 
