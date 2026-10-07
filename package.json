@@ -13,6 +13,7 @@
     "types/",
     "lib/client/",
     "lib/capabilities/",
+    "lib/lifecycle/",
     "lib/core/index.js",
     "lib/core/index.d.ts",
     "lib/core/TypedValue.js",
