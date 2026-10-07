@@ -81,7 +81,8 @@ export interface InstallationProviderDescriptor {
 }
 
 export type EngineLifecycleActionResultStatus =
-  | 'succeeded' | 'failed' | 'pending-restart' | 'pending-reboot' | 'pending-verification';
+  | 'succeeded' | 'failed' | 'blocked'
+  | 'pending-restart' | 'pending-reboot' | 'pending-verification';
 
 export interface EngineLifecycleProviderActionRequest {
   readonly schemaVersion: 1;
@@ -134,7 +135,7 @@ export interface EngineLifecyclePlanStep {
   readonly execution: EngineLifecycleExecutionMode;
   readonly requirements: Readonly<EngineLifecycleStepRequirements>;
   readonly notes: string | null;
-  readonly evidence: Readonly<Record<string, unknown>> | null;
+  readonly evidence: InstallationProviderInstalledEvidence | InstallationProviderResourceEvidence | null;
 }
 
 export interface EngineInstallationPlan {
