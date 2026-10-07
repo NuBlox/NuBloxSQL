@@ -582,3 +582,34 @@ Execution performs a fresh preflight discovery and refuses to mutate when the cu
 Automatic and manual steps are followed by dialect-aware verification. PostgreSQL can verify `ALTER SYSTEM` persistence through `pg_file_settings`; SQL Server distinguishes configured and effective values so restart-bound changes are not falsely rejected; SQLite is rediscovered after safe PRAGMA changes. Restart/new-session boundaries require `openVerificationClient` for a definitive success result. Without fresh verification, the result is `pending-verification`, never falsely `succeeded`.
 
 Database-service restarts remain manual lifecycle boundaries.
+
+
+## Engine lifecycle foundation
+
+NuBloxSQL exposes planning-only lifecycle contracts for work that occurs before a database endpoint is available.
+
+```js
+const selection = sql.selectDatabaseEngine({
+  engine: 'postgresql',
+  targetVersion: '18',
+  installationStrategy: 'package'
+});
+
+const target = await sql.inspectEngineTarget(provider);
+
+const installPlan = sql.planEngineInstallation(selection, target);
+
+const initializePlan = sql.planEngineInitialization(
+  selection,
+  target,
+  { dataDirectory: '/var/lib/postgresql/18/main' }
+);
+```
+
+`engineLifecycleProfile(engine)` exposes the runtime kind, initialization model and supported high-level installation strategies for the four executable engines.
+
+An installation provider must implement `inspectTarget(request)` and declare the lifecycle actions it can support. NuBloxSQL normalizes provider evidence into an immutable target inspection carrying an `inspectionHash`.
+
+Installation and initialization plans are immutable and carry both a `planHash` and the `targetInspectionHash` used to create them. A different installed engine version is treated as an upgrade boundary and blocks fresh-install planning.
+
+The current release does not execute host mutation. Steps are classified as `provider`, `external`, `manual`, `satisfied`, or `blocked`.

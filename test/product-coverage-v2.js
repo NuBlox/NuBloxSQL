@@ -85,10 +85,16 @@ var backup=sql.productCoverage.area('operations.backup-recovery');
 assert.strictEqual(backup.status,'gap');
 
 var installation=sql.productCoverage.area('lifecycle.installation');
-assert.strictEqual(installation.status,'gap');
+assert.strictEqual(installation.status,'partial');
+assert.strictEqual(installation.stages.publicApi,'implemented');
+assert.strictEqual(installation.stages.validator,'implemented');
+assert.strictEqual(installation.stages.contractTest,'implemented');
 
 var initialization=sql.productCoverage.area('lifecycle.initialization');
-assert.strictEqual(initialization.status,'gap');
+assert.strictEqual(initialization.status,'partial');
+assert.strictEqual(initialization.stages.publicApi,'implemented');
+assert.strictEqual(initialization.stages.validator,'implemented');
+assert.strictEqual(initialization.stages.contractTest,'implemented');
 
 var engineUpgrade=sql.productCoverage.area('lifecycle.engine-upgrade');
 assert.strictEqual(engineUpgrade.status,'gap');

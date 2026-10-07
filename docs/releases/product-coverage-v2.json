@@ -146,12 +146,12 @@
     {
       "id": "lifecycle.installation",
       "pillar": "lifecycle",
-      "status": "gap"
+      "status": "partial"
     },
     {
       "id": "lifecycle.initialization",
       "pillar": "lifecycle",
-      "status": "gap"
+      "status": "partial"
     },
     {
       "id": "lifecycle.engine-upgrade",
