@@ -173,7 +173,10 @@
     "executeEngineInitialization",
     "LOCAL_HOST_INSTALLATION_PROVIDER_SCHEMA_VERSION",
     "LOCAL_HOST_INSTALLATION_PROVIDER_ID",
-    "createLocalHostInstallationProvider"
+    "createLocalHostInstallationProvider",
+    "ENGINE_INSTALLATION_PREREQUISITE_SCHEMA_VERSION",
+    "ENGINE_INSTALLATION_PREREQUISITE_STATUSES",
+    "assessEngineInstallationPrerequisites"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -277,7 +280,8 @@
     "lib/lifecycle/EngineInstallationPlanner.js",
     "lib/lifecycle/EngineInitializationPlanner.js",
     "lib/lifecycle/EngineLifecycleExecutor.js",
-    "lib/lifecycle/LocalHostInstallationProvider.js"
+    "lib/lifecycle/LocalHostInstallationProvider.js",
+    "lib/lifecycle/EngineInstallationPrerequisites.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
