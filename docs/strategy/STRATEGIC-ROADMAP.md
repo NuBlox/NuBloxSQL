@@ -72,7 +72,7 @@ These capabilities are retained. The roadmap now fills the missing lifecycle aro
 
 ## Priority 1 — Engine selection, installation and initialization
 
-**Status:** engine selection, immutable installation/initialization planning, controlled generic execution and a read-only local-host inspection provider are delivered. Local inspection now reports platform/architecture, package/container tooling, PATH-visible engine versions and explicitly hinted initialized resources without filesystem crawling or host mutation. Remaining work is platform-specific prerequisite assessment, media/source provenance, concrete mutation providers and live install/init qualification.
+**Status:** engine selection, immutable installation/initialization planning, controlled generic execution, read-only local-host inspection and first-class installation prerequisite assessment are delivered. Local inspection reports platform/architecture, package/container tooling, PATH-visible engine versions and explicitly hinted initialized resources without filesystem crawling or host mutation; prerequisite assessment classifies tooling, elevation, existing-version, setup-platform, provider and license boundaries. Remaining work is versioned vendor-support/media provenance evidence, concrete mutation providers and live install/init qualification.
 
 Build the lifecycle foundation that exists before a database endpoint is reachable.
 
