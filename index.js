@@ -36,6 +36,7 @@ var installationProviderApi = require('./lib/lifecycle/InstallationProvider');
 var engineInstallationPlannerApi = require('./lib/lifecycle/EngineInstallationPlanner');
 var engineInitializationPlannerApi = require('./lib/lifecycle/EngineInitializationPlanner');
 var engineLifecycleExecutorApi = require('./lib/lifecycle/EngineLifecycleExecutor');
+var localHostInstallationProviderApi = require('./lib/lifecycle/LocalHostInstallationProvider');
 streamApi.install(clientApi);
 require('./lib/client/SqlServerStreamIntegration').install(streamApi);
 diagnosticsApi.install(clientApi);
@@ -253,6 +254,8 @@ exports.ENGINE_LIFECYCLE_EXECUTION_STATUSES = engineLifecycleExecutorApi.STATUSE
 exports.ENGINE_LIFECYCLE_EXECUTION_STEP_STATUSES = engineLifecycleExecutorApi.STEP_STATUSES;
 exports.ENGINE_LIFECYCLE_APPROVAL_MODES = engineLifecycleExecutorApi.APPROVAL_MODES;
 exports.ENGINE_LIFECYCLE_ACTION_RESULT_STATUSES = engineLifecycleExecutorApi.ACTION_RESULT_STATUSES;
+exports.LOCAL_HOST_INSTALLATION_PROVIDER_SCHEMA_VERSION = localHostInstallationProviderApi.SCHEMA_VERSION;
+exports.LOCAL_HOST_INSTALLATION_PROVIDER_ID = localHostInstallationProviderApi.PROVIDER_ID;
 exports.planDatabaseBootstrap = databaseBootstrapPlannerApi.plan;
 exports.bootstrapAutomaticSteps = databaseBootstrapPlannerApi.automaticSteps;
 exports.bootstrapManualSteps = databaseBootstrapPlannerApi.manualSteps;
@@ -280,6 +283,7 @@ exports.inspectEngineInstallationPlan = engineLifecycleExecutorApi.inspectInstal
 exports.inspectEngineInitializationPlan = engineLifecycleExecutorApi.inspectInitialization;
 exports.executeEngineInstallation = engineLifecycleExecutorApi.executeInstallation;
 exports.executeEngineInitialization = engineLifecycleExecutorApi.executeInitialization;
+exports.createLocalHostInstallationProvider = localHostInstallationProviderApi.create;
 exports.MIGRATION_PLAN_SCHEMA_VERSION = migrationPlannerApi.SCHEMA_VERSION;
 exports.MIGRATION_EXECUTION_MODES = migrationPlannerApi.EXECUTION;
 exports.MIGRATION_TRANSACTION_STRATEGIES = migrationPlannerApi.TRANSACTION;
