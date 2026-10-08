@@ -168,8 +168,19 @@ async function prerequisiteAssessment(){
   assert.ok(pgAssessment.checks.some(function(item){return item.id==='installation-strategy'&&item.status==='ready';}));
   assert.ok(pgAssessment.checks.some(function(item){return item.id==='vendor-support-certification'&&item.status==='attention';}));
 
+  var noSqlServerProvider=sql.createLocalHostInstallationProvider({
+    system:{platform:'linux',architecture:'x64',release:'6.8.0-test',hostname:'linux-no-sqlserver',elevated:false},
+    commandRunner:function(executable,args){
+      if(executable==='apt-get'&&args.join(' ')==='--version'){
+        return {available:true,status:0,stdout:'apt 3.0.3 (amd64)\n'};
+      }
+      return {available:false,status:null,stdout:'',stderr:'',error:{code:'ENOENT',message:'not found'}};
+    },
+    filesystem:filesystem
+  });
+  var noSqlServerTarget=await sql.inspectEngineTarget(noSqlServerProvider);
   var sqlserver=sql.selectDatabaseEngine({engine:'sqlserver',targetVersion:'2025',installationStrategy:'setup'});
-  var blocked=sql.assessEngineInstallationPrerequisites(sqlserver,target);
+  var blocked=sql.assessEngineInstallationPrerequisites(sqlserver,noSqlServerTarget);
   assert.strictEqual(blocked.status,'blocked');
   assert.ok(blocked.checks.some(function(item){
     return item.id==='installation-strategy'&&item.status==='blocked';
