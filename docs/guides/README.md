@@ -46,3 +46,5 @@ Historical development notes are preserved under `docs/archive/` and are not par
 - [Engine lifecycle foundation](27-engine-lifecycle-foundation.md) — engine selection, provider target inspection, installation planning and initialization planning.
 
 - [Controlled engine lifecycle execution](28-engine-lifecycle-execution.md) — plan-hash approval, drift detection, constrained provider execution and target-state verification.
+
+- [Local host lifecycle inspection provider](29-local-host-lifecycle-provider.md) — read-only OS/tool/runtime/resource evidence for pre-install planning.
