@@ -166,6 +166,46 @@ The local-host provider enforces these rules:
 8. secret-like fields are rejected from installed/resource hints;
 9. deterministic target evidence feeds the existing SHA-256 `inspectionHash`.
 
+## Installation prerequisite assessment
+
+Use the inspected target and immutable engine selection to produce a first-class prerequisite assessment:
+
+```js
+const selection = sql.selectDatabaseEngine({
+  engine: 'postgresql',
+  targetVersion: '18',
+  installationStrategy: 'package'
+});
+
+const target = await sql.inspectEngineTarget(provider);
+
+const prerequisites = sql.assessEngineInstallationPrerequisites(
+  selection,
+  target
+);
+```
+
+The immutable assessment carries an `assessmentHash` and one of:
+
+- `ready`;
+- `attention`;
+- `blocked`.
+
+Current checks cover:
+
+- platform/architecture evidence;
+- existing exact, incomplete or conflicting engine versions;
+- package-manager availability for package strategy;
+- Docker/Podman availability for container strategy;
+- SQL Server Setup requiring Windows;
+- source/manual strategy attention boundaries;
+- likely elevation boundary for server package/setup installs;
+- whether the inspected provider can perform installation;
+- SQL Server license-acceptance attention;
+- explicit vendor-support certification boundary.
+
+The last check is intentionally `attention`: local host inspection does not certify a live vendor support matrix. A future support-catalogue capability can replace that uncertainty with versioned vendor evidence.
+
 ## Planning integration
 
 The returned target is a normal NuBloxSQL installation-provider report:
