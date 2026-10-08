@@ -667,3 +667,5 @@ Version evidence is normalized to NuBloxSQL lifecycle families while retaining t
 SQLite CLI discovery is reported as the `cli` component; it is not treated as proof that an application's embedded SQLite library has been discovered. `installedHints` can supply explicit application-owned runtime evidence.
 
 Local target reports feed the normal immutable `inspectionHash`, so the existing lifecycle planners/executor can detect drift without a second host-inspection model.
+
+Use `assessEngineInstallationPrerequisites(selection, target)` to convert local evidence into an immutable readiness assessment. The result is `ready`, `attention`, or `blocked` and covers existing-version conflicts, package/container tooling, setup-platform compatibility, elevation boundaries, provider mutation capability and SQL Server license attention. Vendor support certification remains explicitly `attention` until backed by a versioned vendor-support catalogue.
