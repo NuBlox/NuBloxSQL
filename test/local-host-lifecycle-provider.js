@@ -12,6 +12,7 @@ function commandRunner(executable,args){
     'sqlservr -v':{available:true,status:0,stdout:'17.0.4085.5\n'},
     'apt-get --version':{available:true,status:0,stdout:'apt 3.0.3 (amd64)\n'},
     'docker --version':{available:true,status:0,stdout:'Docker version 28.5.1, build test\n'},
+    'systemctl show --property=LoadState --value mssql-server':{available:true,status:0,stdout:'loaded\n'},
     'systemctl is-active mssql-server':{available:true,status:0,stdout:'active\n'}
   };
   return responses[key]||{available:false,status:null,stdout:'',stderr:'',error:{code:'ENOENT',message:'not found'}};
