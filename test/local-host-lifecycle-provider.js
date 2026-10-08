@@ -154,6 +154,38 @@ async function inspectionOnlyBoundary(){
   assert.match(execution.reason,/externalHandler/);
 }
 
+
+async function prerequisiteAssessment(){
+  var provider=create();
+  var target=await sql.inspectEngineTarget(provider);
+  var pg=sql.selectDatabaseEngine({engine:'postgresql',targetVersion:'18',installationStrategy:'package'});
+  var pgAssessment=sql.assessEngineInstallationPrerequisites(pg,target);
+  assert.strictEqual(pgAssessment.status,'attention');
+  assert.strictEqual(pgAssessment.assessmentHash.length,64);
+  assert.strictEqual(pgAssessment.selectionHash,pg.selectionHash);
+  assert.strictEqual(pgAssessment.targetInspectionHash,target.inspectionHash);
+  assert.ok(pgAssessment.checks.some(function(item){return item.id==='existing-runtime'&&item.status==='ready';}));
+  assert.ok(pgAssessment.checks.some(function(item){return item.id==='installation-strategy'&&item.status==='ready';}));
+  assert.ok(pgAssessment.checks.some(function(item){return item.id==='vendor-support-certification'&&item.status==='attention';}));
+
+  var sqlserver=sql.selectDatabaseEngine({engine:'sqlserver',targetVersion:'2025',installationStrategy:'setup'});
+  var blocked=sql.assessEngineInstallationPrerequisites(sqlserver,target);
+  assert.strictEqual(blocked.status,'blocked');
+  assert.ok(blocked.checks.some(function(item){
+    return item.id==='installation-strategy'&&item.status==='blocked';
+  }));
+
+  var future=sql.selectDatabaseEngine({engine:'postgresql',targetVersion:'19',installationStrategy:'package'});
+  var upgrade=sql.assessEngineInstallationPrerequisites(future,target);
+  assert.strictEqual(upgrade.status,'blocked');
+  assert.ok(upgrade.checks.some(function(item){
+    return item.id==='existing-runtime'&&item.status==='blocked';
+  }));
+
+  var second=sql.assessEngineInstallationPrerequisites(pg,target);
+  assert.strictEqual(second.assessmentHash,pgAssessment.assessmentHash);
+}
+
 async function hintsAndValidation(){
   var provider=sql.createLocalHostInstallationProvider({
     system:{platform:'darwin',architecture:'arm64',release:'25.0',hostname:'mac',elevated:false},
@@ -192,6 +224,7 @@ Promise.resolve()
   .then(targetInspection)
   .then(planningIntegration)
   .then(inspectionOnlyBoundary)
+  .then(prerequisiteAssessment)
   .then(hintsAndValidation)
   .then(function(){console.log('NuBloxSQL local-host lifecycle provider contract: PASS');})
   .catch(function(error){console.error(error);process.exitCode=1;});
