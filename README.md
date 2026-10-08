@@ -53,6 +53,8 @@ The complete product direction extends this same model from database-engine sele
 
 The design rule is: **one developer API, honest dialect semantics**.
 
+NuBloxSQL now also includes a read-only local-host lifecycle provider for platform/tool/runtime inspection before installation planning. See [Local host lifecycle inspection provider](docs/guides/29-local-host-lifecycle-provider.md).
+
 ## Official applications
 
 NuBloxSQL is the platform beneath official NuBlox database tools.

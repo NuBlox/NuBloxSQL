@@ -203,6 +203,93 @@ export interface EngineInitializationPlan {
   readonly steps: readonly EngineLifecyclePlanStep[];
 }
 
+export interface LocalHostCommandProbeResult {
+  readonly available?: boolean;
+  readonly status?: number | null;
+  readonly signal?: string | null;
+  readonly stdout?: string;
+  readonly stderr?: string;
+  readonly error?: Readonly<{ code?: string | null; message?: string }> | null;
+}
+
+export interface LocalHostSystemInfo {
+  readonly platform?: string;
+  readonly architecture?: string;
+  readonly arch?: string;
+  readonly release?: string;
+  readonly hostname?: string;
+  readonly elevated?: boolean;
+}
+
+export interface LocalHostResourceHint {
+  readonly engine?: root.DialectAlias;
+  readonly dialect?: root.DialectAlias;
+  readonly kind: 'cluster' | 'data-directory' | 'database-file' | 'instance';
+  readonly path?: string;
+  readonly name?: string;
+  readonly service?: string;
+}
+
+export interface LocalHostInstalledHint {
+  readonly engine?: root.DialectAlias;
+  readonly dialect?: root.DialectAlias;
+  readonly version: string;
+  readonly state?: string;
+  readonly edition?: string;
+  readonly distribution?: string;
+  readonly components?: readonly string[];
+  readonly native?: Readonly<Record<string, unknown>>;
+}
+
+export interface LocalHostFileSystem {
+  existsSync(path: string): boolean;
+  statSync(path: string): Readonly<{
+    isDirectory(): boolean;
+    isFile(): boolean;
+  }>;
+  readFileSync(path: string, encoding?: string | null): unknown;
+}
+
+export interface LocalHostInstallationProviderOptions {
+  readonly id?: string;
+  readonly commandTimeoutMs?: number;
+  readonly system?: LocalHostSystemInfo;
+  readonly commandRunner?: (
+    executable: string,
+    args: readonly string[]
+  ) => LocalHostCommandProbeResult;
+  readonly filesystem?: LocalHostFileSystem;
+  readonly resourceHints?: readonly LocalHostResourceHint[];
+  readonly installedHints?: readonly LocalHostInstalledHint[];
+}
+
+export type EngineInstallationPrerequisiteStatus = 'ready' | 'attention' | 'blocked';
+
+export interface EngineInstallationPrerequisiteCheck {
+  readonly id: string;
+  readonly status: EngineInstallationPrerequisiteStatus;
+  readonly summary: string;
+  readonly evidence: Readonly<Record<string, unknown>> | null;
+}
+
+export interface EngineInstallationPrerequisiteAssessment {
+  readonly schemaVersion: 1;
+  readonly assessmentHash: string;
+  readonly selectionHash: string;
+  readonly targetInspectionHash: string;
+  readonly engine: EngineLifecycleEngine;
+  readonly targetVersion: string;
+  readonly targetId: string | null;
+  readonly status: EngineInstallationPrerequisiteStatus;
+  readonly summary: Readonly<{
+    total: number;
+    ready: number;
+    attention: number;
+    blocked: number;
+  }>;
+  readonly checks: readonly EngineInstallationPrerequisiteCheck[];
+}
+
 export const ENGINE_LIFECYCLE_SCHEMA_VERSION: 1;
 export const ENGINE_LIFECYCLE_ENGINES: readonly EngineLifecycleEngine[];
 export const ENGINE_LIFECYCLE_EXECUTION_MODES: readonly EngineLifecycleExecutionMode[];
@@ -210,6 +297,10 @@ export const INSTALLATION_PROVIDER_SCHEMA_VERSION: 1;
 export const INSTALLATION_PROVIDER_ACTIONS: readonly InstallationProviderAction[];
 export const ENGINE_INSTALLATION_PLAN_SCHEMA_VERSION: 1;
 export const ENGINE_INITIALIZATION_PLAN_SCHEMA_VERSION: 1;
+export const LOCAL_HOST_INSTALLATION_PROVIDER_SCHEMA_VERSION: 1;
+export const LOCAL_HOST_INSTALLATION_PROVIDER_ID: 'local-host';
+export const ENGINE_INSTALLATION_PREREQUISITE_SCHEMA_VERSION: 1;
+export const ENGINE_INSTALLATION_PREREQUISITE_STATUSES: readonly EngineInstallationPrerequisiteStatus[];
 
 export function engineLifecycleProfile(engine: root.DialectAlias): EngineLifecycleProfile;
 export function selectDatabaseEngine(specification: EngineSelectionSpecification): EngineSelection;
@@ -230,6 +321,16 @@ export function planEngineInitialization(
   target: InstallationProviderTargetInspection,
   specification: EngineInitializationSpecification
 ): EngineInitializationPlan;
+
+export function createLocalHostInstallationProvider(
+  options?: LocalHostInstallationProviderOptions
+): EngineInstallationProvider;
+
+export function assessEngineInstallationPrerequisites(
+  selection: EngineSelection,
+  target: InstallationProviderTargetInspection
+): EngineInstallationPrerequisiteAssessment;
+
 
 
 export type EngineLifecycleExecutionStatus =

@@ -642,3 +642,30 @@ Runtime-only inputs supplied by `resolveInputs` are not copied into plans or aud
 Restart/reboot boundaries return `pending-restart` or `pending-reboot`; callers must complete the external boundary, reinspect and build a fresh plan rather than resuming against stale target evidence.
 
 SQL Server install execution requires explicit `licenseAcceptance: { accepted: true }` evidence.
+
+
+## Local host lifecycle inspection provider
+
+`LOCAL_HOST_INSTALLATION_PROVIDER_SCHEMA_VERSION === 1` defines the first concrete lifecycle provider.
+
+```js
+const provider = sql.createLocalHostInstallationProvider({
+  resourceHints: [
+    { engine: 'postgresql', kind: 'cluster', path: '/var/lib/postgresql/18/main' }
+  ]
+});
+
+const target = await sql.inspectEngineTarget(provider);
+```
+
+The provider is deliberately read-only and declares only `inspect-target`. It has no `executeAction()` implementation.
+
+The default probe runner uses fixed executable/argument combinations with `shell: false`. It can discover platform/architecture evidence, package-management and container tooling, PATH-visible PostgreSQL/MySQL/SQLite/SQL Server runtime evidence, and explicitly hinted initialized resources. It does not crawl the filesystem.
+
+Version evidence is normalized to NuBloxSQL lifecycle families while retaining the complete detected build in native evidence: PostgreSQL 18.x → `18`, MySQL 8.4.x → `8.4`, SQL Server 17.x → `2025`, while SQLite retains its detected semantic version.
+
+SQLite CLI discovery is reported as the `cli` component; it is not treated as proof that an application's embedded SQLite library has been discovered. `installedHints` can supply explicit application-owned runtime evidence.
+
+Local target reports feed the normal immutable `inspectionHash`, so the existing lifecycle planners/executor can detect drift without a second host-inspection model.
+
+Use `assessEngineInstallationPrerequisites(selection, target)` to convert local evidence into an immutable readiness assessment. The result is `ready`, `attention`, or `blocked` and covers existing-version conflicts, package/container tooling, setup-platform compatibility, elevation boundaries, provider mutation capability and SQL Server license attention. Vendor support certification remains explicitly `attention` until backed by a versioned vendor-support catalogue.
