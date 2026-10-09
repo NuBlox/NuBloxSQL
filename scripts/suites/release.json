@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "name": "NuBloxSQL release qualification suite",
   "steps": [
+    "scripts/check-repository-structure.js",
     "scripts/check-stable-release.js",
     "scripts/check-dialect-registry-release.js",
     "scripts/check-profile-capability-overlays-release.js",
