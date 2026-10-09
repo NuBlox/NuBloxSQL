@@ -1,6 +1,6 @@
-# NuBloxSQL Strategic Roadmap
+# NuBloxSQL Product Roadmap
 
-This roadmap is governed by [PRODUCT-DEFINITION.md](BLUEPRINT.md).
+This roadmap is governed by the [Product Blueprint](BLUEPRINT.md).
 
 NuBloxSQL is being built as **one coherent JavaScript/TypeScript API for the complete SQL database lifecycle**, not as a parser project, ORM, workbench UI or race to support the largest number of dialect names.
 
@@ -321,7 +321,7 @@ Target coverage area:
 
 - `lifecycle.engine-upgrade`.
 
-## Priority 9 — Complete change-management foundations
+## Priority 10 — Complete change-management foundations
 
 Continue existing strong engineering areas where lifecycle work depends on them:
 
@@ -341,7 +341,7 @@ Target areas:
 - data movement;
 - type semantics.
 
-## Priority 10 — Lifecycle retirement
+## Priority 11 — Lifecycle retirement
 
 Define explicit end-of-life workflows:
 
@@ -360,7 +360,7 @@ Target coverage area:
 
 Retirement must be approval-gated and auditable because it is inherently destructive.
 
-## Priority 11 — SQL tooling
+## Priority 12 — SQL tooling
 
 Use the existing SQL engine for standalone developer tooling:
 
@@ -376,7 +376,7 @@ Target coverage area:
 
 - `tooling.sql`.
 
-## Priority 12 — Remaining SQL language families
+## Priority 13 — Remaining SQL language families
 
 Complete language families when they directly strengthen lifecycle capabilities:
 
@@ -437,7 +437,7 @@ Not every lifecycle capability must be fully automated at 2.0, but every major d
 
 ## Feature admission rule
 
-Every new feature must answer the ten questions in [PRODUCT-DEFINITION.md](BLUEPRINT.md#product-decision-gate).
+Every new feature must answer the questions in the [Product Blueprint](BLUEPRINT.md#product-decision-gate).
 
 The key test is:
 
