@@ -109,7 +109,7 @@ assert.strictEqual(retirement.status,'gap');
 var jobs=sql.productCoverage.area('automation.jobs');
 assert.strictEqual(jobs.status,'gap');
 assert.strictEqual(jobs.stages.documentation,'implemented');
-assert.ok(jobs.evidence.includes('docs/strategy/DATABASE-JOB-ARCHITECTURE.md'));
+assert.ok(jobs.evidence.includes('docs/architecture/DATABASE-JOBS.md'));
 
 var gaps=sql.productCoverage.gaps();
 assert.strictEqual(gaps.some(function(area){return area.id==='platform.schema-diff';}),false);
