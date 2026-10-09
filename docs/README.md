@@ -1,54 +1,45 @@
 # NuBloxSQL Documentation
 
-This directory contains the **authoritative release documentation** for the current NuBloxSQL repository state.
+This directory contains the authoritative documentation for the current NuBloxSQL repository state.
 
-## User guides
+## Product authority
 
-The [NuBloxSQL User Guides](guides/README.md) are the detailed task-oriented documentation for application developers. They cover installation, connections and pooling, SQL and binding, prepared statements, transactions, streaming and cancellation, metadata/introspection, errors and recovery, observability/type codecs, dialect-specific behaviour, capability/portability tooling, TypeScript and production troubleshooting.
+Use these documents in this order:
 
-## Worked cookbook
+1. [Product Blueprint](product/BLUEPRINT.md) — single authority for product scope, domains, lifecycle interpretation, boundaries and frozen development sequence.
+2. [Capability Register](product/CAPABILITY-REGISTER.md) — current whole-product maturity and evidence.
+3. [Roadmap](product/ROADMAP.md) — ordered implementation programme.
+4. [Database Lifecycle](architecture/DATABASE-LIFECYCLE.md) — detailed lifecycle architecture.
+5. [Database Jobs](architecture/DATABASE-JOBS.md) — durable job/workflow architecture.
+6. [Repository Structure](architecture/REPOSITORY-STRUCTURE.md) — repository layout and placement rules.
 
-The [NuBloxSQL Cookbook](cookbook/README.md) contains worked application recipes. It covers portable CRUD, joins/CTEs/reporting, transactions/retries, large-result streaming, metadata tools, query diagnostics, PostgreSQL/MySQL/SQLite/SQL Server service patterns, bulk data movement, observability and migration analysis.
+The [Competitive Benchmark](product/COMPETITIVE-BENCHMARK.md) informs capability breadth but does not override the Product Blueprint.
 
-Use guides to understand the contract; use cookbook recipes to see several APIs combined into realistic flows.
+## Public documentation
 
-## Product strategy
+- [User Guides](guides/README.md) — task-oriented developer and operator guidance.
+- [Cookbook](cookbook/README.md) — worked application recipes.
+- [Public API](API.md) — concise supported developer surface.
+- [Support Matrix](SUPPORT.md) — supported Node.js and database-engine scope.
+- [Release Status](RELEASE.md) — release line and qualification gates.
 
-- [Canonical product definition](strategy/PRODUCT-DEFINITION.md) — authoritative product boundary, complete lifecycle, users, supported-engine focus, infrastructure boundary and feature-admission rules.
-- [Product vision](strategy/PRODUCT-VISION.md) — concise vision for the complete database lifecycle.
-- [Product capability register](strategy/PRODUCT-CAPABILITY-REGISTER.md) — whole-product coverage assessment and maturity model.
-- [Strategic roadmap](strategy/STRATEGIC-ROADMAP.md) — prioritized path toward NuBloxSQL 2.0 based on product gaps rather than statement-family momentum.
-- [Competitive capability benchmark](strategy/COMPETITIVE-BENCHMARK.md) — external breadth benchmark and NuBloxSQL capability programme.
+## Official applications
 
-## Release documents
-
-- [Release status](RELEASE.md) — current release line, qualification and release gates.
-- [Support matrix](SUPPORT.md) — supported Node.js and database-engine scope.
-- [Public API](API.md) — concise supported public developer surface.
-- [1.1.0 release notes](releases/1.1.0.md) — current release-line notes.
+- [NuBlox Shell](architecture/SHELL.md) — terminal application architecture. Implementation lives under `apps/shell/`.
 
 ## Machine-readable release contracts
 
-- `releases/public-api-v1.json` — packaged public API and package-surface contract.
-- `releases/tier1-stable-evidence.json` — Tier-1 qualification evidence manifest.
-- `releases/product-coverage-v2.json` — executable whole-product coverage snapshot.
-- `releases/product-lifecycle-v2.json` — canonical eleven-phase end-to-end lifecycle and eight-domain product contract.
-- `releases/product-lifecycle-v1.json` — historical reachable-server lifecycle contract retained for traceability.
+Current release contracts live under `releases/`:
 
-These contracts are consumed by repository release tooling and are not informal documentation.
+- `public-api-v1.json`
+- `tier1-stable-evidence.json`
+- `product-coverage-v2.json`
+- `product-lifecycle-v2.json`
 
-## Documentation validity
-
-The root README, this directory's current documents, `docs/guides/`, `docs/cookbook/`, the public TypeScript declarations and release-check tooling describe the current release. Guides and cookbook recipes are checked by the release audit for presence and valid relative links.
+Historical contracts do not remain in the active release-contract directory. The superseded lifecycle-v1 contract is retained under `archive/contracts/`.
 
 ## Archive
 
-Everything under [`archive/`](archive/) is historical material retained for traceability. Archived files may contain superseded status, package names, plans, assumptions or qualification narratives. **Do not use archived material as current release guidance.**
+Everything under [`archive/`](archive/) is historical and non-authoritative. Archived material may preserve superseded package names, support claims, plans, architecture or qualification evidence for traceability only.
 
-If an archived statement conflicts with current release documentation, declarations or release tooling, the archived statement is obsolete.
-
-## Applications
-
-- [NuBlox Shell](strategy/NUBLOX-SHELL.md) — terminal application architecture and roadmap.
-
-- [End-to-end database lifecycle](strategy/END-TO-END-DATABASE-LIFECYCLE.md) — engine selection and installation through retirement/decommission.
+When documents conflict, follow the authority order in the Product Blueprint.
