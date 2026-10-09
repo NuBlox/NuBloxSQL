@@ -54,7 +54,7 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | Upgrade readiness | Gap | version/capability knowledge exists but no upgrade assessment | Priority 8: source/target version compatibility and risk assessment |
 | Engine/runtime upgrade | Gap | upgrade lifecycle architecture exists but no public planner/executor | Priority 9: vendor-path planning, backup gates, durable execution and post-upgrade verification |
 | Retirement | Gap | no coherent archive/revoke/decommission contract | Priority 11: approval-gated, auditable retirement and uninstall workflows |
-| Automation/jobs | Gap | no unified reusable job-plan or CLI execution model | High platform value |
+| Automation/jobs | Gap | canonical operation/job/workflow architecture, durable state machine, scheduling model, native-job integration and full lifecycle job taxonomy are documented | Implement the durable JobStore/state/lease/checkpoint kernel, then adapt existing executors before native scheduler control |
 | Reporting/export | Gap | no first-class report/export contract | Build after unified data movement |
 | Competitive benchmark | Active | `docs/strategy/COMPETITIVE-BENCHMARK.md` | Track breadth without copying external product architecture |
 | Canonical schema snapshot | Established | deterministic schema model with stable IDs, dialect-neutral logical keys, canonical types, dependencies and semantic/source hashes | Use as the source model for schema diff |
@@ -114,4 +114,3 @@ Roadmap priority should be calculated qualitatively from:
 6. **Release impact** — whether users gain a coherent capability they can understand and adopt.
 
 A narrow vendor grammar edge should not outrank a missing cross-product subsystem merely because it is easier to implement next.
-\n| Jobs / durable execution | Gap | canonical operation/job/workflow model, state machine, scheduling, native-job integration and lifecycle job taxonomy are now documented | Implement durable JobStore/state/lease/checkpoint kernel, then adapt existing executors before adding native scheduler control |\n
