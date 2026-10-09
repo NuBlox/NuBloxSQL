@@ -12,6 +12,7 @@
     "test/engine-lifecycle-foundation.js",
     "test/engine-lifecycle-executor.js",
     "test/local-host-lifecycle-provider.js",
+    "test/job-kernel.js",
     "test/sql-capability-compatibility.js",
     "test/sql-capability-runtime.js",
     "test/sql-capability-rewrite.js",

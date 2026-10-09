@@ -22,6 +22,7 @@ NuBloxSQL/
 │   ├── client/                Unified public client implementation
 │   ├── core/                  Shared SQL-core runtime
 │   ├── dialects/              Native engine implementations
+│   ├── jobs/                  Internal durable job orchestration foundation
 │   └── lifecycle/             Pre-connect engine lifecycle implementation
 ├── scripts/                   Repository/release qualification scripts
 ├── test/                      Cross-cutting package/integration tests

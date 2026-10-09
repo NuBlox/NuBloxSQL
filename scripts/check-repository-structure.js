@@ -21,6 +21,7 @@ function exists(relative){return fs.existsSync(path.join(root,relative));}
   'lib/core',
   'lib/dialects',
   'lib/lifecycle',
+  'lib/jobs',
   'scripts',
   'test',
   'types'

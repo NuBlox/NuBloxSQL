@@ -6,6 +6,16 @@ It exists to prevent each lifecycle capability from inventing its own scheduling
 
 NuBloxSQL should expose one durable job architecture that can orchestrate database work from engine selection and installation through operation, change, upgrade and retirement while preserving native database job systems where they exist.
 
+## Implementation status — first Wave 1 foundation slice (9 October 2026)
+
+The **internal**, dependency-free foundation lives in `lib/jobs/JobKernel.js` and is checked by `test/job-kernel.js` as part of `npm run test:platform`.
+
+It provides canonical, secret-field-rejecting immutable plan envelopes and deterministic SHA-256 plan hashes; versioned run creation; explicit legal transitions and terminal states; checkpoint validation; executor registration; and a storage-agnostic coordinator that requires optimistic compare-and-swap writes with an atomic audit event. Leasing is only delegated to an atomic, fencing-aware `JobStore.leaseNextRun`, never emulated with a read-then-write.
+
+**Not yet production-ready or exposed as public API:** no persistent JobStore adapter, worker, scheduler, retry runner, cancellation handler, approval-policy engine, or integration with existing lifecycle executors has been qualified. Tests use an in-memory fake solely to validate the store contract and concurrency/authorization boundaries. The core assumes the supplied store implements durable, transactional, linearizable run/event writes, unique run identity and atomic leases; this responsibility is not solved by the interface itself.
+
+The next implementation slice is a production-grade durable JobStore adapter with crash/restart and multi-worker lease recovery tests, followed by worker execution and existing-domain adapters. Do not present an in-memory test adapter as persistent production storage.
+
 ## Scope
 
 The job architecture applies to work that is:
