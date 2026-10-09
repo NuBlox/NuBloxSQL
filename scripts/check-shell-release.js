@@ -5,7 +5,7 @@ var fs=require('fs');
 var path=require('path');
 
 var root=path.join(__dirname,'..');
-var shellRoot=path.join(root,'shell');
+var shellRoot=path.join(root,'apps','shell');
 var pkg=JSON.parse(fs.readFileSync(path.join(shellRoot,'package.json'),'utf8'));
 
 assert.strictEqual(pkg.name,'@nublox/shell');
