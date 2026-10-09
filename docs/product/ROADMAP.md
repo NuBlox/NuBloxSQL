@@ -1,6 +1,6 @@
 # NuBloxSQL Strategic Roadmap
 
-This roadmap is governed by [PRODUCT-DEFINITION.md](PRODUCT-DEFINITION.md).
+This roadmap is governed by [PRODUCT-DEFINITION.md](BLUEPRINT.md).
 
 NuBloxSQL is being built as **one coherent JavaScript/TypeScript API for the complete SQL database lifecycle**, not as a parser project, ORM, workbench UI or race to support the largest number of dialect names.
 
@@ -107,7 +107,7 @@ The Shell may expose `\\engine install` and `\\engine initialize` only after the
 
 ## Cross-cutting foundation — Durable database jobs and workflows
 
-**Status:** canonical job architecture is now defined in [DATABASE-JOB-ARCHITECTURE.md](DATABASE-JOB-ARCHITECTURE.md). Public job/runtime APIs are not yet implemented.
+**Status:** canonical job architecture is now defined in [DATABASE-JOB-ARCHITECTURE.md](../architecture/DATABASE-JOBS.md). Public job/runtime APIs are not yet implemented.
 
 This is now a prerequisite substrate for later lifecycle automation rather than an isolated late feature.
 
@@ -437,7 +437,7 @@ Not every lifecycle capability must be fully automated at 2.0, but every major d
 
 ## Feature admission rule
 
-Every new feature must answer the ten questions in [PRODUCT-DEFINITION.md](PRODUCT-DEFINITION.md#product-decision-gate).
+Every new feature must answer the ten questions in [PRODUCT-DEFINITION.md](BLUEPRINT.md#product-decision-gate).
 
 The key test is:
 
