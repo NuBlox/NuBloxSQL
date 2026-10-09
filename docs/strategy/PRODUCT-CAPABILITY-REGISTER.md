@@ -114,3 +114,4 @@ Roadmap priority should be calculated qualitatively from:
 6. **Release impact** — whether users gain a coherent capability they can understand and adopt.
 
 A narrow vendor grammar edge should not outrank a missing cross-product subsystem merely because it is easier to implement next.
+\n| Jobs / durable execution | Gap | canonical operation/job/workflow model, state machine, scheduling, native-job integration and lifecycle job taxonomy are now documented | Implement durable JobStore/state/lease/checkpoint kernel, then adapt existing executors before adding native scheduler control |\n
