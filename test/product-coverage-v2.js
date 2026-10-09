@@ -107,8 +107,16 @@ var retirement=sql.productCoverage.area('lifecycle.retirement');
 assert.strictEqual(retirement.status,'gap');
 
 var jobs=sql.productCoverage.area('automation.jobs');
-assert.strictEqual(jobs.status,'gap');
+assert.strictEqual(jobs.status,'partial');
+assert.strictEqual(jobs.stages.validator,'implemented');
+assert.strictEqual(jobs.stages.runtime,'partial');
+assert.strictEqual(jobs.stages.diagnostics,'partial');
+assert.strictEqual(jobs.stages.contractTest,'implemented');
+assert.strictEqual(jobs.stages.publicApi,'unsupported');
+assert.strictEqual(jobs.stages.packagedPublic,'unsupported');
 assert.strictEqual(jobs.stages.documentation,'implemented');
+assert.ok(jobs.evidence.includes('lib/jobs/SqliteJobStore.js'));
+assert.ok(jobs.evidence.includes('test/sqlite-job-store.js'));
 assert.ok(jobs.evidence.includes('docs/architecture/DATABASE-JOBS.md'));
 
 var gaps=sql.productCoverage.gaps();
