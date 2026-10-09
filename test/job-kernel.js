@@ -39,11 +39,14 @@ async function main() {
   const queued = jobs.transition(awaiting, 'queued');
   const leased = jobs.transition(queued, 'leased');
   const running = jobs.transition(leased, 'running');
-  const checked = jobs.checkpoint(running, { stepId: 'inspect', evidence: 'sha256:abc' });
+  const checked = jobs.checkpoint(running, { stepId: 'inspect', evidence: 'sha256:abc' }, {now:'2026-10-09T00:00:05Z'});
   assert.equal(checked.version, 5);
+  assert.equal(checked.updatedAt, '2026-10-09T00:00:05Z');
   assert.equal(checked.checkpoint.stepId, 'inspect');
   assert.equal(running.checkpoint, null);
   assert.throws(() => jobs.checkpoint(running, {accessToken:'x'}), /secret-bearing/);
+  const leasedRunning = Object.freeze({...running, lease:Object.freeze({workerId:'worker',fence:1,expiresAt:'2026-10-09T00:01:00Z'})});
+  assert.equal(jobs.transition(leasedRunning,'waiting').lease, undefined);
   const verifying = jobs.transition(checked, 'verifying');
   const success = jobs.transition(verifying, 'succeeded');
   assert.ok(jobs.TERMINAL.includes(success.status));
