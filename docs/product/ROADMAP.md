@@ -107,15 +107,15 @@ The Shell may expose `\\engine install` and `\\engine initialize` only after the
 
 ## Cross-cutting foundation — Durable database jobs and workflows
 
-**Status:** canonical job architecture is now defined in [Database Jobs](../architecture/DATABASE-JOBS.md). Public job/runtime APIs are not yet implemented.
+**Status:** the internal durable job foundation now includes immutable job plans/runs, a validated state machine, executor registry, a file-backed same-host SQLite JobStore, optimistic CAS, atomic run/event persistence, fencing-aware leases, lease renewal, crash/reopen qualification and multi-process lease contention tests. It remains internal: there is no public job API, worker, scheduler, retry runner or workflow runtime yet.
 
 This is now a prerequisite substrate for later lifecycle automation rather than an isolated late feature.
 
 Implement in this order:
 
-1. durable JobDefinition / JobPlan / JobRun / JobStepRun / JobEvent / JobCheckpoint contracts;
-2. JobStore interface, state machine, leasing, locks, retry, cancellation and audit;
-3. executor registry;
+1. **Delivered foundation:** JobPlan / JobRun state contracts, checkpoint/event validation, executor registry and storage contract;
+2. **Delivered local persistence:** same-host SQLite JobStore with transactional CAS, fencing, renewal and conservative lease recovery;
+3. **Next:** worker execution loop, cancellation/retry policy and executor invocation semantics;
 4. adapters over existing engine install/init, bootstrap, configuration, migration and data-movement executors;
 5. scheduler with timezone, overlap and misfire semantics;
 6. workflow DAG with gates, fan-out/fan-in and manual/external waits;
