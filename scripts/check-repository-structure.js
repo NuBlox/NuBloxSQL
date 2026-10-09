@@ -11,7 +11,6 @@ function exists(relative){return fs.existsSync(path.join(root,relative));}
 [
   'apps/shell',
   'docs/architecture',
-  'docs/archive',
   'docs/cookbook',
   'docs/guides',
   'docs/product',
@@ -34,7 +33,10 @@ function exists(relative){return fs.existsSync(path.join(root,relative));}
   'shell',
   'tool',
   'docs/strategy',
-  'docs/releases/product-lifecycle-v1.json'
+  'docs/archive',
+  'docs/releases/product-lifecycle-v1.json',
+  '.eslintrc',
+  '.eslintignore'
 ].forEach(function(relative){
   assert.strictEqual(exists(relative),false,'obsolete repository path must not exist: '+relative);
 });

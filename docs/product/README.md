@@ -9,4 +9,4 @@ Read in this order:
 3. [Roadmap](ROADMAP.md) — ordered implementation programme.
 4. [Competitive Benchmark](COMPETITIVE-BENCHMARK.md) — external breadth benchmark used only to identify capability classes.
 
-Detailed technical architecture belongs under [`docs/architecture/`](../architecture/README.md). Historical product material belongs under [`docs/archive/`](../archive/).
+Detailed technical architecture belongs under [`docs/architecture/`](../architecture/README.md). Superseded product material is retained by Git history rather than duplicated in the active working tree.

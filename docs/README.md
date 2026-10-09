@@ -36,10 +36,6 @@ Current release contracts live under `releases/`:
 - `product-coverage-v2.json`
 - `product-lifecycle-v2.json`
 
-Historical contracts do not remain in the active release-contract directory. The superseded lifecycle-v1 contract is retained under `archive/contracts/`.
-
-## Archive
-
-Everything under [`archive/`](archive/) is historical and non-authoritative. Archived material may preserve superseded package names, support claims, plans, architecture or qualification evidence for traceability only.
+Historical contracts and superseded documentation do not remain in the active working tree. Git history and prior release commits provide traceability when older states are required.
 
 When documents conflict, follow the authority order in the Product Blueprint.
