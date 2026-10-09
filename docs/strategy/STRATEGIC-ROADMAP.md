@@ -105,6 +105,25 @@ Target coverage areas:
 
 The Shell may expose `\\engine install` and `\\engine initialize` only after these capabilities exist in the public NuBloxSQL API.
 
+## Cross-cutting foundation — Durable database jobs and workflows
+
+**Status:** canonical job architecture is now defined in [DATABASE-JOB-ARCHITECTURE.md](DATABASE-JOB-ARCHITECTURE.md). Public job/runtime APIs are not yet implemented.
+
+This is now a prerequisite substrate for later lifecycle automation rather than an isolated late feature.
+
+Implement in this order:
+
+1. durable JobDefinition / JobPlan / JobRun / JobStepRun / JobEvent / JobCheckpoint contracts;
+2. JobStore interface, state machine, leasing, locks, retry, cancellation and audit;
+3. executor registry;
+4. adapters over existing engine install/init, bootstrap, configuration, migration and data-movement executors;
+5. scheduler with timezone, overlap and misfire semantics;
+6. workflow DAG with gates, fan-out/fan-in and manual/external waits;
+7. read-only discovery of engine-native job systems;
+8. native job management only after discovery is qualified.
+
+This kernel should remain specific to database lifecycle work and must not turn NuBloxSQL into a generic CI/CD or infrastructure workflow system.
+
 ## Priority 2 — Establish: database bootstrap and administration foundation
 
 **Status:** bootstrap planning/execution, server identity/database discovery, prerequisite assessment, dialect-aware database creation options, configuration discovery, immutable configuration change planning and controlled configuration execution are delivered. Remaining work is security integration, stronger MySQL configuration evidence and live administration qualification.
@@ -223,35 +242,20 @@ Target coverage area:
 
 This work strengthens one of the four supported engines and therefore outranks new DBMS profiles.
 
-## Priority 7 — Jobs and durable execution infrastructure
+## Priority 7 — Expand database job integrations
 
-Create reusable database job infrastructure for long-running and scheduled lifecycle work.
+By this stage the durable job kernel should already exist as a cross-cutting foundation.
 
-Required foundations:
+Priority 7 therefore expands the kernel into deeper operational/native integrations:
 
-- job definition;
-- immutable plan;
-- state;
-- checkpoints;
-- attempts;
-- resumability;
-- cancellation;
-- audit;
-- logs/events;
-- scheduling contract;
-- lease/lock model;
-- idempotency.
-
-Use it for:
-
-- backup;
-- restore;
-- maintenance;
-- large data movement;
-- migration backfills;
-- health collection;
-- scheduled integrity checks;
-- future operational workflows.
+- SQL Server Agent discovery/management;
+- MySQL Event Scheduler discovery/management;
+- explicit PostgreSQL scheduler adapters;
+- SQLite scheduling through NuBlox/application workers;
+- richer scheduling policies;
+- operational fleet fan-out;
+- native history correlation;
+- durable notification/event integration.
 
 Target coverage area:
 

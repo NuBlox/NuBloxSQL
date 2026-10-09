@@ -346,6 +346,34 @@ Retirement must be deliberate and evidence-producing.
 
 Retirement does **not** mean indiscriminately deleting a host, VM, network, cloud account or Kubernetes cluster.
 
+## Durable database job substrate
+
+Lifecycle phases define **what** database work means. Durable jobs define **how long-running, scheduled, resumable and auditable work is coordinated**.
+
+The canonical job architecture is defined in [DATABASE-JOB-ARCHITECTURE.md](DATABASE-JOB-ARCHITECTURE.md).
+
+NuBloxSQL distinguishes:
+
+- **operation** — bounded work in the current request/session;
+- **job** — durable work with identity, state, checkpoints, policy and audit;
+- **workflow** — a dependency graph coordinating multiple durable jobs and gates.
+
+This job substrate applies across the lifecycle rather than living only inside Operate.
+
+Examples include:
+
+- engine installation/initialization;
+- bootstrap and configuration;
+- migrations and large data movement;
+- scheduled discovery/health;
+- maintenance;
+- backup/restore;
+- capacity/replication checks;
+- upgrade;
+- retirement.
+
+Engine-native schedulers remain separate native objects and are integrated through adapters rather than flattened into the NuBlox job model.
+
 ## Installation provider model
 
 Installation and decommissioning need a provider boundary comparable to the existing database dialect boundary.
