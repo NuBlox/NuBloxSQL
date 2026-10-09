@@ -20,6 +20,7 @@ async function main() {
   assert.throws(() => jobs.createPlan({jobKind: 'test', lifecyclePhase:'Use', targetIdentity:'one', steps:[{stepId:'x'},{stepId:'x'}]}), /duplicate/);
   assert.throws(() => jobs.createPlan({jobKind:'test',lifecyclePhase:'Use',targetIdentity:'one',steps:[{stepId:'x',data:Infinity}]}), /finite JSON/);
   assert.throws(() => jobs.createPlan({jobKind:'test',lifecyclePhase:'Use',targetIdentity:'one',steps:[{stepId:'x'}],planHash:'tampered'}), /generated/);
+  assert.throws(() => jobs.createRun({...plan,schemaVersion:2}), /valid immutable job plan/);
 
   const registry = jobs.createExecutorRegistry();
   const executor = {execute: async () => true};
@@ -94,7 +95,12 @@ async function main() {
   const persisted = await kernel.checkpoint('durable-1', 3, {stepId:'inspect'}, {workerId:'worker',fence:1});
   assert.equal(persisted.version, 4);
   assert.equal(events.at(-1).type, 'checkpoint');
-  await assert.rejects(kernel.submit({...plan, steps:[{stepId:'altered'}]}), /hash does not match/);
+  const cancelling = await kernel.advance('durable-1', 4, 'cancelling', {workerId:'worker',fence:1});
+  await assert.rejects(kernel.advance('durable-1', cancelling.version, 'cancelled'), /fencing token/);
+  const cancelled = await kernel.advance('durable-1', cancelling.version, 'cancelled', {workerId:'worker',fence:1});
+  assert.equal(cancelled.lease, undefined);
+  await assert.rejects(kernel.submit({...plan, steps:[{stepId:'altered'}]}), /hash or schema version/);
+  await assert.rejects(kernel.submit({...plan, schemaVersion:2}), /hash or schema version/);
   assert.throws(() => jobs.createKernel({}), /durable JobStore/);
   console.log('NuBloxSQL durable job kernel foundational contracts: PASS');
 }
