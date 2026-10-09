@@ -7,8 +7,8 @@ var sql=require('..');
 
 var root=path.resolve(__dirname,'..');
 var lifecycle=JSON.parse(fs.readFileSync(path.join(root,'docs/releases/product-lifecycle-v2.json'),'utf8'));
-var definition=fs.readFileSync(path.join(root,'docs/strategy/PRODUCT-DEFINITION.md'),'utf8');
-var detailed=fs.readFileSync(path.join(root,'docs/strategy/END-TO-END-DATABASE-LIFECYCLE.md'),'utf8');
+var blueprint=fs.readFileSync(path.join(root,'docs/product/BLUEPRINT.md'),'utf8');
+var detailed=fs.readFileSync(path.join(root,'docs/architecture/DATABASE-LIFECYCLE.md'),'utf8');
 
 assert.strictEqual(lifecycle.schemaVersion,2);
 assert.deepStrictEqual(lifecycle.supportedEngines,['postgresql','mysql','sqlite','sqlserver']);
@@ -32,7 +32,7 @@ assert.ok(lifecycle.infrastructureBoundary.doesNotOwn.includes('arbitrary operat
   assert.ok(sql.productCoverage.gaps().some(function(x){return x.id===id;}),'expected lifecycle gap '+id);
 });
 
-assert.match(definition,/engine\/runtime selection and installation through final retirement and decommissioning/);
+assert.match(blueprint,/complete SQL database lifecycle/);
 assert.match(detailed,/Installation provider model/);
 assert.match(detailed,/PostgreSQL/);
 assert.match(detailed,/MySQL/);

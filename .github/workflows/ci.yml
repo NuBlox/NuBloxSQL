@@ -27,9 +27,9 @@ jobs:
       - name: Verify NuBloxSQL runtime and internal modules
         run: npm run verify
       - name: Assert proprietary dependency boundary
-        run: npm run v1:proprietary-audit
+        run: npm run audit:proprietary
       - name: Assert single release surface
-        run: npm run v1:release-audit
+        run: npm run audit:release
       - name: Qualify stable package and clean-install consumers
         run: npm run release:qualify
       - name: Verify NuBloxSQL publish surface

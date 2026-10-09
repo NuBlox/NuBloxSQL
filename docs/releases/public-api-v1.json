@@ -285,8 +285,11 @@
   ],
   "forbiddenPackagePrefixes": [
     "test/",
-    "tool/",
+    "scripts/",
+    "apps/",
     ".github/",
-    "packages/"
+    "tool/",
+    "packages/",
+    "shell/"
   ]
 }

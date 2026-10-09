@@ -350,7 +350,7 @@ Retirement does **not** mean indiscriminately deleting a host, VM, network, clou
 
 Lifecycle phases define **what** database work means. Durable jobs define **how long-running, scheduled, resumable and auditable work is coordinated**.
 
-The canonical job architecture is defined in [DATABASE-JOB-ARCHITECTURE.md](DATABASE-JOB-ARCHITECTURE.md).
+The canonical job architecture is defined in [Database Jobs](DATABASE-JOBS.md).
 
 NuBloxSQL distinguishes:
 

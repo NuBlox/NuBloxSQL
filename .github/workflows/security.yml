@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 24
       - name: Assert zero third-party package boundary
-        run: npm run v1:proprietary-audit
+        run: npm run audit:proprietary
       - name: Fuzz canonical MySQL packet framing
         env:
           NUBLOX_FUZZ_ITERATIONS: 10000

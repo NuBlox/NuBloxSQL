@@ -56,7 +56,7 @@ This register describes **NuBloxSQL product coverage**, not whether a database e
 | Retirement | Gap | no coherent archive/revoke/decommission contract | Priority 11: approval-gated, auditable retirement and uninstall workflows |
 | Automation/jobs | Gap | canonical operation/job/workflow architecture, durable state machine, scheduling model, native-job integration and full lifecycle job taxonomy are documented | Implement the durable JobStore/state/lease/checkpoint kernel, then adapt existing executors before native scheduler control |
 | Reporting/export | Gap | no first-class report/export contract | Build after unified data movement |
-| Competitive benchmark | Active | `docs/strategy/COMPETITIVE-BENCHMARK.md` | Track breadth without copying external product architecture |
+| Competitive benchmark | Active | `docs/product/COMPETITIVE-BENCHMARK.md` | Track breadth without copying external product architecture |
 | Canonical schema snapshot | Established | deterministic schema model with stable IDs, dialect-neutral logical keys, canonical types, dependencies and semantic/source hashes | Use as the source model for schema diff |
 | Schema diff | Established | logical-key comparison, added/removed/modified changes, property deltas, dependency-edge changes and conservative safety classification | Add rename inference and richer object-family comparison |
 | Migration planner | Established | ordered safety-classified plans, automatic/manual execution boundaries, target-dialect DDL for supported steps, preconditions and rollback metadata | Expand DDL coverage and runtime qualification |

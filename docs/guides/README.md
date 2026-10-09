@@ -1,50 +1,49 @@
 # NuBloxSQL User Guides
 
-These guides document the released NuBloxSQL 1.1.x public surface. They are written for application developers using the single `nubloxsql` package.
+These guides document the released NuBloxSQL 1.1.x public surface. Use them with the [support matrix](../SUPPORT.md), [public API](../API.md), and [release status](../RELEASE.md).
 
-Use these guides together with the [support matrix](../SUPPORT.md), [public API summary](../API.md), and the current [release note](../releases/1.1.0.md).
+## Core runtime
 
-## Start here
+1. [Getting started](01-getting-started.md)
+2. [Connections and pooling](02-connections-and-pooling.md)
+3. [SQL, parameters and typed values](03-sql-parameters-and-types.md)
+4. [Prepared statements and result APIs](04-prepared-and-results.md)
+5. [Transactions and savepoints](05-transactions.md)
+6. [Streaming and operation control](06-streaming-and-operation-control.md)
+7. [Metadata and introspection](07-metadata-and-introspection.md)
+8. [Errors, retries and recovery](08-errors-retries-and-recovery.md)
+9. [Observability and type codecs](09-observability-and-type-codecs.md)
+10. [Dialect guide](10-dialects.md)
+11. [Capabilities and SQL portability](11-capabilities-and-portability.md)
+12. [TypeScript guide](12-typescript.md)
+13. [Production operation and troubleshooting](13-production-and-troubleshooting.md)
 
-1. [Getting started](01-getting-started.md) — install NuBloxSQL, create a client, run a query, and close resources correctly.
-2. [Connections and pooling](02-connections-and-pooling.md) — configuration objects, connection URLs, pools, lifecycle, TLS and acquisition settings.
-3. [SQL, parameters and typed values](03-sql-parameters-and-types.md) — tagged SQL, identifier quoting, value binding, named prepared parameters and portable type intent.
-4. [Prepared statements and result APIs](04-prepared-and-results.md) — `query`, `all`, `one`, `execute`, reusable prepared statements and result metadata.
-5. [Transactions and savepoints](05-transactions.md) — automatic commit/rollback, nested transactions, savepoints, isolation and retry policies.
-6. [Streaming and operation control](06-streaming-and-operation-control.md) — async iteration, early close, timeouts, deadlines, abort signals and result budgets.
-7. [Metadata and introspection](07-metadata-and-introspection.md) — catalog APIs, deep snapshots and portable metadata vocabulary v1.
-8. [Errors, retries and recovery](08-errors-retries-and-recovery.md) — portable error categories, native diagnostics, retryability and recovery rules.
-9. [Observability and type codecs](09-observability-and-type-codecs.md) — telemetry callbacks, slow-operation reporting, custom encoders and decoders.
-10. [Dialect guide](10-dialects.md) — PostgreSQL, MySQL, SQLite and SQL Server configuration and native-depth features.
-11. [Capabilities and SQL portability](11-capabilities-and-portability.md) — capability discovery, compatibility analysis, rewrite planning and the current SQL AST/transpilation scope.
-12. [TypeScript guide](12-typescript.md) — dialect discrimination, typed clients, portable metadata and result typing.
-13. [Production operation and troubleshooting](13-production-and-troubleshooting.md) — production configuration, cleanup, resource limits, diagnosis and common failure patterns.
-14. [DDL compiler](14-ddl-compiler.md) — structured table/index/view/schema/sequence ASTs, constraints, capability-gated schema portability and the precise `ddl-v1` boundary.
-15. [Canonical type semantics](15-canonical-type-semantics.md) — cross-dialect type families, metadata annotation, mapping decisions and explicit lossiness.
-16. [Canonical schema snapshots](16-canonical-schema-snapshots.md) — deterministic schema normalization, logical object keys and semantic/source fingerprints.
-17. [Canonical schema diff](17-canonical-schema-diff.md) — object changes, property deltas, dependency changes and conservative safety classification.
-18. [Migration planner](18-migration-planner.md) — ordered migration steps, automatic/manual execution boundaries, preconditions and rollback metadata.
-19. [Migration execution engine](19-migration-execution-engine.md) — dry-run, approvals, checkpoints, resumability, failure recovery, transaction control and verification.
-19. [Migration execution engine](19-migration-execution-engine.md) — dry-run, approvals, checkpoints, resumability, failure recovery, transaction control and verification.
+## Engineering and portability
+
+14. [DDL compiler](14-ddl-compiler.md)
+15. [Canonical type semantics](15-canonical-type-semantics.md)
+16. [Canonical schema snapshots](16-canonical-schema-snapshots.md)
+17. [Canonical schema diff](17-canonical-schema-diff.md)
+18. [Migration planner](18-migration-planner.md)
+19. [Migration execution engine](19-migration-execution-engine.md)
+20. [Data movement](20-data-movement.md)
+21. [Canonical dialect registry](21-dialect-registry.md)
+22. [Dialect profile capability overlays](22-profile-capability-overlays.md)
+23. [MariaDB profile over MySQL](23-mariadb-profile.md)
+
+## Administration and engine lifecycle
+
+25. [Database bootstrap foundation](25-database-bootstrap.md)
+26. [Database configuration](26-database-configuration.md)
+27. [Engine lifecycle foundation](27-engine-lifecycle-foundation.md)
+28. [Controlled engine lifecycle execution](28-engine-lifecycle-execution.md)
+29. [Local host lifecycle inspection provider](29-local-host-lifecycle-provider.md)
+
+The numbering reflects the historical delivery order; missing numbers are intentionally not fabricated.
 
 ## Documentation rules
 
-The guides describe only released APIs and supported behaviour. Engine-specific APIs are called out explicitly and must not be assumed portable. Where NuBloxSQL exposes both a portable view and native engine detail, the native detail remains available so database-specific semantics are not hidden.
-
-Historical development notes are preserved under `docs/archive/` and are not part of the current user contract.
-
-- [Canonical dialect registry](21-dialect-registry.md)
-
-- [Dialect profile capability overlays](22-profile-capability-overlays.md)
-
-- [MariaDB profile over MySQL](23-mariadb-profile.md)
-
-- [Database bootstrap foundation](25-database-bootstrap.md)
-
-- [Database configuration discovery](26-database-configuration.md)
-
-- [Engine lifecycle foundation](27-engine-lifecycle-foundation.md) — engine selection, provider target inspection, installation planning and initialization planning.
-
-- [Controlled engine lifecycle execution](28-engine-lifecycle-execution.md) — plan-hash approval, drift detection, constrained provider execution and target-state verification.
-
-- [Local host lifecycle inspection provider](29-local-host-lifecycle-provider.md) — read-only OS/tool/runtime/resource evidence for pre-install planning.
+- Guides describe released APIs and supported behaviour only.
+- Engine-specific behaviour remains explicit and must not be assumed portable.
+- Current guides must not depend on archived documentation.
+- Product direction belongs in [the Product Blueprint](../product/BLUEPRINT.md), not in user guides.
