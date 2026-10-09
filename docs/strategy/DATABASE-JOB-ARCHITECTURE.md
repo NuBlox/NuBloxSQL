@@ -1030,6 +1030,20 @@ retirement intent
  → retain evidence
 ```
 
+## Native scheduler capability boundary
+
+| Engine | Native scheduling/job shape | NuBlox treatment |
+| --- | --- | --- |
+| SQL Server | SQL Server Agent jobs with one or more steps, schedules, alerts and security contexts | dedicated native adapter; preserve steps/subsystems, schedules, ownership and history |
+| MySQL | Event Scheduler database objects executing SQL on one-time or recurring schedules | dedicated native adapter; preserve schema/name, definer, schedule, status and event body |
+| PostgreSQL | scheduler capability depends on an explicitly selected extension, external scheduler or platform integration | adapter-driven; never fabricate a universal PostgreSQL job object |
+| SQLite | embedded database runtime; scheduling belongs to the application/NuBlox/host execution environment | use NuBlox durable jobs or explicit external scheduler integration rather than inventing a server job agent |
+
+Official vendor references used for the native models:
+
+- Microsoft: [SQL Server Agent overview](https://learn.microsoft.com/en-us/ssms/agent/sql-server-agent)
+- MySQL 8.4: [Using the Event Scheduler](https://dev.mysql.com/doc/refman/8.4/en/event-scheduler.html)
+
 ## Native job-system integration
 
 Native job systems belong under a dedicated adapter layer.
