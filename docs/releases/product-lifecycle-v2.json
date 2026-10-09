@@ -134,6 +134,6 @@
     "engineRuntime": "Installable or embeddable database software.",
     "managedResource": "Concrete cluster, instance, database, schema or SQLite file managed through the lifecycle."
   },
-  "authoritativeDocument": "docs/strategy/PRODUCT-DEFINITION.md",
-  "detailedLifecycleDocument": "docs/strategy/END-TO-END-DATABASE-LIFECYCLE.md"
+  "authoritativeDocument": "docs/product/BLUEPRINT.md",
+  "detailedLifecycleDocument": "docs/architecture/DATABASE-LIFECYCLE.md"
 }
