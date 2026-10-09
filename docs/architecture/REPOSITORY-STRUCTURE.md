@@ -8,7 +8,6 @@ NuBloxSQL/
 │   └── shell/                 Official downstream CLI application
 ├── docs/
 │   ├── architecture/          Detailed system/design architecture
-│   ├── archive/               Historical, non-authoritative material
 │   ├── cookbook/              Worked public recipes
 │   ├── guides/                Public task-oriented guides
 │   ├── product/               Product blueprint, capability register, roadmap
@@ -41,10 +40,9 @@ NuBloxSQL/
 - `apps/` contains products that consume NuBloxSQL but are not part of the `nubloxsql` package runtime.
 - `docs/product/BLUEPRINT.md` is the product authority.
 - `docs/architecture/` contains implementation/design models, not historical notes.
-- `docs/archive/` contains superseded material and must never be treated as current capability evidence.
 - `scripts/` replaces the ambiguous historical `tool/` directory.
-- `packages/`, root `shell/`, `tool/`, and `docs/strategy/` must not reappear.
-- Release contracts may reference current source/docs only; historical contracts belong under `docs/archive/`.
+- `packages/`, root `shell/`, `tool/`, `docs/strategy/`, and `docs/archive/` must not reappear.
+- Release contracts may reference current source/docs only; superseded contracts remain available through Git history rather than the active tree.
 - Tests may remain under the current root `test/` while their execution is centrally orchestrated; avoid large path-only test moves unless there is a functional reason.
 - Dialect-local tests remain with their dialect runtime because they qualify native implementation behaviour.
 
