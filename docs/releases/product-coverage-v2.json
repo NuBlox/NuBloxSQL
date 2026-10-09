@@ -166,7 +166,7 @@
     {
       "id": "automation.jobs",
       "pillar": "platform",
-      "status": "gap"
+      "status": "partial"
     },
     {
       "id": "reporting.export",
