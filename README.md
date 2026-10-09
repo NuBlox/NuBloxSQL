@@ -89,7 +89,7 @@ Other authoritative release documents are:
 
 Machine-readable release contracts are kept in `docs/releases/` and are enforced by `npm run release:check`.
 
-Historical design notes, development plans, qualification narratives and superseded package-era documentation are preserved under `docs/archive/` and are **not authoritative for the current release**.
+Historical repository states are preserved by Git history and prior commits/tags. The active working tree contains only current product, architecture, guide, cookbook and release documentation.
 
 ## Verification
 
