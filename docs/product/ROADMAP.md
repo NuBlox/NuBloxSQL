@@ -107,7 +107,7 @@ The Shell may expose `\\engine install` and `\\engine initialize` only after the
 
 ## Cross-cutting foundation — Durable database jobs and workflows
 
-**Status:** canonical job architecture is now defined in [DATABASE-JOB-ARCHITECTURE.md](../architecture/DATABASE-JOBS.md). Public job/runtime APIs are not yet implemented.
+**Status:** canonical job architecture is now defined in [Database Jobs](../architecture/DATABASE-JOBS.md). Public job/runtime APIs are not yet implemented.
 
 This is now a prerequisite substrate for later lifecycle automation rather than an isolated late feature.
 
