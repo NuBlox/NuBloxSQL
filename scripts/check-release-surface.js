@@ -159,8 +159,11 @@ userGuides.concat(cookbook).forEach(function(file){
   'shell',
   'tool',
   'docs/strategy',
+  'docs/archive',
   'docs/releases/product-lifecycle-v1.json',
   'docs/v1',
+  '.eslintrc',
+  '.eslintignore',
   'NUBLOX-SQL-ROADMAP.md',
   'lib/dialects/postgresql/docs'
 ].forEach(function(file){
@@ -168,8 +171,6 @@ userGuides.concat(cookbook).forEach(function(file){
 });
 
 if(!exists('apps/shell/package.json'))fail('NuBlox Shell must live under apps/shell/');
-if(!exists('docs/archive/README.md'))fail('documentation archive must contain an archive status README');
-if(!exists('docs/archive/contracts/product-lifecycle-v1.json'))fail('historical lifecycle v1 contract must be archived');
 
 ['package-lock.json','npm-shrinkwrap.json','yarn.lock','pnpm-lock.yaml'].forEach(function(file){
   if(exists(file))fail('third-party dependency lockfile must not exist: '+file);
