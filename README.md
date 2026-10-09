@@ -59,10 +59,10 @@ NuBloxSQL now also includes a read-only local-host lifecycle provider for platfo
 
 NuBloxSQL is the platform beneath official NuBlox database tools.
 
-- **NuBlox Shell** (`shell/`) — interactive REPL and automation-friendly CLI built only on the public `nubloxsql` API.
+- **NuBlox Shell** (`apps/shell/`) — interactive REPL and automation-friendly CLI built only on the public `nubloxsql` API.
 - **NuBlox SQL Workbench** — planned graphical database engineering/management application using the same public platform boundary.
 
-The Shell's architecture and roadmap are defined in [NuBlox Shell](docs/strategy/NUBLOX-SHELL.md).
+The Shell's architecture and roadmap are defined in [NuBlox Shell](docs/architecture/SHELL.md).
 
 ## User documentation
 
@@ -70,14 +70,14 @@ Start with the [NuBloxSQL User Guides](docs/guides/README.md) for detailed API a
 
 Use the [NuBloxSQL Cookbook](docs/cookbook/README.md) for worked applications and recipes covering CRUD, joins and CTEs, reporting, transactions, streaming, metadata tooling, diagnostics, PostgreSQL/MySQL/SQLite/SQL Server service patterns, bulk movement, observability and migration analysis.
 
-Product direction is defined in:
+Product direction is governed by one hierarchy:
 
-- [Canonical product definition](docs/strategy/PRODUCT-DEFINITION.md)
-- [Product vision](docs/strategy/PRODUCT-VISION.md)
-- [End-to-end database lifecycle](docs/strategy/END-TO-END-DATABASE-LIFECYCLE.md)
-- [Product capability register](docs/strategy/PRODUCT-CAPABILITY-REGISTER.md)
-- [Strategic roadmap](docs/strategy/STRATEGIC-ROADMAP.md)
-- [Competitive capability benchmark](docs/strategy/COMPETITIVE-BENCHMARK.md)
+- [Product Blueprint](docs/product/BLUEPRINT.md) — single product authority and frozen development sequence.
+- [Capability Register](docs/product/CAPABILITY-REGISTER.md) — current whole-product maturity and gaps.
+- [Roadmap](docs/product/ROADMAP.md) — implementation order beneath the blueprint.
+- [Database Lifecycle](docs/architecture/DATABASE-LIFECYCLE.md) — detailed eleven-phase lifecycle model.
+- [Database Jobs](docs/architecture/DATABASE-JOBS.md) — durable operation/job/workflow architecture.
+- [Competitive Benchmark](docs/product/COMPETITIVE-BENCHMARK.md) — external breadth benchmark only.
 
 Other authoritative release documents are:
 
