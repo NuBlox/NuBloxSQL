@@ -443,9 +443,9 @@ Use this order when repository material disagrees:
 5. Product Roadmap;
 6. detailed architecture documents;
 7. user guides/cookbook;
-8. archived historical material.
+8. Git history and prior release commits.
 
-Historical files never override current product contracts.
+Historical repository states never override current product contracts.
 
 ## Definition of done for a subsystem
 
