@@ -82,6 +82,50 @@ async function shellCommands(){
   assert.strictEqual(quit.kind,'quit');
 }
 
+
+async function sessionLifecycle(){
+  var connections=[];
+  var sqlApi={
+    createClient:function(config){
+      connections.push(config);
+      return fakeClient();
+    }
+  };
+  var shell=new Shell({sqlApi:sqlApi});
+  var config={dialect:'postgresql',host:'db.local',user:'app',password:'never-persist'};
+  var first=shell.connect(config);
+  assert.strictEqual((await shell.executeLine('\\status')).value.connected,true);
+  assert.strictEqual(shell.historyEnabled,false);
+  await shell.executeLine('SELECT 42;');
+  assert.strictEqual(shell.history.length,0,'SQL history is opt-in');
+
+  var enabled=await shell.executeLine('\\history on');
+  assert.match(enabled.value,/may include sensitive literals/);
+  await shell.executeLine('SELECT 42;');
+  var history=(await shell.executeLine('\\history')).value;
+  assert.strictEqual(history.length,1);
+  assert.match(history[0].sql,/SELECT 42/);
+  assert.strictEqual(history[0].outcome,'success');
+  await shell.executeLine('\\history clear');
+  assert.strictEqual(shell.history.length,0);
+  await assert.rejects(shell.executeLine('\\history invalid'),/Usage/);
+
+  await shell.executeLine('\\disconnect');
+  assert.strictEqual(first.closed,true);
+  assert.strictEqual((await shell.executeLine('\\status')).value.connected,false);
+  await assert.rejects(shell.executeLine('\\tables'),/not connected/);
+  await shell.executeLine('\\reconnect');
+  assert.strictEqual((await shell.executeLine('\\status')).value.connected,true);
+  assert.strictEqual(connections.length,2);
+  assert.strictEqual(connections[0],connections[1], 'reconnect keeps credentials only in process');
+  assert.strictEqual(shell.client.closed,false);
+  await shell.executeLine('\\history off');
+  assert.strictEqual(shell.historyEnabled,false);
+  assert.strictEqual(shell.history.length,0);
+  assert.strictEqual((await shell.executeLine('\\reset')).value,'SQL statement buffer is empty');
+  await shell.close();
+}
+
 function outputContracts(){
   var rows=[{id:1,name:'Alpha'},{id:2,name:'Beta, Ltd'}];
   var table=output.render(rows,'table');
@@ -135,6 +179,7 @@ async function cliExecution(){
 assert.strictEqual(typeof root.createClient,'function');
 Promise.resolve()
   .then(shellCommands)
+  .then(sessionLifecycle)
   .then(outputContracts)
   .then(cliContracts)
   .then(cliExecution)

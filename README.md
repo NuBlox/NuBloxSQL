@@ -53,7 +53,10 @@ node apps/shell/bin/nublox.js --dialect sqlite --filename ./database.sqlite
 ```
 
 Enter `\\help`, `\\server`, `\\tables`, native SQL terminated by `;`,
-or `\\quit`. See [NuBlox Shell](apps/shell/README.md).
+or `\\quit`. Operational commands also include `\\status`,
+`\\disconnect`, `\\reconnect`, `\\reset`, and opt-in, in-memory
+`\\history on|off|clear`. Piped REPL SQL errors and incomplete SQL at EOF
+now produce a nonzero process exit status. See [NuBlox Shell](apps/shell/README.md).
 
 Read a single SQL statement from a file and save results using terminal
 redirection:

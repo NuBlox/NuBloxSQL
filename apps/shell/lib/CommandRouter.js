@@ -7,6 +7,12 @@ var HELP=[
   '',
   '\\help                     Show this help',
   '\\connection               Show current connection summary',
+  '\\status                   Show connected/disconnected state',
+  '\\disconnect               Close active database session',
+  '\\reconnect                Reopen the last connection (same process)',
+  '\\history on|off|clear     Opt-in in-memory SQL history (sensitive)',
+  '\\history                  Display session SQL history (if enabled)',
+  '\\reset                    Discard an unfinished multi-line SQL statement',
   '\\server                   Discover current database server/runtime',
   '\\databases                List visible databases/catalogs',
   '\\schemas [database]       List schemas',
@@ -65,6 +71,27 @@ async function command(shell,line){
     shell.format=format;
     return {kind:'text',value:'Output format: '+format};
   }
+
+  if(name==='status')return {kind:'data',value:shell.status()};
+  if(name==='disconnect'){
+    await shell.close();
+    return {kind:'text',value:'Disconnected'};
+  }
+  if(name==='reconnect'){
+    await shell.reconnect();
+    return {kind:'text',value:'Connected to '+shell.client.dialect};
+  }
+  if(name==='history'){
+    var action=(tokens.shift()||'show').toLowerCase();
+    if(tokens.length)throw new TypeError('Usage: \\history [on|off|clear]');
+    if(action==='on'){shell.setHistory(true);return {kind:'text',value:'In-memory SQL history enabled (may include sensitive literals; never saved)'};}
+    if(action==='off'){shell.setHistory(false);return {kind:'text',value:'In-memory SQL history disabled and cleared'};}
+    if(action==='clear'){shell.history.length=0;return {kind:'text',value:'In-memory SQL history cleared'};}
+    if(action!=='show')throw new TypeError('Usage: \\history [on|off|clear]');
+    if(!shell.historyEnabled)return {kind:'text',value:'History is disabled. Use \\history on to enable in-memory SQL capture.'};
+    return {kind:'data',value:shell.history.slice()};
+  }
+  if(name==='reset')return {kind:'text',value:'SQL statement buffer is empty'};
 
   client=requireClient(shell);
 

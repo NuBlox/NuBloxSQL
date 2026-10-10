@@ -116,6 +116,39 @@ function liveFileAcceptance() {
     assert.match(result.stdout,/Operational test/);
     assert.match(result.stdout,/products/);
 
+    // Real non-interactive session: query, in-memory history, disconnect,
+    // reconnect and read metadata without restarting the process.
+    result=launch([...args,'--format','table'],{
+      input:'\\status\n\\history\n\\history on\nSELECT id, title FROM products;\n\\history\n\\disconnect\n\\status\n\\reconnect\n\\tables\n\\history off\n\\quit\n'
+    });
+    expectSuccess(result,'full REPL reconnect/history workflow');
+    assert.match(result.stdout,/Disconnected/);
+    assert.match(result.stdout,/Connected to sqlite/);
+    assert.match(result.stdout,/History is disabled/);
+    assert.match(result.stdout,/Operational test/);
+    assert.match(result.stdout,/products/);
+    assert.equal(result.stderr,'');
+
+    result=launch([...args,'--format','table'],{
+      input:'SELECT missing_column FROM products;\nSELECT id, title FROM products;\n'
+    });
+    assert.equal(result.status,1,'piped REPL must return failure if any SQL statement fails');
+    assert.match(result.stderr,/missing_column|column/i);
+    assert.match(result.stdout,/Operational test/,'subsequent statements still run');
+
+    result=launch([...args],{input:'SELECT id FROM products\n'});
+    assert.equal(result.status,1,'incomplete SQL at EOF must fail');
+    assert.match(result.stderr,/unfinished SQL statement/);
+
+    result=launch([...args],{input:'SELECT id FROM\n\\reset\nSELECT title FROM products;\n'});
+    expectSuccess(result,'unfinished SQL reset');
+    assert.match(result.stdout,/SQL statement buffer is empty/);
+    assert.match(result.stdout,/Operational test/);
+
+    result=launch([...args],{input:'x'.repeat(1024*1024+1)+'\n'});
+    assert.equal(result.status,1,'piped REPL must reject oversized SQL');
+    assert.match(result.stderr,/1 MiB interactive limit/);
+
     const sqlFile=path.join(directory,'query.sql');
     fs.writeFileSync(sqlFile,'SELECT id, title FROM products ORDER BY id;\n');
     result=launch([...args,'--stdin','--format','csv'],{input:fs.readFileSync(sqlFile,'utf8')});

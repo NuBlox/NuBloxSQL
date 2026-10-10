@@ -69,11 +69,35 @@ Avoid putting passwords directly into shell history. Prefer environment/secret i
 \tables [schema]
 \describe <table>
 \config [setting]
+\status
+\disconnect
+\reconnect
+\history on|off|clear
+\history
+\reset
 \format table|json|jsonl|csv
 \quit
 ```
 
-Any non-command input is sent as native SQL through `Client.query()`. Multi-line SQL is accumulated until a line ends with `;`.
+Any non-command input is sent as native SQL through `Client.query()`.
+Multi-line SQL is accumulated until a line ends with `;`; use `\\reset`
+to discard an unfinished statement. A statement is capped at 1 MiB.
+
+`\\disconnect` closes the active connection and `\\reconnect` reopens the
+last target **within the same Shell process**. Credentials are kept only in
+process memory, never saved as profiles.
+
+`\\history` is **off by default**. `\\history on` captures at most 50
+recent SQL statements (each truncated at 512 characters), including literals
+that **may contain secrets**. It is held only in process memory, never saved.
+Use `\\history clear` to erase, or `\\history off` to disable and clear.
+Do not enable capture for sensitive SQL.
+
+When SQL is **piped through the interactive REPL**, any failed command,
+exceeded statement limit or unfinished statement at EOF makes the process
+exit with status `1`. An interactive terminal still allows correction and
+continuation after an error. `--stdin` handles one SQL statement and already
+returns an error status on failure.
 
 ## SQL files and CSV/JSON export
 
