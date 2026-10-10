@@ -60,10 +60,12 @@ Export a real SQL statement from a file:
 ```bash
 # query.sql contains one native SQL statement
 node apps/shell/bin/nublox.js --dialect sqlite --filename ./database.sqlite \
-  --file ./query.sql --format csv --output ./results.csv
+  --file query.sql --format csv --output results.csv
 ```
 
-Exports use new files only (no overwrites). The Shell currently supports
+Input and output filenames must be simple names in the current directory;
+absolute paths, directory traversal and input symlinks are rejected. Exports
+use new files only (no overwrites). The Shell currently supports
 individual SQL file statements, not a multi-statement migration runner.
 
 ## Current release line

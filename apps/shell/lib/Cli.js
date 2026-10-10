@@ -5,6 +5,7 @@ var repl=require('./Repl');
 var output=require('./Output');
 var pkg=require('../package.json');
 var fs=require('node:fs');
+var path=require('node:path');
 
 function take(argv,index,name){
   if(index+1>=argv.length)throw new TypeError('NuBlox Shell '+name+' requires a value');
@@ -22,6 +23,19 @@ function parseOption(value){
   if(index<=0)throw new TypeError('NuBlox Shell --option requires key=value');
   return {key:value.slice(0,index),value:scalar(value.slice(index+1))};
 }
+function scopedFile(filename,label){
+  // File-mode requests are intentionally confined to the caller's current
+  // directory; absolute paths, parent traversal and directory separators
+  // are prohibited even if the OS would otherwise permit them.
+  if(typeof filename!=='string'||filename!==path.basename(filename)||
+     filename==='.'||filename==='..'||!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(filename)){
+    throw new TypeError('NuBlox Shell '+label+' requires a simple filename in the current directory (no path separators)');
+  }
+  // basename is a path traversal sanitizer, while a resolved parent keeps
+  // access constrained to the local working directory.
+  return path.join(process.cwd(),path.basename(filename));
+}
+
 function parseArgs(argv){
   argv=Array.isArray(argv)?argv:[];
   var options={format:'table',extra:{}};
@@ -102,8 +116,8 @@ function help(){
     'Execution:',
     '  -e, --execute <sql>      Execute native SQL and exit',
     '  -c, --command <command>  Execute one NuBlox Shell command and exit',
-    '  --file <path>            Execute one native SQL statement from a UTF-8 file',
-    '  --output <path>          Save one-shot output to a NEW file (never overwrite)',
+    '  --file <filename>        Execute one SQL statement from a UTF-8 file in current directory',
+    '  --output <filename>      Save to a NEW file in current directory (never overwrite)',
     '  --demo                   Run an isolated SQLite in-memory example and exit',
     '  --doctor                 Verify query and discovery, then exit with status',
     '  --format <format>        table | json | jsonl | csv',
@@ -159,6 +173,7 @@ async function run(argv,io,env,sqlApi){
   var shell=new Shell({sqlApi:sqlApi,format:options.format});
   var outputFd=null;
   var outputWritten=false;
+  var targetOutput=null;
 
   function emit(value){
     var text=value===undefined||value===null?'':String(value);
@@ -172,13 +187,17 @@ async function run(argv,io,env,sqlApi){
   try{
     // Reserve output exclusively BEFORE running SQL: a pre-existing file
     // cannot turn a completed mutation into a failed export.
-    if(options.output!==undefined)outputFd=fs.openSync(options.output,'wx',0o600);
+    if(options.output!==undefined){
+      targetOutput=scopedFile(options.output,'--output');
+      outputFd=fs.openSync(targetOutput,'wx',0o600);
+    }
 
     var statement=null;
     if(options.file!==undefined){
-      var info=fs.statSync(options.file);
-      if(!info.isFile()||info.size>1024*1024)throw new Error('NuBlox Shell SQL input must be a regular UTF-8 file of at most 1 MiB');
-      statement=fs.readFileSync(options.file,'utf8').replace(/^\uFEFF/,'').trim();
+      var sourceFile=scopedFile(options.file,'--file');
+      var info=fs.lstatSync(sourceFile);
+      if(!info.isFile()||info.size>1024*1024)throw new Error('NuBlox Shell SQL input must be a regular UTF-8 file of at most 1 MiB (no symlinks)');
+      statement=fs.readFileSync(sourceFile,'utf8').replace(/^\uFEFF/,'').trim();
       if(!statement)throw new Error('NuBlox Shell SQL input is empty');
     }
 
@@ -235,7 +254,7 @@ async function run(argv,io,env,sqlApi){
     try{await shell.close();}catch(closeError){stderr.write((closeError&&closeError.message?closeError.message:String(closeError))+'\n');}
     if(outputFd!==null){
       try{fs.closeSync(outputFd);}catch(ignore){}
-      if(!outputWritten){try{fs.unlinkSync(options.output);}catch(ignore){}}
+      if(!outputWritten&&targetOutput!==null){try{fs.unlinkSync(targetOutput);}catch(ignore){}}
     }
   }
 }

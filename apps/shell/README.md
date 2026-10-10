@@ -78,13 +78,16 @@ Any non-command input is sent as native SQL through `Client.query()`. Multi-line
 ## SQL files and exporting results
 
 The Shell accepts **one dialect-native SQL statement** from a UTF-8 file
-(up to 1 MiB). The result can be written to a **new** file, with no overwrite
-and restrictive owner-only file permissions:
+(up to 1 MiB). Input and output filenames are restricted to **simple names
+in the current working directory**, without absolute paths, directory
+separators, parent traversal or input symlinks. Run the Shell from the folder
+containing the input SQL file and desired output destination. The result can
+be written to a **new** file, with no overwrite and owner-only permissions:
 
 ```bash
 node apps/shell/bin/nublox.js \
   --dialect sqlite --filename ./my-existing.sqlite \
-  --file ./query.sql --format csv --output ./results.csv
+  --file query.sql --format csv --output results.csv
 ```
 
 `--output` also works with `--execute`, `--command`, `--doctor` and
