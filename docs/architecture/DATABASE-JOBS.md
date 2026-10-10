@@ -6,15 +6,65 @@ It exists to prevent each lifecycle capability from inventing its own scheduling
 
 NuBloxSQL should expose one durable job architecture that can orchestrate database work from engine selection and installation through operation, change, upgrade and retirement while preserving native database job systems where they exist.
 
-## Implementation status — first Wave 1 foundation slice (9 October 2026)
+## Implementation status — Wave 1 durable kernel and local store (9 October 2026)
 
-The **internal**, dependency-free foundation lives in `lib/jobs/JobKernel.js` and is checked by `test/job-kernel.js` as part of `npm run test:platform`.
+The dependency-free internal foundation lives under `lib/jobs/` and is qualified as part of `npm run test:platform`.
 
-It provides canonical, secret-field-rejecting immutable plan envelopes and deterministic SHA-256 plan hashes; versioned run creation; explicit legal transitions and terminal states; checkpoint validation; executor registration; and a storage-agnostic coordinator that requires optimistic compare-and-swap writes with an atomic audit event. Leasing is only delegated to an atomic, fencing-aware `JobStore.leaseNextRun`, never emulated with a read-then-write.
+### Delivered internal contracts
 
-**Not yet production-ready or exposed as public API:** no persistent JobStore adapter, worker, scheduler, retry runner, cancellation handler, approval-policy engine, or integration with existing lifecycle executors has been qualified. Tests use an in-memory fake solely to validate the store contract and concurrency/authorization boundaries. The core assumes the supplied store implements durable, transactional, linearizable run/event writes, unique run identity and atomic leases; this responsibility is not solved by the interface itself.
+`JobKernel.js` provides:
 
-The next implementation slice is a production-grade durable JobStore adapter with crash/restart and multi-worker lease recovery tests, followed by worker execution and existing-domain adapters. Do not present an in-memory test adapter as persistent production storage.
+- canonical, secret-field-rejecting immutable plan envelopes;
+- deterministic SHA-256 plan hashes;
+- versioned run creation;
+- explicit legal state transitions and terminal states;
+- checkpoint validation;
+- executor registration;
+- optimistic compare-and-swap store coordination;
+- fencing-aware worker identity requirements.
+
+Lease acquisition and lease recovery are store-owned atomic operations; the kernel does not emulate leasing with a read-then-write sequence.
+
+### Delivered local durable store
+
+`SqliteJobStore.js` provides the first persistent JobStore adapter using Node's built-in SQLite runtime.
+
+It is explicitly a **same-host, file-backed store**, not a distributed database or network-filesystem coordination service.
+
+The store provides:
+
+- WAL-backed file persistence;
+- `BEGIN IMMEDIATE` write serialization;
+- `synchronous = FULL`;
+- content-addressed immutable plan storage;
+- atomic run creation + initial audit event;
+- optimistic run-version CAS + audit event in one transaction;
+- atomic queue leasing with monotonically increasing fencing tokens;
+- lease renewal;
+- crash/reopen persistence;
+- multi-process lease contention qualification;
+- safe requeue of expired work that was leased but never started;
+- conservative detection of expired `running`/`verifying`/`cancelling` work as **orphaned**, not blindly replayed.
+
+An expired worker cannot checkpoint or transition a leased active run. Leaving a lease-holding state clears the active lease while preserving the fencing counter for future claims.
+
+### Deliberate boundaries
+
+This subsystem is still **internal and not part of the public npm API**.
+
+Not yet delivered:
+
+- worker execution loop;
+- retry runner/policy;
+- cancellation handler;
+- approval-policy engine;
+- public JobDefinition/JobRun API;
+- scheduler;
+- workflow DAG runtime;
+- distributed JobStore;
+- adapters over existing lifecycle/configuration/migration/data-movement executors.
+
+The next implementation slice is the worker/executor loop on top of these durable primitives, followed by adapters over existing NuBloxSQL executors.
 
 ## Scope
 

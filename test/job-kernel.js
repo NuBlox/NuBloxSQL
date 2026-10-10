@@ -20,6 +20,7 @@ async function main() {
   assert.throws(() => jobs.createPlan({jobKind: 'test', lifecyclePhase:'Use', targetIdentity:'one', steps:[{stepId:'x'},{stepId:'x'}]}), /duplicate/);
   assert.throws(() => jobs.createPlan({jobKind:'test',lifecyclePhase:'Use',targetIdentity:'one',steps:[{stepId:'x',data:Infinity}]}), /finite JSON/);
   assert.throws(() => jobs.createPlan({jobKind:'test',lifecyclePhase:'Use',targetIdentity:'one',steps:[{stepId:'x'}],planHash:'tampered'}), /generated/);
+  assert.throws(() => jobs.createRun({...plan,schemaVersion:2}), /valid immutable job plan/);
 
   const registry = jobs.createExecutorRegistry();
   const executor = {execute: async () => true};
@@ -39,11 +40,14 @@ async function main() {
   const queued = jobs.transition(awaiting, 'queued');
   const leased = jobs.transition(queued, 'leased');
   const running = jobs.transition(leased, 'running');
-  const checked = jobs.checkpoint(running, { stepId: 'inspect', evidence: 'sha256:abc' });
+  const checked = jobs.checkpoint(running, { stepId: 'inspect', evidence: 'sha256:abc' }, {now:'2026-10-09T00:00:05Z'});
   assert.equal(checked.version, 5);
+  assert.equal(checked.updatedAt, '2026-10-09T00:00:05Z');
   assert.equal(checked.checkpoint.stepId, 'inspect');
   assert.equal(running.checkpoint, null);
   assert.throws(() => jobs.checkpoint(running, {accessToken:'x'}), /secret-bearing/);
+  const leasedRunning = Object.freeze({...running, lease:Object.freeze({workerId:'worker',fence:1,expiresAt:'2026-10-09T00:01:00Z'})});
+  assert.equal(jobs.transition(leasedRunning,'waiting').lease, undefined);
   const verifying = jobs.transition(checked, 'verifying');
   const success = jobs.transition(verifying, 'succeeded');
   assert.ok(jobs.TERMINAL.includes(success.status));
@@ -91,7 +95,12 @@ async function main() {
   const persisted = await kernel.checkpoint('durable-1', 3, {stepId:'inspect'}, {workerId:'worker',fence:1});
   assert.equal(persisted.version, 4);
   assert.equal(events.at(-1).type, 'checkpoint');
-  await assert.rejects(kernel.submit({...plan, steps:[{stepId:'altered'}]}), /hash does not match/);
+  const cancelling = await kernel.advance('durable-1', 4, 'cancelling', {workerId:'worker',fence:1});
+  await assert.rejects(kernel.advance('durable-1', cancelling.version, 'cancelled'), /fencing token/);
+  const cancelled = await kernel.advance('durable-1', cancelling.version, 'cancelled', {workerId:'worker',fence:1});
+  assert.equal(cancelled.lease, undefined);
+  await assert.rejects(kernel.submit({...plan, steps:[{stepId:'altered'}]}), /hash or schema version/);
+  await assert.rejects(kernel.submit({...plan, schemaVersion:2}), /hash or schema version/);
   assert.throws(() => jobs.createKernel({}), /durable JobStore/);
   console.log('NuBloxSQL durable job kernel foundational contracts: PASS');
 }
