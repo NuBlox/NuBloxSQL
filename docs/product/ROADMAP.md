@@ -116,7 +116,7 @@ Implement in this order:
 1. **Delivered foundation:** JobPlan / JobRun state contracts, checkpoint/event validation, executor registry and storage contract;
 2. **Delivered local persistence:** same-host SQLite JobStore with transactional CAS, fencing, renewal and conservative lease recovery;
 3. **Delivered worker foundation:** leased job execution, per-step checkpoints, heartbeat renewal, strict verification and conservative failure semantics; next: policy qualification, cancellation/retry and domain-specific adapters;
-4. adapters over existing engine install/init, bootstrap, configuration, migration and data-movement executors;
+4. **Started:** read-only `discovery.server` adapter over existing database discovery (four supported dialects, fingerprint verification, no persisted credentials); next: qualified read-only host inspection and explicit policy before any mutation adapters for engine install/init, bootstrap, configuration, migration or data movement;
 5. scheduler with timezone, overlap and misfire semantics;
 6. workflow DAG with gates, fan-out/fan-in and manual/external waits;
 7. read-only discovery of engine-native job systems;

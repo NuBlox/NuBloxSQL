@@ -85,6 +85,23 @@ Execution is intentionally not enabled for approval-required plans: policy/appro
 
 SQLite JobStore transition and renewal lease-expiry checks use the store's authoritative clock, not a caller-provided historical timestamp; direct store transitions now reject illegal status edges and immutable run-identity changes.
 
+### First domain executor adapter — read-only server discovery (10 October 2026)
+
+`lib/jobs/ServerDiscoveryJobAdapter.js` now connects the existing
+`DatabaseServerDiscovery.discover()` domain API to the internal durable job worker
+under the canonical `discovery.server` job kind.
+
+- Supports PostgreSQL, MySQL, SQLite and SQL Server using each dialect's existing read-only server/catalogue queries.
+- Serializes only a credential-free opaque target identity, dialect, `Discover` phase, one step and an explicitly read-only policy into the immutable plan.
+- Binds the live database client and credentials **only at adapter creation**, never in the durable JobPlan/JobStore.
+- Allows one `discover-server` step and verifies exact plan-kind, target identity, dialect and read-only policy before making SQL calls.
+- Persists only a SHA-256 fingerprint of selected server/catalogue identity fields and a database count; full server metadata, native rows and usernames never enter checkpoint or job events.
+- Performs an independent discovery read in `verify()` and only reports success if the observed fingerprint and count still match. Drift or failed discovery blocks the run without automatic replay.
+- Honors cooperative cancellation before and after each discovery round; it does not claim to interrupt the DBMS query in progress.
+- Tests cover all four dialect contracts, a real in-memory SQLite server/catalogue discovery run, drift detection, wrong-target denial, invalid identifiers and secret exclusion.
+
+This is **internal infrastructure**, not a published job API, general scheduler, database configuration mutator, or credential manager. Qualified mutation executors still require a separate explicit approval/policy subsystem and target-side fencing/reconciliation.
+
 ## Scope
 
 The job architecture applies to work that is:
