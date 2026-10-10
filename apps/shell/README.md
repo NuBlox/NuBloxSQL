@@ -37,24 +37,26 @@ catalogue browsing, table descriptions, interactive input and failure cases.
 It does **not** qualify connectivity to your remote PostgreSQL, MySQL or
 SQL Server instances; those require reachable databases and credentials.
 
-## Install
+## Run the development build
+
+The latest NuBlox Shell functionality lives in this repository and has not
+yet been qualified as a separately published `@nublox/shell` npm release.
+From the NuBloxSQL repository root:
 
 ```bash
-npm install -g @nublox/shell
-```
-
-Then:
-
-```bash
-nublox --url "$NUBLOX_DATABASE_URL"
+npm install --no-package-lock
+node apps/shell/bin/nublox.js --url "$NUBLOX_DATABASE_URL"
 ```
 
 For discrete connection settings:
 
 ```bash
 export NUBLOX_PASSWORD='...'
-nublox --dialect postgresql --host 127.0.0.1 --port 5432 --user app --database app
+node apps/shell/bin/nublox.js --dialect postgresql --host 127.0.0.1 --port 5432 --user app --database app
 ```
+
+Global installation with `npm install -g @nublox/shell` is a future
+distribution step; do not assume this development build is already published.
 
 Avoid putting passwords directly into shell history. Prefer environment/secret injection.
 
