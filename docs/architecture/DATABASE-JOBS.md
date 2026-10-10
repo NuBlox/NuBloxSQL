@@ -6,7 +6,7 @@ It exists to prevent each lifecycle capability from inventing its own scheduling
 
 NuBloxSQL should expose one durable job architecture that can orchestrate database work from engine selection and installation through operation, change, upgrade and retirement while preserving native database job systems where they exist.
 
-## Implementation status — Wave 1 durable kernel and local store (9 October 2026)
+## Implementation status — Wave 1 durable kernel, local store and worker (10 October 2026)
 
 The dependency-free internal foundation lives under `lib/jobs/` and is qualified as part of `npm run test:platform`.
 
@@ -54,7 +54,6 @@ This subsystem is still **internal and not part of the public npm API**.
 
 Not yet delivered:
 
-- worker execution loop;
 - retry runner/policy;
 - cancellation handler;
 - approval-policy engine;
@@ -64,7 +63,27 @@ Not yet delivered:
 - distributed JobStore;
 - adapters over existing lifecycle/configuration/migration/data-movement executors.
 
-The next implementation slice is the worker/executor loop on top of these durable primitives, followed by adapters over existing NuBloxSQL executors.
+The next implementation slice is the qualified domain-executor adapters and explicit approval policy, followed by scheduling and workflow orchestration.
+
+### Delivered internal execution worker (10 October 2026)
+
+`lib/jobs/JobWorker.js` now provides a bounded, opt-in `runOnce()` worker:
+
+- atomically claims one queued run through the SQLite JobStore;
+- resolves a registered executor by job kind and executes plan steps sequentially;
+- records an immutable, indexed checkpoint after each confirmed step;
+- renews its lease while awaiting long-running executor work;
+- passes a cooperative `AbortSignal` to executor callbacks when a lease is lost;
+- requires an explicit `verify()` result before reporting success;
+- blocks work without an installed executor/verifier and **fails closed** for any approval-required (or unclassified) job;
+- marks ambiguous execution/verification outcomes blocked without automatic retry;
+- leaves expired in-progress work orphaned for manual reconciliation rather than replaying it.
+
+Worker steps use `executor.execute({plan, runId, step, stepIndex, checkpoint, workerId, fence, signal})`, returning checkpoint-safe evidence, and `executor.verify({plan, runId, checkpoint, workerId, fence, signal})`, returning `true` or `{verified: true}`. These interfaces are **internal** and not the public package API. An executor must respect cancellation signals and, for irreversible steps, implement independent reconciliation/fencing with the target system; SQLite-side fencing alone cannot prevent stale external side effects.
+
+Execution is intentionally not enabled for approval-required plans: policy/approval evidence and release qualification are not yet implemented. There is no persistent general scheduling loop, automatic retry, multi-step JobStepRun ledger, multi-host coordinator or qualified database-lifecycle executor adapter yet. Worker test coverage is in `test/job-worker.js` under the platform suite.
+
+SQLite JobStore transition and renewal lease-expiry checks use the store's authoritative clock, not a caller-provided historical timestamp; direct store transitions now reject illegal status edges and immutable run-identity changes.
 
 ## Scope
 

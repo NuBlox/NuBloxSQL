@@ -14,6 +14,7 @@
     "test/local-host-lifecycle-provider.js",
     "test/job-kernel.js",
     "test/sqlite-job-store.js",
+    "test/job-worker.js",
     "test/sql-capability-compatibility.js",
     "test/sql-capability-runtime.js",
     "test/sql-capability-rewrite.js",
