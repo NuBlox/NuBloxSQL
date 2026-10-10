@@ -127,7 +127,11 @@ function liveFileAcceptance() {
     assert.match(result.stdout,/History is disabled/);
     assert.match(result.stdout,/Operational test/);
     assert.match(result.stdout,/products/);
-    assert.equal(result.stderr,'');
+    // node:sqlite is experimental on Node.js 22; accept only its known runtime notice.
+    var warnings=result.stderr.split('\n').filter(Boolean);
+    assert.ok(warnings.every(function(line){
+      return /ExperimentalWarning: SQLite is an experimental feature|Use `node --trace-warnings/.test(line);
+    }), 'unexpected stderr in full REPL workflow: '+result.stderr);
 
     result=launch([...args,'--format','table'],{
       input:'SELECT missing_column FROM products;\nSELECT id, title FROM products;\n'
