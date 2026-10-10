@@ -106,7 +106,7 @@ function cliContracts(){
   var connection=cli.connectionFrom(parsed,{NUBLOX_PASSWORD:'hidden'});
   assert.strictEqual(connection.filename,':memory:');
   assert.strictEqual(connection.password,'hidden');
-  assert.throws(function(){cli.parseArgs(['--execute','x','--command','tables']);},/only one of --execute, --command, --demo, or --doctor/);
+  assert.throws(function(){cli.parseArgs(['--execute','x','--command','tables']);},/only one of --execute, --command/);
   assert.strictEqual(cli.parseArgs(['--demo']).demo,true);
   assert.strictEqual(cli.parseArgs(['--doctor']).doctor,true);
   assert.throws(function(){cli.parseArgs(['--demo','--doctor']);},/only one of/);

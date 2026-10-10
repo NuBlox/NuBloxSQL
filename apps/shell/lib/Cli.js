@@ -30,6 +30,7 @@ function parseArgs(argv){
     if(arg==='--version'||arg==='-v'){options.version=true;continue;}
     if(arg==='--demo'){options.demo=true;continue;}
     if(arg==='--doctor'){options.doctor=true;continue;}
+    if(arg==='--stdin'){options.stdin=true;continue;}
     if(arg==='--no-pool'){options.pool=false;continue;}
     if(arg==='--pool'){options.pool=true;continue;}
     if(arg==='--url'){options.url=take(argv,i,'--url');i+=1;continue;}
@@ -50,8 +51,9 @@ function parseArgs(argv){
     throw new RangeError('Unknown NuBlox Shell option "'+arg+'"');
   }
   if(output.FORMATS.indexOf(options.format)===-1)throw new RangeError('NuBlox Shell output format must be one of: '+output.FORMATS.join(', '));
-  if([options.execute!==undefined,options.command!==undefined,options.demo===true,options.doctor===true].filter(Boolean).length>1){
-    throw new Error('NuBlox Shell accepts only one of --execute, --command, --demo, or --doctor');
+  if([options.execute!==undefined,options.command!==undefined,
+      options.stdin===true,options.demo===true,options.doctor===true].filter(Boolean).length>1){
+    throw new Error('NuBlox Shell accepts only one of --execute, --command, --stdin, --demo, or --doctor');
   }
   return options;
 }
@@ -67,6 +69,7 @@ function help(){
     '  nublox --demo                          No configuration required',
     '  nublox --doctor                        Self-test using in-memory SQLite',
     '  nublox --url <database-url> --doctor   Validate a real connection',
+    '  nublox --url <database-url> --stdin --format csv < query.sql > results.csv',
     '',
     'Connection:',
     '  --url <url>              NuBloxSQL-supported connection URL',
@@ -87,6 +90,7 @@ function help(){
     'Execution:',
     '  -e, --execute <sql>      Execute native SQL and exit',
     '  -c, --command <command>  Execute one NuBlox Shell command and exit',
+    '  --stdin                  Read one SQL statement from stdin (maximum 1 MiB)',
     '  --demo                   Run an isolated SQLite in-memory example and exit',
     '  --doctor                 Verify query and discovery, then exit with status',
     '  --format <format>        table | json | jsonl | csv',
@@ -171,6 +175,25 @@ async function run(argv,io,env,sqlApi){
         databasesVisible:report.summary.databases,
         check:1
       },options.format)+'\n');
+      return 0;
+    }
+    if(options.stdin){
+      var input=io.stdin||process.stdin;
+      if(!input||typeof input[Symbol.asyncIterator]!=='function'){
+        throw new TypeError('NuBlox Shell --stdin requires a readable stdin stream');
+      }
+      var parts=[],bytes=0;
+      for await (var part of input){
+        var chunk=Buffer.isBuffer(part)?part:Buffer.from(String(part),'utf8');
+        bytes+=chunk.length;
+        if(bytes>1024*1024)throw new Error('NuBlox Shell --stdin SQL statement exceeds 1 MiB');
+        parts.push(chunk);
+      }
+      var source=Buffer.concat(parts).toString('utf8').replace(/^\uFEFF/,'').trim();
+      if(!source)throw new Error('NuBlox Shell --stdin SQL statement is empty');
+      var stdinResult=await shell.executeLine(source);
+      var stdinText=shell.render(stdinResult);
+      if(stdinText)stdout.write(stdinText+'\n');
       return 0;
     }
     if(options.execute){

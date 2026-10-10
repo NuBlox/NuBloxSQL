@@ -75,6 +75,29 @@ Avoid putting passwords directly into shell history. Prefer environment/secret i
 
 Any non-command input is sent as native SQL through `Client.query()`. Multi-line SQL is accumulated until a line ends with `;`.
 
+## SQL files and CSV/JSON export
+
+For a single native SQL statement saved in `query.sql`, use standard
+input/output redirection rather than granting NuBloxSQL direct file-path
+access. The command accepts up to 1 MiB of SQL:
+
+```bash
+node apps/shell/bin/nublox.js --dialect sqlite --filename ./database.sqlite \
+  --stdin --format csv < query.sql > results.csv
+```
+
+Change `--format csv` to `json`, `jsonl` or `table` as required.
+
+**Warning:** `>` can overwrite an existing output file. On macOS using
+zsh, run `setopt noclobber` first to refuse overwrites, or select a
+new results filename. The database driver itself does not write output files.
+
+`--stdin` executes **one** dialect-native SQL statement. It does not
+interpret migration scripts or split multiple statements. For commands
+and multiple interactive statements, use the existing REPL. Native SQL
+can change a connected database: use a suitably restricted database user
+for inspection-only workflows.
+
 ## Automation
 
 ```bash

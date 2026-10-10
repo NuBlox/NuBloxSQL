@@ -116,6 +116,24 @@ function liveFileAcceptance() {
     assert.match(result.stdout,/Operational test/);
     assert.match(result.stdout,/products/);
 
+    const sqlFile=path.join(directory,'query.sql');
+    fs.writeFileSync(sqlFile,'SELECT id, title FROM products ORDER BY id;\n');
+    result=launch([...args,'--stdin','--format','csv'],{input:fs.readFileSync(sqlFile,'utf8')});
+    expectSuccess(result,'SQL file piped through stdin to CSV on stdout');
+    assert.equal(result.stdout,'id,title\n1,Operational test\n');
+    const exportFile=path.join(directory,'export.csv');
+    fs.writeFileSync(exportFile,result.stdout,{flag:'wx',mode:0o600});
+    assert.equal(fs.readFileSync(exportFile,'utf8'),'id,title\n1,Operational test\n');
+
+    result=launch([...args,'--stdin'],{input:''});
+    assert.equal(result.status,1,'empty statement is rejected');
+
+    result=launch([...args,'--stdin'],{input:' '.repeat(1024*1024+1)});
+    assert.equal(result.status,1,'oversized statement is rejected');
+
+    result=launch([...args,'--stdin','--execute','SELECT 1'],{input:'SELECT 1'});
+    assert.equal(result.status,2,'stdin and inline SQL are mutually exclusive');
+
     const missing=launch(['--dialect','sqlite','--filename',path.join(directory,'missing.sqlite'),'--option','mode=readonly','--doctor']);
     assert.equal(missing.status,1,'read-only check of missing database must fail');
   } finally {
@@ -132,6 +150,7 @@ function invalidUsage() {
   expectSuccess(res,'Shell help');
   assert.match(res.stdout,/--demo/);
   assert.match(res.stdout,/--doctor/);
+  assert.match(res.stdout,/--stdin/);
 }
 
 demoNoConfiguration();
