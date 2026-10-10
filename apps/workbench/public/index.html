@@ -36,7 +36,7 @@
         <section class="editor-panel" aria-label="SQL editor">
           <div class="panel-toolbar"><div class="tab"><span class="tab-dot"></span> Query 1 <span class="unsaved-mark">•</span></div><span class="editor-language" id="language-label">SQL</span></div>
           <div class="editor-content"><div class="line-guide" aria-hidden="true">01<br>02<br>03<br>04<br>05<br>06<br>07<br>08</div><textarea id="sql-editor" aria-label="SQL statement" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="SELECT * FROM your_table LIMIT 100;"></textarea></div>
-          <div class="editor-footer"><div class="notice"><span class="notice-dot"></span>SQL runs with your configured database permissions. Changes may be permanent.</div><button id="run-query" class="primary-button"><span>▶</span> Run query</button></div>
+          <div class="editor-footer"><div class="notice"><span class="notice-dot"></span>SQL runs with your configured database permissions. Changes may be permanent.</div><div class="query-actions"><button id="cancel-query" class="secondary-button" type="button" disabled hidden>Stop query</button><button id="run-query" class="primary-button"><span>▶</span> Run query</button></div></div>
         </section>
         <section class="results-panel" aria-label="Query results">
           <div class="results-toolbar"><div class="results-heading"><strong>Results</strong><span id="result-status" class="status-text">Ready</span></div><div class="results-actions"><span class="duration" id="duration"></span><button class="secondary-button" id="export-csv" disabled>↓ Export CSV</button></div></div>

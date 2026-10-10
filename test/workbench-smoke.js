@@ -43,6 +43,7 @@ async function demoAcceptance(){
     assert.ok(!html.includes('WORKBENCH_SESSION_TOKEN'));
     assert.match(html,/id="browse-controls"/);
     assert.match(html,/id="browse-next"/);
+    assert.match(html,/id="cancel-query"/);
     assert.match(html,/id="sort-column"/);
     assert.match(html,/id="filter-column"/);
 
@@ -64,6 +65,11 @@ async function demoAcceptance(){
     assert.equal(status.dialect,'sqlite');
     assert.equal(status.demo,true);
     assert.equal(status.maxRows,200);
+    assert.equal(status.queryControl.nativeRowByteBudget,true);
+    assert.equal(status.queryControl.cancelSupported,false);
+    assert.equal(status.queryControl.timeoutMs,null);
+    assert.equal(status.queryControl.maxResultBytes,1048576);
+    await expectJson(await request(base,token,'/api/cancel',{}),501);
     assert.ok(!JSON.stringify(status).includes('password'));
 
     const tables=await expectJson(await request(base,token,'/api/tables'),200);
@@ -152,6 +158,22 @@ async function demoAcceptance(){
     await expectJson(await request(base,token,'/api/query',{sql:'SELECT nonexistent FROM nublox_demo'}),500);
     const goodAgain=await expectJson(await request(base,token,'/api/query',{sql:'SELECT count(*) AS total FROM nublox_demo'}),200);
     assert.equal(goodAgain.rows[0].total,126);
+    const rowsResponse=await request(base,token,'/api/query',{
+      sql:'SELECT a.id AS a, b.id AS b FROM nublox_demo a CROSS JOIN nublox_demo b'
+    });
+    assert.equal(rowsResponse.status,413,await rowsResponse.clone().text());
+    const rowsOverBudget=await rowsResponse.json();
+    assert.match(rowsOverBudget.error,/budget/);
+    const bytesResponse=await request(base,token,'/api/query',{
+      sql:'SELECT hex(zeroblob(150000)) AS big_data'
+    });
+    assert.equal(bytesResponse.status,413,await bytesResponse.clone().text());
+    const bytesOverBudget=await bytesResponse.json();
+    assert.match(bytesOverBudget.error,/budget/);
+    const readyAgain=await expectJson(await request(base,token,'/api/query',{
+      sql:'SELECT 1 AS ok'
+    }),200);
+    assert.equal(readyAgain.rows[0].ok,1);
   } finally {await app.close();}
 }
 async function existingFileAcceptance(){
@@ -208,6 +230,47 @@ function dialectBrowseContracts(){
   }
 }
 
+async function cancellationContractAcceptance(){
+  let startQuery;
+  const started=new Promise(resolve=>{startQuery=resolve;});
+  let seenOptions;
+  const fakeClient={
+    dialect:'postgresql',
+    metadata:{tables:async()=>[],columns:async()=>[]},
+    one:async()=>({nublox_check:1}),
+    query:async function(statement,options){
+      seenOptions=options;startQuery();
+      return new Promise(function(_resolve,reject){
+        options.signal.addEventListener('abort',function(){
+          reject(options.signal.reason||new Error('Query cancelled'));
+        },{once:true});
+      });
+    },
+    close:async()=>{}
+  };
+  const app=createWorkbench({sqlApi:{createClient:()=>fakeClient},connection:{dialect:'postgresql'}});
+  const base=await app.listen(0);
+  try{
+    const page=await (await fetch(base)).text();
+    const token=page.match(/name="nublox-session" content="([0-9a-f]{64})"/)[1];
+    const status=await expectJson(await request(base,token,'/api/status'),200);
+    assert.equal(status.queryControl.cancelSupported,true);
+    assert.equal(status.queryControl.timeoutMs,15000);
+    assert.equal(status.queryControl.nativeRowByteBudget,false);
+    await expectJson(await request(base,token,'/api/cancel',{}),409);
+    const pending=request(base,token,'/api/query',{sql:'SELECT pg_sleep(30)'});
+    await started;
+    assert.equal(seenOptions.timeout,15000);
+    assert.ok(seenOptions.signal instanceof AbortSignal);
+    await expectJson(await request(base,token,'/api/query',{sql:'SELECT 2'}),409);
+    const result=await expectJson(await request(base,token,'/api/cancel',{}),202);
+    assert.equal(result.status,'cancellation-requested');
+    const cancelled=await expectJson(await pending,500);
+    assert.match(cancelled.error,/cancelled/);
+    await expectJson(await request(base,token,'/api/cancel',{}),409);
+  }finally{await app.close();}
+}
+
 async function launcherAcceptance(){
   const output=[];
   const streams={stdout:{write(text){output.push(text);}}};
@@ -231,6 +294,7 @@ async function launcherAcceptance(){
   dialectBrowseContracts();
   await demoAcceptance();
   await existingFileAcceptance();
+  await cancellationContractAcceptance();
   await launcherAcceptance();
   console.log('NuBloxSQL Workbench live HTTP + native SQLite acceptance: PASS');
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -52,6 +52,13 @@ safer or more capable without reproducible tests and a documented baseline.
 The local Workbench preview under `apps/workbench` supplies a real graphical
 explorer, SQL input, metadata-validated table browsing with database-side
 paging/sorting/parameterized exact-match filtering, result grids and CSV download.
+The graphical SQL editor now imposes native row and byte budgets on SQLite
+and MySQL results. PostgreSQL/MySQL/SQL Server receive a driver-backed Stop
+request and 15-second timeout, but live cancellation must be independently
+qualified. SQLite has no synchronous query cancellation. PostgreSQL and
+SQL Server arbitrary SQL results remain display-limited, not memory-bounded.
+These distinctions are not grounds for superiority claims.
+
 The table-browser paging contract is compiled for four dialects and qualified
 end-to-end on real SQLite; it does **not** qualify full graphical parity on
 unprovisioned PostgreSQL, MySQL or SQL Server servers.
