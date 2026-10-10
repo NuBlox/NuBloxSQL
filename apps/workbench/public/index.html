@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="nublox-session" content="WORKBENCH_SESSION_TOKEN">
+  <meta name="theme-color" content="#0b1020">
+  <title>NuBlox SQL Workbench</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="identity">
+        <div class="brand-icon" aria-hidden="true"><span>N</span><span class="brand-dot"></span></div>
+        <div class="brand"><strong>NuBlox<span class="brand-accent">SQL</span></strong><span class="product-name">WORKBENCH <small>PREVIEW</small></span></div>
+      </div>
+      <div class="top-actions">
+        <div class="connection-pill"><span class="led" id="connection-led"></span><span id="connection-state">Connecting</span><span class="connection-separator"></span><span id="connection-dialect">Database</span></div>
+        <span class="local-pill">LOCAL SESSION</span>
+      </div>
+    </header>
+    <div class="layout">
+      <aside class="sidebar" aria-label="Database explorer">
+        <div class="sidebar-heading"><div><div class="eyebrow">DATABASE INTELLIGENCE</div><h2>Explorer</h2></div><button id="refresh-tables" class="icon-button" title="Refresh tables" aria-label="Refresh tables">↻</button></div>
+        <div class="sidebar-caption"><span class="tree-icon">◫</span> Objects <span class="count" id="table-count">0</span></div>
+        <div id="table-list" class="object-list"><div class="loading">Loading database objects…</div></div>
+        <div class="sidebar-footer"><span class="footer-mark">⌘</span> Select a table to preview its data and inspect columns.</div>
+      </aside>
+      <main class="workspace">
+        <div class="workspace-top">
+          <div class="eyebrow">DATABASE OPERATIONS / SQL EDITOR</div>
+          <div class="workspace-title-row"><div><h1>Query workspace</h1><p>Native SQL. Real database results. One consistent experience.</p></div><div class="workspace-tools"><span class="shortcut">⌘ / Ctrl + Enter</span></div></div>
+        </div>
+        <section class="editor-panel" aria-label="SQL editor">
+          <div class="panel-toolbar"><div class="tab"><span class="tab-dot"></span> Query 1 <span class="unsaved-mark">•</span></div><span class="editor-language" id="language-label">SQL</span></div>
+          <div class="editor-content"><div class="line-guide" aria-hidden="true">01<br>02<br>03<br>04<br>05<br>06<br>07<br>08</div><textarea id="sql-editor" aria-label="SQL statement" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="SELECT * FROM your_table LIMIT 100;"></textarea></div>
+          <div class="editor-footer"><div class="notice"><span class="notice-dot"></span>SQL runs with your configured database permissions. Changes may be permanent.</div><button id="run-query" class="primary-button"><span>▶</span> Run query</button></div>
+        </section>
+        <section class="results-panel" aria-label="Query results">
+          <div class="results-toolbar"><div class="results-heading"><strong>Results</strong><span id="result-status" class="status-text">Ready</span></div><div class="results-actions"><span class="duration" id="duration"></span><button class="secondary-button" id="export-csv" disabled>↓ Export CSV</button></div></div>
+          <div id="result-content" class="result-content"><div class="empty-state"><div class="empty-icon">▦</div><h3>Explore your data</h3><p>Run a query or select a table in the Explorer to see live results here.</p></div></div>
+          <div class="results-bottom"><span id="row-counter">No rows</span><span id="result-caption">NuBloxSQL native runtime</span></div>
+        </section>
+        <footer class="workspace-footer"><span>NuBloxSQL · One developer API, honest dialect semantics</span><span>Local-first · No cloud account</span></footer>
+      </main>
+      <aside class="inspector" aria-label="Object inspector">
+        <div class="inspector-heading"><div class="eyebrow">OBJECT DETAILS</div><h2>Inspector</h2></div>
+        <div id="inspector-content" class="inspector-content"><div class="inspector-placeholder"><div class="placeholder-icon">◈</div><strong>Nothing selected</strong><p>Choose a table to inspect its native column definitions.</p></div></div>
+        <div class="inspector-footer"><span class="mini-led"></span> Metadata from NuBloxSQL</div>
+      </aside>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </div>
+</body>
+</html>

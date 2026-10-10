@@ -40,6 +40,36 @@ NuBloxSQL should exceed the benchmark through architecture rather than feature c
 9. **Release qualification against real database engines.**
 10. **One coherent public package surface.**
 
+## Evidence-based competitive acceptance
+
+A capability is **not superior** because we intend to implement it, have a
+mock contract, or have many internal definitions. For every benchmark against
+DBeaver, DataGrip, Database Tour or engineering automation tools, maintain
+explicit **not implemented / foundation / working preview / qualified /
+released / independently benchmarked** states. Do not advertise faster,
+safer or more capable without reproducible tests and a documented baseline.
+
+The first local Workbench preview under `apps/workbench` supplies an actual
+graphical explorer, SQL input, table previews, result grids and CSV download.
+Its SQLite end-to-end HTTP tests are automated. It is **not yet at parity**
+with mature visual IDEs: no persisted profile manager, visual structure
+editing, comprehensive import/export, reports, query completion, background
+workers or graphical lifecycle workflows. Its SvelteKit migration remains
+future application work, not a dependency of the SQL runtime.
+
+Next measurable competitive gates:
+1. End-user cold start: open GUI, connect and run a query without writing JS.
+2. Schema exploration: table/view/column/index/relationship parity measured
+   on common versioned fixtures for each supported runtime.
+3. Query editing: syntax completion, explain, cancellation, history, safe
+   grid pagination and native error display tested with real engines.
+4. Data work: verified file import/export, editable results, streaming, type
+   fidelity and large-result memory limits.
+5. Administration/lifecycle: safely approve, execute, audit and recover
+   installation, backup, migration, upgrade and retirement actions.
+6. Independent benchmark: timed side-by-side task completion and defect
+   rates, with hardware, database versions and source logs recorded.
+
 ## Competitive capability programme
 
 The programme is divided into capability platforms, not UI screens.

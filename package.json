@@ -63,6 +63,9 @@
     "shell": "node apps/shell/bin/nublox.js",
     "shell:demo": "node apps/shell/bin/nublox.js --demo --format json",
     "shell:doctor": "node apps/shell/bin/nublox.js --doctor --format json",
+    "workbench": "node apps/workbench/bin/nublox-workbench.js",
+    "workbench:demo": "node apps/workbench/bin/nublox-workbench.js --demo",
+    "test:workbench": "node test/workbench-smoke.js",
     "audit:proprietary": "node scripts/check-proprietary-boundary.js",
     "audit:release": "node scripts/check-release-surface.js",
     "verify:release": "npm run verify && npm run audit:proprietary && npm run audit:release"
