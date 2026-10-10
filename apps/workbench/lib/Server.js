@@ -3,6 +3,7 @@ const http=require('node:http');
 const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
+const browse=require('./Browse');
 
 // Local-only, single-session application built on the public NuBloxSQL API.
 const HTML=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
@@ -71,6 +72,7 @@ function createWorkbench(options={}){
   if(!Number.isSafeInteger(maxRows)||maxRows<1||maxRows>1000)throw new RangeError('maxRows must be 1–1000');
   const client=options.sqlApi.createClient(demo?{dialect:'sqlite',filename:':memory:',pool:false}:options.connection);
   const token=crypto.randomBytes(32).toString('hex');
+  const optionsSqlApi=options.sqlApi;
   let server,running=false,started=false,closed=false;
   async function tables(scope){
     const opts=scope?{schema:scope,database:scope}:{};
@@ -132,11 +134,22 @@ function createWorkbench(options={}){
         }))});
       }
       if(req.method==='POST'&&url.pathname==='/api/preview'){
-        const table=await lookupTable(await payload(req));
-        const object=(table.schema?quote(client.dialect,table.schema)+'.':'')+quote(client.dialect,table.name);
-        const statement=client.dialect==='sqlserver'?
-          'SELECT TOP '+maxRows+' * FROM '+object:'SELECT * FROM '+object+' LIMIT '+maxRows;
-        return reply(res,200,await query(statement));
+        const options=await payload(req);
+        const table=await lookupTable(options);
+        const columns=await client.metadata.columns(table.name,{schema:table.schema,database:table.database});
+        const plan=browse.buildBrowsePlan({sqlApi:optionsSqlApi,dialect:client.dialect,table,columns,options,maxRows});
+        const result=await query(plan.statement);
+        const hasMore=result.truncated||result.rows.length>plan.pageSize;
+        result.rows=result.rows.slice(0,plan.pageSize);
+        result.shown=result.rows.length;
+        result.hasMore=hasMore;
+        result.offset=plan.offset;
+        result.pageSize=plan.pageSize;
+        result.sort=plan.sort;
+        result.direction=plan.direction;
+        result.filtered=plan.filtered;
+        result.truncated=false;
+        return reply(res,200,result);
       }
       if(req.method==='POST'&&url.pathname==='/api/query'){
         const body=await payload(req);

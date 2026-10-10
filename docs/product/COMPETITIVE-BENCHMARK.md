@@ -49,8 +49,12 @@ explicit **not implemented / foundation / working preview / qualified /
 released / independently benchmarked** states. Do not advertise faster,
 safer or more capable without reproducible tests and a documented baseline.
 
-The first local Workbench preview under `apps/workbench` supplies an actual
-graphical explorer, SQL input, table previews, result grids and CSV download.
+The local Workbench preview under `apps/workbench` supplies a real graphical
+explorer, SQL input, metadata-validated table browsing with database-side
+paging/sorting/parameterized exact-match filtering, result grids and CSV download.
+The table-browser paging contract is compiled for four dialects and qualified
+end-to-end on real SQLite; it does **not** qualify full graphical parity on
+unprovisioned PostgreSQL, MySQL or SQL Server servers.
 Its SQLite end-to-end HTTP tests are automated. It is **not yet at parity**
 with mature visual IDEs: no persisted profile manager, visual structure
 editing, comprehensive import/export, reports, query completion, background

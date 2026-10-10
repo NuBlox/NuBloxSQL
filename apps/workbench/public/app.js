@@ -9,6 +9,12 @@
   let lastRows=[];
   let lastColumns=[];
   let selectedName='';
+  let activeTable=null;
+  let browseOffset=0;
+  let browseNonce=0;
+  let selectNonce=0;
+  let browseBusy=false;
+  let queuedBrowse=null;
   let busy=false;
   let toastTimer;
   function node(tag,className,text){
@@ -54,7 +60,7 @@
     $('export-csv').disabled=!lastRows.length;
     $('duration').textContent=result.elapsedMs+' ms';
     $('row-counter').textContent=result.shown+' row'+(result.shown===1?'':'s')+
-      (result.truncated?' (display capped)':'');
+      (result.truncated?' (display capped)':result.hasMore?' (more available)':'');
     $('result-caption').textContent=result.command||'Query complete';
     displayStatus('Executed');
     if(!lastRows.length){
@@ -72,7 +78,7 @@
     header.append(headRow);
     const body=node('tbody');
     lastRows.forEach(function(item,index){
-      const tr=node('tr');tr.append(node('td','row-index',index+1));
+      const tr=node('tr');tr.append(node('td','row-index',(result.offset||0)+index+1));
       lastColumns.forEach(function(column){
         const value=item[column];
         const cell=node('td',value===null?'null-cell':'',valueText(value));
@@ -86,6 +92,8 @@
   }
   async function runSQL(){
     if(busy)return;
+    ++browseNonce;
+    $('browse-controls').hidden=true;
     const sql=editor.value.trim();
     if(!sql){message('Enter a SQL statement first',true);return;}
     busy=true;$('run-query').disabled=true;displayStatus('Running…');
@@ -98,18 +106,65 @@
       $('duration').textContent=Math.round(performance.now()-start)+' ms';
     } finally {busy=false;$('run-query').disabled=false;}
   }
+  function setBrowseColumns(columns){
+    const names=(columns||[]).map(c=>c.name);
+    const primary=(columns||[]).find(c=>c.primaryKey===true);
+    const sort=$('sort-column'), filter=$('filter-column');
+    sort.replaceChildren();filter.replaceChildren();
+    filter.append(node('option','', 'No filter'));
+    filter.firstChild.value='';
+    names.forEach(name=>{
+      const sortOption=node('option','',name);sortOption.value=name;sort.append(sortOption);
+      const filterOption=node('option','',name);filterOption.value=name;filter.append(filterOption);
+    });
+    sort.value=primary?primary.name:names[0]||'';
+    sort.dataset.defaultSort=sort.value;
+    $('sort-direction').value='asc';
+    $('filter-value').value='';
+  }
+  async function browsePage(offset){
+    if(!activeTable)return;
+    if(browseBusy){queuedBrowse=offset;return;}
+    const table=activeTable, nonce=++browseNonce;
+    const column=$('filter-column').value, value=$('filter-value').value;
+    const payload={name:table.name,schema:table.schema||undefined,
+      offset,pageSize:50,sort:$('sort-column').value,
+      direction:$('sort-direction').value};
+    if(column)payload.filter={column,value};
+    browseBusy=true;
+    $('browse-prev').disabled=true;$('browse-next').disabled=true;
+    displayStatus('Browsing…');
+    try{
+      const result=await api('/api/preview',payload);
+      if(nonce!==browseNonce||activeTable!==table)return;
+      browseOffset=result.offset;
+      $('browse-page-label').textContent='Page '+(Math.floor(result.offset/result.pageSize)+1);
+      $('browse-prev').disabled=result.offset===0;
+      $('browse-next').disabled=!result.hasMore;
+      showResult(result);
+      $('browse-controls').hidden=false;
+    }catch(e){
+      if(nonce===browseNonce){displayStatus('Failed',true);message(e.message,true);}
+    }finally{
+      browseBusy=false;
+      if(queuedBrowse!==null){
+        const next=queuedBrowse;queuedBrowse=null;
+        browsePage(next);
+      }
+    }
+  }
   function choose(table,button){
-    selectedName=table.name;
+    selectedName=(table.schema||'')+'.'+table.name;
+    activeTable=table;const nonce=++selectNonce;
+    ++browseNonce;browseOffset=0;
     tableList.querySelectorAll('button').forEach(b=>b.classList.remove('selected'));
     if(button)button.classList.add('selected');
     const parent=$('inspector-content');
     parent.replaceChildren(node('div','loading','Inspecting '+table.name+'…'));
-    Promise.all([
-      api('/api/columns',{name:table.name,schema:table.schema||undefined}),
-      api('/api/preview',{name:table.name,schema:table.schema||undefined})
-    ]).then(function(results){
-      if(selectedName!==table.name)return;
-      const cols=results[0].columns||[];
+    $('browse-controls').hidden=true;
+    api('/api/columns',{name:table.name,schema:table.schema||undefined}).then(function(result){
+      if(nonce!==selectNonce)return;
+      const cols=result.columns||[];
       const title=node('div','inspect-identity');
       title.append(node('div','object-kind',table.type.toUpperCase()),node('h3','',table.name));
       const subtitle=node('p','inspect-schema',table.schema||'default schema');
@@ -123,8 +178,11 @@
         list.append(item);
       });
       parent.replaceChildren(title,subtitle,heading,list);
-      showResult(results[1]);
-    }).catch(function(e){message(e.message,true);parent.replaceChildren(node('p','inspector-error',e.message));});
+      setBrowseColumns(cols);
+      browsePage(0);
+    }).catch(function(e){
+      if(nonce===selectNonce){message(e.message,true);parent.replaceChildren(node('p','inspector-error',e.message));}
+    });
   }
   async function refreshTables(){
     tableList.replaceChildren(node('div','loading','Refreshing catalogue…'));
@@ -163,6 +221,18 @@
   $('run-query').addEventListener('click',runSQL);
   $('refresh-tables').addEventListener('click',refreshTables);
   $('export-csv').addEventListener('click',exportCSV);
+  $('apply-browse').addEventListener('click',function(){browsePage(0);});
+  $('clear-browse').addEventListener('click',function(){
+    $('filter-column').value='';$('filter-value').value='';
+    $('sort-direction').value='asc';
+    $('sort-column').value=$('sort-column').dataset.defaultSort||'';
+    browsePage(0);
+  });
+  $('browse-prev').addEventListener('click',function(){browsePage(Math.max(0,browseOffset-50));});
+  $('browse-next').addEventListener('click',function(){browsePage(browseOffset+50);});
+  $('filter-value').addEventListener('keydown',function(e){
+    if(e.key==='Enter'){e.preventDefault();browsePage(0);}
+  });
   editor.addEventListener('keydown',function(e){
     if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();runSQL();}
     if(e.key==='Tab'){e.preventDefault();const start=editor.selectionStart;editor.setRangeText('  ',start,editor.selectionEnd,'end');}
