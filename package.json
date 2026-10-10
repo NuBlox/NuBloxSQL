@@ -60,6 +60,9 @@
     "prepublishOnly": "npm run release:check",
     "test:shell": "node apps/shell/test/shell-contract.js && node test/working-shell-smoke.js && node scripts/check-shell-release.js",
     "smoke": "node test/working-shell-smoke.js",
+    "shell": "node apps/shell/bin/nublox.js",
+    "shell:demo": "node apps/shell/bin/nublox.js --demo --format json",
+    "shell:doctor": "node apps/shell/bin/nublox.js --doctor --format json",
     "audit:proprietary": "node scripts/check-proprietary-boundary.js",
     "audit:release": "node scripts/check-release-surface.js",
     "verify:release": "npm run verify && npm run audit:proprietary && npm run audit:release"

@@ -71,6 +71,50 @@ redirection. Use `setopt noclobber` in zsh to prevent an existing results
 file being overwritten. `--stdin` is for one SQL statement, **not**
 a multi-statement migration or transaction script.
 
+## First-run walkthrough: create a real database
+
+You can complete this workflow on macOS with Node.js 24 LTS without
+installing MySQL, PostgreSQL or SQL Server:
+
+```bash
+# In the NuBloxSQL repository:
+npm install --no-package-lock
+npm run shell:demo
+npm run shell:doctor
+
+# Make a real SQLite database and table in your home folder:
+npm run shell -- --dialect sqlite --filename "$HOME/nublox-first-run.sqlite" \
+  --execute "CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY, title TEXT NOT NULL)"
+
+# Insert a record:
+npm run shell -- --dialect sqlite --filename "$HOME/nublox-first-run.sqlite" \
+  --execute "INSERT INTO tasks (title) VALUES ('My first NuBloxSQL task')"
+
+# Browse and query it:
+npm run shell -- --dialect sqlite --filename "$HOME/nublox-first-run.sqlite" \
+  --command '\tables' --format table
+npm run shell -- --dialect sqlite --filename "$HOME/nublox-first-run.sqlite" \
+  --execute "SELECT id, title FROM tasks ORDER BY id" --format json
+
+# Enter the real interactive SQL Shell:
+npm run shell -- --dialect sqlite --filename "$HOME/nublox-first-run.sqlite"
+```
+
+Use `\\help` within the session; `\\quit` exits. The database is a
+**real persistent file**, not the isolated in-memory demo.
+`npm run smoke` separately verifies this create/browse/query lifecycle in
+a temporary database and cleans up test artifacts.
+
+The SQLite connector creates the named database if absent unless a read-only
+mode is requested. To inspect an existing database without allowing writes,
+use `--option mode=readonly` or a connection with equivalent restricted
+database permissions. Do not run native mutating SQL against production
+without backups and a qualified change process.
+
+The current Shell is run directly from the source repository. The
+`@nublox/shell` package is not yet independently published or release
+qualified; these commands do not imply a public Shell npm release.
+
 ## Current release line
 
 Repository package version: **1.1.0**.

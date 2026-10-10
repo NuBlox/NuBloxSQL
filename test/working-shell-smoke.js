@@ -178,6 +178,42 @@ function liveFileAcceptance() {
   }
 }
 
+function fromEmptyDatabase() {
+  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'nublox-first-run-'));
+  const filename=path.join(directory,'new-project.sqlite');
+  const args=['--dialect','sqlite','--filename',filename];
+  try {
+    assert.equal(fs.existsSync(filename),false,'first run begins without a database');
+    let result=launch([...args,'--execute',
+      'CREATE TABLE project_records (id INTEGER PRIMARY KEY, description TEXT NOT NULL)']);
+    expectSuccess(result,'create database and first table');
+    assert.equal(fs.existsSync(filename),true,'NuBloxSQL creates a SQLite database on first use');
+
+    result=launch([...args,'--execute',
+      "INSERT INTO project_records (id, description) VALUES (1, 'NuBloxSQL first run')"]);
+    expectSuccess(result,'insert first record');
+
+    result=launch([...args,'--command','\\tables','--format','json']);
+    expectSuccess(result,'browse new database catalogue');
+    assert.ok(JSON.parse(result.stdout).some(item=>item.name==='project_records'));
+
+    result=launch([...args,'--execute',
+      'SELECT id, description FROM project_records ORDER BY id','--format','json']);
+    expectSuccess(result,'query new database');
+    assert.deepEqual(JSON.parse(result.stdout),[{id:1,description:'NuBloxSQL first run'}]);
+
+    result=launch([...args,'--doctor','--format','json']);
+    expectSuccess(result,'health-check newly created database');
+    assert.equal(JSON.parse(result.stdout).status,'ok');
+
+    result=launch([...args,'--command','\\describe project_records','--format','json']);
+    expectSuccess(result,'inspect new table');
+    assert.ok(JSON.parse(result.stdout).columns.some(item=>item.name==='description'));
+  } finally {
+    fs.rmSync(directory,{recursive:true,force:true});
+  }
+}
+
 function invalidUsage() {
   let res=launch([]);
   assert.equal(res.status,2);
@@ -193,5 +229,6 @@ function invalidUsage() {
 demoNoConfiguration();
 doctorSelfTest();
 liveFileAcceptance();
+fromEmptyDatabase();
 invalidUsage();
 console.log('NuBloxSQL real-process runnable Shell acceptance: PASS');
