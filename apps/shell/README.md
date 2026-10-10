@@ -75,6 +75,28 @@ Avoid putting passwords directly into shell history. Prefer environment/secret i
 
 Any non-command input is sent as native SQL through `Client.query()`. Multi-line SQL is accumulated until a line ends with `;`.
 
+## SQL files and exporting results
+
+The Shell accepts **one dialect-native SQL statement** from a UTF-8 file
+(up to 1 MiB). The result can be written to a **new** file, with no overwrite
+and restrictive owner-only file permissions:
+
+```bash
+node apps/shell/bin/nublox.js \
+  --dialect sqlite --filename ./my-existing.sqlite \
+  --file ./query.sql --format csv --output ./results.csv
+```
+
+`--output` also works with `--execute`, `--command`, `--doctor` and
+`--demo`. It refuses an existing destination *before* opening a database,
+and removes an incomplete export if an operation fails.
+
+**Scope:** `--file` executes a single native SQL statement (including
+comments and multi-line SQL), not a migration or transactional multi-statement
+script runner. For multi-statement interactive work, use the REPL. Do not use
+`--file` as an unattended migration mechanism until script boundaries,
+transactions and error recovery are explicitly qualified.
+
 ## Automation
 
 ```bash

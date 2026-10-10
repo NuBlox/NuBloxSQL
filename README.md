@@ -55,6 +55,17 @@ node apps/shell/bin/nublox.js --dialect sqlite --filename ./database.sqlite
 Enter `\\help`, `\\server`, `\\tables`, native SQL terminated by `;`,
 or `\\quit`. See [NuBlox Shell](apps/shell/README.md).
 
+Export a real SQL statement from a file:
+
+```bash
+# query.sql contains one native SQL statement
+node apps/shell/bin/nublox.js --dialect sqlite --filename ./database.sqlite \
+  --file ./query.sql --format csv --output ./results.csv
+```
+
+Exports use new files only (no overwrites). The Shell currently supports
+individual SQL file statements, not a multi-statement migration runner.
+
 ## Current release line
 
 Repository package version: **1.1.0**.

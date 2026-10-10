@@ -116,6 +116,37 @@ function liveFileAcceptance() {
     assert.match(result.stdout,/Operational test/);
     assert.match(result.stdout,/products/);
 
+    // Real SQL file -> real SQLite query -> CSV output, no shell redirection.
+    const script=path.join(directory,'query.sql');
+    const exportFile=path.join(directory,'export.csv');
+    fs.writeFileSync(script,'SELECT id, title FROM products ORDER BY id;\n');
+    result=launch([...args,'--file',script,'--output',exportFile,'--format','csv']);
+    expectSuccess(result,'one-statement SQL file to CSV export');
+    assert.equal(result.stdout,'','export goes to file, not stdout');
+    assert.equal(fs.readFileSync(exportFile,'utf8'),'id,title\n1,Operational test\n');
+    assert.equal(fs.statSync(exportFile).mode & 0o777,0o600,'export owner-only permissions');
+
+    // An occupied export destination rejects the request before any SQL mutation.
+    result=launch([...args,'--execute',"INSERT INTO products (id, title) VALUES (2, 'must-not-run')",
+      '--output',exportFile,'--format','csv']);
+    assert.equal(result.status,1,'existing output is never replaced');
+    assert.equal(fs.readFileSync(exportFile,'utf8'),'id,title\n1,Operational test\n');
+    const check=new DatabaseSync(filename);
+    try {
+      assert.equal(check.prepare('SELECT count(*) AS n FROM products').get().n,1);
+    } finally {check.close();}
+
+    const failedExport=path.join(directory,'bad-results.json');
+    result=launch([...args,'--execute','SELECT not_a_column FROM products',
+      '--output',failedExport,'--format','json']);
+    assert.equal(result.status,1,'invalid SQL must return failure');
+    assert.equal(fs.existsSync(failedExport),false,'failed export must not leave partial output');
+
+    const tooLarge=path.join(directory,'too-large.sql');
+    fs.writeFileSync(tooLarge,' '.repeat(1024*1024+1));
+    result=launch([...args,'--file',tooLarge]);
+    assert.equal(result.status,1,'oversized SQL input should be rejected');
+
     const missing=launch(['--dialect','sqlite','--filename',path.join(directory,'missing.sqlite'),'--option','mode=readonly','--doctor']);
     assert.equal(missing.status,1,'read-only check of missing database must fail');
   } finally {
@@ -132,6 +163,11 @@ function invalidUsage() {
   expectSuccess(res,'Shell help');
   assert.match(res.stdout,/--demo/);
   assert.match(res.stdout,/--doctor/);
+  assert.match(res.stdout,/--file/);
+  assert.match(res.stdout,/--output/);
+
+  res=launch(['--output','must-not-create.csv']);
+  assert.equal(res.status,2,'output requires one-shot operation');
 }
 
 demoNoConfiguration();
