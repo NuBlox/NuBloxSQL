@@ -201,6 +201,26 @@ async function activeLeaseExpiryIsNotBlindlyReplayed(){
       /lease has expired/
     );
 
+    // A forged historical updatedAt must not override the store's authoritative clock.
+    await assert.rejects(
+      kernel.advance('run-active',checkpointed.version,'verifying',{
+        workerId:'worker-a',
+        fence:checkpointed.lease.fence,
+        now:'2026-10-09T21:00:05.000Z'
+      }),
+      /lease has expired/
+    );
+
+    await assert.rejects(
+      Promise.resolve().then(function(){
+        return store.renewLease({
+          runId:'run-active', workerId:'worker-a', fence:checkpointed.lease.fence,
+          expectedVersion:checkpointed.version,
+          now:'2026-10-09T21:00:05.000Z', expiresAt:'2026-10-09T21:04:00.000Z'
+        });
+      }),
+      /already expired/
+    );
     store.close();
   }finally{
     cleanup(temp);
@@ -211,7 +231,7 @@ async function leaseReleasePreservesFenceMonotonicity(){
   const temp=tempDatabase();
   const plan=fixturePlan();
   try{
-    const store=sqliteStore.createStore({filename:temp.filename});
+    const store=sqliteStore.createStore({filename:temp.filename,clock:function(){return Date.parse('2026-10-09T22:00:10.000Z');}});
     const kernel=jobs.createKernel(store);
     await kernel.submit(plan,{runId:'run-release',now:'2026-10-09T22:00:00.000Z'});
     await kernel.advance('run-release',0,'queued',{now:'2026-10-09T22:00:01.000Z'});
