@@ -18,6 +18,8 @@ async function run(shell,io){
   var stderr=io.stderr||process.stderr;
   var rl=readline.createInterface({input:input,crlfDelay:Infinity,terminal:!!(input.isTTY&&stdout.isTTY)});
   var buffer='';
+  var errors=0;
+  var maxStatementBytes=1024*1024;
 
   stdout.write(banner(shell)+'\n');
   if(input.isTTY)stdout.write(shell.prompt());
@@ -26,9 +28,11 @@ async function run(shell,io){
     for await (var raw of rl){
       var line=String(raw);
       var trimmed=line.trim();
-      var isCommand=!buffer&&trimmed.charAt(0)==='\\';
+      var reset=trimmed==='\\reset';
+      var isCommand=(!buffer&&trimmed.charAt(0)==='\\')||reset;
 
       if(isCommand){
+        if(reset)buffer='';
         try{
           var commandResult=await shell.executeLine(trimmed);
           if(commandResult.kind==='quit')break;
@@ -36,26 +40,36 @@ async function run(shell,io){
           if(commandText)stdout.write(commandText+'\n');
         }catch(error){
           stderr.write((error&&error.message?error.message:String(error))+'\n');
+          errors++;
         }
       }else{
         buffer+=(buffer?'\n':'')+line;
-        if(trimmed.endsWith(';')){
+        if(Buffer.byteLength(buffer,'utf8')>maxStatementBytes){
+          stderr.write('NuBlox Shell SQL statement exceeds the 1 MiB interactive limit\n');
+          errors++;
+          buffer='';
+        }else if(trimmed.endsWith(';')){
           try{
             var sqlResult=await shell.executeLine(buffer);
             var sqlText=shell.render(sqlResult);
             if(sqlText)stdout.write(sqlText+'\n');
           }catch(error){
             stderr.write((error&&error.message?error.message:String(error))+'\n');
+            errors++;
           }
           buffer='';
         }
       }
       if(input.isTTY)stdout.write(buffer?'...> ':shell.prompt());
     }
+    if(buffer.trim()){
+      stderr.write('NuBlox Shell reached end of input with an unfinished SQL statement (terminate with ; or use \\reset)\n');
+      errors++;
+    }
   }finally{
     rl.close();
   }
-  return 0;
+  return errors>0&&!input.isTTY?1:0;
 }
 
 exports.banner=banner;

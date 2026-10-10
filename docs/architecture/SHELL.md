@@ -44,6 +44,23 @@ The initial shell provides:
 - configuration discovery;
 - repository-local development resolution while still consuming only the public NuBloxSQL entry point.
 
+## Operational session correctness
+
+Session controls are implemented in `apps/shell/lib/Shell.js` and the
+public-API-only command router:
+
+- `\\status`, `\\disconnect` and `\\reconnect` allow a database session to
+  be inspected and reopened without restarting the Shell.
+- An explicit `\\reset` discards a partially entered multi-line statement.
+- `\\history on|off|clear` is opt-in, in-memory only, capped at 50 records,
+  and disabled by default to avoid accidental recording of SQL literals.
+- Non-interactive REPL sessions fail with nonzero exit status if SQL fails,
+  input exceeds the 1 MiB statement cap or EOF contains unfinished SQL;
+  interactive sessions can continue after errors.
+
+None of these controls persists connection credentials or SQL history to disk.
+Reconnect operates only within the same running process.
+
 ## Command namespace
 
 NuBlox commands use a backslash prefix so native SQL remains native SQL:
@@ -58,6 +75,11 @@ NuBlox commands use a backslash prefix so native SQL remains native SQL:
 \describe
 \config
 \format
+\status
+\disconnect
+\reconnect
+\history
+\reset
 \quit
 ```
 

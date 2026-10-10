@@ -37,24 +37,26 @@ catalogue browsing, table descriptions, interactive input and failure cases.
 It does **not** qualify connectivity to your remote PostgreSQL, MySQL or
 SQL Server instances; those require reachable databases and credentials.
 
-## Install
+## Run the development build
+
+The latest NuBlox Shell functionality lives in this repository and has not
+yet been qualified as a separately published `@nublox/shell` npm release.
+From the NuBloxSQL repository root:
 
 ```bash
-npm install -g @nublox/shell
-```
-
-Then:
-
-```bash
-nublox --url "$NUBLOX_DATABASE_URL"
+npm install --no-package-lock
+node apps/shell/bin/nublox.js --url "$NUBLOX_DATABASE_URL"
 ```
 
 For discrete connection settings:
 
 ```bash
 export NUBLOX_PASSWORD='...'
-nublox --dialect postgresql --host 127.0.0.1 --port 5432 --user app --database app
+node apps/shell/bin/nublox.js --dialect postgresql --host 127.0.0.1 --port 5432 --user app --database app
 ```
+
+Global installation with `npm install -g @nublox/shell` is a future
+distribution step; do not assume this development build is already published.
 
 Avoid putting passwords directly into shell history. Prefer environment/secret injection.
 
@@ -69,11 +71,35 @@ Avoid putting passwords directly into shell history. Prefer environment/secret i
 \tables [schema]
 \describe <table>
 \config [setting]
+\status
+\disconnect
+\reconnect
+\history on|off|clear
+\history
+\reset
 \format table|json|jsonl|csv
 \quit
 ```
 
-Any non-command input is sent as native SQL through `Client.query()`. Multi-line SQL is accumulated until a line ends with `;`.
+Any non-command input is sent as native SQL through `Client.query()`.
+Multi-line SQL is accumulated until a line ends with `;`; use `\\reset`
+to discard an unfinished statement. A statement is capped at 1 MiB.
+
+`\\disconnect` closes the active connection and `\\reconnect` reopens the
+last target **within the same Shell process**. Credentials are kept only in
+process memory, never saved as profiles.
+
+`\\history` is **off by default**. `\\history on` captures at most 50
+recent SQL statements (each truncated at 512 characters), including literals
+that **may contain secrets**. It is held only in process memory, never saved.
+Use `\\history clear` to erase, or `\\history off` to disable and clear.
+Do not enable capture for sensitive SQL.
+
+When SQL is **piped through the interactive REPL**, any failed command,
+exceeded statement limit or unfinished statement at EOF makes the process
+exit with status `1`. An interactive terminal still allows correction and
+continuation after an error. `--stdin` handles one SQL statement and already
+returns an error status on failure.
 
 ## SQL files and CSV/JSON export
 
