@@ -158,13 +158,17 @@ async function demoAcceptance(){
     await expectJson(await request(base,token,'/api/query',{sql:'SELECT nonexistent FROM nublox_demo'}),500);
     const goodAgain=await expectJson(await request(base,token,'/api/query',{sql:'SELECT count(*) AS total FROM nublox_demo'}),200);
     assert.equal(goodAgain.rows[0].total,126);
-    const rowsOverBudget=await expectJson(await request(base,token,'/api/query',{
-      sql:'WITH RECURSIVE x(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM x WHERE n < 201) SELECT n FROM x'
-    }),413);
+    const rowsResponse=await request(base,token,'/api/query',{
+      sql:'SELECT a.id AS a, b.id AS b FROM nublox_demo a CROSS JOIN nublox_demo b'
+    });
+    assert.equal(rowsResponse.status,413,await rowsResponse.clone().text());
+    const rowsOverBudget=await rowsResponse.json();
     assert.match(rowsOverBudget.error,/budget/);
-    const bytesOverBudget=await expectJson(await request(base,token,'/api/query',{
+    const bytesResponse=await request(base,token,'/api/query',{
       sql:'SELECT hex(zeroblob(150000)) AS big_data'
-    }),413);
+    });
+    assert.equal(bytesResponse.status,413,await bytesResponse.clone().text());
+    const bytesOverBudget=await bytesResponse.json();
     assert.match(bytesOverBudget.error,/budget/);
     const readyAgain=await expectJson(await request(base,token,'/api/query',{
       sql:'SELECT 1 AS ok'

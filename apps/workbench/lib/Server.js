@@ -119,8 +119,16 @@ function createWorkbench(options={}){
       return normalizeResult(result,Number((process.hrtime.bigint()-begin)/1000000n),maxRows);
     }catch(error){
       // Known native resource-limit errors are a user-actionable 413.
-      if(error&&(error.name==='SqliteResultLimitError'||error.name==='MySqlResultLimitError'||
-          error.category==='resource-limit')){
+      let cause=error,exceeded=false;
+      for(let depth=0;cause&&depth<4;depth++,cause=cause.cause){
+        const message=String(cause.message||'');
+        if(cause.name==='SqliteResultLimitError'||cause.name==='MySqlResultLimitError'||
+           cause.category==='resource-limit'||
+           /^(?:SQLite (?:row byte|result byte|row) limit exceeded|MySQL result exceeded max(?:Rows|RowBytes|ResultBytes))/.test(message)){
+          exceeded=true;break;
+        }
+      }
+      if(exceeded){
         throw httpError(413,'Query exceeded the Workbench row or 1 MiB result budget. Use server-side table browsing or add a SQL LIMIT/TOP clause.');
       }
       throw error;
