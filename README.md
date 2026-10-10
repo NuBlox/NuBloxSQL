@@ -88,6 +88,12 @@ filtering; run native SQL, inspect columns and export displayed query results. F
 npm run workbench -- --dialect sqlite --filename "$HOME/nublox-first-run.sqlite" --option mode=readonly
 ```
 
+The Workbench now enforces native SQLite/MySQL row and byte budgets for
+arbitrary editor queries. Driver-backed Stop and 15-second query timeout
+controls exist for PostgreSQL, MySQL and SQL Server. **Synchronous SQLite
+cannot be interrupted by the Stop button**. Remote-engine cancellation
+still requires live qualification.
+
 The Workbench is **localhost-only, single-session and a preview**. It is not
 publicly deployed or separately released. PostgreSQL/MySQL/SQL Server connections
 use the core API but are not yet live-qualified end to end through the graphical

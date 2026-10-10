@@ -10,6 +10,10 @@ const HTML=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
 const SCRIPT=fs.readFileSync(path.join(__dirname,'../public/app.js'),'utf8');
 const STYLE=fs.readFileSync(path.join(__dirname,'../public/styles.css'),'utf8');
 const MAX_REQUEST=32768;
+const QUERY_TIMEOUT_MS=15000;
+const RESULT_LIMIT_BYTES=1048576;
+const ROW_LIMIT_BYTES=262144;
+const ABORT_DIALECTS=new Set(['postgresql','mysql','sqlserver']);
 function serialize(value) {
   return JSON.stringify(value,function(_key,item){
     if(typeof item==='bigint')return item.toString();
@@ -74,6 +78,7 @@ function createWorkbench(options={}){
   const token=crypto.randomBytes(32).toString('hex');
   const optionsSqlApi=options.sqlApi;
   let server,running=false,started=false,closed=false;
+  let currentQueryController=null;
   async function tables(scope){
     const opts=scope?{schema:scope,database:scope}:{};
     return (await client.metadata.tables(opts)).map(function(table){
@@ -91,13 +96,38 @@ function createWorkbench(options={}){
     if(!found)throw httpError(404,'Table is not present in the database catalogue');
     return found;
   }
-  async function query(sql){
+  async function query(sql,execution={}){
     if(running)throw httpError(409,'A query is already running');
-    running=true;const begin=process.hrtime.bigint();
-    try {
-      const result=await client.query(sql);
+    running=true;
+    const supportsAbort=ABORT_DIALECTS.has(client.dialect);
+    const controller=supportsAbort?new AbortController():null;
+    currentQueryController=controller;
+    const begin=process.hrtime.bigint();
+    try{
+      const operationOptions={
+        // These hard quotas are enforced by native SQLite and MySQL
+        // drivers. Other drivers are NOT claimed to enforce row/byte caps.
+        maxRows:execution.maxRows===undefined?maxRows:execution.maxRows,
+        maxResultBytes:RESULT_LIMIT_BYTES,
+        maxRowBytes:ROW_LIMIT_BYTES
+      };
+      if(supportsAbort){
+        operationOptions.timeout=QUERY_TIMEOUT_MS;
+        operationOptions.signal=controller.signal;
+      }
+      const result=await client.query(sql,operationOptions);
       return normalizeResult(result,Number((process.hrtime.bigint()-begin)/1000000n),maxRows);
-    }finally{running=false;}
+    }catch(error){
+      // Known native resource-limit errors are a user-actionable 413.
+      if(error&&(error.name==='SqliteResultLimitError'||error.name==='MySqlResultLimitError'||
+          error.category==='resource-limit')){
+        throw httpError(413,'Query exceeded the Workbench row or 1 MiB result budget. Use server-side table browsing or add a SQL LIMIT/TOP clause.');
+      }
+      throw error;
+    }finally{
+      currentQueryController=null;
+      running=false;
+    }
   }
   async function handle(req,res){
     try {
@@ -120,7 +150,22 @@ function createWorkbench(options={}){
         return reply(res,403,{error:'Workbench session authentication required'});
       }
       if(req.method==='GET'&&url.pathname==='/api/status'){
-        return reply(res,200,{status:'connected',dialect:client.dialect,demo,maxRows,mode:'local single-session'});
+        return reply(res,200,{
+          status:'connected',dialect:client.dialect,demo,maxRows,
+          mode:'local single-session',
+          queryControl:{
+            nativeRowByteBudget:client.dialect==='sqlite'||client.dialect==='mysql',
+            cancelSupported:ABORT_DIALECTS.has(client.dialect),
+            timeoutMs:ABORT_DIALECTS.has(client.dialect)?QUERY_TIMEOUT_MS:null,
+            maxResultBytes:client.dialect==='sqlite'||client.dialect==='mysql'?RESULT_LIMIT_BYTES:null
+          }
+        });
+      }
+      if(req.method==='POST'&&url.pathname==='/api/cancel'){
+        if(!ABORT_DIALECTS.has(client.dialect))return reply(res,501,{error:'Cancellation is not supported for synchronous SQLite operations'});
+        if(!currentQueryController)return reply(res,409,{error:'No cancellable query is running'});
+        currentQueryController.abort(new Error('Workbench query cancelled by user'));
+        return reply(res,202,{status:'cancellation-requested'});
       }
       if(req.method==='GET'&&url.pathname==='/api/tables'){
         return reply(res,200,{tables:await tables()});
@@ -138,7 +183,7 @@ function createWorkbench(options={}){
         const table=await lookupTable(options);
         const columns=await client.metadata.columns(table.name,{schema:table.schema,database:table.database});
         const plan=browse.buildBrowsePlan({sqlApi:optionsSqlApi,dialect:client.dialect,table,columns,options,maxRows});
-        const result=await query(plan.statement);
+        const result=await query(plan.statement,{maxRows:plan.pageSize+1});
         const hasMore=result.truncated||result.rows.length>plan.pageSize;
         result.rows=result.rows.slice(0,plan.pageSize);
         result.shown=result.rows.length;

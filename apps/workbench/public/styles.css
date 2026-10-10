@@ -23,3 +23,5 @@ button,textarea{font:inherit}button{cursor:pointer}button:focus-visible,textarea
 .browse-pager .pager-note{color:#798ba7;flex:1}
 .browse-pager .secondary-button{padding:7px 11px}
 @media(max-width:690px){.browse-row label{flex-basis:42%}.browse-pager{gap:7px}.browse-pager .pager-note{flex-basis:100%}}
+
+.query-actions{display:flex;align-items:center;gap:9px}.query-actions #cancel-query:not([hidden]){border-color:#884b62;color:#f5aabe}.query-actions #cancel-query:not([hidden]):hover{background:#3d2030}.query-actions #cancel-query[hidden]{display:none}@media(max-width:690px){.query-actions{width:100%}.query-actions .primary-button{flex:1}}

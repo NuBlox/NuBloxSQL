@@ -14,6 +14,7 @@
   let browseNonce=0;
   let selectNonce=0;
   let browseBusy=false;
+  let canCancel=false;
   let queuedBrowse=null;
   let busy=false;
   let toastTimer;
@@ -96,7 +97,9 @@
     $('browse-controls').hidden=true;
     const sql=editor.value.trim();
     if(!sql){message('Enter a SQL statement first',true);return;}
-    busy=true;$('run-query').disabled=true;displayStatus('Running…');
+    busy=true;$('run-query').disabled=true;
+    $('cancel-query').disabled=!canCancel;
+    displayStatus('Running…');
     const start=performance.now();
     try {
       showResult(await api('/api/query',{sql:sql}));
@@ -104,7 +107,10 @@
       displayStatus('Failed',true);message(e.message,true);
       $('result-caption').textContent='Database reported an error';
       $('duration').textContent=Math.round(performance.now()-start)+' ms';
-    } finally {busy=false;$('run-query').disabled=false;}
+    } finally {
+      busy=false;$('run-query').disabled=false;
+      $('cancel-query').disabled=true;
+    }
   }
   function setBrowseColumns(columns){
     const names=(columns||[]).map(c=>c.name);
@@ -219,6 +225,13 @@
     message('CSV exported — '+lastRows.length+' displayed rows');
   }
   $('run-query').addEventListener('click',runSQL);
+  $('cancel-query').addEventListener('click',async function(){
+    $('cancel-query').disabled=true;
+    try{
+      const status=await api('/api/cancel',{});
+      if(status.status==='cancellation-requested')message('Cancellation requested; waiting for database confirmation');
+    }catch(e){message(e.message,true);}
+  });
   $('refresh-tables').addEventListener('click',refreshTables);
   $('export-csv').addEventListener('click',exportCSV);
   $('apply-browse').addEventListener('click',function(){browsePage(0);});
@@ -243,6 +256,13 @@
     $('connection-dialect').textContent=status.dialect.toUpperCase();
     $('language-label').textContent=status.dialect.toUpperCase();
     $('connection-led').classList.add('live');
+    canCancel=status.queryControl&&status.queryControl.cancelSupported===true;
+    $('cancel-query').hidden=!canCancel;
+    if(status.queryControl&&status.queryControl.nativeRowByteBudget){
+      $('result-caption').textContent='Query budgets: '+status.maxRows+' rows · 1 MiB result data';
+    }else{
+      $('result-caption').textContent='Native SQL results may exceed the displayed-row cap';
+    }
     if(status.demo)editor.value='SELECT id, name FROM nublox_demo ORDER BY id;';
   }).catch(function(e){$('connection-state').textContent='Unavailable';message(e.message,true);});
 })();
