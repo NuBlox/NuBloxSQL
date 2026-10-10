@@ -398,7 +398,7 @@ Existing capabilities that are already ahead of this sequence are retained. They
 
 ## Current strategic priority
 
-The current cross-cutting priority is the **Durable Job execution substrate**. The internal job kernel and same-host durable SQLite JobStore now exist; the internal worker execution loop now exists; the first read-only server-discovery adapter now uses the existing domain API; further domain adapters need explicit approval policy and controlled verification before mutations, followed by scheduling. Existing executors need shared:
+The current cross-cutting priority is the **Durable Job execution substrate**. The internal job kernel and same-host durable SQLite JobStore now exist; the internal worker execution loop now exists; read-only server-discovery and host-inspection job adapters now reuse qualified domain APIs. Explicit approval policy, controlled verification and target-side fencing must precede mutation adapters and scheduling. Existing executors need shared:
 
 - durable identity;
 - checkpoints;
