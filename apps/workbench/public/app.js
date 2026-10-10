@@ -6,6 +6,10 @@
   const resultContent=$('result-content');
   const tableList=$('table-list');
   const toast=$('toast');
+  const completion=$('completion-panel');
+  const editorTools=window.NuBloxEditorTools;
+  let knownTables=[],knownColumns=[],editorDialect='sqlite';
+  let completionItems=[],completionIndex=0;
   let lastRows=[];
   let lastColumns=[];
   let selectedName='';
@@ -91,13 +95,92 @@
     table.append(header,body);wrapper.append(table);
     resultContent.replaceChildren(wrapper);
   }
+  function hideCompletion(){
+    completion.hidden=true;
+    completion.replaceChildren();
+    completionItems=[];
+    completionIndex=0;
+  }
+  function applyCompletion(index){
+    const item=completionItems[index];
+    if(!item)return;
+    editor.setRangeText(item.insert,item.from,item.to,'end');
+    hideCompletion();
+    editor.focus();
+  }
+  function showCompletion(manual){
+    if(!editorTools){hideCompletion();return;}
+    const items=editorTools.suggestions(editor.value,editor.selectionStart,{
+      manual:manual===true,dialect:editorDialect,tables:knownTables,columns:knownColumns
+    });
+    if(!items.length){hideCompletion();return;}
+    completionItems=items;
+    completionIndex=0;
+    completion.replaceChildren();
+    items.forEach(function(item,i){
+      const button=node('button','completion-item'+(i===0?' selected':''));
+      button.type='button';
+      button.setAttribute('role','option');
+      button.setAttribute('aria-selected',i===0?'true':'false');
+      button.append(node('span','completion-label',item.label),
+        node('span','completion-kind',item.kind));
+      button.addEventListener('mousedown',function(e){e.preventDefault();});
+      button.addEventListener('click',function(){applyCompletion(i);});
+      completion.append(button);
+    });
+    completion.hidden=false;
+  }
+  function moveCompletion(direction){
+    if(!completionItems.length)return;
+    completionIndex=(completionIndex+direction+completionItems.length)%completionItems.length;
+    Array.from(completion.children).forEach(function(item,i){
+      item.classList.toggle('selected',i===completionIndex);
+      item.setAttribute('aria-selected',i===completionIndex?'true':'false');
+    });
+    completion.children[completionIndex].scrollIntoView({block:'nearest'});
+  }
+  async function explainSQL(){
+    if(busy)return;
+    const statement=editor.value.trim();
+    if(!statement){message('Enter a SQL statement first',true);return;}
+    hideCompletion();
+    busy=true;
+    $('explain-query').disabled=true;
+    $('run-query').disabled=true;
+    displayStatus('Planning…');
+    try{
+      const report=await api('/api/diagnose',{sql:statement});
+      showResult({
+        columns:['id','kind','table','index','detail'],
+        rows:report.nodes,shown:report.nodes.length,
+        rowCount:report.summary.nodeCount,
+        truncated:report.truncated,command:'SQLite optimizer plan',elapsedMs:report.elapsedMs
+      });
+      displayStatus('Plan only');
+      $('result-caption').textContent='Non-executing plan · SQL statement not run';
+      const overview=node('div','plan-overview');
+      overview.append(node('strong','',String(report.summary.nodeCount||0)+' optimizer nodes'));
+      if(report.summary.hasFullScan)overview.append(node('span','plan-warning','Full table scan indicated'));
+      if(report.summary.usesIndex)overview.append(node('span','plan-success','Index in use'));
+      (report.warnings||[]).forEach(w=>overview.append(node('p','plan-warning',w.message)));
+      if(report.truncated)overview.append(node('p','plan-warning','Only the first 100 plan nodes are displayed'));
+      resultContent.prepend(overview);
+    }catch(e){displayStatus('Plan failed',true);message(e.message,true);}
+    finally{
+      busy=false;
+      $('explain-query').disabled=false;
+      $('run-query').disabled=false;
+    }
+  }
   async function runSQL(){
     if(busy)return;
     ++browseNonce;
     $('browse-controls').hidden=true;
     const sql=editor.value.trim();
     if(!sql){message('Enter a SQL statement first',true);return;}
+    hideCompletion();
     busy=true;$('run-query').disabled=true;
+    $('explain-query').disabled=true;
     $('cancel-query').disabled=!canCancel;
     displayStatus('Running…');
     const start=performance.now();
@@ -109,10 +192,12 @@
       $('duration').textContent=Math.round(performance.now()-start)+' ms';
     } finally {
       busy=false;$('run-query').disabled=false;
+      $('explain-query').disabled=false;
       $('cancel-query').disabled=true;
     }
   }
   function setBrowseColumns(columns){
+    knownColumns=Array.isArray(columns)?columns.slice():[];
     const names=(columns||[]).map(c=>c.name);
     const primary=(columns||[]).find(c=>c.primaryKey===true);
     const sort=$('sort-column'), filter=$('filter-column');
@@ -192,8 +277,10 @@
   }
   async function refreshTables(){
     tableList.replaceChildren(node('div','loading','Refreshing catalogue…'));
+    knownTables=[];
     try{
       const items=(await api('/api/tables')).tables||[];
+      knownTables=items;
       $('table-count').textContent=items.length;
       tableList.replaceChildren();
       if(!items.length){tableList.append(node('p','loading','No tables in this schema'));return;}
@@ -225,6 +312,7 @@
     message('CSV exported — '+lastRows.length+' displayed rows');
   }
   $('run-query').addEventListener('click',runSQL);
+  $('explain-query').addEventListener('click',explainSQL);
   $('cancel-query').addEventListener('click',async function(){
     $('cancel-query').disabled=true;
     try{
@@ -247,14 +335,31 @@
     if(e.key==='Enter'){e.preventDefault();browsePage(0);}
   });
   editor.addEventListener('keydown',function(e){
-    if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();runSQL();}
+    if(e.code==='Space'&&e.ctrlKey){e.preventDefault();showCompletion(true);return;}
+    if(!completion.hidden){
+      if(e.key==='ArrowDown'){e.preventDefault();moveCompletion(1);return;}
+      if(e.key==='ArrowUp'){e.preventDefault();moveCompletion(-1);return;}
+      if(e.key==='Escape'){e.preventDefault();hideCompletion();return;}
+      if(e.key==='Tab'||(e.key==='Enter'&&!e.ctrlKey&&!e.metaKey)){
+        e.preventDefault();applyCompletion(completionIndex);return;
+      }
+    }
+    if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();runSQL();return;}
     if(e.key==='Tab'){e.preventDefault();const start=editor.selectionStart;editor.setRangeText('  ',start,editor.selectionEnd,'end');}
   });
+  editor.addEventListener('input',function(){
+    if(editor.selectionStart===editor.selectionEnd)showCompletion(false);
+    else hideCompletion();
+  });
+  editor.addEventListener('click',hideCompletion);
+  editor.addEventListener('blur',function(){window.setTimeout(hideCompletion,125);});
   Promise.all([api('/api/status'),refreshTables()]).then(function(results){
     const status=results[0];
     $('connection-state').textContent=status.status;
     $('connection-dialect').textContent=status.dialect.toUpperCase();
     $('language-label').textContent=status.dialect.toUpperCase();
+    editorDialect=status.dialect;
+    $('explain-query').hidden=!(status.editorFeatures&&status.editorFeatures.planSupported===true);
     $('connection-led').classList.add('live');
     canCancel=status.queryControl&&status.queryControl.cancelSupported===true;
     $('cancel-query').hidden=!canCancel;

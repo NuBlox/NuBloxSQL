@@ -25,3 +25,18 @@ button,textarea{font:inherit}button{cursor:pointer}button:focus-visible,textarea
 @media(max-width:690px){.browse-row label{flex-basis:42%}.browse-pager{gap:7px}.browse-pager .pager-note{flex-basis:100%}}
 
 .query-actions{display:flex;align-items:center;gap:9px}.query-actions #cancel-query:not([hidden]){border-color:#884b62;color:#f5aabe}.query-actions #cancel-query:not([hidden]):hover{background:#3d2030}.query-actions #cancel-query[hidden]{display:none}@media(max-width:690px){.query-actions{width:100%}.query-actions .primary-button{flex:1}}
+
+/* SQL completion list and non-executing optimizer diagnosis. */
+.editor-panel{position:relative}
+.completion-panel{position:relative;max-height:230px;overflow-y:auto;background:#18233b;border-top:1px solid #50488b;border-bottom:1px solid #50488b;padding:5px;z-index:3}
+.completion-panel[hidden]{display:none}
+.completion-item{border:0;background:transparent;width:100%;padding:9px 13px;color:#e6eeff;text-align:left;display:flex;justify-content:space-between;gap:15px;border-radius:6px;font-size:12px}
+.completion-item:hover,.completion-item.selected{background:#343268}
+.completion-kind{color:#aaa0ff;font-size:10px;text-transform:uppercase;letter-spacing:.8px}
+.plan-overview{border-bottom:1px solid #37435f;background:#141f34;color:#c6d6ea;padding:13px 15px;display:flex;align-items:center;flex-wrap:wrap;gap:9px;font-size:12px}
+.plan-overview p{flex-basis:100%;margin:0;font-size:11px}
+.plan-warning{color:#f0c68c}
+.plan-success{color:#7de5bd}
+.query-actions #explain-query:not([hidden]){border-color:#6559a9;color:#d8d1ff}
+.query-actions #explain-query[hidden]{display:none}
+@media(max-width:690px){.query-actions{flex-wrap:wrap}.query-actions #explain-query{flex:1}}

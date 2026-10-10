@@ -82,7 +82,10 @@ npm run workbench:demo
 
 Open the `http://127.0.0.1:4277/` address displayed in Terminal.
 Explore the sample table with server-side paging, sorting and exact-match
-filtering; run native SQL, inspect columns and export displayed query results. For an existing SQLite database in read-only mode:
+filtering; run native SQL, inspect columns and export displayed query results.
+The SQL editor supports **Ctrl+Space metadata completion** and a
+**non-executing SQLite Explain plan** view. See the
+[Workbench guide](apps/workbench/README.md) for exact capabilities and limits. For an existing SQLite database in read-only mode:
 
 ```bash
 npm run workbench -- --dialect sqlite --filename "$HOME/nublox-first-run.sqlite" --option mode=readonly

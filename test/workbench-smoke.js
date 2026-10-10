@@ -5,6 +5,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
+const vm=require('node:vm');
 const {DatabaseSync}=require('node:sqlite');
 const sqlApi=require('../index');
 const {createWorkbench,quote}=require('../apps/workbench/lib/Server');
@@ -44,6 +45,9 @@ async function demoAcceptance(){
     assert.match(html,/id="browse-controls"/);
     assert.match(html,/id="browse-next"/);
     assert.match(html,/id="cancel-query"/);
+    assert.match(html,/id="explain-query"/);
+    assert.match(html,/id="completion-panel"/);
+    assert.match(html,/assets\/editor-tools.js/);
     assert.match(html,/id="sort-column"/);
     assert.match(html,/id="filter-column"/);
 
@@ -53,6 +57,34 @@ async function demoAcceptance(){
     assert.match(javascript,/createObjectURL/,'CSV export is implemented in browser');
     assert.ok(!javascript.includes('innerHTML'),'DB data is never put into HTML');
     assert.match(javascript,/browsePage/);
+    assert.match(javascript,/explainSQL/);
+    assert.match(javascript,/showCompletion/);
+    const editorSource=await (await fetch(statusUrl(base,'/assets/editor-tools.js'))).text();
+    const sandbox={window:{}};
+    vm.runInNewContext(editorSource,sandbox,{timeout:1000});
+    const tools=sandbox.window.NuBloxEditorTools;
+    assert.ok(tools&&typeof tools.suggestions==='function');
+    const statement='SELECT * FROM nub';
+    const completion=tools.suggestions(statement,statement.length,{
+      dialect:'sqlite',tables:[{name:'nublox_demo',schema:'main',type:'table'}]
+    });
+    const tableCompletion=completion.find(item=>item.label==='nublox_demo');
+    assert.ok(tableCompletion,'catalogue table is suggested');
+    assert.equal(tableCompletion.insert,'"main"."nublox_demo"');
+    assert.equal(tableCompletion.from,14);
+    assert.equal(tableCompletion.to,17);
+    const columnSuggestions=tools.suggestions('SELECT na',9,{
+      dialect:'sqlite',columns:[{name:'name'}]
+    });
+    assert.ok(columnSuggestions.some(item=>item.kind==='column'&&item.insert==='"name"'));
+    assert.equal(tools.identifier('order]items','sqlserver'),'[order]]items]');
+    assert.equal(tools.identifier('order'+String.fromCharCode(96)+'items','mysql'),
+      String.fromCharCode(96)+'order'+String.fromCharCode(96)+String.fromCharCode(96)+'items'+String.fromCharCode(96));
+    assert.equal(tools.suggestions("SELECT 'nub",11,{manual:true,dialect:'sqlite'}).length,0);
+    assert.equal(tools.suggestions('SELECT -- nub',13,{manual:true,dialect:'sqlite'}).length,0);
+    assert.equal(tools.suggestions('SELECT /* nub',13,{manual:true,dialect:'sqlite'}).length,0);
+    assert.ok(tools.suggestions('SELECT nu',9,{manual:false,dialect:'sqlite',
+      tables:[{name:'nublox_demo'}]}).some(item=>item.label==='nublox_demo'));
     const css=await fetch(statusUrl(base,'/assets/styles.css'));
     assert.equal(css.status,200);
     assert.match(await css.text(),/data-grid/);
@@ -69,6 +101,34 @@ async function demoAcceptance(){
     assert.equal(status.queryControl.cancelSupported,false);
     assert.equal(status.queryControl.timeoutMs,null);
     assert.equal(status.queryControl.maxResultBytes,1048576);
+    assert.equal(status.editorFeatures.completion,true);
+    assert.equal(status.editorFeatures.planSupported,true);
+    await expectJson(await request(base,'wrong','/api/diagnose',{sql:'SELECT 1'}),403);
+    await expectJson(await request(base,token,'/api/diagnose',{sql:'SELECT 1'},
+      {Origin:'https://untrusted.example'}),403);
+    await expectJson(await request(base,token,'/api/diagnose',{sql:'  '}),400);
+    await expectJson(await request(base,token,'/api/diagnose',{sql:'x'.repeat(17000)}),413);
+    const plan=await expectJson(await request(base,token,'/api/diagnose',{
+      sql:'SELECT id,name FROM nublox_demo WHERE name = \'NuBloxSQL\''
+    }),200);
+    assert.equal(plan.mode,'plan');
+    assert.equal(plan.statementExecuted,false);
+    assert.ok(plan.summary.nodeCount>=1);
+    assert.ok(plan.nodes.length>=1);
+    assert.equal(typeof plan.nodes[0].detail,'string');
+    assert.ok(!JSON.stringify(plan).includes('SELECT id,name FROM nublox_demo'),
+      'SQL text must not be echoed into optimizer report');
+    const beforePlanMutation=await expectJson(await request(base,token,'/api/query',{
+      sql:'SELECT count(*) AS total FROM nublox_demo'
+    }),200);
+    await expectJson(await request(base,token,'/api/diagnose',{
+      sql:'DELETE FROM nublox_demo WHERE id = 1'
+    }),200);
+    const afterPlanMutation=await expectJson(await request(base,token,'/api/query',{
+      sql:'SELECT count(*) AS total FROM nublox_demo'
+    }),200);
+    assert.equal(afterPlanMutation.rows[0].total,beforePlanMutation.rows[0].total,
+      'EXPLAIN must not execute even a mutating SQL statement');
     await expectJson(await request(base,token,'/api/cancel',{}),501);
     assert.ok(!JSON.stringify(status).includes('password'));
 
@@ -191,6 +251,12 @@ async function existingFileAcceptance(){
     const token=html.match(/name="nublox-session" content="([0-9a-f]{64})"/)[1];
     const status=await expectJson(await request(base,token,'/api/status'),200);
     assert.equal(status.demo,false);
+    assert.equal(status.editorFeatures.planSupported,true);
+    const readOnlyPlan=await expectJson(await request(base,token,'/api/diagnose',{
+      sql:'SELECT id,name FROM products'
+    }),200);
+    assert.equal(readOnlyPlan.statementExecuted,false);
+    assert.ok(readOnlyPlan.nodes.length>=1);
     const result=await expectJson(await request(base,token,'/api/query',{sql:'SELECT * FROM products'}),200);
     assert.deepEqual(result.rows,[{id:7,name:'Real file'}]);
     assert.equal(result.shown,1);
@@ -257,6 +323,8 @@ async function cancellationContractAcceptance(){
     assert.equal(status.queryControl.cancelSupported,true);
     assert.equal(status.queryControl.timeoutMs,15000);
     assert.equal(status.queryControl.nativeRowByteBudget,false);
+    assert.equal(status.editorFeatures.planSupported,false);
+    await expectJson(await request(base,token,'/api/diagnose',{sql:'SELECT 1'}),501);
     await expectJson(await request(base,token,'/api/cancel',{}),409);
     const pending=request(base,token,'/api/query',{sql:'SELECT pg_sleep(30)'});
     await started;

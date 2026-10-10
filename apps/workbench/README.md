@@ -36,6 +36,8 @@ Use database account privileges to control SQL mutation. The Workbench deliberat
 - Schema-aware, safely quoted previews where metadata is available; filter **values are parameterized** through the public NuBloxSQL tagged-SQL API
 - Column/type/key inspector
 - Native SQL editor, Cmd+Enter / Ctrl+Enter to run
+- **Metadata-backed SQL completion:** Ctrl+Space opens suggestions; Enter or Tab accepts, arrows navigate, Escape closes. Suggestions include SQL keywords, database tables/views and columns from the currently selected table, quoted for the active dialect. The lightweight lexical helper suppresses suggestions inside strings/comments. This is not a full SQL language server.
+- **SQLite optimizer plan view:** Explain plan shows native SQLite scan/search nodes and index/full-scan warnings using public `client.diagnose(sql,{analyze:false})`. It **does not execute the statement**. Other dialects do not expose this button until graphical diagnostics receive engine-specific live qualification.
 - Result table, row count, command and elapsed time
 - Server-side table-page limit and browser CSV export of **displayed rows only**; arbitrary SQL editor results still have a 200-row *display* cap
 - Browser CSV formula neutralization for leading =, +, - and @ values
@@ -44,6 +46,26 @@ Use database account privileges to control SQL mutation. The Workbench deliberat
 - Explicit errors and reloadable catalogues
 - Same-origin, loopback-only HTTP API with an unguessable session token, CSP, no CORS or cookies
 - Zero third-party dependencies; fully separate from the distributed nubloxsql package
+
+## SQL authoring and analysis
+
+Use **Ctrl+Space** in the query editor to see completion candidates. Typing an
+identifier prefix also shows up to 12 matching candidates. The currently
+selected table contributes column names; the database explorer contributes
+table and view names from the connected NuBloxSQL metadata API. Identifiers are
+quoted for the selected dialect. Completion does not parse join aliases,
+nested scopes, stored routines or arbitrary SQL grammar; verify every query
+before execution. Database metadata and the SQL text remain in the local
+browser session and are not persisted by the Workbench.
+
+On **SQLite**, enter SQL and choose **Explain plan**. Results include native
+optimizer nodes and advisories for scans, indexes and temporary B-trees.
+This is a non-executing compile-time plan, **not** a runtime performance
+measurement; even a prepared modifying statement is **not run** by the plan
+action. Optimizer plan evidence is advisory, not proof that any particular
+index is beneficial. The plan endpoint is authenticated by the same
+loopback-only session token; it returns only a bounded plan summary, nodes
+and warnings, not the original SQL text.
 
 ## Deliberate preview limitations
 
@@ -66,7 +88,7 @@ rows arrive. Cancellation and timeout behaviour still require live database
 qualification for remote engines.
 
 These controls do not make native SQL read-only. Always use least-privilege
-database credentials and production change governance. Cursor/keyset pagination, full live cancellation qualification, database profiles, settings, saved sessions, editable grids, comprehensive SQL Server catalogue parity, migration workflows, installer, backups and recoveries are not delivered here.
+database credentials and production change governance. Context-aware SQL language-server completion, graphical plans for other dialects, advanced formatting, cursor/keyset pagination, full live cancellation qualification, database profiles, settings, saved sessions, editable grids, comprehensive SQL Server catalogue parity, migration workflows, installer, backups and recoveries are not delivered here.
 
 The browser receives **only** row data, metadata and an ephemeral API token, never full connection credentials. The local HTTP server does not persist queries, passwords, or result sets. It does not store browser history. Stop it using Ctrl+C.
 
@@ -78,6 +100,6 @@ npm run verify
 npm run release:check
 ~~~
 
-The HTTP acceptance suite connects to **real Node SQLite**, verifies the demo and an existing read-only file, exercises object browsing, bounded paging, column-validated sorting, parameterized filters, SQL execution, permissions, wrong-origin and missing-token requests, large inputs, native SQLite over-budget rejection, asynchronous cancellation contracts and the CLI launcher. Other engine connections use the underlying supported public API but have not yet been live-qualified through this graphical frontend.
+The HTTP acceptance suite connects to **real Node SQLite**, verifies the demo and an existing read-only file, exercises native SQLite optimizer plans without executing modifying statements, browser completion candidate contracts, object browsing, bounded paging, column-validated sorting, parameterized filters, SQL execution, permissions, wrong-origin and missing-token requests, large inputs, native SQLite over-budget rejection, asynchronous cancellation contracts and the CLI launcher. Other engine connections use the underlying supported public API but have not yet been live-qualified through this graphical frontend.
 
 See [Product Blueprint](../../docs/product/BLUEPRINT.md) for the independent core platform boundary.

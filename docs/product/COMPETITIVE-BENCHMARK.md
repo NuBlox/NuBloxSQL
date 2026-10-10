@@ -52,6 +52,14 @@ safer or more capable without reproducible tests and a documented baseline.
 The local Workbench preview under `apps/workbench` supplies a real graphical
 explorer, SQL input, metadata-validated table browsing with database-side
 paging/sorting/parameterized exact-match filtering, result grids and CSV download.
+The graphical Workbench editor includes lightweight, metadata-backed SQL
+keyword/table/current-table-column completion, plus **non-executing native
+SQLite optimizer plans** via the existing NuBloxSQL diagnosis API.
+These are real local SQLite capabilities with integration tests, **not**
+a claim of parity with DBeaver/DataGrip language servers, graphical execution
+plans on PostgreSQL/MySQL/SQL Server, runtime execution analysis or
+full dialect-aware formatting.
+
 The graphical SQL editor now imposes native row and byte budgets on SQLite
 and MySQL results. PostgreSQL/MySQL/SQL Server receive a driver-backed Stop
 request and 15-second timeout, but live cancellation must be independently
