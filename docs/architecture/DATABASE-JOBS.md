@@ -102,6 +102,22 @@ under the canonical `discovery.server` job kind.
 
 This is **internal infrastructure**, not a published job API, general scheduler, database configuration mutator, or credential manager. Qualified mutation executors still require a separate explicit approval/policy subsystem and target-side fencing/reconciliation.
 
+### Second domain executor adapter — read-only local-host inspection (10 October 2026)
+
+`lib/jobs/HostInspectionJobAdapter.js` integrates the existing
+`InstallationProvider.inspect()` / `LocalHostInstallationProvider.create()`
+contract with the durable worker under `inspection.host`.
+
+- One `inspect-local-host` step, `Discover` phase, `local-process-host` scope and a fixed read-only / no-host-mutation policy.
+- Exact binding to a credential-free `local-host:<hostname>` identity and a qualified local-host provider ID; mismatches block execution or verification.
+- The adapter constructs the existing **read-only local-host provider** rather than accepting an arbitrary callback, and never exposes a host-mutating action.
+- Runs the actual provider inspection on execution, checkpointing **only** an inspection SHA-256 hash, installed-engine count and resource count. Paths, command output, usernames, tool/version details and native metadata stay out of the JobStore.
+- Requires an independent fresh inspection on verification; any difference in provider evidence blocks success.
+- Checks cancellation around each inspection, without falsely claiming to interrupt a synchronous host probe already in progress.
+- Exercises complete durable execution, repeat inspection, drift detection, wrong-host rejection, validation and sensitive-payload exclusion in `test/host-inspection-job-adapter.js`.
+
+This is an internal same-host adapter, not host installation or configuration, remote management, a public job API or an approval mechanism. Production caller-owned `providerOptions`, especially custom command runners and filesystem implementations, remain trusted application code.
+
 ## Scope
 
 The job architecture applies to work that is:
