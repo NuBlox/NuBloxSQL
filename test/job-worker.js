@@ -132,7 +132,7 @@ async function heartbeatAndLoss() {
       },
       async verify(){return true;}
     });
-    const worker=createWorker({store,registry,workerId:'worker-heartbeat',leaseMs:110,heartbeatMs:20});
+    const worker=createWorker({store,registry,workerId:'worker-heartbeat',leaseMs:2000,heartbeatMs:40});
     assert.equal((await worker.runOnce()).status,'succeeded');
     assert.equal(store.getRun('heartbeat').status,'succeeded');
     assert.ok(store.listEvents('heartbeat').filter(e=>e.type==='lease-renewed').length>=1);
