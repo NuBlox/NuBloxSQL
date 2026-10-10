@@ -181,7 +181,7 @@ async function concurrentClaims() {
 async function validateInputs() {
   assert.throws(()=>createWorker({workerId:'',store:{},registry:{}}),/workerId/);
   assert.throws(()=>createWorker({workerId:'id',store:{},registry:{}}),/JobStore/);
-  assert.throws(()=>createWorker({workerId:'id',store:{getPlan(){},renewLease(){}},registry:{},leaseMs:100,heartbeatMs:70}),/heartbeatMs/);
+  assert.throws(()=>createWorker({workerId:'id',store:{getPlan(){},renewLease(){}},registry:{resolve(){return null;}},leaseMs:100,heartbeatMs:70}),/heartbeatMs/);
 }
 
 (async () => {
