@@ -4,8 +4,6 @@ var Shell=require('./Shell').Shell;
 var repl=require('./Repl');
 var output=require('./Output');
 var pkg=require('../package.json');
-var fs=require('node:fs');
-var path=require('node:path');
 
 function take(argv,index,name){
   if(index+1>=argv.length)throw new TypeError('NuBlox Shell '+name+' requires a value');
@@ -23,19 +21,6 @@ function parseOption(value){
   if(index<=0)throw new TypeError('NuBlox Shell --option requires key=value');
   return {key:value.slice(0,index),value:scalar(value.slice(index+1))};
 }
-function scopedFile(filename,label){
-  // File-mode requests are intentionally confined to the caller's current
-  // directory; absolute paths, parent traversal and directory separators
-  // are prohibited even if the OS would otherwise permit them.
-  if(typeof filename!=='string'||filename!==path.basename(filename)||
-     filename==='.'||filename==='..'||!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(filename)){
-    throw new TypeError('NuBlox Shell '+label+' requires a simple filename in the current directory (no path separators)');
-  }
-  // basename is a path traversal sanitizer, while a resolved parent keeps
-  // access constrained to the local working directory.
-  return path.join(process.cwd(),path.basename(filename));
-}
-
 function parseArgs(argv){
   argv=Array.isArray(argv)?argv:[];
   var options={format:'table',extra:{}};
@@ -45,8 +30,7 @@ function parseArgs(argv){
     if(arg==='--version'||arg==='-v'){options.version=true;continue;}
     if(arg==='--demo'){options.demo=true;continue;}
     if(arg==='--doctor'){options.doctor=true;continue;}
-    if(arg==='--file'){options.file=take(argv,i,'--file');i+=1;continue;}
-    if(arg==='--output'){options.output=take(argv,i,'--output');i+=1;continue;}
+    if(arg==='--stdin'){options.stdin=true;continue;}
     if(arg==='--no-pool'){options.pool=false;continue;}
     if(arg==='--pool'){options.pool=true;continue;}
     if(arg==='--url'){options.url=take(argv,i,'--url');i+=1;continue;}
@@ -67,19 +51,9 @@ function parseArgs(argv){
     throw new RangeError('Unknown NuBlox Shell option "'+arg+'"');
   }
   if(output.FORMATS.indexOf(options.format)===-1)throw new RangeError('NuBlox Shell output format must be one of: '+output.FORMATS.join(', '));
-  var modes=[options.execute!==undefined,options.command!==undefined,
-    options.demo===true,options.doctor===true,options.file!==undefined];
-  if(modes.filter(Boolean).length>1){
-    throw new Error('NuBlox Shell accepts only one of --execute, --command, --file, --demo, or --doctor');
-  }
-  if(options.output!==undefined&&!modes.some(Boolean)){
-    throw new Error('NuBlox Shell --output requires --execute, --command, --file, --demo, or --doctor');
-  }
-  if(options.file!==undefined&&(!options.file.trim()||options.file==='-')){
-    throw new TypeError('NuBlox Shell --file must identify a readable SQL file');
-  }
-  if(options.output!==undefined&&(!options.output.trim()||options.output==='-')){
-    throw new TypeError('NuBlox Shell --output must identify a new results file');
+  if([options.execute!==undefined,options.command!==undefined,
+      options.stdin===true,options.demo===true,options.doctor===true].filter(Boolean).length>1){
+    throw new Error('NuBlox Shell accepts only one of --execute, --command, --stdin, --demo, or --doctor');
   }
   return options;
 }
@@ -95,7 +69,7 @@ function help(){
     '  nublox --demo                          No configuration required',
     '  nublox --doctor                        Self-test using in-memory SQLite',
     '  nublox --url <database-url> --doctor   Validate a real connection',
-    '  nublox --url <database-url> --file query.sql --output results.csv --format csv',
+    '  nublox --url <database-url> --stdin --format csv < query.sql > results.csv',
     '',
     'Connection:',
     '  --url <url>              NuBloxSQL-supported connection URL',
@@ -116,8 +90,7 @@ function help(){
     'Execution:',
     '  -e, --execute <sql>      Execute native SQL and exit',
     '  -c, --command <command>  Execute one NuBlox Shell command and exit',
-    '  --file <filename>        Execute one SQL statement from a UTF-8 file in current directory',
-    '  --output <filename>      Save to a NEW file in current directory (never overwrite)',
+    '  --stdin                  Read one SQL statement from stdin (maximum 1 MiB)',
     '  --demo                   Run an isolated SQLite in-memory example and exit',
     '  --doctor                 Verify query and discovery, then exit with status',
     '  --format <format>        table | json | jsonl | csv',
@@ -171,36 +144,7 @@ async function run(argv,io,env,sqlApi){
   }
 
   var shell=new Shell({sqlApi:sqlApi,format:options.format});
-  var outputFd=null;
-  var outputWritten=false;
-  var targetOutput=null;
-
-  function emit(value){
-    var text=value===undefined||value===null?'':String(value);
-    if(!text)return;
-    if(outputFd===null){stdout.write(text+'\n');return;}
-    fs.writeFileSync(outputFd,text+'\n',{encoding:'utf8'});
-    fs.fsyncSync(outputFd);
-    outputWritten=true;
-  }
-
   try{
-    // Reserve output exclusively BEFORE running SQL: a pre-existing file
-    // cannot turn a completed mutation into a failed export.
-    if(options.output!==undefined){
-      targetOutput=scopedFile(options.output,'--output');
-      outputFd=fs.openSync(targetOutput,'wx',0o600);
-    }
-
-    var statement=null;
-    if(options.file!==undefined){
-      var sourceFile=scopedFile(options.file,'--file');
-      var info=fs.lstatSync(sourceFile);
-      if(!info.isFile()||info.size>1024*1024)throw new Error('NuBlox Shell SQL input must be a regular UTF-8 file of at most 1 MiB (no symlinks)');
-      statement=fs.readFileSync(sourceFile,'utf8').replace(/^\uFEFF/,'').trim();
-      if(!statement)throw new Error('NuBlox Shell SQL input is empty');
-    }
-
     shell.connect(connection);
     if(options.demo){
       await shell.executeLine('CREATE TABLE nublox_demo (id INTEGER PRIMARY KEY, name TEXT NOT NULL)');
@@ -214,7 +158,7 @@ async function run(argv,io,env,sqlApi){
         tables:demoTables.map(function(item){return item.name;}),
         rows:demoRows.value
       };
-      emit(output.render(demo,options.format));
+      stdout.write(output.render(demo,options.format)+'\n');
       return 0;
     }
     if(options.doctor){
@@ -224,26 +168,45 @@ async function run(argv,io,env,sqlApi){
       if(!report||!report.identity||!report.identity.version||!report.summary){
         throw new Error('NuBloxSQL doctor could not obtain valid server discovery evidence');
       }
-      emit(output.render({
+      stdout.write(output.render({
         status:'ok',mode:selfTest?'self-test':'connection',
         dialect:shell.client.dialect,
         serverVersion:report.identity.version,
         databasesVisible:report.summary.databases,
         check:1
-      },options.format));
+      },options.format)+'\n');
       return 0;
     }
-    if(options.execute!==undefined||options.file!==undefined){
-      var sqlResult=await shell.executeLine(statement===null?options.execute:statement);
+    if(options.stdin){
+      var input=io.stdin||process.stdin;
+      if(!input||typeof input[Symbol.asyncIterator]!=='function'){
+        throw new TypeError('NuBlox Shell --stdin requires a readable stdin stream');
+      }
+      var parts=[],bytes=0;
+      for await (var part of input){
+        var chunk=Buffer.isBuffer(part)?part:Buffer.from(String(part),'utf8');
+        bytes+=chunk.length;
+        if(bytes>1024*1024)throw new Error('NuBlox Shell --stdin SQL statement exceeds 1 MiB');
+        parts.push(chunk);
+      }
+      var source=Buffer.concat(parts).toString('utf8').replace(/^\uFEFF/,'').trim();
+      if(!source)throw new Error('NuBlox Shell --stdin SQL statement is empty');
+      var stdinResult=await shell.executeLine(source);
+      var stdinText=shell.render(stdinResult);
+      if(stdinText)stdout.write(stdinText+'\n');
+      return 0;
+    }
+    if(options.execute){
+      var sqlResult=await shell.executeLine(options.execute);
       var sqlText=shell.render(sqlResult);
-      emit(sqlText);
+      if(sqlText)stdout.write(sqlText+'\n');
       return 0;
     }
     if(options.command){
       var command=options.command.charAt(0)==='\\'?options.command:'\\'+options.command;
       var commandResult=await shell.executeLine(command);
       var commandText=shell.render(commandResult);
-      emit(commandText);
+      if(commandText)stdout.write(commandText+'\n');
       return commandResult.kind==='quit'?0:0;
     }
     return await repl.run(shell,io);
@@ -252,10 +215,6 @@ async function run(argv,io,env,sqlApi){
     return 1;
   }finally{
     try{await shell.close();}catch(closeError){stderr.write((closeError&&closeError.message?closeError.message:String(closeError))+'\n');}
-    if(outputFd!==null){
-      try{fs.closeSync(outputFd);}catch(ignore){}
-      if(!outputWritten&&targetOutput!==null){try{fs.unlinkSync(targetOutput);}catch(ignore){}}
-    }
   }
 }
 

@@ -75,30 +75,28 @@ Avoid putting passwords directly into shell history. Prefer environment/secret i
 
 Any non-command input is sent as native SQL through `Client.query()`. Multi-line SQL is accumulated until a line ends with `;`.
 
-## SQL files and exporting results
+## SQL files and CSV/JSON export
 
-The Shell accepts **one dialect-native SQL statement** from a UTF-8 file
-(up to 1 MiB). Input and output filenames are restricted to **simple names
-in the current working directory**, without absolute paths, directory
-separators, parent traversal or input symlinks. Run the Shell from the folder
-containing the input SQL file and desired output destination. The result can
-be written to a **new** file, with no overwrite and owner-only permissions:
+For a single native SQL statement saved in `query.sql`, use standard
+input/output redirection rather than granting NuBloxSQL direct file-path
+access. The command accepts up to 1 MiB of SQL:
 
 ```bash
-node apps/shell/bin/nublox.js \
-  --dialect sqlite --filename ./my-existing.sqlite \
-  --file query.sql --format csv --output results.csv
+node apps/shell/bin/nublox.js --dialect sqlite --filename ./database.sqlite \
+  --stdin --format csv < query.sql > results.csv
 ```
 
-`--output` also works with `--execute`, `--command`, `--doctor` and
-`--demo`. It refuses an existing destination *before* opening a database,
-and removes an incomplete export if an operation fails.
+Change `--format csv` to `json`, `jsonl` or `table` as required.
 
-**Scope:** `--file` executes a single native SQL statement (including
-comments and multi-line SQL), not a migration or transactional multi-statement
-script runner. For multi-statement interactive work, use the REPL. Do not use
-`--file` as an unattended migration mechanism until script boundaries,
-transactions and error recovery are explicitly qualified.
+**Warning:** `>` can overwrite an existing output file. On macOS using
+zsh, run `setopt noclobber` first to refuse overwrites, or select a
+new results filename. The database driver itself does not write output files.
+
+`--stdin` executes **one** dialect-native SQL statement. It does not
+interpret migration scripts or split multiple statements. For commands
+and multiple interactive statements, use the existing REPL. Native SQL
+can change a connected database: use a suitably restricted database user
+for inspection-only workflows.
 
 ## Automation
 

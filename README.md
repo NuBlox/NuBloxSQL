@@ -55,18 +55,18 @@ node apps/shell/bin/nublox.js --dialect sqlite --filename ./database.sqlite
 Enter `\\help`, `\\server`, `\\tables`, native SQL terminated by `;`,
 or `\\quit`. See [NuBlox Shell](apps/shell/README.md).
 
-Export a real SQL statement from a file:
+Read a single SQL statement from a file and save results using terminal
+redirection:
 
 ```bash
-# query.sql contains one native SQL statement
 node apps/shell/bin/nublox.js --dialect sqlite --filename ./database.sqlite \
-  --file query.sql --format csv --output results.csv
+  --stdin --format csv < query.sql > results.csv
 ```
 
-Input and output filenames must be simple names in the current directory;
-absolute paths, directory traversal and input symlinks are rejected. Exports
-use new files only (no overwrites). The Shell currently supports
-individual SQL file statements, not a multi-statement migration runner.
+The Shell does not open the SQL or results files itself; zsh/bash handle
+redirection. Use `setopt noclobber` in zsh to prevent an existing results
+file being overwritten. `--stdin` is for one SQL statement, **not**
+a multi-statement migration or transaction script.
 
 ## Current release line
 
