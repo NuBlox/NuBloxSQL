@@ -2,6 +2,41 @@
 
 NuBlox Shell is the terminal interface for NuBloxSQL. It intentionally contains no database-engine implementation; commands use the public `nubloxsql` API.
 
+## Working today: quick start from the repository
+
+From the NuBloxSQL repository root, on Node.js 22 or later:
+
+```bash
+node apps/shell/bin/nublox.js --demo --format json
+node apps/shell/bin/nublox.js --doctor --format json
+npm run smoke
+```
+
+`--demo` creates a **temporary, in-memory SQLite database**, inserts two
+example records, queries them and inspects its tables. It never touches your
+existing database or the configured `NUBLOX_DATABASE_URL`.
+
+`--doctor` validates both a query and database-server discovery; without
+connection settings it self-tests against in-memory SQLite. To check a
+database that you actually intend to use, supply your normal connection
+options, for example:
+
+```bash
+node apps/shell/bin/nublox.js --dialect sqlite --filename ./my-existing.sqlite --doctor --format json
+```
+
+Non-SQLite installations can use their existing `--url` or
+`--dialect`/`--host`/`--user`/`--database` settings instead.
+The doctor exits with status **0** only if the query and discovery pass,
+**1** on runtime/connection failure, and **2** on invalid CLI options.
+It does not change database schema or content.
+
+The `npm run smoke` acceptance suite runs the real Shell executable
+against both in-memory and file-backed SQLite, including SQL queries,
+catalogue browsing, table descriptions, interactive input and failure cases.
+It does **not** qualify connectivity to your remote PostgreSQL, MySQL or
+SQL Server instances; those require reachable databases and credentials.
+
 ## Install
 
 ```bash

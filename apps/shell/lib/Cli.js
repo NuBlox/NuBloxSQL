@@ -28,6 +28,8 @@ function parseArgs(argv){
     var arg=argv[i];
     if(arg==='--help'||arg==='-h'){options.help=true;continue;}
     if(arg==='--version'||arg==='-v'){options.version=true;continue;}
+    if(arg==='--demo'){options.demo=true;continue;}
+    if(arg==='--doctor'){options.doctor=true;continue;}
     if(arg==='--no-pool'){options.pool=false;continue;}
     if(arg==='--pool'){options.pool=true;continue;}
     if(arg==='--url'){options.url=take(argv,i,'--url');i+=1;continue;}
@@ -48,7 +50,9 @@ function parseArgs(argv){
     throw new RangeError('Unknown NuBlox Shell option "'+arg+'"');
   }
   if(output.FORMATS.indexOf(options.format)===-1)throw new RangeError('NuBlox Shell output format must be one of: '+output.FORMATS.join(', '));
-  if(options.execute&&options.command)throw new Error('NuBlox Shell accepts either --execute or --command, not both');
+  if([options.execute!==undefined,options.command!==undefined,options.demo===true,options.doctor===true].filter(Boolean).length>1){
+    throw new Error('NuBlox Shell accepts only one of --execute, --command, --demo, or --doctor');
+  }
   return options;
 }
 function help(){
@@ -60,6 +64,9 @@ function help(){
     '  nublox --dialect <dialect> [connection options]',
     '  nublox --url <database-url> --execute "SELECT ..."',
     '  nublox --url <database-url> --command "\\tables"',
+    '  nublox --demo                          No configuration required',
+    '  nublox --doctor                        Self-test using in-memory SQLite',
+    '  nublox --url <database-url> --doctor   Validate a real connection',
     '',
     'Connection:',
     '  --url <url>              NuBloxSQL-supported connection URL',
@@ -80,6 +87,8 @@ function help(){
     'Execution:',
     '  -e, --execute <sql>      Execute native SQL and exit',
     '  -c, --command <command>  Execute one NuBlox Shell command and exit',
+    '  --demo                   Run an isolated SQLite in-memory example and exit',
+    '  --doctor                 Verify query and discovery, then exit with status',
     '  --format <format>        table | json | jsonl | csv',
     '',
     'General:',
@@ -120,15 +129,50 @@ async function run(argv,io,env,sqlApi){
   if(options.help){stdout.write(help()+'\n');return 0;}
   if(options.version){stdout.write(pkg.version+'\n');return 0;}
 
-  var connection=connectionFrom(options,env);
+  var suppliedConnection=connectionFrom(options,env);
+  var selfTest=options.doctor===true&&!suppliedConnection;
+  var connection=options.demo||selfTest
+    ? {dialect:'sqlite',filename:':memory:',pool:false}
+    : suppliedConnection;
   if(!connection){
-    stderr.write('NuBlox Shell requires --url, NUBLOX_DATABASE_URL, DATABASE_URL, or --dialect connection options.\n');
+    stderr.write('NuBlox Shell requires --url, NUBLOX_DATABASE_URL, DATABASE_URL, or --dialect connection options. Try --demo or --doctor for a configuration-free test.\n');
     return 2;
   }
 
   var shell=new Shell({sqlApi:sqlApi,format:options.format});
   try{
     shell.connect(connection);
+    if(options.demo){
+      await shell.executeLine('CREATE TABLE nublox_demo (id INTEGER PRIMARY KEY, name TEXT NOT NULL)');
+      await shell.executeLine("INSERT INTO nublox_demo (id, name) VALUES (1, 'NuBloxSQL'), (2, 'SQLite')");
+      var demoRows=await shell.executeLine('SELECT id, name FROM nublox_demo ORDER BY id');
+      var demoServer=await shell.client.discoverServer();
+      var demoTables=await shell.client.metadata.tables({});
+      var demo={
+        status:'ok',mode:'demo',dialect:'sqlite',database:':memory:',
+        serverVersion:demoServer.identity.version,
+        tables:demoTables.map(function(item){return item.name;}),
+        rows:demoRows.value
+      };
+      stdout.write(output.render(demo,options.format)+'\n');
+      return 0;
+    }
+    if(options.doctor){
+      var check=await shell.client.one('SELECT 1 AS nublox_check');
+      if(!check||Number(check.nublox_check)!==1)throw new Error('NuBloxSQL doctor query returned an unexpected result');
+      var report=await shell.client.discoverServer();
+      if(!report||!report.identity||!report.identity.version||!report.summary){
+        throw new Error('NuBloxSQL doctor could not obtain valid server discovery evidence');
+      }
+      stdout.write(output.render({
+        status:'ok',mode:selfTest?'self-test':'connection',
+        dialect:shell.client.dialect,
+        serverVersion:report.identity.version,
+        databasesVisible:report.summary.databases,
+        check:1
+      },options.format)+'\n');
+      return 0;
+    }
     if(options.execute){
       var sqlResult=await shell.executeLine(options.execute);
       var sqlText=shell.render(sqlResult);
