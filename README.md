@@ -21,6 +21,40 @@ const row = await db.one(sql`SELECT id, name FROM users WHERE id = ${42}`);
 await db.close();
 ```
 
+## Try NuBloxSQL now
+
+The repository includes a runnable Shell, not just library contracts.
+From a freshly cloned checkout with Node.js 22 or later:
+
+```bash
+npm install --no-package-lock
+node apps/shell/bin/nublox.js --demo --format json
+node apps/shell/bin/nublox.js --doctor --format json
+npm run smoke
+```
+
+The demo makes an isolated **in-memory SQLite** database, inserts sample
+records, lists tables and runs a real query; it does not access live databases.
+The doctor validates a real query and server discovery against in-memory
+SQLite by default, or against your configured database:
+
+```bash
+# For an existing SQLite database:
+node apps/shell/bin/nublox.js --dialect sqlite --filename ./database.sqlite --doctor --format json
+
+# For a configured PostgreSQL/MySQL/SQL Server connection:
+node apps/shell/bin/nublox.js --url "$NUBLOX_DATABASE_URL" --doctor --format json
+```
+
+The connection check is read-only. For interactive use:
+
+```bash
+node apps/shell/bin/nublox.js --dialect sqlite --filename ./database.sqlite
+```
+
+Enter `\\help`, `\\server`, `\\tables`, native SQL terminated by `;`,
+or `\\quit`. See [NuBlox Shell](apps/shell/README.md).
+
 ## Current release line
 
 Repository package version: **1.1.0**.
