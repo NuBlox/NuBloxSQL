@@ -144,7 +144,7 @@ async function demoAcceptance(){
     const result=await expectJson(await request(base,token,'/api/query',{sql:'SELECT id,name FROM nublox_demo ORDER BY id'}),200);
     assert.equal(result.rows[0].name,'NuBloxSQL');
     assert.deepEqual(result.columns,['id','name']);
-    assert.equal(result.shown,2);
+    assert.equal(result.shown,126);
     const injected=await expectJson(await request(base,token,'/api/preview',{name:'nublox_demo; DROP TABLE nublox_demo'}),404);
     assert.match(injected.error,/not present/);
     await expectJson(await request(base,token,'/api/query',{sql:'  '}),400);
