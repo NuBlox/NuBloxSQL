@@ -15,6 +15,7 @@
     "test/job-kernel.js",
     "test/sqlite-job-store.js",
     "test/job-worker.js",
+    "test/server-discovery-job-adapter.js",
     "test/sql-capability-compatibility.js",
     "test/sql-capability-runtime.js",
     "test/sql-capability-rewrite.js",
