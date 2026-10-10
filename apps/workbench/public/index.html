@@ -40,6 +40,17 @@
         </section>
         <section class="results-panel" aria-label="Query results">
           <div class="results-toolbar"><div class="results-heading"><strong>Results</strong><span id="result-status" class="status-text">Ready</span></div><div class="results-actions"><span class="duration" id="duration"></span><button class="secondary-button" id="export-csv" disabled>↓ Export CSV</button></div></div>
+          <div id="browse-controls" class="browse-controls" hidden>
+            <div class="browse-row">
+              <label>Sort <select id="sort-column" aria-label="Sort column"></select></label>
+              <label>Order <select id="sort-direction" aria-label="Sort direction"><option value="asc">Ascending</option><option value="desc">Descending</option></select></label>
+              <label>Filter column <select id="filter-column" aria-label="Filter column"><option value="">No filter</option></select></label>
+              <label>Equals <input id="filter-value" aria-label="Exact filter value" maxlength="256" placeholder="Exact value" autocomplete="off"></label>
+              <button id="apply-browse" class="secondary-button">Apply</button>
+              <button id="clear-browse" class="secondary-button">Clear</button>
+            </div>
+            <div class="browse-pager"><span id="browse-page-label">Page 1</span><span class="pager-note">Server-side, 50 rows per page</span><button class="secondary-button" id="browse-prev" disabled>← Previous</button><button class="secondary-button" id="browse-next" disabled>Next →</button></div>
+          </div>
           <div id="result-content" class="result-content"><div class="empty-state"><div class="empty-icon">▦</div><h3>Explore your data</h3><p>Run a query or select a table in the Explorer to see live results here.</p></div></div>
           <div class="results-bottom"><span id="row-counter">No rows</span><span id="result-caption">NuBloxSQL native runtime</span></div>
         </section>
