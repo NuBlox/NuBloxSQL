@@ -8,6 +8,7 @@ const browse=require('./Browse');
 // Local-only, single-session application built on the public NuBloxSQL API.
 const HTML=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
 const SCRIPT=fs.readFileSync(path.join(__dirname,'../public/app.js'),'utf8');
+const EDITOR_TOOLS=fs.readFileSync(path.join(__dirname,'../public/editor-tools.js'),'utf8');
 const STYLE=fs.readFileSync(path.join(__dirname,'../public/styles.css'),'utf8');
 const MAX_REQUEST=32768;
 const QUERY_TIMEOUT_MS=15000;
@@ -137,12 +138,44 @@ function createWorkbench(options={}){
       running=false;
     }
   }
+  function editorSql(body){
+    if(typeof body.sql!=='string'||!body.sql.trim())throw httpError(400,'Enter a SQL statement');
+    if(Buffer.byteLength(body.sql,'utf8')>16384)throw httpError(413,'SQL exceeds 16 KiB');
+    return body.sql.trim();
+  }
+  async function diagnose(sql){
+    if(client.dialect!=='sqlite')throw httpError(501,'Graphical query plans are currently qualified for SQLite only');
+    if(running)throw httpError(409,'A query is already running');
+    running=true;
+    const begin=process.hrtime.bigint();
+    try{
+      // Non-executing optimizer evidence. NEVER use analyze:true in Workbench.
+      const report=await client.diagnose(sql,{analyze:false});
+      const nativePlan=report.native&&report.native.plan;
+      if(!nativePlan||!Array.isArray(nativePlan.nodes))throw new Error('No native SQLite execution plan available');
+      const nodes=nativePlan.nodes.slice(0,100).map(function(node){
+        return {id:node.id,parentId:node.parentId,kind:node.kind,table:node.table,
+          index:node.index,detail:node.detail};
+      });
+      return {
+        mode:'plan',statementExecuted:false,
+        summary:nativePlan.summary||{},
+        warnings:(nativePlan.warnings||[]).slice(0,50).map(function(w){
+          return {code:w.code,message:w.message,nodeId:w.nodeId};
+        }),
+        nodes,
+        truncated:nativePlan.nodes.length>100,
+        elapsedMs:Number((process.hrtime.bigint()-begin)/1000000n)
+      };
+    }finally{running=false;}
+  }
   async function handle(req,res){
     try {
       const port=server.address().port;
       if(req.headers.host!=='127.0.0.1:'+port)return reply(res,403,{error:'Invalid local host'});
       const url=new URL(req.url,'http://127.0.0.1:'+port);
       const assets={'/assets/app.js':[SCRIPT,'text/javascript; charset=utf-8'],
+        '/assets/editor-tools.js':[EDITOR_TOOLS,'text/javascript; charset=utf-8'],
         '/assets/styles.css':[STYLE,'text/css; charset=utf-8']};
       if(req.method==='GET'&&url.pathname==='/'){
         secureHeaders(res,'text/html; charset=utf-8');
@@ -161,6 +194,7 @@ function createWorkbench(options={}){
         return reply(res,200,{
           status:'connected',dialect:client.dialect,demo,maxRows,
           mode:'local single-session',
+          editorFeatures:{completion:true,planSupported:client.dialect==='sqlite'},
           queryControl:{
             nativeRowByteBudget:client.dialect==='sqlite'||client.dialect==='mysql',
             cancelSupported:ABORT_DIALECTS.has(client.dialect),
@@ -205,10 +239,11 @@ function createWorkbench(options={}){
         return reply(res,200,result);
       }
       if(req.method==='POST'&&url.pathname==='/api/query'){
-        const body=await payload(req);
-        if(typeof body.sql!=='string'||!body.sql.trim())throw httpError(400,'Enter a SQL statement');
-        if(Buffer.byteLength(body.sql)>16384)throw httpError(413,'SQL exceeds 16 KiB');
-        return reply(res,200,await query(body.sql.trim()));
+        return reply(res,200,await query(editorSql(await payload(req))));
+      }
+      if(req.method==='POST'&&url.pathname==='/api/diagnose'){
+        if(client.dialect!=='sqlite')throw httpError(501,'Graphical query plans are currently qualified for SQLite only');
+        return reply(res,200,await diagnose(editorSql(await payload(req))));
       }
       return reply(res,405,{error:'Unsupported method or endpoint'});
     }catch(error){
