@@ -17,6 +17,7 @@
     "test/job-worker.js",
     "test/server-discovery-job-adapter.js",
     "test/host-inspection-job-adapter.js",
+    "test/workbench-smoke.js",
     "test/sql-capability-compatibility.js",
     "test/sql-capability-runtime.js",
     "test/sql-capability-rewrite.js",

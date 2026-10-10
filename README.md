@@ -71,6 +71,28 @@ redirection. Use `setopt noclobber` in zsh to prevent an existing results
 file being overwritten. `--stdin` is for one SQL statement, **not**
 a multi-statement migration or transaction script.
 
+## Graphical Workbench preview
+
+Launch a local graphical SQL workspace without installing a database server:
+
+```bash
+npm install --no-package-lock
+npm run workbench:demo
+```
+
+Open the `http://127.0.0.1:4277/` address displayed in Terminal.
+Explore the sample table, run native SQL, inspect columns and export query
+results. For an existing SQLite database in read-only mode:
+
+```bash
+npm run workbench -- --dialect sqlite --filename "$HOME/nublox-first-run.sqlite" --option mode=readonly
+```
+
+The Workbench is **localhost-only, single-session and a preview**. It is not
+publicly deployed or separately released. PostgreSQL/MySQL/SQL Server connections
+use the core API but are not yet live-qualified end to end through the graphical
+app. See [Workbench limitations and security](apps/workbench/README.md).
+
 ## First-run walkthrough: create a real database
 
 You can complete this workflow on macOS with Node.js 24 LTS without
@@ -154,7 +176,7 @@ NuBloxSQL now also includes a read-only local-host lifecycle provider for platfo
 NuBloxSQL is the platform beneath official NuBlox database tools.
 
 - **NuBlox Shell** (`apps/shell/`) — interactive REPL and automation-friendly CLI built only on the public `nubloxsql` API.
-- **NuBlox SQL Workbench** — planned graphical database engineering/management application using the same public platform boundary.
+- **NuBlox SQL Workbench** (`apps/workbench/`) — **runnable local graphical preview** built on the public API, with database explorer, SQL editor, result grid, inspector and CSV export. See [Workbench quick start](apps/workbench/README.md). A separately distributed, complete Workbench is still future scope.
 
 The Shell's architecture and roadmap are defined in [NuBlox Shell](docs/architecture/SHELL.md).
 
