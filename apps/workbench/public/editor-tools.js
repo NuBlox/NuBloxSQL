@@ -37,7 +37,6 @@
     }
     return state!=='code';
   }
-
   const HIGHLIGHT_WORDS=new Set(KEYWORDS.flatMap(k=>k.split(' ')).concat([
     'TABLE','VIEW','INDEX','CREATE','ALTER','DROP','DELETE','INSERT','INTO',
     'PRIMARY','KEY','FOREIGN','REFERENCES','NULL','TRUE','FALSE','AND','OR',
@@ -75,42 +74,7 @@
         push(start,i,'comment');continue;
       }
       // PostgreSQL dollar-quoted strings, including tagged delimiters.
-      if(ch==='
-    options=options||{};
-    if(typeof text!=='string'||!Number.isInteger(position)||position<0||position>text.length)return [];
-    if(insideLiteral(text,position,options.dialect))return [];
-    const before=text.slice(0,position);
-    const word=before.match(/[A-Za-z_][A-Za-z0-9_$]*$/);
-    const prefix=word?word[0]:'';
-    const from=position-prefix.length;
-    // A suffix must not be silently overwritten.
-    if(position<text.length&&/[A-Za-z0-9_$]/.test(text[position]))return [];
-    if(!prefix&&!options.manual&&!resolveColumnContext(text,position,options))return [];
-    const qualified=resolveColumnContext(text,position,options);
-    const seen=new Set(),out=[];
-    function add(label,kind,replacement){
-      if(out.length>=12)return;
-      if(prefix&&!label.toLowerCase().startsWith(prefix.toLowerCase()))return;
-      const key=kind+':'+label.toLowerCase();
-      if(seen.has(key))return;
-      seen.add(key);
-      out.push({label,kind,insert:replacement,from,to:position});
-    }
-    if(!qualified)for(const k of KEYWORDS)add(k,'keyword',k);
-    for(const table of qualified?[]:Array.isArray(options.tables)?options.tables:[]){
-      if(!table||typeof table.name!=='string'||!table.name)continue;
-      const prefix=table.schema?identifier(table.schema,options.dialect)+'.':'';
-      add(table.name,table.type==='view'?'view':'table',prefix+identifier(table.name,options.dialect));
-    }
-    for(const col of Array.isArray(options.columns)?options.columns:[]){
-      if(!col||typeof col.name!=='string'||!col.name)continue;
-      add(col.name,'column',identifier(col.name,options.dialect));
-    }
-    return out;
-  }
-  global.NuBloxEditorTools=Object.freeze({suggestions,identifier,insideLiteral,highlight,resolveColumnContext});
-})(typeof window!=='undefined'?window:globalThis);
-&&dialect==='postgresql'){
+      if(ch==='$'&&dialect==='postgresql'){
         const tag=text.slice(i).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/);
         if(tag){
           const close=text.indexOf(tag[0],i+tag[0].length);
@@ -225,7 +189,8 @@
     const from=position-prefix.length;
     // A suffix must not be silently overwritten.
     if(position<text.length&&/[A-Za-z0-9_$]/.test(text[position]))return [];
-    if(!prefix&&!options.manual)return [];
+    if(!prefix&&!options.manual&&!resolveColumnContext(text,position,options))return [];
+    const qualified=resolveColumnContext(text,position,options);
     const seen=new Set(),out=[];
     function add(label,kind,replacement){
       if(out.length>=12)return;
@@ -235,8 +200,8 @@
       seen.add(key);
       out.push({label,kind,insert:replacement,from,to:position});
     }
-    for(const k of KEYWORDS)add(k,'keyword',k);
-    for(const table of Array.isArray(options.tables)?options.tables:[]){
+    if(!qualified)for(const k of KEYWORDS)add(k,'keyword',k);
+    for(const table of qualified?[]:Array.isArray(options.tables)?options.tables:[]){
       if(!table||typeof table.name!=='string'||!table.name)continue;
       const prefix=table.schema?identifier(table.schema,options.dialect)+'.':'';
       add(table.name,table.type==='view'?'view':'table',prefix+identifier(table.name,options.dialect));
@@ -247,5 +212,5 @@
     }
     return out;
   }
-  global.NuBloxEditorTools=Object.freeze({suggestions,identifier,insideLiteral});
+  global.NuBloxEditorTools=Object.freeze({suggestions,identifier,insideLiteral,highlight,resolveColumnContext});
 })(typeof window!=='undefined'?window:globalThis);
