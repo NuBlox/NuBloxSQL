@@ -107,7 +107,7 @@ The Shell may expose `\\engine install` and `\\engine initialize` only after the
 
 ## Cross-cutting foundation — Durable database jobs and workflows
 
-**Status:** the internal durable job foundation now includes immutable job plans/runs, a validated state machine, executor registry, a file-backed same-host SQLite JobStore, optimistic CAS, atomic run/event persistence, fencing-aware leases, lease renewal, crash/reopen qualification and multi-process lease contention tests. It remains internal: there is no public job API, scheduler, retry runner or workflow runtime yet. A bounded internal worker with checkpointed step execution, heartbeat renewal, fail-closed approval gating and required post-execution verification now exists.
+**Status:** the internal durable job foundation now includes immutable job plans/runs, a validated state machine, executor registry, a file-backed same-host SQLite JobStore, optimistic CAS, atomic run/event persistence, fencing-aware leases, lease renewal, crash/reopen qualification and multi-process lease contention tests. It remains internal: there is no public job API, scheduler, retry runner or workflow runtime yet. A bounded internal worker with checkpointed step execution, heartbeat renewal, fail-closed approval gating and required post-execution verification now exists. Internal deny-by-default job classification and same-host durable, authorizer-verified grants have been added; no mutation adapters are qualified or enabled by default.
 
 This is now a prerequisite substrate for later lifecycle automation rather than an isolated late feature.
 
@@ -115,8 +115,8 @@ Implement in this order:
 
 1. **Delivered foundation:** JobPlan / JobRun state contracts, checkpoint/event validation, executor registry and storage contract;
 2. **Delivered local persistence:** same-host SQLite JobStore with transactional CAS, fencing, renewal and conservative lease recovery;
-3. **Delivered worker foundation:** leased job execution, per-step checkpoints, heartbeat renewal, strict verification and conservative failure semantics; next: policy qualification, cancellation/retry and domain-specific adapters;
-4. **Read-only adapters delivered:** `discovery.server` for four SQL dialects and `inspection.host` via the existing local-host provider. Both bind targets, persist digest-only checkpoints and independently verify. Next: explicit policy before any mutation adapters for engine install/init, bootstrap, configuration, migration or data movement;
+3. **Delivered worker foundation:** leased job execution, per-step checkpoints, heartbeat renewal, strict verification and conservative failure semantics; next: native mutation-policy/target-fencing qualification, cancellation/retry and domain-specific adapters;
+4. **Read-only adapters delivered:** `discovery.server` for four SQL dialects and `inspection.host` via the existing local-host provider. Both bind targets, persist digest-only checkpoints and independently verify. Next: qualify target-side fencing/reconciliation and the approval authority before enabling any mutation adapters for engine install/init, bootstrap, configuration, migration or data movement;
 5. scheduler with timezone, overlap and misfire semantics;
 6. workflow DAG with gates, fan-out/fan-in and manual/external waits;
 7. read-only discovery of engine-native job systems;
