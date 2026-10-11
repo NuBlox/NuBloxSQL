@@ -8,6 +8,10 @@
   const toast=$('toast');
   const completion=$('completion-panel');
   const editorTools=window.NuBloxEditorTools;
+  const highlightLayer=$('sql-highlight');
+  const lineGuide=document.querySelector('.line-guide');
+  const columnCache=new Map();
+  const columnRequests=new Set();
   let knownTables=[],knownColumns=[],editorDialect='sqlite';
   let completionItems=[],completionIndex=0;
   let lastRows=[];
@@ -95,6 +99,25 @@
     table.append(header,body);wrapper.append(table);
     resultContent.replaceChildren(wrapper);
   }
+  function syncEditorScroll(){
+    highlightLayer.style.transform='translate(' +(-editor.scrollLeft)+'px,'+(-editor.scrollTop)+'px)';
+    const numbers=lineGuide.firstChild;
+    if(numbers)numbers.style.transform='translateY('+(-editor.scrollTop)+'px)';
+  }
+  function renderHighlight(){
+    if(!editorTools)return;
+    const fragment=document.createDocumentFragment();
+    for(const token of editorTools.highlight(editor.value,editorDialect)){
+      const part=node('span','syntax-'+token.kind,token.text);
+      fragment.append(part);
+    }
+    // Rendering uses inert DOM text nodes; SQL is never parsed as markup.
+    highlightLayer.replaceChildren(fragment);
+    const count=Math.min(2000,editor.value.split('\n').length);
+    const gutter=node('div','line-number-list',Array.from({length:count},(_,i)=>String(i+1).padStart(2,'0')).join('\n'));
+    lineGuide.replaceChildren(gutter);
+    syncEditorScroll();
+  }
   function hideCompletion(){
     completion.hidden=true;
     completion.replaceChildren();
@@ -105,13 +128,37 @@
     const item=completionItems[index];
     if(!item)return;
     editor.setRangeText(item.insert,item.from,item.to,'end');
+    renderHighlight();
     hideCompletion();
     editor.focus();
   }
   function showCompletion(manual){
     if(!editorTools){hideCompletion();return;}
-    const items=editorTools.suggestions(editor.value,editor.selectionStart,{
-      manual:manual===true,dialect:editorDialect,tables:knownTables,columns:knownColumns
+    const statement=editor.value;
+    const cursor=editor.selectionStart;
+    const aliasTable=editorTools.resolveColumnContext(statement,cursor,{
+      dialect:editorDialect,tables:knownTables
+    });
+    let columns=knownColumns;
+    if(aliasTable){
+      const key=(aliasTable.schema||'')+'\u0000'+aliasTable.name;
+      if(!columnCache.has(key)){
+        hideCompletion();
+        if(!columnRequests.has(key)){
+          columnRequests.add(key);
+          api('/api/columns',{name:aliasTable.name,schema:aliasTable.schema||undefined})
+            .then(function(result){
+              columnCache.set(key,result.columns||[]);
+              if(editor.value===statement&&editor.selectionStart===cursor)showCompletion(manual);
+            }).catch(function(e){message('Column completion: '+e.message,true);})
+            .finally(function(){columnRequests.delete(key);});
+        }
+        return;
+      }
+      columns=columnCache.get(key);
+    }
+    const items=editorTools.suggestions(statement,cursor,{
+      manual:manual===true,dialect:editorDialect,tables:knownTables,columns
     });
     if(!items.length){hideCompletion();return;}
     completionItems=items;
@@ -198,6 +245,7 @@
   }
   function setBrowseColumns(columns){
     knownColumns=Array.isArray(columns)?columns.slice():[];
+    if(activeTable)columnCache.set((activeTable.schema||'')+'\u0000'+activeTable.name,knownColumns);
     const names=(columns||[]).map(c=>c.name);
     const primary=(columns||[]).find(c=>c.primaryKey===true);
     const sort=$('sort-column'), filter=$('filter-column');
@@ -278,6 +326,7 @@
   async function refreshTables(){
     tableList.replaceChildren(node('div','loading','Refreshing catalogue…'));
     knownTables=[];
+    columnCache.clear();
     try{
       const items=(await api('/api/tables')).tables||[];
       knownTables=items;
@@ -345,12 +394,18 @@
       }
     }
     if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();runSQL();return;}
-    if(e.key==='Tab'){e.preventDefault();const start=editor.selectionStart;editor.setRangeText('  ',start,editor.selectionEnd,'end');}
+    if(e.key==='Tab'){
+      e.preventDefault();const start=editor.selectionStart;
+      editor.setRangeText('  ',start,editor.selectionEnd,'end');
+      renderHighlight();
+    }
   });
   editor.addEventListener('input',function(){
+    renderHighlight();
     if(editor.selectionStart===editor.selectionEnd)showCompletion(false);
     else hideCompletion();
   });
+  editor.addEventListener('scroll',syncEditorScroll);
   editor.addEventListener('click',hideCompletion);
   editor.addEventListener('blur',function(){window.setTimeout(hideCompletion,125);});
   Promise.all([api('/api/status'),refreshTables()]).then(function(results){
@@ -359,6 +414,7 @@
     $('connection-dialect').textContent=status.dialect.toUpperCase();
     $('language-label').textContent=status.dialect.toUpperCase();
     editorDialect=status.dialect;
+    renderHighlight();
     $('explain-query').hidden=!(status.editorFeatures&&status.editorFeatures.planSupported===true);
     $('connection-led').classList.add('live');
     canCancel=status.queryControl&&status.queryControl.cancelSupported===true;
@@ -369,5 +425,6 @@
       $('result-caption').textContent='Native SQL results may exceed the displayed-row cap';
     }
     if(status.demo)editor.value='SELECT id, name FROM nublox_demo ORDER BY id;';
+    renderHighlight();
   }).catch(function(e){$('connection-state').textContent='Unavailable';message(e.message,true);});
 })();

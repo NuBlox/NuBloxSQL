@@ -83,7 +83,8 @@ npm run workbench:demo
 Open the `http://127.0.0.1:4277/` address displayed in Terminal.
 Explore the sample table with server-side paging, sorting and exact-match
 filtering; run native SQL, inspect columns and export displayed query results.
-The SQL editor supports **Ctrl+Space metadata completion** and a
+The SQL editor includes **lossless SQL syntax highlighting** and **Ctrl+Space
+metadata completion**, including simple FROM/JOIN aliases, plus a
 **non-executing SQLite Explain plan** view. See the
 [Workbench guide](apps/workbench/README.md) for exact capabilities and limits. For an existing SQLite database in read-only mode:
 
