@@ -52,8 +52,11 @@ safer or more capable without reproducible tests and a documented baseline.
 The local Workbench preview under `apps/workbench` supplies a real graphical
 explorer, SQL input, metadata-validated table browsing with database-side
 paging/sorting/parameterized exact-match filtering, result grids and CSV download.
-The graphical Workbench editor includes lightweight, metadata-backed SQL
-keyword/table/current-table-column completion, plus **non-executing native
+The graphical Workbench editor includes **lossless, browser-side SQL syntax
+highlighting** and lightweight metadata-backed SQL completion for keywords,
+tables and columns (including simple FROM/JOIN aliases). Full parser-grade
+scoping, CTE resolution, nested joins, query refactoring and formatting remain
+unqualified and are not part of this milestone. It also includes **non-executing native
 SQLite optimizer plans** via the existing NuBloxSQL diagnosis API.
 These are real local SQLite capabilities with integration tests, **not**
 a claim of parity with DBeaver/DataGrip language servers, graphical execution

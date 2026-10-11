@@ -47,6 +47,8 @@ async function demoAcceptance(){
     assert.match(html,/id="cancel-query"/);
     assert.match(html,/id="explain-query"/);
     assert.match(html,/id="completion-panel"/);
+    assert.match(html,/id="sql-highlight"/);
+    assert.match(html,/class="editor-input-layer"/);
     assert.match(html,/assets\/editor-tools.js/);
     assert.match(html,/id="sort-column"/);
     assert.match(html,/id="filter-column"/);
@@ -59,6 +61,9 @@ async function demoAcceptance(){
     assert.match(javascript,/browsePage/);
     assert.match(javascript,/explainSQL/);
     assert.match(javascript,/showCompletion/);
+    assert.match(javascript,/renderHighlight/);
+    assert.match(javascript,/syncEditorScroll/);
+    assert.match(javascript,/columnCache/);
     const editorSource=await (await fetch(statusUrl(base,'/assets/editor-tools.js'))).text();
     const sandbox={window:{}};
     vm.runInNewContext(editorSource,sandbox,{timeout:1000});
@@ -85,6 +90,56 @@ async function demoAcceptance(){
     assert.equal(tools.suggestions('SELECT /* nub',13,{manual:true,dialect:'sqlite'}).length,0);
     assert.ok(tools.suggestions('SELECT nu',9,{manual:false,dialect:'sqlite',
       tables:[{name:'nublox_demo'}]}).some(item=>item.label==='nublox_demo'));
+
+    // The mirror lexer must preserve every byte of native SQL, including
+    // literals/comments and dialect-specific quoted identifiers.
+    const highlightCases=[
+      ['sqlite',"SELECT id, 'it''s <unsafe>' FROM \"order items\" -- note\\nWHERE id = 42"],
+      ['mysql', 'select `odd`, 23.5 from `sales` # hash comment\\nwhere x=1'],
+      ['postgresql', "SELECT $"+"$a 'quote' -- still literal$"+"$, $tag$something$tag$"],
+      ['sqlserver','SELECT [right]]name] FROM [order]; /* testing */'],
+      ['sqlite','SELECT * FROM t /* unterminated comment']
+    ];
+    for(const [dialect,raw] of highlightCases){
+      const source=raw;
+      const parts=tools.highlight(source,dialect);
+      assert.equal(parts.map(p=>p.text).join(''),source,'lossless SQL highlighting '+dialect);
+      assert.ok(parts.every(p=>typeof p.text==='string'&&typeof p.kind==='string'));
+    }
+    const coloured=tools.highlight("SELECT 'danger <b>x</b>' AS label -- comment", 'sqlite');
+    assert.ok(coloured.some(p=>p.kind==='keyword'&&p.text==='SELECT'));
+    assert.ok(coloured.some(p=>p.kind==='string'&&p.text.includes('<b>')));
+    assert.ok(coloured.some(p=>p.kind==='comment'));
+    const joined='SELECT o.to FROM customers c JOIN orders o ON o.customer_id = c.id';
+    const orderMetadata=[
+      {name:'customers',schema:'main',type:'table'},
+      {name:'orders',schema:'main',type:'table'}
+    ];
+    const aliasCursor=joined.indexOf('o.to')+4;
+    const resolved=tools.resolveColumnContext(joined,aliasCursor,{
+      dialect:'sqlite',tables:orderMetadata
+    });
+    assert.equal(resolved.name,'orders');
+    const aliasCompletions=tools.suggestions(joined,aliasCursor,{
+      dialect:'sqlite',tables:orderMetadata,columns:[{name:'total'},{name:'customer_id'}]
+    });
+    assert.ok(aliasCompletions.some(c=>c.kind==='column'&&c.label==='total'&&c.insert==='"total"'));
+    assert.ok(!aliasCompletions.some(c=>c.kind==='keyword'));
+    const aliasDot='SELECT o. FROM customers c JOIN orders o';
+    const dot=tools.suggestions(aliasDot,aliasDot.indexOf('o.')+2,{
+      dialect:'sqlite',tables:orderMetadata,columns:[{name:'total'}]
+    });
+    assert.ok(dot.some(c=>c.label==='total'),'column suggestions appear after alias dot');
+    assert.equal(tools.resolveColumnContext('SELECT x.to FROM absent x',11,{
+      dialect:'sqlite',tables:orderMetadata
+    }),null,'do not infer columns for unknown database objects');
+    assert.equal(tools.resolveColumnContext("SELECT 'o.to' FROM orders o",11,{
+      dialect:'sqlite',tables:orderMetadata
+    }),null,'do not complete inside strings');
+    assert.equal(tools.resolveColumnContext('SELECT o.to; SELECT 1 FROM orders o',11,{
+      dialect:'sqlite',tables:orderMetadata
+    }),null,'do not steal alias from next statement');
+
     const css=await fetch(statusUrl(base,'/assets/styles.css'));
     assert.equal(css.status,200);
     assert.match(await css.text(),/data-grid/);
