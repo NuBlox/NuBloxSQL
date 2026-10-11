@@ -118,6 +118,49 @@ contract with the durable worker under `inspection.host`.
 
 This is an internal same-host adapter, not host installation or configuration, remote management, a public job API or an approval mechanism. Production caller-owned `providerOptions`, especially custom command runners and filesystem implementations, remain trusted application code.
 
+### Approval policy and durable grants — internal foundation (11 October 2026)
+
+The internal `lib/jobs/JobApprovalPolicy.js` adds **deny-by-default execution classification**.
+The default worker policy permits only `discovery.server` and `inspection.host`, with
+explicit `readOnly: true` / `approvalRequired: false` plan declarations.
+A caller-controlled plan flag does **not** qualify a new job kind as read-only.
+
+The same-host SQLite JobStore schema is now **v2** (automatic, transactional v1
+migration). It persists a single plan-hash-, run-, job-kind- and target-bound
+approval, separate from plan/checkpoint data. `approveRun()` requires:
+
+- a run with a recorded requester in `awaiting-approval`;
+- a different approver and explicit mutation policy;
+- a matching immutable plan hash, target and job kind;
+- an expiry within 24 hours;
+- a trusted, synchronous `approvalAuthorizer` installed by the host application,
+  returning exactly `true`.
+
+Approval insertion, audit event and transition to `queued` are atomic. Missing
+authorizer, wrong requester, altered plan, expired evidence and absent grant all
+fail closed. The worker rechecks grant validity before each step and verification;
+it requires explicit trusted mutation-kind registration and a target-fencing/
+reconciliation executor contract before **any** mutating step. Its default
+configuration registers **no mutation kinds**.
+
+**Critical boundary:** these mutation contracts are internal and contract-tested
+only. No engine-mutating adapter is qualified, packaged or enabled by default.
+`targetSideFencing: true` is an assertion by trusted adapter code, *not* a
+universal guarantee: each real engine integration must separately prove that its
+native operations are idempotent/fenced and independently reconciled before it
+can be registered. Approval authn/authz integration is owned by the embedding
+trusted application; arbitrary client-provided callbacks must not be treated as
+an approval authority. The store remains same-host only and the job API remains
+unpublished. Revocation, scheduler, retry/cancellation policy and multi-host
+coordination remain future work.
+
+`createKernel(store).submit(plan, { requestedBy: 'operator-id' })` records the
+requester. Transition that run into `awaiting-approval`; the trusted host calls
+`store.approveRun({ runId, planHash, targetIdentity, jobKind, approverId,
+reason, expiresAt })` after identity and privilege verification through
+`approvalAuthorizer`. The grant is durable across process restarts, but is not
+reusable for another run.
+
 ## Scope
 
 The job architecture applies to work that is:
