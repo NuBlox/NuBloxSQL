@@ -130,11 +130,11 @@ migration). It persists a single plan-hash-, run-, job-kind- and target-bound
 approval, separate from plan/checkpoint data. `approveRun()` requires:
 
 - a run with a recorded requester in `awaiting-approval`;
-- a different approver and explicit mutation policy;
+- a different, **authenticated** approver (identity supplied by the trusted authorizer, never by the caller) and explicit mutation policy;
 - a matching immutable plan hash, target and job kind;
 - an expiry within 24 hours;
 - a trusted, synchronous `approvalAuthorizer` installed by the host application,
-  returning exactly `true`.
+  returning `{ allowed: true, approverId: authenticatedPrincipalId }`.
 
 Approval insertion, audit event and transition to `queued` are atomic. Missing
 authorizer, wrong requester, altered plan, expired evidence and absent grant all
@@ -156,9 +156,10 @@ coordination remain future work.
 
 `createKernel(store).submit(plan, { requestedBy: 'operator-id' })` records the
 requester. Transition that run into `awaiting-approval`; the trusted host calls
-`store.approveRun({ runId, planHash, targetIdentity, jobKind, approverId,
-reason, expiresAt })` after identity and privilege verification through
-`approvalAuthorizer`. The grant is durable across process restarts, but is not
+`store.approveRun({ runId, planHash, targetIdentity, jobKind,
+reason, expiresAt })`. Its trusted `approvalAuthorizer(intent, run, plan)` must
+resolve the current authenticated principal and return a verified decision
+`{ allowed: true, approverId }`. The request cannot supply the approver identity. The grant is durable across process restarts, but is not
 reusable for another run.
 
 ## Scope
