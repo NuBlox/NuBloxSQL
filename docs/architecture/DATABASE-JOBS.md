@@ -56,14 +56,14 @@ Not yet delivered:
 
 - retry runner/policy;
 - cancellation handler;
-- approval-policy engine;
+- approval-policy **live native-mutation qualification** and trusted application authentication integration;
 - public JobDefinition/JobRun API;
 - scheduler;
 - workflow DAG runtime;
 - distributed JobStore;
 - adapters over existing lifecycle/configuration/migration/data-movement executors.
 
-The next implementation slice is the qualified domain-executor adapters and explicit approval policy, followed by scheduling and workflow orchestration.
+The next implementation slice is qualification of native mutation adapters and target-side fencing against the new internal approval policy, followed by cancellation/retry, scheduling and workflow orchestration.
 
 ### Delivered internal execution worker (10 October 2026)
 
@@ -81,7 +81,7 @@ The next implementation slice is the qualified domain-executor adapters and expl
 
 Worker steps use `executor.execute({plan, runId, step, stepIndex, checkpoint, workerId, fence, signal})`, returning checkpoint-safe evidence, and `executor.verify({plan, runId, checkpoint, workerId, fence, signal})`, returning `true` or `{verified: true}`. These interfaces are **internal** and not the public package API. An executor must respect cancellation signals and, for irreversible steps, implement independent reconciliation/fencing with the target system; SQLite-side fencing alone cannot prevent stale external side effects.
 
-Execution is intentionally not enabled for approval-required plans: policy/approval evidence and release qualification are not yet implemented. There is no persistent general scheduling loop, automatic retry, multi-step JobStepRun ledger, multi-host coordinator or qualified database-lifecycle executor adapter yet. Worker test coverage is in `test/job-worker.js` under the platform suite.
+Execution for approval-required plans is now guarded by the internal policy, separately authorised durable grants and an explicitly opt-in native mutation executor contract. No concrete mutation adapter or public policy interface is release-qualified or enabled by default. There is no persistent general scheduling loop, automatic retry, multi-step JobStepRun ledger, multi-host coordinator or qualified database-lifecycle executor adapter yet. Worker test coverage is in `test/job-worker.js` under the platform suite.
 
 SQLite JobStore transition and renewal lease-expiry checks use the store's authoritative clock, not a caller-provided historical timestamp; direct store transitions now reject illegal status edges and immutable run-identity changes.
 
@@ -117,6 +117,50 @@ contract with the durable worker under `inspection.host`.
 - Exercises complete durable execution, repeat inspection, drift detection, wrong-host rejection, validation and sensitive-payload exclusion in `test/host-inspection-job-adapter.js`.
 
 This is an internal same-host adapter, not host installation or configuration, remote management, a public job API or an approval mechanism. Production caller-owned `providerOptions`, especially custom command runners and filesystem implementations, remain trusted application code.
+
+### Approval policy and durable grants — internal foundation (11 October 2026)
+
+The internal `lib/jobs/JobApprovalPolicy.js` adds **deny-by-default execution classification**.
+The default worker policy permits only `discovery.server` and `inspection.host`, with
+explicit `readOnly: true` / `approvalRequired: false` plan declarations.
+A caller-controlled plan flag does **not** qualify a new job kind as read-only.
+
+The same-host SQLite JobStore schema is now **v2** (automatic, transactional v1
+migration). It persists a single plan-hash-, run-, job-kind- and target-bound
+approval, separate from plan/checkpoint data. `approveRun()` requires:
+
+- a run with a recorded requester in `awaiting-approval`;
+- a different, **authenticated** approver (identity supplied by the trusted authorizer, never by the caller) and explicit mutation policy;
+- a matching immutable plan hash, target and job kind;
+- an expiry within 24 hours;
+- a trusted, synchronous `approvalAuthorizer` installed by the host application,
+  returning `{ allowed: true, approverId: authenticatedPrincipalId }`.
+
+Approval insertion, audit event and transition to `queued` are atomic. Missing
+authorizer, wrong requester, altered plan, expired evidence and absent grant all
+fail closed. The worker rechecks grant validity before each step and verification;
+it requires explicit trusted mutation-kind registration and a target-fencing/
+reconciliation executor contract before **any** mutating step. Its default
+configuration registers **no mutation kinds**.
+
+**Critical boundary:** these mutation contracts are internal and contract-tested
+only. No engine-mutating adapter is qualified, packaged or enabled by default.
+`targetSideFencing: true` is an assertion by trusted adapter code, *not* a
+universal guarantee: each real engine integration must separately prove that its
+native operations are idempotent/fenced and independently reconciled before it
+can be registered. Approval authn/authz integration is owned by the embedding
+trusted application; arbitrary client-provided callbacks must not be treated as
+an approval authority. The store remains same-host only and the job API remains
+unpublished. Revocation, scheduler, retry/cancellation policy and multi-host
+coordination remain future work.
+
+`createKernel(store).submit(plan, { requestedBy: 'operator-id' })` records the
+requester. Transition that run into `awaiting-approval`; the trusted host calls
+`store.approveRun({ runId, planHash, targetIdentity, jobKind,
+reason, expiresAt })`. Its trusted `approvalAuthorizer(intent, run, plan)` must
+resolve the current authenticated principal and return a verified decision
+`{ allowed: true, approverId }`. The request cannot supply the approver identity. The grant is durable across process restarts, but is not
+reusable for another run.
 
 ## Scope
 

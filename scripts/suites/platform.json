@@ -15,6 +15,7 @@
     "test/job-kernel.js",
     "test/sqlite-job-store.js",
     "test/job-worker.js",
+    "test/job-approval-policy.js",
     "test/server-discovery-job-adapter.js",
     "test/host-inspection-job-adapter.js",
     "test/workbench-smoke.js",
