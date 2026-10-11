@@ -83,6 +83,9 @@ npm run workbench:demo
 Open the `http://127.0.0.1:4277/` address displayed in Terminal.
 Explore the sample table with server-side paging, sorting and exact-match
 filtering; run native SQL, inspect columns and export displayed query results.
+The Schema Inspector now shows indexes, foreign keys, reported constraints
+and referenced-table navigation through live, read-only NuBloxSQL metadata.
+
 The SQL editor includes **lossless syntax highlighting**, **Ctrl+Space
 scope-aware completion** for simple nested SELECTs and CTEs, and a
 **conservative Format SQL** command. Non-executing graphical Explain plans

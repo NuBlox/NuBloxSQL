@@ -34,6 +34,7 @@ Use database account privileges to control SQL mutation. The Workbench deliberat
 - Live database connection status and database dialect label
 - Table explorer with metadata-validated, **database-side pagination**, sorting and exact-match filtering (50 rows per page by default)
 - Schema-aware, safely quoted previews where metadata is available; filter **values are parameterized** through the public NuBloxSQL tagged-SQL API
+- **Fuller Schema Inspector:** selecting a table or view now retrieves columns, indexes, foreign-key references and constraints from NuBloxSQL's existing public metadata API. Click a foreign key's referenced table to navigate directly to that object's inspector. Results are read-only and bounded to 100 items per metadata family; large native catalogue records and raw DDL are not sent to the browser.
 - Column/type/key inspector
 - Native SQL editor, Cmd+Enter / Ctrl+Enter to run
 - **Syntax highlighting:** lossless, dialect-sensitive browser token colouring for keywords, strings, comments, numbers and quoted identifiers, including MySQL backticks, SQL Server brackets and PostgreSQL dollar-quoted strings. The underlying accessible textarea is the only SQL input; highlighting never transforms query text.
@@ -48,6 +49,27 @@ Use database account privileges to control SQL mutation. The Workbench deliberat
 - Explicit errors and reloadable catalogues
 - Same-origin, loopback-only HTTP API with an unguessable session token, CSP, no CORS or cookies
 - Zero third-party dependencies; fully separate from the distributed nubloxsql package
+
+## Schema inspection and relationships
+
+Select a table or view in the Explorer to inspect the live database structure:
+columns (data type, primary-key and nullability evidence), indexes (columns,
+uniqueness and method), foreign keys (source columns, referenced table and
+columns, update/delete actions), and reported table constraints. Where the
+referenced table is already in the Explorer, you can navigate to it directly.
+
+This is **read-only introspection** through `db.metadata.table(name, scope)`.
+All object names are checked against the current catalogue before requesting
+their details. Browser data is restricted to a small display projection:
+native records, potentially sensitive definitions and DDL strings are not
+transferred. Results are capped at 100 objects per family, with a visible
+truncation notice. There is no schema-changing operation in this interface.
+
+SQLite has real table/view/index/foreign-key HTTP acceptance tests.
+PostgreSQL, MySQL and SQL Server consume the same existing public metadata
+contract, but need independent graphical end-to-end qualification against
+running database services. Introspection does not yet provide a full
+cross-database dependency diagram or a migration designer.
 
 ## SQL authoring and analysis
 

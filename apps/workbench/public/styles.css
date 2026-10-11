@@ -65,3 +65,17 @@ button,textarea{font:inherit}button{cursor:pointer}button:focus-visible,textarea
 .syntax-identifier{color:#75cce9}
 .syntax-symbol{color:#abc0d9}
 .syntax-word{color:#d1e5f6}
+
+
+/* Compact, metadata-native schema inspector. */
+.inspection-group{border-top:1px solid var(--edge);margin-top:13px;padding-top:2px}
+.inspection-entry{display:flex;align-items:flex-start;justify-content:space-between;
+  border-bottom:1px solid #263148;padding:11px 0;gap:10px}
+.inspection-entry .field-main{min-width:0;flex:1;overflow-wrap:anywhere}
+.inspection-entry .field-flags{text-align:right;max-width:100px;white-space:normal;
+  overflow-wrap:anywhere;line-height:1.45;flex:0 0 auto}
+.inspection-empty,.inspection-capped{color:#8095b2;font-size:11px;line-height:1.6}
+.inspection-capped{color:#e9be8e}
+.fk-navigation{border:0;background:transparent;color:#a398ff;font-size:11px;
+  text-align:left;padding:5px 0 0;cursor:pointer;align-self:flex-start}
+.fk-navigation:hover{text-decoration:underline;color:#c0b9ff}

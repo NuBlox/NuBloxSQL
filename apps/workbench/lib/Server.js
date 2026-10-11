@@ -5,6 +5,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const browse=require('./Browse');
 const workbenchPlans=require('./Plan');
+const schemaDetails=require('./Schema');
 
 // Local-only, single-session application built on the public NuBloxSQL API.
 const HTML=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
@@ -212,6 +213,14 @@ function createWorkbench(options={}){
       }
       if(req.method==='GET'&&url.pathname==='/api/tables'){
         return reply(res,200,{tables:await tables()});
+      }
+      if(req.method==='POST'&&url.pathname==='/api/schema'){
+        const table=await lookupTable(await payload(req));
+        const detail=await client.metadata.table(table.name,{
+          schema:table.schema,database:table.database
+        });
+        if(!detail)throw httpError(404,'Table is not present in the database catalogue');
+        return reply(res,200,schemaDetails.normalizeSchemaDetail(detail));
       }
       if(req.method==='POST'&&url.pathname==='/api/columns'){
         const table=await lookupTable(await payload(req));
