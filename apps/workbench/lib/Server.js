@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const browse=require('./Browse');
+const workbenchPlans=require('./Plan');
 
 // Local-only, single-session application built on the public NuBloxSQL API.
 const HTML=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
@@ -144,30 +145,30 @@ function createWorkbench(options={}){
     return body.sql.trim();
   }
   async function diagnose(sql){
-    if(client.dialect!=='sqlite')throw httpError(501,'Graphical query plans are currently qualified for SQLite only');
+    if(!workbenchPlans.SUPPORTED.has(client.dialect)){
+      throw httpError(501,'Non-executing Workbench plans are not supported for this dialect');
+    }
     if(running)throw httpError(409,'A query is already running');
     running=true;
+    const controller=ABORT_DIALECTS.has(client.dialect)?new AbortController():null;
+    currentQueryController=controller;
     const begin=process.hrtime.bigint();
     try{
-      // Non-executing optimizer evidence. NEVER use analyze:true in Workbench.
-      const report=await client.diagnose(sql,{analyze:false});
-      const nativePlan=report.native&&report.native.plan;
-      if(!nativePlan||!Array.isArray(nativePlan.nodes))throw new Error('No native SQLite execution plan available');
-      const nodes=nativePlan.nodes.slice(0,100).map(function(node){
-        return {id:node.id,parentId:node.parentId,kind:node.kind,table:node.table,
-          index:node.index,detail:node.detail};
-      });
-      return {
-        mode:'plan',statementExecuted:false,
-        summary:nativePlan.summary||{},
-        warnings:(nativePlan.warnings||[]).slice(0,50).map(function(w){
-          return {code:w.code,message:w.message,nodeId:w.nodeId};
-        }),
-        nodes,
-        truncated:nativePlan.nodes.length>100,
-        elapsedMs:Number((process.hrtime.bigint()-begin)/1000000n)
-      };
-    }finally{running=false;}
+      // The public NuBloxSQL diagnostics API owns dialect-specific EXPLAIN.
+      // Analyze remains FALSE: EXPLAIN ANALYZE can execute DML statements.
+      const options={analyze:false};
+      if(controller){
+        options.timeout=QUERY_TIMEOUT_MS;
+        options.signal=controller.signal;
+      }
+      const report=await client.diagnose(sql,options);
+      return workbenchPlans.normalizePlan(
+        client.dialect,report,Number((process.hrtime.bigint()-begin)/1000000n)
+      );
+    }finally{
+      currentQueryController=null;
+      running=false;
+    }
   }
   async function handle(req,res){
     try {
@@ -194,7 +195,7 @@ function createWorkbench(options={}){
         return reply(res,200,{
           status:'connected',dialect:client.dialect,demo,maxRows,
           mode:'local single-session',
-          editorFeatures:{completion:true,planSupported:client.dialect==='sqlite'},
+          editorFeatures:{completion:true,formatting:true,planSupported:workbenchPlans.SUPPORTED.has(client.dialect)},
           queryControl:{
             nativeRowByteBudget:client.dialect==='sqlite'||client.dialect==='mysql',
             cancelSupported:ABORT_DIALECTS.has(client.dialect),
@@ -242,7 +243,7 @@ function createWorkbench(options={}){
         return reply(res,200,await query(editorSql(await payload(req))));
       }
       if(req.method==='POST'&&url.pathname==='/api/diagnose'){
-        if(client.dialect!=='sqlite')throw httpError(501,'Graphical query plans are currently qualified for SQLite only');
+        if(!workbenchPlans.SUPPORTED.has(client.dialect))throw httpError(501,'No non-executing Workbench plan for this dialect');
         return reply(res,200,await diagnose(editorSql(await payload(req))));
       }
       return reply(res,405,{error:'Unsupported method or endpoint'});

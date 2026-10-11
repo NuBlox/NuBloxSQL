@@ -12,6 +12,7 @@ const {createWorkbench,quote}=require('../apps/workbench/lib/Server');
 const {buildBrowsePlan}=require('../apps/workbench/lib/Browse');
 const {compile}=require('../lib/client/Sql');
 const launcher=require('../apps/workbench/bin/nublox-workbench');
+const {normalizePlan}=require('../apps/workbench/lib/Plan');
 
 function statusUrl(base,route){return base+route.replace(/^\//,'');}
 async function request(base,token,route,body,more={}){
@@ -48,6 +49,7 @@ async function demoAcceptance(){
     assert.match(html,/id="explain-query"/);
     assert.match(html,/id="completion-panel"/);
     assert.match(html,/id="sql-highlight"/);
+    assert.match(html,/id="format-query"/);
     assert.match(html,/class="editor-input-layer"/);
     assert.match(html,/assets\/editor-tools.js/);
     assert.match(html,/id="sort-column"/);
@@ -62,6 +64,7 @@ async function demoAcceptance(){
     assert.match(javascript,/explainSQL/);
     assert.match(javascript,/showCompletion/);
     assert.match(javascript,/renderHighlight/);
+    assert.match(javascript,/formatCurrentSQL/);
     assert.match(javascript,/syncEditorScroll/);
     assert.match(javascript,/columnCache/);
     const editorSource=await (await fetch(statusUrl(base,'/assets/editor-tools.js'))).text();
@@ -140,6 +143,50 @@ async function demoAcceptance(){
       dialect:'sqlite',tables:orderMetadata
     }),null,'do not steal alias from next statement');
 
+    const sources=[
+      ['SELECT c.id FROM customers c WHERE EXISTS (SELECT o.to FROM orders o)', 'o.to','orders'],
+      ['SELECT c.id FROM customers c WHERE EXISTS (SELECT c.na FROM orders o)', 'c.na','customers']
+    ];
+    for(const [text,needle,expected] of sources){
+      const position=text.indexOf(needle)+needle.length;
+      const target=tools.resolveColumnContext(text,position,{
+        dialect:'sqlite',tables:orderMetadata
+      });
+      assert.equal(target.name,expected,'nearest SQL scope must win');
+    }
+    const declared='WITH recent(order_id, amount) AS (SELECT id,total FROM orders) SELECT r.am FROM recent r';
+    const alias=tools.resolveColumnContext(declared,declared.indexOf('r.am')+4,{
+      dialect:'sqlite',tables:orderMetadata
+    });
+    assert.equal(alias.virtual,true,'CTE becomes an in-memory completion source');
+    assert.deepEqual(Array.from(alias.virtualColumns,c=>c.name),['order_id','amount']);
+    const cteSuggestions=tools.suggestions(declared,declared.indexOf('r.am')+4,{
+      dialect:'sqlite',tables:orderMetadata,columns:[]
+    });
+    assert.ok(cteSuggestions.some(s=>s.label==='amount'&&s.insert==='"amount"'));
+    const inferred='WITH recent AS (SELECT id,total AS amount FROM orders) SELECT r.am FROM recent r';
+    const inferredCols=tools.resolveColumnContext(inferred,inferred.indexOf('r.am')+4,{
+      dialect:'sqlite',tables:orderMetadata
+    });
+    assert.deepEqual(Array.from(inferredCols.virtualColumns,c=>c.name),['id','amount']);
+    const malformed='SELECT o.to; SELECT * FROM orders o';
+    assert.equal(tools.resolveColumnContext(malformed,malformed.indexOf('o.to')+4,{
+      dialect:'sqlite',tables:orderMetadata
+    }),null);
+    const original="SELECT id, name FROM nublox_demo WHERE name = 'NuBloxSQL' ORDER BY id";
+    const formatted=tools.formatSQL(original,'sqlite');
+    assert.match(formatted,/\nFROM /);
+    assert.match(formatted,/\nWHERE /);
+    assert.match(formatted,/\nORDER BY /);
+    assert.equal(tools.formatSQL(formatted,'sqlite'),formatted,'formatter is idempotent');
+    assert.throws(()=>tools.formatSQL("SELECT 1; DELETE FROM demo",'sqlite'),/one SQL statement/);
+    assert.throws(()=>tools.formatSQL('SELECT x -- comment\nFROM data','sqlite'),/comments/);
+    assert.throws(()=>tools.formatSQL("SELECT 'unterminated",'sqlite'),/Unclosed/);
+    const pair=String.fromCharCode(36,36);
+    const literal='SELECT '+pair+'a FROM x'+pair+" AS value FROM sample WHERE x = 'hello'";
+    const pgFormatted=tools.formatSQL(literal,'postgresql');
+    assert.ok(pgFormatted.includes(pair+'a FROM x'+pair),'dollar string is unchanged');
+
     const css=await fetch(statusUrl(base,'/assets/styles.css'));
     assert.equal(css.status,200);
     assert.match(await css.text(),/data-grid/);
@@ -157,6 +204,7 @@ async function demoAcceptance(){
     assert.equal(status.queryControl.timeoutMs,null);
     assert.equal(status.queryControl.maxResultBytes,1048576);
     assert.equal(status.editorFeatures.completion,true);
+    assert.equal(status.editorFeatures.formatting,true);
     assert.equal(status.editorFeatures.planSupported,true);
     await expectJson(await request(base,'wrong','/api/diagnose',{sql:'SELECT 1'}),403);
     await expectJson(await request(base,token,'/api/diagnose',{sql:'SELECT 1'},
@@ -193,6 +241,9 @@ async function demoAcceptance(){
     assert.ok(meta.columns.some(c=>c.name==='name'));
     const preview=await expectJson(await request(base,token,'/api/preview',{name:'nublox_demo',schema:'main'}),200);
     assert.deepEqual(preview.rows,[{id:1,name:'NuBloxSQL'},{id:2,name:'Workbench'}]);
+    const originalRows=await expectJson(await request(base,token,'/api/query',{sql:original}),200);
+    const formattedRows=await expectJson(await request(base,token,'/api/query',{sql:formatted}),200);
+    assert.deepEqual(formattedRows.rows,originalRows.rows,'formatting must preserve SQL query results');
     assert.equal(preview.shown,2);
     assert.equal(preview.hasMore,false);
     assert.equal(preview.offset,0);
@@ -359,6 +410,10 @@ async function cancellationContractAcceptance(){
     dialect:'postgresql',
     metadata:{tables:async()=>[],columns:async()=>[]},
     one:async()=>({nublox_check:1}),
+    diagnose:async function(_statement,options){
+      seenOptions=options;
+      return {analyzed:false,statementExecuted:false,summary:{estimatedRows:5},native:{root:{'Node Type':'Seq Scan','Relation Name':'tasks','Plan Rows':5}}};
+    },
     query:async function(statement,options){
       seenOptions=options;startQuery();
       return new Promise(function(_resolve,reject){
@@ -378,8 +433,15 @@ async function cancellationContractAcceptance(){
     assert.equal(status.queryControl.cancelSupported,true);
     assert.equal(status.queryControl.timeoutMs,15000);
     assert.equal(status.queryControl.nativeRowByteBudget,false);
-    assert.equal(status.editorFeatures.planSupported,false);
-    await expectJson(await request(base,token,'/api/diagnose',{sql:'SELECT 1'}),501);
+    assert.equal(status.editorFeatures.planSupported,true);
+    const report=await expectJson(await request(base,token,'/api/diagnose',{sql:'SELECT 1'}),200);
+    assert.equal(report.mode,'plan');
+    assert.equal(report.dialect,'postgresql');
+    assert.equal(report.statementExecuted,false);
+    assert.equal(report.nodes[0].kind,'Seq Scan');
+    assert.equal(seenOptions.analyze,false);
+    assert.equal(seenOptions.timeout,15000);
+    assert.ok(seenOptions.signal instanceof AbortSignal);
     await expectJson(await request(base,token,'/api/cancel',{}),409);
     const pending=request(base,token,'/api/query',{sql:'SELECT pg_sleep(30)'});
     await started;
@@ -392,6 +454,61 @@ async function cancellationContractAcceptance(){
     assert.match(cancelled.error,/cancelled/);
     await expectJson(await request(base,token,'/api/cancel',{}),409);
   }finally{await app.close();}
+}
+
+
+async function multiDialectPlanContracts(){
+  const postgres=normalizePlan('postgresql',{
+    analyzed:false,statementExecuted:false,
+    summary:{estimatedRows:10,estimatedCost:2.5},
+    native:{root:{'Node Type':'Hash Join',Plans:[
+      {'Node Type':'Seq Scan','Relation Name':'customers'},
+      {'Node Type':'Index Scan','Relation Name':'orders','Index Name':'idx_orders_id'}
+    ]}}
+  },3);
+  assert.equal(postgres.nodes.length,3);
+  assert.equal(postgres.nodes[1].kind,'Seq Scan');
+  assert.equal(postgres.summary.usesIndex,true);
+  assert.equal(postgres.summary.hasFullScan,true);
+  const mysql=normalizePlan('mysql',{
+    analyzed:false,statementExecuted:false,
+    native:{root:{query_block:{table:{table_name:'orders',access_type:'ALL'}}}},
+    summary:{estimatedRows:12}
+  },4);
+  assert.equal(mysql.nodes.length,1);
+  assert.equal(mysql.nodes[0].table,'orders');
+  assert.equal(mysql.summary.hasFullScan,true);
+  assert.throws(()=>normalizePlan('mysql',{analyzed:true,statementExecuted:true,native:{root:{}}},1),
+    /executed/,'analyze:true can execute DML and must never be displayed as safe plan');
+  assert.throws(()=>normalizePlan('sqlserver',{statementExecuted:false},1),/no Workbench plan/);
+  for(const dialect of ['mysql','postgresql']){
+    let called;
+    const client={dialect,metadata:{tables:async()=>[],columns:async()=>[]},
+      one:async()=>({ok:1}),query:async()=>({rows:[]}),close:async()=>{},
+      diagnose:async(sql,opts)=>{
+        called={sql,opts};
+        return dialect==='mysql'?
+          {analyzed:false,statementExecuted:false,native:{root:{operation:'Table scan',table_name:'t',access_type:'ALL'}},summary:{}}:
+          {analyzed:false,statementExecuted:false,native:{root:{'Node Type':'Seq Scan','Relation Name':'t'}},summary:{}};
+      }};
+    const app=createWorkbench({sqlApi:{createClient:()=>client},connection:{dialect}});
+    const base=await app.listen(0);
+    try{
+      const html=await (await fetch(base)).text();
+      const token=html.match(/name="nublox-session" content="([0-9a-f]{64})"/)[1];
+      const status=await expectJson(await request(base,token,'/api/status'),200);
+      assert.equal(status.editorFeatures.planSupported,true);
+      await expectJson(await request(base,'wrong','/api/diagnose',{sql:'SELECT 1'}),403);
+      const report=await expectJson(await request(base,token,'/api/diagnose',{sql:'DELETE FROM t'}),200);
+      assert.equal(report.statementExecuted,false);
+      assert.equal(report.dialect,dialect);
+      assert.ok(report.nodes.length>0);
+      assert.equal(called.sql,'DELETE FROM t');
+      assert.equal(called.opts.analyze,false);
+      assert.equal(called.opts.timeout,15000);
+      assert.ok(called.opts.signal instanceof AbortSignal);
+    }finally{await app.close();}
+  }
 }
 
 async function launcherAcceptance(){
@@ -418,6 +535,7 @@ async function launcherAcceptance(){
   await demoAcceptance();
   await existingFileAcceptance();
   await cancellationContractAcceptance();
+  await multiDialectPlanContracts();
   await launcherAcceptance();
   console.log('NuBloxSQL Workbench live HTTP + native SQLite acceptance: PASS');
 })().catch(error=>{console.error(error);process.exitCode=1;});

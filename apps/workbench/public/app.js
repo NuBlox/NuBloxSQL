@@ -140,7 +140,9 @@
       dialect:editorDialect,tables:knownTables
     });
     let columns=knownColumns;
-    if(aliasTable){
+    if(aliasTable&&aliasTable.virtual){
+      columns=aliasTable.virtualColumns||[];
+    }else if(aliasTable){
       const key=(aliasTable.schema||'')+'\u0000'+aliasTable.name;
       if(!columnCache.has(key)){
         hideCompletion();
@@ -186,6 +188,20 @@
     });
     completion.children[completionIndex].scrollIntoView({block:'nearest'});
   }
+  function formatCurrentSQL(){
+    if(busy)return;
+    hideCompletion();
+    const original=editor.value;
+    try {
+      const formatted=editorTools.formatSQL(original,editorDialect);
+      if(formatted===original){message('SQL layout is already formatted');return;}
+      editor.value=formatted;
+      renderHighlight();
+      editor.focus();
+      editor.setSelectionRange(formatted.length,formatted.length);
+      message('SQL layout formatted (statement text preserved)');
+    }catch(error){message(error.message,true);}
+  }
   async function explainSQL(){
     if(busy)return;
     const statement=editor.value.trim();
@@ -194,6 +210,7 @@
     busy=true;
     $('explain-query').disabled=true;
     $('run-query').disabled=true;
+    $('format-query').disabled=true;
     displayStatus('Planning…');
     try{
       const report=await api('/api/diagnose',{sql:statement});
@@ -206,8 +223,8 @@
       displayStatus('Plan only');
       $('result-caption').textContent='Non-executing plan · SQL statement not run';
       const overview=node('div','plan-overview');
-      overview.append(node('strong','',String(report.summary.nodeCount||0)+' optimizer nodes'));
-      if(report.summary.hasFullScan)overview.append(node('span','plan-warning','Full table scan indicated'));
+      overview.append(node('strong','',String(report.summary.nodeCount||0)+' '+report.dialect.toUpperCase()+' optimizer nodes'));
+      if(report.summary.hasFullScan)overview.append(node('span','plan-warning','Full/sequential table scan indicated'));
       if(report.summary.usesIndex)overview.append(node('span','plan-success','Index in use'));
       (report.warnings||[]).forEach(w=>overview.append(node('p','plan-warning',w.message)));
       if(report.truncated)overview.append(node('p','plan-warning','Only the first 100 plan nodes are displayed'));
@@ -217,6 +234,7 @@
       busy=false;
       $('explain-query').disabled=false;
       $('run-query').disabled=false;
+      $('format-query').disabled=false;
     }
   }
   async function runSQL(){
@@ -228,6 +246,7 @@
     hideCompletion();
     busy=true;$('run-query').disabled=true;
     $('explain-query').disabled=true;
+    $('format-query').disabled=true;
     $('cancel-query').disabled=!canCancel;
     displayStatus('Running…');
     const start=performance.now();
@@ -240,6 +259,7 @@
     } finally {
       busy=false;$('run-query').disabled=false;
       $('explain-query').disabled=false;
+      $('format-query').disabled=false;
       $('cancel-query').disabled=true;
     }
   }
@@ -362,6 +382,7 @@
   }
   $('run-query').addEventListener('click',runSQL);
   $('explain-query').addEventListener('click',explainSQL);
+  $('format-query').addEventListener('click',formatCurrentSQL);
   $('cancel-query').addEventListener('click',async function(){
     $('cancel-query').disabled=true;
     try{
@@ -384,6 +405,9 @@
     if(e.key==='Enter'){e.preventDefault();browsePage(0);}
   });
   editor.addEventListener('keydown',function(e){
+    if(e.altKey&&e.shiftKey&&e.key.toLowerCase()==='f'){
+      e.preventDefault();formatCurrentSQL();return;
+    }
     if(e.code==='Space'&&e.ctrlKey){e.preventDefault();showCompletion(true);return;}
     if(!completion.hidden){
       if(e.key==='ArrowDown'){e.preventDefault();moveCompletion(1);return;}
