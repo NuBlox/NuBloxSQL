@@ -111,7 +111,7 @@
       const part=node('span','syntax-'+token.kind,token.text);
       fragment.append(part);
     }
-    // No SQL or database value ever passes through innerHTML.
+    // Rendering uses inert DOM text nodes; SQL is never parsed as markup.
     highlightLayer.replaceChildren(fragment);
     const count=Math.min(2000,editor.value.split('\n').length);
     const gutter=node('div','line-number-list',Array.from({length:count},(_,i)=>String(i+1).padStart(2,'0')).join('\n'));
