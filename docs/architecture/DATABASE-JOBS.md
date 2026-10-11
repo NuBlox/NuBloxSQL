@@ -56,14 +56,14 @@ Not yet delivered:
 
 - retry runner/policy;
 - cancellation handler;
-- approval-policy engine;
+- approval-policy **live native-mutation qualification** and trusted application authentication integration;
 - public JobDefinition/JobRun API;
 - scheduler;
 - workflow DAG runtime;
 - distributed JobStore;
 - adapters over existing lifecycle/configuration/migration/data-movement executors.
 
-The next implementation slice is the qualified domain-executor adapters and explicit approval policy, followed by scheduling and workflow orchestration.
+The next implementation slice is qualification of native mutation adapters and target-side fencing against the new internal approval policy, followed by cancellation/retry, scheduling and workflow orchestration.
 
 ### Delivered internal execution worker (10 October 2026)
 
@@ -81,7 +81,7 @@ The next implementation slice is the qualified domain-executor adapters and expl
 
 Worker steps use `executor.execute({plan, runId, step, stepIndex, checkpoint, workerId, fence, signal})`, returning checkpoint-safe evidence, and `executor.verify({plan, runId, checkpoint, workerId, fence, signal})`, returning `true` or `{verified: true}`. These interfaces are **internal** and not the public package API. An executor must respect cancellation signals and, for irreversible steps, implement independent reconciliation/fencing with the target system; SQLite-side fencing alone cannot prevent stale external side effects.
 
-Execution is intentionally not enabled for approval-required plans: policy/approval evidence and release qualification are not yet implemented. There is no persistent general scheduling loop, automatic retry, multi-step JobStepRun ledger, multi-host coordinator or qualified database-lifecycle executor adapter yet. Worker test coverage is in `test/job-worker.js` under the platform suite.
+Execution for approval-required plans is now guarded by the internal policy, separately authorised durable grants and an explicitly opt-in native mutation executor contract. No concrete mutation adapter or public policy interface is release-qualified or enabled by default. There is no persistent general scheduling loop, automatic retry, multi-step JobStepRun ledger, multi-host coordinator or qualified database-lifecycle executor adapter yet. Worker test coverage is in `test/job-worker.js` under the platform suite.
 
 SQLite JobStore transition and renewal lease-expiry checks use the store's authoritative clock, not a caller-provided historical timestamp; direct store transitions now reject illegal status edges and immutable run-identity changes.
 
