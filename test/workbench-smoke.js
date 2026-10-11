@@ -13,6 +13,7 @@ const {buildBrowsePlan}=require('../apps/workbench/lib/Browse');
 const {compile}=require('../lib/client/Sql');
 const launcher=require('../apps/workbench/bin/nublox-workbench');
 const {normalizePlan}=require('../apps/workbench/lib/Plan');
+const {normalizeSchemaDetail}=require('../apps/workbench/lib/Schema');
 
 function statusUrl(base,route){return base+route.replace(/^\//,'');}
 async function request(base,token,route,body,more={}){
@@ -67,6 +68,9 @@ async function demoAcceptance(){
     assert.match(javascript,/formatCurrentSQL/);
     assert.match(javascript,/syncEditorScroll/);
     assert.match(javascript,/columnCache/);
+    assert.match(javascript,/api\/schema/);
+    assert.match(javascript,/FOREIGN KEYS/);
+    assert.match(javascript,/fk-navigation/);
     const editorSource=await (await fetch(statusUrl(base,'/assets/editor-tools.js'))).text();
     const sandbox={window:{}};
     vm.runInNewContext(editorSource,sandbox,{timeout:1000});
@@ -239,6 +243,22 @@ async function demoAcceptance(){
     assert.ok(tables.tables.some(t=>t.name==='nublox_demo'));
     const meta=await expectJson(await request(base,token,'/api/columns',{name:'nublox_demo',schema:'main'}),200);
     assert.ok(meta.columns.some(c=>c.name==='name'));
+    const schema=await expectJson(await request(base,token,'/api/schema',{
+      name:'nublox_demo',schema:'main'
+    }),200);
+    assert.equal(schema.table.name,'nublox_demo');
+    assert.equal(schema.table.schema,'main');
+    assert.ok(schema.columns.some(c=>c.name==='id'&&c.primaryKey===true));
+    assert.deepEqual(schema.foreignKeys,[]);
+    assert.deepEqual(schema.indexes,[]);
+    assert.deepEqual(Object.keys(schema.truncated).sort(),
+      ['columns','constraints','foreignKeys','indexes']);
+    assert.ok(!JSON.stringify(schema).includes('"native"'));
+    await expectJson(await request(base,'invalid','/api/schema',{name:'nublox_demo'}),403);
+    await expectJson(await request(base,token,'/api/schema',{name:'nublox_demo'},
+      {Origin:'https://not-local.example'}),403);
+    await expectJson(await request(base,token,'/api/schema',{name:'nublox_demo; DROP TABLE x'}),404);
+    await expectJson(await request(base,token,'/api/schema',{name:23}),400);
     const preview=await expectJson(await request(base,token,'/api/preview',{name:'nublox_demo',schema:'main'}),200);
     assert.deepEqual(preview.rows,[{id:1,name:'NuBloxSQL'},{id:2,name:'Workbench'}]);
     const originalRows=await expectJson(await request(base,token,'/api/query',{sql:original}),200);
@@ -349,6 +369,12 @@ async function existingFileAcceptance(){
   try{
     sqlite.exec('CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL)');
     sqlite.prepare('INSERT INTO products (id,name) VALUES (?,?)').run(7,'Real file');
+    sqlite.exec('CREATE TABLE line_items ('+
+      'id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL '+
+      'REFERENCES products(id) ON DELETE CASCADE, '+
+      'note TEXT CHECK(length(note)>0))');
+    sqlite.exec('CREATE INDEX line_items_product_idx ON line_items(product_id)');
+    sqlite.exec('CREATE VIEW product_names AS SELECT name FROM products');
   }finally{sqlite.close();}
   const app=createWorkbench({sqlApi,connection:{dialect:'sqlite',filename,mode:'readonly',pool:false},maxRows:1});
   try {
@@ -373,6 +399,26 @@ async function existingFileAcceptance(){
     await expectJson(await request(base,token,'/api/preview',{name:'products',pageSize:2}),400);
     const tables=await expectJson(await request(base,token,'/api/tables'),200);
     assert.ok(tables.tables.some(t=>t.name==='products'));
+    assert.ok(tables.tables.some(t=>t.name==='line_items'));
+    assert.ok(tables.tables.some(t=>t.name==='product_names'&&t.type==='view'));
+    const detail=await expectJson(await request(base,token,'/api/schema',{
+      name:'line_items',schema:'main'
+    }),200);
+    assert.equal(detail.table.name,'line_items');
+    assert.ok(detail.columns.some(c=>c.name==='product_id'&&c.nullable===false));
+    const fk=detail.foreignKeys.find(k=>k.referencedTable==='products');
+    assert.ok(fk,'read-only SQLite exposes foreign-key metadata');
+    assert.deepEqual(fk.columns,['product_id']);
+    assert.deepEqual(fk.referencedColumns,['id']);
+    assert.equal(fk.onDelete,'CASCADE');
+    assert.ok(detail.indexes.some(index=>
+      index.name==='line_items_product_idx'&&index.columns.includes('product_id')));
+    assert.ok(!JSON.stringify(detail).includes('"native"'));
+    const view=await expectJson(await request(base,token,'/api/schema',{
+      name:'product_names',schema:'main'
+    }),200);
+    assert.equal(view.table.type,'view');
+    assert.ok(view.columns.some(c=>c.name==='name'));
     await expectJson(await request(base,token,'/api/query',{sql:"INSERT INTO products VALUES (8,'unwanted')"}),500);
     const check=new DatabaseSync(filename);
     try{assert.equal(check.prepare('SELECT count(*) AS total FROM products').get().total,1);}
@@ -511,6 +557,34 @@ async function multiDialectPlanContracts(){
   }
 }
 
+function schemaProjectionContracts(){
+  const input={
+    name:'orders',schema:'public',type:'table',native:{password:'NEVER SEND'},
+    columns:Array.from({length:105},(_,i)=>({
+      name:'c_'+i,dataType:'TEXT',nullable:i%2===0,primaryKey:i===0
+    })),
+    indexes:[{name:'idx "important"',unique:true,columns:['hello','world']}],
+    foreignKeys:[{
+      name:'references_customer',columns:['customer_id'],
+      referencedSchema:'public',referencedTable:'customers',
+      referencedColumns:['id'],onDelete:'CASCADE',native:{secret:'NEVER SEND'}
+    }],
+    constraints:[{name:'check_safe',type:'check',columns:['hello'],definition:'PRIVATE DEFINITION'}]
+  };
+  const out=normalizeSchemaDetail(input);
+  assert.equal(out.columns.length,100);
+  assert.equal(out.truncated.columns,true);
+  assert.equal(out.indexes[0].unique,true);
+  assert.deepEqual(out.indexes[0].columns,['hello','world']);
+  assert.equal(out.foreignKeys[0].referencedTable,'customers');
+  assert.equal(out.constraints[0].type,'check');
+  assert.ok(!JSON.stringify(out).includes('NEVER SEND'));
+  assert.ok(!JSON.stringify(out).includes('PRIVATE DEFINITION'));
+  assert.throws(()=>normalizeSchemaDetail(null),TypeError);
+  const long=normalizeSchemaDetail({name:'a'.repeat(500),columns:[]});
+  assert.equal(long.table.name.length,320);
+}
+
 async function launcherAcceptance(){
   const output=[];
   const streams={stdout:{write(text){output.push(text);}}};
@@ -532,6 +606,7 @@ async function launcherAcceptance(){
   assert.equal(quote('sqlserver','danger]table'),'[danger]]table]');
   assert.equal(quote('sqlite','danger"table'),'"danger""table"');
   dialectBrowseContracts();
+  schemaProjectionContracts();
   await demoAcceptance();
   await existingFileAcceptance();
   await cancellationContractAcceptance();

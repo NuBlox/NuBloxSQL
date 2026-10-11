@@ -52,6 +52,13 @@ safer or more capable without reproducible tests and a documented baseline.
 The local Workbench preview under `apps/workbench` supplies a real graphical
 explorer, SQL input, metadata-validated table browsing with database-side
 paging/sorting/parameterized exact-match filtering, result grids and CSV download.
+The Workbench now provides a bounded, read-only Schema Inspector for
+reported columns, indexes, foreign keys and constraints, including linked
+navigation to referenced tables. A real on-disk SQLite database qualifies
+this graphical workflow. PostgreSQL, MySQL and SQL Server still require
+live GUI qualification; this is not yet an ER diagram, schema migration
+designer or full visual database administration suite.
+
 The graphical Workbench editor has lossless SQL highlighting, conservative
 top-level clause formatting and bounded metadata/CTE-aware completion for
 straightforward nested SELECT and correlated alias scopes. Unsupported SQL
