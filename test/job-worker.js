@@ -6,13 +6,26 @@ const os = require('node:os');
 const path = require('node:path');
 const jobs = require('../lib/jobs/JobKernel');
 const sqlite = require('../lib/jobs/SqliteJobStore');
-const { createWorker } = require('../lib/jobs/JobWorker');
+const { createWorker: createRawWorker } = require('../lib/jobs/JobWorker');
+const { createApprovalPolicy } = require('../lib/jobs/JobApprovalPolicy');
+
+// Tests use an explicit trusted allowlist for synthetic read-only kinds.
+function createWorker(options) {
+  return createRawWorker({
+    ...options,
+    approvalPolicy: createApprovalPolicy({ readOnlyKinds: [
+      'test.worker.success', 'test.worker.unregistered', 'test.worker.partial',
+      'test.worker.unverified', 'test.worker.heartbeat', 'test.worker.expiry',
+      'test.worker.concurrent'
+    ] })
+  });
+}
 
 function plan(kind, approvalRequired = false) {
   return jobs.createPlan({
     jobKind: kind, lifecyclePhase: 'Understand', targetIdentity: 'sqlite:test',
     steps: [{stepId:'first'}, {stepId:'second'}],
-    policy: { approvalRequired }
+    policy: { approvalRequired, readOnly: !approvalRequired }
   });
 }
 
@@ -81,7 +94,7 @@ async function incompleteAndUnapproved() {
     const second = createWorker({ store, registry, workerId:'worker-gated' });
     assert.deepEqual(await second.runOnce(), {runId:'unapproved',status:'blocked'});
     assert.equal(called, false);
-    assert.equal(store.getRun('unapproved').reason,'approval-policy-not-qualified');
+    assert.equal(store.getRun('unapproved').reason,'approval-denied:job-kind-not-qualified');
   });
 }
 
