@@ -182,9 +182,10 @@ async function demoAcceptance(){
     assert.throws(()=>tools.formatSQL("SELECT 1; DELETE FROM demo",'sqlite'),/one SQL statement/);
     assert.throws(()=>tools.formatSQL('SELECT x -- comment\nFROM data','sqlite'),/comments/);
     assert.throws(()=>tools.formatSQL("SELECT 'unterminated",'sqlite'),/Unclosed/);
-    const literal="SELECT $a FROM x$ AS value FROM sample WHERE x = 'hello'";
+    const pair=String.fromCharCode(36,36);
+    const literal='SELECT '+pair+'a FROM x'+pair+" AS value FROM sample WHERE x = 'hello'";
     const pgFormatted=tools.formatSQL(literal,'postgresql');
-    assert.ok(pgFormatted.includes('$a FROM x$'),'dollar string is unchanged');
+    assert.ok(pgFormatted.includes(pair+'a FROM x'+pair),'dollar string is unchanged');
 
     const css=await fetch(statusUrl(base,'/assets/styles.css'));
     assert.equal(css.status,200);
