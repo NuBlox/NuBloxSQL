@@ -24,7 +24,7 @@ function mutablePlan() {
 function request(runId, plan, overrides = {}) {
   return {
     runId, planHash: plan.planHash, jobKind: plan.jobKind,
-    targetIdentity: plan.targetIdentity, approverId: 'dba',
+    targetIdentity: plan.targetIdentity,
     reason: 'ticket CHG-123', expiresAt: new Date(NOW + 300000).toISOString(),
     ...overrides
   };
@@ -89,25 +89,30 @@ async function durableAuthorisedGrant() {
   await withDirectory(async filename => {
     let now=NOW;
     let calls=0;
+    let authenticatedPrincipal='engineer';
     const clock=()=>now;
     let store=createStore({
       filename,clock,
-      approvalAuthorizer(grant,run,plan) {
+      approvalAuthorizer(intent,run,plan) {
         calls++;
-        return grant.approverId==='dba' && run.requestedBy==='engineer' &&
-          plan.jobKind===KIND;
+        return { allowed: authenticatedPrincipal!=='intruder' &&
+          run.requestedBy==='engineer' && plan.jobKind===KIND,
+          approverId: authenticatedPrincipal };
       }
     });
     const plan=mutablePlan();
     await submitForApproval(store,plan,'approved');
-    assert.throws(()=>store.approveRun(request('approved',plan,{approverId:'engineer'})),/distinct/);
-    assert.throws(()=>store.approveRun(request('approved',plan,{approverId:'intruder'})),/authorizer denied/);
+    assert.throws(()=>store.approveRun(request('approved',plan,{approverId:'dba'})),/distinct/,
+      'a spoofed caller approverId cannot override the authenticated requester');
+    authenticatedPrincipal='intruder';
+    assert.throws(()=>store.approveRun(request('approved',plan,{approverId:'dba'})),/authorizer denied/);
+    authenticatedPrincipal='dba';
     assert.throws(()=>store.approveRun(request('approved',plan,{planHash:'0'.repeat(64)})),/mismatch/);
     assert.throws(()=>store.approveRun(request('approved',plan,{targetIdentity:'mysql:other'})),/mismatch/);
     assert.throws(()=>store.approveRun(request('approved',plan,{expiresAt:new Date(NOW-1).toISOString()})),/expiry/);
     assert.equal(store.getApproval('approved'),null);
     assert.equal(store.getRun('approved').status,'awaiting-approval');
-    assert.equal(calls,1);
+    assert.equal(calls,2);
 
     const queued=store.approveRun(request('approved',plan));
     assert.equal(queued.status,'queued');
@@ -140,7 +145,7 @@ async function approvalsCannotBeBorrowedOrExpired() {
   await withDirectory(async filename => {
     let now=NOW;
     const clock=()=>now;
-    const store=createStore({filename,clock,approvalAuthorizer:()=>true});
+    const store=createStore({filename,clock,approvalAuthorizer:()=>({allowed:true,approverId:'dba'})});
     const plan=mutablePlan();
     await submitForApproval(store,plan,'expired');
     store.approveRun(request('expired',plan,{expiresAt:new Date(NOW+1000).toISOString()}));
@@ -164,7 +169,7 @@ async function approvalsCannotBeBorrowedOrExpired() {
 
 async function unqualifiedMutationNeverExecutes() {
   await withDirectory(async filename => {
-    const store=createStore({filename,clock:()=>NOW,approvalAuthorizer:()=>true});
+    const store=createStore({filename,clock:()=>NOW,approvalAuthorizer:()=>({allowed:true,approverId:'dba'})});
     const plan=mutablePlan();
     await submitForApproval(store,plan,'unqualified');
     store.approveRun(request('unqualified',plan));
@@ -177,7 +182,7 @@ async function unqualifiedMutationNeverExecutes() {
     store.close();
   });
   await withDirectory(async filename=>{
-    const store=createStore({filename,clock:()=>NOW,approvalAuthorizer:()=>true});
+    const store=createStore({filename,clock:()=>NOW,approvalAuthorizer:()=>({allowed:true,approverId:'dba'})});
     const plan=mutablePlan();
     await submitForApproval(store,plan,'no-fence');
     store.approveRun(request('no-fence',plan));
@@ -195,7 +200,7 @@ async function unqualifiedMutationNeverExecutes() {
 
 async function reconciliationDeniesBeforeSideEffects() {
   await withDirectory(async filename=>{
-    const store=createStore({filename,clock:()=>NOW,approvalAuthorizer:()=>true});
+    const store=createStore({filename,clock:()=>NOW,approvalAuthorizer:()=>({allowed:true,approverId:'dba'})});
     const plan=mutablePlan();
     await submitForApproval(store,plan,'no-reconcile');
     store.approveRun(request('no-reconcile',plan));
