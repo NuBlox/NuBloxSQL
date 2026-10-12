@@ -140,12 +140,12 @@ async function misfiresAndOverlaps() {
     assert.equal(ctx.store.listScheduleEvents('stale').at(-1).type,'schedule-skipped');
 
     create(ctx,'latest',{misfirePolicy:'latest',maxLatenessMs:30000});
-    ctx.now(START+155000);
+    ctx.now(START+245000);
     const last=ctx.store.dispatchDueSchedules({approvalPolicy:policy,registry:ctx.registry})
       .find(x=>x.scheduleId==='latest');
     assert.equal(last.status,'queued');
-    assert.equal(last.scheduledFor,'2026-10-12T10:02:00.000Z');
-    assert.equal(ctx.store.getSchedule('latest').nextDueAt,'2026-10-12T10:03:00.000Z');
+    assert.equal(last.scheduledFor,'2026-10-12T10:04:00.000Z');
+    assert.equal(ctx.store.getSchedule('latest').nextDueAt,'2026-10-12T10:05:00.000Z');
   });
 }
 
