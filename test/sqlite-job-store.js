@@ -262,7 +262,7 @@ async function invalidAndClosedStore(){
     },/file-backed/);
 
     const store=sqliteStore.createStore({filename:temp.filename});
-    assert.equal(store.schemaVersion,2);
+    assert.equal(store.schemaVersion,3);
     assert.equal(store.kind,'sqlite-local');
     assert.equal(store.distributed,false);
     assert.equal(path.resolve(temp.filename),store.filename);

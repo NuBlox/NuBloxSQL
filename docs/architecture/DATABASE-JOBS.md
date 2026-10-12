@@ -162,6 +162,47 @@ resolve the current authenticated principal and return a verified decision
 `{ allowed: true, approverId }`. The request cannot supply the approver identity. The grant is durable across process restarts, but is not
 reusable for another run.
 
+### Cancellation, bounded read-only retry and interrupted recovery — internal foundation (12 October 2026)
+
+The internal same-host SQLite JobStore is now **schema v3**, upgraded transactionally
+from v1/v2. v3 adds a durable cancellation request record tied to a job run,
+with authenticated actor identity sourced from a trusted application-supplied
+`cancellationAuthorizer(intent, run, plan)` callback. The request cannot
+supply its own authenticated identity; the authorizer must return
+`{allowed:true, actorId:authenticatedPrincipal}`. Missing or denied
+authorization fails closed.
+
+`store.requestCancellation({runId,reason})` atomically cancels work not yet
+leased (`planned`, `awaiting-approval`, `queued`, `retry-scheduled`).
+For leased or active work it records one idempotent request, and the fenced
+worker cooperatively observes it. The worker sends AbortSignal to read-only
+executors and reports `cancelled` only where no mutating effects may have
+occurred. If mutation effects may be outstanding, the worker reports
+`blocked` with `cancellation-outcome-unconfirmed`; reconciliation is manual.
+Cancellation is cooperative, not guaranteed remote DBMS interruption.
+
+Read-only retries are internal and conservative: only the trusted policy's
+`read-only` classification plus an executor's `retrySafe: true`, with
+an explicit `error.retryable === true` thrown from its execution callback,
+may schedule retries. The SQLite store persists next-due time, incrementing
+attempts in a transaction with the event. Limits are **1–5 total attempts**
+(default 3) with **0–3,600,000 ms** delays (default 1,000 ms); no
+unbounded retry loops. A subsequent `runOnce()` releases due retries before
+leasing work. Unconfirmed verification is *not* automatically retried. The
+default policy still enables only the two qualified read-only job kinds.
+
+`store.recoverInterruptedReadOnly({approvalPolicy,registry,maxAttempts,delayMs})`
+is **opt-in**, requires an executor explicitly declaring both `retrySafe`
+and `resumeSafe`, and only transitions *expired running read-only* runs to
+`retry-scheduled`. Jobs in `verifying`, `cancelling`, containing
+unqualified/mutating operations, or carrying cancellation requests remain
+orphaned for manual reconciliation. It is never safe to infer a remote
+mutation's outcome from expiry of a local lease.
+
+The same-host SQLite store does not offer global distributed locking, exactly-once
+remote effects, a public scheduler, automatic engine installation, or production
+approval of mutating jobs. The native providers need independent live qualification.
+
 ## Scope
 
 The job architecture applies to work that is:
