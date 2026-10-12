@@ -123,7 +123,8 @@ async function misfiresAndOverlaps() {
     const first=ctx.store.dispatchDueSchedules({approvalPolicy:policy,registry:ctx.registry})[0];
     assert.equal(first.status,'queued');
     ctx.now(START+60000);
-    assert.deepEqual(ctx.store.dispatchDueSchedules({approvalPolicy:policy,registry:ctx.registry}),[{
+    assert.deepEqual(ctx.store.dispatchDueSchedules({approvalPolicy:policy,registry:ctx.registry})
+      .map(x=>({...x})),[{
       scheduleId:'overlap',status:'skipped',reason:'overlap-forbidden'
     }]);
     assert.equal(ctx.store.getSchedule('overlap').nextDueAt,'2026-10-12T10:02:00.000Z');
@@ -132,8 +133,8 @@ async function misfiresAndOverlaps() {
     create(ctx,'stale',{recurrence:{kind:'interval',everyMinutes:1,
       anchorAt:new Date(START).toISOString()},maxLatenessMs:1000});
     ctx.now(START+125000);
-    assert.deepEqual(ctx.store.dispatchDueSchedules({approvalPolicy:policy,registry:ctx.registry})
-      .find(x=>x.scheduleId==='stale'),{
+    assert.deepEqual({...ctx.store.dispatchDueSchedules({approvalPolicy:policy,registry:ctx.registry})
+      .find(x=>x.scheduleId==='stale')},{
       scheduleId:'stale',status:'skipped',reason:'misfire-too-late'
     });
     assert.equal(ctx.store.getSchedule('stale').nextDueAt,'2026-10-12T10:03:00.000Z');
@@ -161,8 +162,8 @@ async function denialAndDisable() {
     ctx.now(START+60000);
     assert.equal(ctx.store.setScheduleEnabled('switch',true).nextDueAt,'2026-10-12T10:01:00.000Z');
     const hostileRegistry=createExecutorRegistry();
-    assert.deepEqual(ctx.store.dispatchDueSchedules({approvalPolicy:policy,registry:hostileRegistry}),
-      [{scheduleId:'switch',status:'disabled'}]);
+    assert.deepEqual(ctx.store.dispatchDueSchedules({approvalPolicy:policy,registry:hostileRegistry})
+      .map(x=>({...x})),[{scheduleId:'switch',status:'disabled'}]);
     assert.equal(ctx.store.getSchedule('switch').enabled,false);
     assert.equal(ctx.store.listScheduleEvents('switch').at(-1).reason,'qualification-lost');
   });
