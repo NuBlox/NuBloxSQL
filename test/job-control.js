@@ -244,7 +244,7 @@ async function migrateV2Store() {
     db.close();
     // context.reopen() closes the old store harmlessly (idempotent).
     ctx.reopen();
-    assert.equal(ctx.store.schemaVersion,3);
+    assert.equal(ctx.store.schemaVersion,4);
     assert.equal(ctx.store.getRun('migrated').status,'queued');
     assert.equal(ctx.store.getCancellation('migrated'),null);
   });

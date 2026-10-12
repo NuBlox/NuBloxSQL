@@ -17,6 +17,7 @@
     "test/job-worker.js",
     "test/job-approval-policy.js",
     "test/job-control.js",
+    "test/job-scheduler.js",
     "test/server-discovery-job-adapter.js",
     "test/host-inspection-job-adapter.js",
     "test/workbench-smoke.js",
