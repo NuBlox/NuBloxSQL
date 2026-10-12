@@ -226,7 +226,7 @@ async function upgradeStoreFromV1() {
     db.exec('DROP TABLE job_approvals; PRAGMA user_version = 1;');
     db.close();
     store=createStore({filename});
-    assert.equal(store.schemaVersion,2);
+    assert.equal(store.schemaVersion,3);
     assert.equal(store.getRun('historic').status,'awaiting-approval');
     assert.equal(store.getApproval('historic'),null);
     store.close();
