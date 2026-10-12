@@ -28,7 +28,8 @@ async function withFile(fn, config = {}) {
   const clock=()=>current;
   const configForStore=()=>({
     filename,clock,
-    cancellationAuthorizer:config.cancellationAuthorizer || (()=>({allowed:true,actorId:'authenticated-operator'}))
+    cancellationAuthorizer:Object.prototype.hasOwnProperty.call(config,'cancellationAuthorizer') ?
+      config.cancellationAuthorizer : (()=>({allowed:true,actorId:'authenticated-operator'}))
   });
   let store=createStore(configForStore());
   const context={
