@@ -58,7 +58,7 @@ Not yet delivered:
 - cancellation handler;
 - approval-policy **live native-mutation qualification** and trusted application authentication integration;
 - public JobDefinition/JobRun API;
-- scheduler;
+- publicly released scheduler / background service;
 - workflow DAG runtime;
 - distributed JobStore;
 - adapters over existing lifecycle/configuration/migration/data-movement executors.
@@ -81,7 +81,7 @@ The next implementation slice is qualification of native mutation adapters and t
 
 Worker steps use `executor.execute({plan, runId, step, stepIndex, checkpoint, workerId, fence, signal})`, returning checkpoint-safe evidence, and `executor.verify({plan, runId, checkpoint, workerId, fence, signal})`, returning `true` or `{verified: true}`. These interfaces are **internal** and not the public package API. An executor must respect cancellation signals and, for irreversible steps, implement independent reconciliation/fencing with the target system; SQLite-side fencing alone cannot prevent stale external side effects.
 
-Execution for approval-required plans is now guarded by the internal policy, separately authorised durable grants and an explicitly opt-in native mutation executor contract. No concrete mutation adapter or public policy interface is release-qualified or enabled by default. There is no persistent general scheduling loop, automatic retry, multi-step JobStepRun ledger, multi-host coordinator or qualified database-lifecycle executor adapter yet. Worker test coverage is in `test/job-worker.js` under the platform suite.
+Execution for approval-required plans is now guarded by the internal policy, separately authorised durable grants and an explicitly opt-in native mutation executor contract. No concrete mutation adapter or public policy interface is release-qualified or enabled by default. There is no background scheduler service, multi-step JobStepRun ledger, multi-host coordinator or qualified mutating database-lifecycle executor adapter yet. Worker test coverage is in `test/job-worker.js` under the platform suite.
 
 SQLite JobStore transition and renewal lease-expiry checks use the store's authoritative clock, not a caller-provided historical timestamp; direct store transitions now reject illegal status edges and immutable run-identity changes.
 
@@ -202,6 +202,49 @@ mutation's outcome from expiry of a local lease.
 The same-host SQLite store does not offer global distributed locking, exactly-once
 remote effects, a public scheduler, automatic engine installation, or production
 approval of mutating jobs. The native providers need independent live qualification.
+
+### Internal durable read-only scheduling (12 October 2026)
+
+`lib/jobs/JobSchedule.js` and the same-host SQLite JobStore **v4** now provide
+a bounded scheduling foundation. Existing v1–v3 JobStore files migrate in place
+without discarding job runs, approval records, cancellations or audit events.
+Back up operational files before opening them with new code.
+
+- `store.createSchedule({ scheduleId, plan, recurrence, approvalPolicy, registry,
+  misfirePolicy?, overlapPolicy?, maxLatenessMs? })` saves immutable plan
+  identity and a separate durable schedule. It requires a **qualified read-only**
+  plan plus an executor marked `retrySafe: true`. The default approval policy
+  only trusts existing server discovery and host inspection job kinds.
+- `store.dispatchDueSchedules({ approvalPolicy, registry, limit? })` is an
+  **explicit one-shot poll**; it does not start a background timer or scheduler
+  daemon. Within a single `BEGIN IMMEDIATE` SQLite transaction it advances
+  each due schedule and, where permitted, inserts one queued job run, a durable
+  occurrence record and audit events. Multiple local processes cannot enqueue
+  the same occurrence concurrently.
+- `store.getSchedule()`, `listSchedules()`, `listScheduleEvents()` and
+  `setScheduleEnabled(id, boolean)` allow inspection and pause/resume.
+  Re-enabling recalculates the next occurrence; it does not replay downtime.
+- Supported recurrence types: UTC-anchored interval (1–10080 minutes) and daily
+  `HH:MM` in a validated IANA time zone. On fall-back dates, only the **first**
+  matching local time is used; nonexistent spring-forward local times are
+  skipped. This behavior is qualified against Europe/London transitions.
+- `overlapPolicy: 'forbid'` is the only enabled overlap policy. A non-terminal
+  earlier run prevents overlap, including queued, leased, verifying, waiting
+  and retry-scheduled states; a skipped occurrence is audited.
+- `misfirePolicy: 'skip' | 'latest'` is available with a bounded lateness
+  allowance. No more than one occurrence per schedule is considered per poll;
+  no unbounded catch-up burst or replay of old work. Scheduler loss of a
+  qualified executor/policy automatically disables the schedule and audits why.
+
+**Limitations:** this is an internal, local-filesystem, read-only dispatcher.
+It requires a trusted host to call `dispatchDueSchedules()`, plus a separately
+running worker to execute the resulting runs. It is not a distributed scheduler,
+service/daemon, public npm API, database-native scheduler, or permission to run
+unattended mutations. It has no calendar exclusions, one-time schedule,
+arbitrary cron syntax, jitter, calendar-defined holidays, or notifications.
+Trusted callers must control who can register and enable schedules. Native
+engine jobs, orchestrated mutation workflows and fleet scheduling remain out
+of scope until their own safety qualifications exist.
 
 ## Scope
 
