@@ -8,5 +8,6 @@ This directory contains detailed architecture beneath the [Product Blueprint](..
 - [Plan Integrity](PLAN-INTEGRITY.md) — lifecycle plan hashes, migration checkpoint replay prevention and transaction-safe completion evidence.
 - [NuBlox Shell](SHELL.md) — terminal application boundary and command direction.
 - [Repository Structure](REPOSITORY-STRUCTURE.md) — canonical repository layout and placement rules.
+- [Repository Hygiene](REPOSITORY-HYGIENE.md) — merge discipline, obsolete branch reconciliation and archival safeguards.
 
 Architecture documents explain how the product is structured. They do not override the Product Blueprint or machine-readable release contracts.
