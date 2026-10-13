@@ -21,6 +21,23 @@ const row = await db.one(sql`SELECT id, name FROM users WHERE id = ${42}`);
 await db.close();
 ```
 
+## Read-only security administration discovery
+
+NuBloxSQL provides a read-only security inspection API for the four executable
+engine families. It preserves native scope and visibility limits instead of
+claiming to calculate complete effective permissions:
+
+```js
+const db = createClient({ dialect: 'postgresql', /* connection config */ });
+const inventory = await db.discoverSecurity({ maxRows: 200 });
+console.log(inventory.scope, inventory.visibility, inventory.summary);
+await db.close();
+```
+
+See [Database Security](docs/architecture/DATABASE-SECURITY.md) for the
+PostgreSQL, MySQL, SQLite and SQL Server differences. This is **not** yet
+security-user provisioning or GRANT/REVOKE execution.
+
 ## Try NuBloxSQL now
 
 The repository includes a runnable Shell, not just library contracts.
