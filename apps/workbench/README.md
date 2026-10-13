@@ -1,4 +1,4 @@
-# NuBlox SQL Workbench — local preview
+# NuBloxSQL Workbench — local preview
 
 The first graphical Workbench is a **real, local-only database application** powered by the existing public NuBloxSQL API. It does not introduce another SQL compiler, driver or ORM.
 
