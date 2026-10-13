@@ -68,6 +68,19 @@ rolled-back result with no completed step IDs. Successful commits publish the
 buffered checkpoints and events after commit. A database-driver commit failure
 propagates without publishing successful step checkpoints.
 
+The execution dispatcher also validates and freezes direct `resumeFrom`
+input **before beginning any transaction**. An invalid checkpoint therefore
+cannot trigger a `BEGIN` or enter the executor.
+
+A failure in an external `onCheckpoint` or `onEvent` callback **after a
+successful commit** now rejects with a structured
+`MIGRATION_POST_COMMIT_NOTIFICATION_FAILED` error,
+`migrationCommitted: true`, `migrationResult` containing the committed
+migration result, and `cause` identifying the failed notification sink.
+This exception is **not** reclassified as rollback. The caller must inspect
+the committed result and reconcile checkpoint persistence before retrying;
+blind re-execution could duplicate side effects.
+
 This does not establish exactly-once guarantees for all non-transactional
 migrations or external clients. In particular, the caller still controls the
 `approve()` callback for the generic migration API, and host/database identity

@@ -187,11 +187,69 @@ async function transactionalCheckpointSafety() {
   assert.equal(noCommit.length,0);
 }
 
+
+async function transactionBoundarySafety(){
+  const plan={
+    schemaVersion:1,targetDialect:'sqlite',transactionStrategy:'transactional-preferred',
+    source:{semanticHash:'trusted-source'},target:{semanticHash:'trusted-target'},
+    steps:[{id:'step-a',targetDialect:'sqlite',safety:'safe',execution:'automatic',sql:'SELECT 1'}]
+  };
+  let began=0,committed=false,executed=0;
+  const client={
+    dialect:'sqlite',
+    async execute(){executed++;return {};},
+    async transaction(fn){
+      began++;
+      const result=await fn(this);
+      committed=true;
+      return result;
+    }
+  };
+  const good=await sql.executeMigration(client,plan,{approval:'none'});
+  assert.equal(good.status,'succeeded');
+
+  const bad={...good.checkpoint,planFingerprint:'0'.repeat(64)};
+  began=0;executed=0;
+  await assert.rejects(sql.executeMigration(client,plan,{
+    approval:'none',transactionMode:'single',resumeFrom:bad
+  }),/checkpoint plan fingerprint mismatch/);
+  assert.equal(began,0,'forged checkpoint must fail before a transaction begins');
+  assert.equal(executed,0);
+
+  committed=false;
+  await assert.rejects(sql.executeMigration(client,plan,{
+    approval:'none',transactionMode:'single',
+    onCheckpoint:async()=>{
+      assert.equal(committed,true);
+      throw new Error('checkpoint store temporarily unavailable');
+    }
+  }),error=>{
+    assert.equal(error.code,'MIGRATION_POST_COMMIT_NOTIFICATION_FAILED');
+    assert.equal(error.migrationCommitted,true);
+    assert.equal(error.migrationResult.status,'succeeded');
+    assert.match(error.cause.message,/checkpoint store/);
+    return true;
+  });
+  assert.equal(committed,true,'post-commit callback failure may not imply rollback');
+  committed=false;
+  await assert.rejects(sql.executeMigration(client,plan,{
+    approval:'none',transactionMode:'single',
+    onEvent:event=>{
+      if(event.type==='step-succeeded'){
+        assert.equal(committed,true);
+        throw new Error('log sink unavailable');
+      }
+    }
+  }),error=>error.code==='MIGRATION_POST_COMMIT_NOTIFICATION_FAILED' &&
+    error.migrationResult.status==='succeeded');
+}
+
 (async()=>{
   await configurationPlanIntegrity();
   await bootstrapPlanIntegrity();
   await enginePlanIntegrity();
   await checkpointGuards();
   await transactionalCheckpointSafety();
+  await transactionBoundarySafety();
   console.log('NuBloxSQL plan hash and migration checkpoint integrity: PASS');
 })().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
