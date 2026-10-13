@@ -10,6 +10,7 @@ on:
       - 'lib/client/**'
       - 'lib/capabilities/**'
       - 'test/client-api.js'
+      - 'test/native-job-live-mysql.js'
       - 'test/client-live.js'
       - 'test/client-types-live.js'
       - 'test/client-transaction-live.js'
@@ -41,6 +42,7 @@ on:
       - 'lib/client/**'
       - 'lib/capabilities/**'
       - 'test/client-api.js'
+      - 'test/native-job-live-mysql.js'
       - 'test/client-live.js'
       - 'test/client-types-live.js'
       - 'test/client-transaction-live.js'
@@ -120,6 +122,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
+      - name: Live MySQL event-schedule inventory qualification
+        run: node test/native-job-live-mysql.js
       - name: Unified NuBloxSQL client contract
         run: node test/client-live.js
       - name: Portable type codec contract

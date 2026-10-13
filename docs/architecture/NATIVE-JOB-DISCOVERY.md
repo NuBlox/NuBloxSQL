@@ -90,9 +90,21 @@ both opt-in dialect contracts, bounded reads, schedule metadata, last-run
 outcomes, long durations, malformed dates, permission errors, redaction and
 a real in-memory SQLite public-client call.
 
-**Live MySQL Event Scheduler and SQL Server Agent opt-in queries remain
-unqualified against vendor instances.** CI contract tests alone do not
-establish live compatibility or production operational monitoring.
+Disposable live-engine acceptance now exercises the public read-only API.
+
+- `node test/native-job-live-mysql.js` creates two **disabled** event fixtures
+  and tests default inventory plus opt-in scheduling metadata on MySQL 8.4 and 9.7.
+- `node test/native-job-live-sqlserver.js` creates a **disabled** Agent job and
+  tests default inventory plus opt-in operational results on SQL Server
+  2019, 2022 and 2025 (TDS 7.4 and TDS 8).
+- The tests fail rather than silently skipping unavailable metadata, and clean
+  up their fixture objects using administrator credentials in disposable CI.
+
+The acceptance matrix validates metadata reads against real DBMS instances,
+**not** actual Agent execution, live history/outcome events, non-administrator
+permission boundaries, or completeness across a production fleet. The public
+API continues to execute only static SELECTs. Further vendor qualification is
+required before asserting those other capabilities.
 
 ## Vendor references
 
