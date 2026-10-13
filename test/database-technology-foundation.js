@@ -68,7 +68,7 @@ const report = cloud.report();
 assert.equal(report.schemaVersion, 1);
 assert.equal(report.counts.cloudQualified, 0);
 assert.equal(report.counts.services, 26);
-assert.equal(cloud.list({provider:'AWS'}).length, 8);
+assert.equal(cloud.list({provider:'AWS'}).length, 10);
 assert.ok(cloud.list({existingSqlAdapter:true}).length >= 10);
 assert.equal(cloud.get('gcp-cloudsql-postgresql').connectionMethod, 'external-proxy');
 assert.equal(cloud.get('azure-sql').existingSqlAdapter, 'sqlserver');
