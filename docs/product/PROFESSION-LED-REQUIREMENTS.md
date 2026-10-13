@@ -84,7 +84,7 @@ The JSON register lists every submitted title within its applicable family. Fami
 
 A Database Architect (family-02) and Database Migration Engineer (family-16) can both use schema impact work (`a25`), but one may **govern** the accepted design and the other may **deliver** and verify the migration (`a26`). These are independent responsibilities with separate authorization/approval requirements. The catalogue does not require a worker to hold a specific job title for an activity to be available through the public API.
 
-A DBMS Engine Developer (family-17) requires database protocol and compiler tools (`a34`/`a40`); these are **NuBloxSQL development capabilities**, not promises that the package will expose an IDE, code-hosting service or product management suite.
+A DBMS Software Engineer (family-17) requires database protocol and compiler tools (`a34`/`a40`); these are **NuBloxSQL development capabilities**, not promises that the package will expose an IDE, code-hosting service or product management suite.
 
 ## Prioritization: use actual maturity, not wishful coverage
 
