@@ -20,12 +20,12 @@ async function main() {
   const prefix = quote + schema + quote + '.';
   const name = event => prefix + quote + event + quote;
   try {
-    await db.execute('DROP EVENT IF EXISTS ' + name(recurring));
-    await db.execute('DROP EVENT IF EXISTS ' + name(once));
-    await db.execute('CREATE EVENT ' + name(recurring) +
+    await db.query('DROP EVENT IF EXISTS ' + name(recurring));
+    await db.query('DROP EVENT IF EXISTS ' + name(once));
+    await db.query('CREATE EVENT ' + name(recurring) +
       ' ON SCHEDULE EVERY 2 HOUR STARTS CURRENT_TIMESTAMP + INTERVAL 5 MINUTE ' +
       'DISABLE DO SELECT 1');
-    await db.execute('CREATE EVENT ' + name(once) +
+    await db.query('CREATE EVENT ' + name(once) +
       ' ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 7 DAY ' +
       'DISABLE DO SELECT 1');
 
@@ -57,7 +57,7 @@ async function main() {
     console.log('NuBloxSQL live MySQL native job operational qualification: PASS');
   } finally {
     for (const event of [recurring,once]) {
-      try {await db.execute('DROP EVENT IF EXISTS ' + name(event));}
+      try {await db.query('DROP EVENT IF EXISTS ' + name(event));}
       catch (error) { console.error('MySQL fixture cleanup failed:',error.message); process.exitCode=1; }
     }
     await db.close();
