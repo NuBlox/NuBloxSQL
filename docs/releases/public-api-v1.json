@@ -298,7 +298,8 @@
     "lib/catalog/DatabaseTechnologyRegistry.js",
     "lib/catalog/CloudDatabaseRegistry.js",
     "types/database-technology.d.ts",
-    "types/cloud-database.d.ts"
+    "types/cloud-database.d.ts",
+    "lib/client/engineering/DataMovement.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
