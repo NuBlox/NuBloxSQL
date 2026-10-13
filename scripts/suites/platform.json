@@ -71,6 +71,7 @@
     "test/canonical-schema-diff.js",
     "test/migration-planner.js",
     "test/migration-executor.js",
+    "test/plan-integrity-hardening.js",
     "test/database-bootstrap.js",
     "test/database-server-discovery.js",
     "test/database-configuration.js",
