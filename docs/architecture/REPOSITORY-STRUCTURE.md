@@ -19,7 +19,8 @@ NuBloxSQL/
 │   └── README.md
 ├── lib/
 │   ├── capabilities/          Capability/SQL language governance
-│   ├── client/                Unified public client implementation
+│   ├── client/                Unified public driver client and feature facade
+│   │   └── discovery/         Server, security and native-job read-only discovery
 │   ├── core/                  Shared SQL-core runtime
 │   ├── dialects/              Native engine implementations
 │   ├── jobs/                  Internal durable job orchestration foundation
@@ -34,6 +35,41 @@ NuBloxSQL/
 ├── LICENSE
 └── NOTICE
 ```
+
+## Driver ownership and grouping
+
+The repository consists of **three distinct products**: `nubloxsql` is the
+headless universal SQL driver; `apps/shell/` and `apps/workbench/` are its
+terminal and graphical clients. Neither tool owns protocols, SQL compilation
+or DBMS semantics.
+
+Within the driver, `lib/client/Client.js` and `index.js` remain the stable
+public facade. Feature implementations may be grouped into internal
+subdirectories, but their public exports and TypeScript declarations must
+not change as a side effect of rearranging source files.
+
+| Directory | Responsibility | Refactoring rule |
+| --- | --- | --- |
+| `lib/client/discovery/` | Read-only server identity/catalogue, security and native scheduler discovery | The public `discoverDatabaseServer`, `discoverDatabaseSecurity`, `discoverNativeDatabaseJobs` and matching Client methods must continue to work |
+| `lib/client/` | Public Client integration and remaining cross-dialect features | Group related modules in later bounded changes only after mapping every dependency and release evidence path |
+| `lib/core/` | Shared cross-engine SQL primitives | No application/UI imports |
+| `lib/dialects/<engine>/` | Native wire protocols, driver implementations and dialect-local tests | Do not flatten or blend engine-specific behavior |
+| `lib/lifecycle/` | Pre-connection engine lifecycle providers | Do not depend on Shell/Workbench |
+| `lib/jobs/` | Internal durable job coordination | Reuse qualified public/domain capabilities; avoid independently reimplementing discovery |
+| `apps/shell/`, `apps/workbench/` | Separate professional tooling products | Consume only the driver's public API |
+
+**Refactoring sequence:** first group the three read-only discovery modules
+and qualify their public API/packaging. A subsequent increment may group
+database administration (bootstrap/configuration/security mutation) or
+database engineering (schema/migrations/data movement) if a dependency audit
+shows a coherent boundary. Avoid a whole-repository directory shuffle:
+package release manifests, test and evidence references, and downstream
+import paths must be updated atomically with each move.
+
+All implementation moves require the existing tests, live dialect suites
+where affected, `npm run verify:release`, `npm run release:qualify` and
+`npm pack --dry-run` to pass. No published package import or exported name
+may be removed without an explicit breaking-change decision.
 
 ## Rules
 

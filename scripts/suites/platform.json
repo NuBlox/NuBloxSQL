@@ -78,6 +78,7 @@
     "test/database-configuration.js",
     "test/database-security-discovery.js",
     "test/database-native-job-discovery.js",
+    "test/discovery-module-boundaries.js",
     "test/database-configuration-planner.js",
     "test/database-configuration-executor.js",
     "test/data-movement.js",
