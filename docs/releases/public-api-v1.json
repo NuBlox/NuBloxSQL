@@ -178,7 +178,9 @@
     "ENGINE_INSTALLATION_PREREQUISITE_STATUSES",
     "assessEngineInstallationPrerequisites",
     "DATABASE_SECURITY_DISCOVERY_SCHEMA_VERSION",
-    "discoverDatabaseSecurity"
+    "discoverDatabaseSecurity",
+    "NATIVE_DATABASE_JOB_DISCOVERY_SCHEMA_VERSION",
+    "discoverNativeDatabaseJobs"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -285,7 +287,9 @@
     "lib/lifecycle/LocalHostInstallationProvider.js",
     "lib/lifecycle/EngineInstallationPrerequisites.js",
     "types/database-security.d.ts",
-    "lib/client/DatabaseSecurityDiscovery.js"
+    "lib/client/DatabaseSecurityDiscovery.js",
+    "types/database-native-jobs.d.ts",
+    "lib/client/DatabaseNativeJobDiscovery.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
