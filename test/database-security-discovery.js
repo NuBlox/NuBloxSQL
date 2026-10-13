@@ -53,7 +53,9 @@ async function postgresql() {
     assert.equal(call.operation.timeoutMs,2500);
     assert.doesNotMatch(call.statement,/rolpassword|pg_authid/i);
   }
-  assert.ok(!JSON.stringify(report).toLowerCase().includes('password'));
+  assert.ok(report.principals.every(principal =>
+    !Object.keys(principal.attributes).some(key => /password|secret|credential|token/i.test(key))));
+  assert.ok(!Object.prototype.hasOwnProperty.call(report, 'native'));
 }
 
 async function mysql() {
