@@ -2,8 +2,8 @@
 
 const assert = require('node:assert/strict');
 const sql = require('..');
-const configurationPlanner = require('../lib/client/DatabaseConfigurationPlanner');
-const bootstrapPlanner = require('../lib/client/DatabaseBootstrapPlanner');
+const configurationPlanner = require('../lib/client/administration/DatabaseConfigurationPlanner');
+const bootstrapPlanner = require('../lib/client/administration/DatabaseBootstrapPlanner');
 const installationPlanner = require('../lib/lifecycle/EngineInstallationPlanner');
 const initializationPlanner = require('../lib/lifecycle/EngineInitializationPlanner');
 
