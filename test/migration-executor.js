@@ -233,6 +233,17 @@ async function directResumeIntegrityContract(){
     },/checkpoint/);
   }
   assert.strictEqual(operations.length,0,'invalid checkpoint cannot execute any SQL');
+  var transactionsStarted=0;
+  await assert.rejects(function(){
+    return sql.executeMigration({
+      dialect:'postgresql',
+      transaction:async function(){transactionsStarted++;throw new Error('must not begin');}
+    },plan,{
+      approval:'none',transactionMode:'single',
+      resumeFrom:Object.assign({},result.checkpoint,{planHash:'f'.repeat(64)})
+    });
+  },/checkpoint plan hash mismatch/);
+  assert.strictEqual(transactionsStarted,0,'a forged checkpoint must fail before BEGIN');
 
   var direct=await sql.executeMigration(client,plan,{approval:'none',resumeFrom:result.checkpoint});
   assert.strictEqual(direct.status,'succeeded');
@@ -268,6 +279,21 @@ async function committedCheckpointContract(){
     ['migration-step-0001','migration-step-0002']);
   assert.strictEqual(published[0].planHash,result.checkpoint.planHash);
   assert.ok(events.includes('step-succeeded'));
+
+  var committedButUnpublished=false;
+  await assert.rejects(function(){
+    return sql.executeMigration(database,plan,{
+      approval:'none',transactionMode:'single',
+      onCheckpoint:async function(){
+        committedButUnpublished=committed;
+        throw new Error('external durable store unavailable');
+      }
+    });
+  },function(error){
+    return error.code==='MIGRATION_CHECKPOINT_PUBLICATION_FAILED' &&
+      error.migrationResult.status==='succeeded';
+  });
+  assert.strictEqual(committedButUnpublished,true);
 
   var rolledBack=false,rollbackPublished=[],rollbackEvents=[];
   var badDatabase={
