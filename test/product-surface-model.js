@@ -14,6 +14,9 @@ assert.equal(model.kind, 'nubloxsql-product-surface-model');
 assert.equal(model.authority, 'docs/product/BLUEPRINT.md');
 assert.equal(model.requirements, 'docs/product/database-profession-work-register.json');
 assert.deepEqual(model.products.map(product => product.id), ['driver', 'shell', 'workbench']);
+assert.equal(model.products[0].kind, 'universal-database-driver');
+assert.ok(model.products[0].owns.includes('native-query-model-extensions'));
+assert.ok(model.products[0].mustNotOwn.includes('force-non-sql-engines-through-sql'));
 assert.deepEqual(model.products.map(product => product.consumes), [[], ['driver'], ['driver']]);
 for (const product of model.products) {
   assert.equal(typeof product.name, 'string');
