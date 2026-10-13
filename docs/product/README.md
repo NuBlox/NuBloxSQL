@@ -5,7 +5,7 @@ This directory contains the current product-level source of truth.
 Read in this order:
 
 1. [Product Blueprint](BLUEPRINT.md) — authoritative scope, architecture, boundaries and frozen development sequence.
-3. [Product Surfaces](PRODUCT-SURFACES.md) — the universal driver, Shell and Workbench, with [machine-readable model](product-surface-model.json) and profession-led work outcomes.
+2. [Product Surfaces](PRODUCT-SURFACES.md) — the universal driver, Shell and Workbench, with [machine-readable model](product-surface-model.json) and profession-led work outcomes.
 3. [Capability Register](CAPABILITY-REGISTER.md) — current maturity, evidence and product gaps.
 4. [Technology Strategy](TECHNOLOGY-STRATEGY.md) — Node.js and TypeScript decisions, migration gates and runtime boundaries.
 5. [Roadmap](ROADMAP.md) — ordered implementation programme.
