@@ -314,18 +314,18 @@ async function revokedApprovalsFailClosed() {
     assert.equal(store.getApproval('revoke-queued').revokedAt,undefined);
     assert.equal(store.getRun('revoke-queued').status,'queued');
     authenticatedActor='auditor';
-    assert.deepEqual(store.revokeApproval({
+    assert.deepEqual({...store.revokeApproval({
       runId:'revoke-queued',reason:'policy withdrawn',actorId:'forged'
-    }),{runId:'revoke-queued',status:'blocked',revoked:true});
+    })},{runId:'revoke-queued',status:'blocked',revoked:true});
     assert.equal(store.getApproval('revoke-queued').revokedBy,'auditor');
     assert.equal(store.getRun('revoke-queued').reason,'approval-revoked');
     assert.deepEqual(store.listEvents('revoke-queued').map(e=>e.type),[
       'planned','status','approval-granted','approval-revoked','status'
     ]);
     const recorded=store.listEvents('revoke-queued').length;
-    assert.deepEqual(store.revokeApproval({
+    assert.deepEqual({...store.revokeApproval({
       runId:'revoke-queued',reason:'second request'
-    }),{runId:'revoke-queued',status:'blocked',revoked:true});
+    })},{runId:'revoke-queued',status:'blocked',revoked:true});
     assert.equal(store.listEvents('revoke-queued').length,recorded);
     assert.equal(authorizations,3);
     store.close();
