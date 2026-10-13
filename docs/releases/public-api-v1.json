@@ -180,7 +180,12 @@
     "DATABASE_SECURITY_DISCOVERY_SCHEMA_VERSION",
     "discoverDatabaseSecurity",
     "NATIVE_DATABASE_JOB_DISCOVERY_SCHEMA_VERSION",
-    "discoverNativeDatabaseJobs"
+    "discoverNativeDatabaseJobs",
+    "DATABASE_TECHNOLOGY_REGISTRY_SCHEMA_VERSION",
+    "databaseTechnologyRegistry",
+    "CLOUD_DATABASE_REGISTRY_SCHEMA_VERSION",
+    "cloudDatabaseRegistry",
+    "planCloudDatabaseConnection"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -289,7 +294,11 @@
     "types/database-security.d.ts",
     "lib/client/discovery/DatabaseSecurityDiscovery.js",
     "types/database-native-jobs.d.ts",
-    "lib/client/discovery/DatabaseNativeJobDiscovery.js"
+    "lib/client/discovery/DatabaseNativeJobDiscovery.js",
+    "lib/capabilities/DatabaseTechnologyRegistry.js",
+    "lib/capabilities/CloudDatabaseRegistry.js",
+    "types/database-technology.d.ts",
+    "types/cloud-database.d.ts"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
