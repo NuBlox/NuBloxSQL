@@ -1,8 +1,10 @@
 # NuBloxSQL
 
-**NuBloxSQL is a universal SQL driver**, exposing an engine-honest JavaScript/TypeScript API for connectivity, native SQL, metadata and headless database lifecycle capabilities.
+**NuBloxSQL is a universal database driver foundation**, designed to cover relational SQL and non-SQL database vendors through truthful, native, capability-gated adapters. Its current working runtimes remain PostgreSQL, MySQL, SQLite and SQL Server; future document, key-value, graph, search and vector vendors are not yet implemented.
 
 This repository contains **three distinct products**: the NuBloxSQL **Driver** (`nubloxsql`), **NuBloxSQL Shell** (terminal and automation tools) and **NuBloxSQL Workbench** (graphical professional workspace). Shell and Workbench serve database professions across the database lifecycle using the driver's public API. See the [Product Surfaces](docs/product/PRODUCT-SURFACES.md) and [profession work register](docs/product/database-profession-work-register.json). The complete professional lifecycle is our destination, **not** a claim that all capabilities are already released.
+
+The new [Universal Database Driver Architecture](docs/architecture/UNIVERSAL-DATABASE-DRIVER.md) explains the 100-profile SQL vendor catalogue, new non-SQL technology registry and cloud-service connection requirements. **Cloud connection hints are not live-qualified connectors**; provider authentication, TLS and private-network setup require independent qualification.
 
 ```bash
 npm install nubloxsql
