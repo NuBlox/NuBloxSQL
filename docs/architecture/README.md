@@ -2,6 +2,7 @@
 
 This directory contains detailed architecture beneath the [Product Blueprint](../product/BLUEPRINT.md).
 
+- [Universal Database Driver](UNIVERSAL-DATABASE-DRIVER.md) — SQL/non-SQL native interfaces, vendor catalogues and cloud connection security boundaries.
 - [Database Lifecycle](DATABASE-LIFECYCLE.md) — the eleven-phase select-to-retire lifecycle.
 - [Database Jobs](DATABASE-JOBS.md) — operation, durable job and workflow architecture across the lifecycle.
 - [Native Job Discovery](NATIVE-JOB-DISCOVERY.md) — read-only MySQL/SQL Server scheduler inventory and explicit engine boundaries.
