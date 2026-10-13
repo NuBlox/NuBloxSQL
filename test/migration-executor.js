@@ -201,10 +201,104 @@ async function singleTransactionRollbackContract(){
   }
 }
 
+
+async function directResumeIntegrityContract(){
+  var plan=planForAdditions(['alpha','beta']);
+  var operations=[];
+  var failing={dialect:'postgresql',execute:async function(statement){
+    if(statement.indexOf('"beta"')!==-1)throw new Error('deliberate second step failure');
+    return {rowCount:0};
+  }};
+  var result=await sql.executeMigration(failing,plan,{approval:'none'});
+  assert.strictEqual(result.status,'failed');
+  assert.strictEqual(result.checkpoint.schemaVersion,2);
+  assert.strictEqual(result.checkpoint.planHash.length,64);
+  var client={dialect:'postgresql',execute:async function(statement){operations.push(statement);return {rowCount:0};}};
+  var sameTargetDifferentSql=JSON.parse(JSON.stringify(plan));
+  sameTargetDifferentSql.steps[1].sql='DROP TABLE users';
+  await assert.rejects(function(){
+    return sql.executeMigration(client,sameTargetDifferentSql,{approval:'none',resumeFrom:result.checkpoint});
+  },/checkpoint plan hash mismatch/);
+  var attempts=[
+    Object.assign({},result.checkpoint,{planHash:'f'.repeat(64)}),
+    Object.assign({},result.checkpoint,{schemaVersion:1}),
+    Object.assign({},result.checkpoint,{completedStepIds:['unknown']}),
+    Object.assign({},result.checkpoint,{completedStepIds:['migration-step-0001','migration-step-0001']}),
+    Object.assign({},result.checkpoint,{completedStepIds:null}),
+    Object.assign({},result.checkpoint,{failedStepId:'unknown'})
+  ];
+  for(var i=0;i<attempts.length;i++){
+    await assert.rejects(function(){
+      return sql.executeMigration(client,plan,{approval:'none',resumeFrom:attempts[i]});
+    },/checkpoint/);
+  }
+  assert.strictEqual(operations.length,0,'invalid checkpoint cannot execute any SQL');
+
+  var direct=await sql.executeMigration(client,plan,{approval:'none',resumeFrom:result.checkpoint});
+  assert.strictEqual(direct.status,'succeeded');
+  assert.strictEqual(direct.audit[0].status,'skipped');
+  assert.strictEqual(operations.length,1);
+}
+
+async function committedCheckpointContract(){
+  var plan=planForAdditions(['alpha','beta']);
+  var committed=false;
+  var published=[];
+  var events=[];
+  var database={
+    dialect:'postgresql',
+    execute:async function(){return {rowCount:0};},
+    transaction:async function(run){
+      var result=await run({dialect:'postgresql',execute:this.execute});
+      committed=true;
+      return result;
+    }
+  };
+  var result=await sql.executeMigration(database,plan,{
+    approval:'none',transactionMode:'single',
+    onCheckpoint:async function(cp){assert.strictEqual(committed,true);published.push(cp);},
+    onEvent:function(record){
+      if(record.type==='step-succeeded')assert.strictEqual(committed,true);
+      events.push(record.type);
+    }
+  });
+  assert.strictEqual(result.status,'succeeded');
+  assert.strictEqual(published.length,1);
+  assert.deepStrictEqual(Array.from(published[0].completedStepIds),
+    ['migration-step-0001','migration-step-0002']);
+  assert.strictEqual(published[0].planHash,result.checkpoint.planHash);
+  assert.ok(events.includes('step-succeeded'));
+
+  var rolledBack=false,rollbackPublished=[],rollbackEvents=[];
+  var badDatabase={
+    dialect:'postgresql',
+    transaction:async function(run){
+      try{
+        return await run({dialect:'postgresql',execute:async function(statement){
+          if(statement.includes('"beta"'))throw new Error('simulate rollback');
+          return {rowCount:0};
+        }});
+      }catch(error){rolledBack=true;throw error;}
+    }
+  };
+  var failed=await sql.executeMigration(badDatabase,plan,{
+    approval:'none',transactionMode:'single',
+    onCheckpoint:async function(cp){rollbackPublished.push(cp);},
+    onEvent:function(event){rollbackEvents.push(event.type);}
+  });
+  assert.strictEqual(rolledBack,true);
+  assert.strictEqual(failed.status,'failed');
+  assert.strictEqual(rollbackPublished.length,0);
+  assert.ok(!rollbackEvents.includes('step-succeeded'));
+  assert.deepStrictEqual(Array.from(failed.checkpoint.completedStepIds),[]);
+}
+
 Promise.resolve()
   .then(dryRunContract)
   .then(approvalContract)
   .then(checkpointResumeContract)
+  .then(directResumeIntegrityContract)
+  .then(committedCheckpointContract)
   .then(compensationContract)
   .then(dialectGuardContract)
   .then(manualPlanContract)
