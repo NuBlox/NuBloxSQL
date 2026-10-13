@@ -18,9 +18,12 @@ NuBloxSQL/
 │   ├── SUPPORT.md
 │   └── README.md
 ├── lib/
-│   ├── capabilities/          Capability/SQL language governance
-│   ├── client/                Unified public driver client and feature facade
-│   │   └── discovery/         Server, security and native-job read-only discovery
+│   ├── capabilities/          SQL dialect, parser/compiler and capability ontology
+│   ├── catalog/               Vendor/model and cloud-service reference catalogues
+│   ├── client/                Public driver client façade and shared runtime
+│   │   ├── administration/    Bootstrap and configuration plans/execution
+│   │   ├── discovery/         Server, security and native-job discovery
+│   │   └── engineering/       Schema/diff, migration and data movement
 │   ├── core/                  Shared SQL-core runtime
 │   ├── dialects/              Native engine implementations
 │   ├── jobs/                  Internal durable job orchestration foundation
@@ -38,12 +41,12 @@ NuBloxSQL/
 
 ## Database vendor and cloud implementation boundaries
 
-The existing SQL dialect registry remains under `lib/capabilities/` and is distinct from `DatabaseTechnologyRegistry.js` (SQL and non-SQL model catalogue) and `CloudDatabaseRegistry.js` (managed-cloud service placement and credential-free connection requirements). Only the four qualified native SQL adapters currently exist under `lib/dialects/`. Catalogue records are not connectors. New SQL/non-SQL protocol adapters must be isolated under their own qualified runtime and must not pull cloud identity, secret persistence or vendor UI into the shared driver.
+The existing SQL dialect registry remains under `lib/capabilities/` and is distinct from `lib/catalog/DatabaseTechnologyRegistry.js` (SQL and non-SQL model catalogue) and `lib/catalog/CloudDatabaseRegistry.js` (managed-cloud service placement and credential-free connection requirements). Only the four qualified native SQL adapters currently exist under `lib/dialects/`. Catalogue records are not connectors. New SQL/non-SQL protocol adapters must be isolated under their own qualified runtime and must not pull cloud identity, secret persistence or vendor UI into the shared driver.
 
 ## Driver ownership and grouping
 
 The repository consists of **three distinct products**: `nubloxsql` is the
-headless universal SQL driver; `apps/shell/` and `apps/workbench/` are its
+headless universal database driver; `apps/shell/` and `apps/workbench/` are its
 terminal and graphical clients. Neither tool owns protocols, SQL compilation
 or DBMS semantics.
 
@@ -54,7 +57,10 @@ not change as a side effect of rearranging source files.
 
 | Directory | Responsibility | Refactoring rule |
 | --- | --- | --- |
-| `lib/client/discovery/` | Read-only server identity/catalogue, security and native scheduler discovery | The public `discoverDatabaseServer`, `discoverDatabaseSecurity`, `discoverNativeDatabaseJobs` and matching Client methods must continue to work |
+| `lib/catalog/` | Vendor, technology, model and cloud profile catalogue, separate from SQL grammar | Read-only, no imported runtime/client/application, catalogue is not connection support |
+| `lib/client/administration/` | Database bootstrap and configuration | Preserve public plan/inspect/execute contracts and plan integrity |
+| `lib/client/discovery/` | Read-only server identity/catalogue, security and native scheduler discovery | Preserve public `discoverDatabaseServer`, `discoverDatabaseSecurity`, `discoverNativeDatabaseJobs` and Client methods |
+| `lib/client/engineering/` | Schema object identity, dependency graph, diff, migration and data movement | Preserve public planning/execution semantics and safety controls |
 | `lib/client/` | Public Client integration and remaining cross-dialect features | Group related modules in later bounded changes only after mapping every dependency and release evidence path |
 | `lib/core/` | Shared cross-engine SQL primitives | No application/UI imports |
 | `lib/dialects/<engine>/` | Native wire protocols, driver implementations and dialect-local tests | Do not flatten or blend engine-specific behavior |
@@ -62,13 +68,14 @@ not change as a side effect of rearranging source files.
 | `lib/jobs/` | Internal durable job coordination | Reuse qualified public/domain capabilities; avoid independently reimplementing discovery |
 | `apps/shell/`, `apps/workbench/` | Separate professional tooling products | Consume only the driver's public API |
 
-**Refactoring sequence:** first group the three read-only discovery modules
-and qualify their public API/packaging. A subsequent increment may group
-database administration (bootstrap/configuration/security mutation) or
-database engineering (schema/migrations/data movement) if a dependency audit
-shows a coherent boundary. Avoid a whole-repository directory shuffle:
-package release manifests, test and evidence references, and downstream
-import paths must be updated atomically with each move.
+**Refactoring sequence:** discovery, catalogue, database administration and
+database engineering have been grouped with package/evidence migration and
+regression checks. Subsequent work should partition remaining public client
+runtime integrations, preserve dialect-local protocol separation, make SQL
+parser/compile layers easier to maintain, and independently organize Shell/
+Workbench workflows. Avoid a single whole-repository directory shuffle:
+package release manifests, tests and documentation must always advance with
+each move. See [Refactoring Programme](REFACTOR-PROGRAMME.md).
 
 All implementation moves require the existing tests, live dialect suites
 where affected, `npm run verify:release`, `npm run release:qualify` and
