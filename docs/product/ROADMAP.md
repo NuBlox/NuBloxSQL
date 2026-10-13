@@ -121,7 +121,7 @@ Implement in this order:
 4. **Read-only adapters delivered:** `discovery.server` for four SQL dialects and `inspection.host` via the existing local-host provider. Both bind targets, persist digest-only checkpoints and independently verify. Next: qualify target-side fencing/reconciliation and the approval authority before enabling any mutation adapters for engine install/init, bootstrap, configuration, migration or data movement;
 5. **Delivered internal scheduler and polling service:** timezone-aware daily and UTC interval scheduling, bounded misfire policies, no-overlap and atomic same-host dispatch for qualified read-only jobs; internal graceful-shutdown polling with bounded backoff and redacted health diagnostics; next: trusted host supervision, scheduling lifecycle governance and native job-system discovery;
 6. workflow DAG with gates, fan-out/fan-in and manual/external waits;
-7. read-only discovery of engine-native job systems;
+7. **Delivered first read-only foundation:** MySQL Event Scheduler event inventory and SQL Server Agent job inventory, with explicit PostgreSQL extension/external and SQLite embedded boundaries. See [Native Job Discovery](../architecture/NATIVE-JOB-DISCOVERY.md). Live MySQL/SQL Server engine qualification and broader scheduling metadata remain; no mutation adapters are qualified;
 8. native job management only after discovery is qualified.
 
 This kernel should remain specific to database lifecycle work and must not turn NuBloxSQL into a generic CI/CD or infrastructure workflow system.

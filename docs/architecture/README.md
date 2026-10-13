@@ -4,6 +4,7 @@ This directory contains detailed architecture beneath the [Product Blueprint](..
 
 - [Database Lifecycle](DATABASE-LIFECYCLE.md) — the eleven-phase select-to-retire lifecycle.
 - [Database Jobs](DATABASE-JOBS.md) — operation, durable job and workflow architecture across the lifecycle.
+- [Native Job Discovery](NATIVE-JOB-DISCOVERY.md) — read-only MySQL/SQL Server scheduler inventory and explicit engine boundaries.
 - [Database Security](DATABASE-SECURITY.md) — read-only native principal, role and privilege discovery boundaries.
 - [Plan Integrity](PLAN-INTEGRITY.md) — lifecycle plan hashes, migration checkpoint replay prevention and transaction-safe completion evidence.
 - [NuBlox Shell](SHELL.md) — terminal application boundary and command direction.
