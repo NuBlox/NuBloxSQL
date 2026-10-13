@@ -214,6 +214,24 @@ The same-host SQLite store does not offer global distributed locking, exactly-on
 remote effects, a public scheduler, automatic engine installation, or production
 approval of mutating jobs. The native providers need independent live qualification.
 
+### Explicit approval revocation (13 October 2026)
+
+The internal SQLite JobStore now accepts an optional trusted synchronous
+`approvalRevocationAuthorizer(intent, run, plan, grant)`. When it returns
+`{ allowed: true, actorId: authenticatedPrincipal }`, the host may call
+`store.revokeApproval({ runId, reason })`. Caller-provided actor fields are
+ignored. Revocation is atomic with the updated durable grant and a redacted,
+append-only `approval-revoked` event. It is idempotent and survives store
+restart. Queued jobs immediately transition to `blocked`; leased or executing
+work retains its current state until the worker can safely observe revocation.
+
+The worker rechecks grants after asynchronous target reconciliation and
+after verification, preventing withdrawn authority from yielding a misleading
+`succeeded` status. **Revocation does not undo a remote mutation already in
+flight or prove that the external target was fenced.** Such jobs are blocked
+pending operator reconciliation. No mutation adapters are enabled by default,
+and this internal revocation API is not published through the npm entry point.
+
 ### Internal durable read-only scheduling (12 October 2026)
 
 `lib/jobs/JobSchedule.js` and the same-host SQLite JobStore **v4** now provide

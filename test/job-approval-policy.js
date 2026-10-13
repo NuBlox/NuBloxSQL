@@ -290,6 +290,146 @@ async function approvalExpiresDuringReconciliation() {
   });
 }
 
+async function revokedApprovalsFailClosed() {
+  await withDirectory(async filename => {
+    let authenticatedActor='auditor';
+    let authorizations=0;
+    const clock=()=>NOW;
+    let store=createStore({
+      filename, clock,
+      approvalAuthorizer:()=>({allowed:true,approverId:'dba'}),
+      approvalRevocationAuthorizer(intent) {
+        authorizations++;
+        assert.equal(Object.hasOwn(intent,'actorId'),false);
+        return {allowed:authenticatedActor==='auditor',actorId:authenticatedActor};
+      }
+    });
+    const plan=mutablePlan();
+    await submitForApproval(store,plan,'revoke-queued');
+    store.approveRun(request('revoke-queued',plan));
+    authenticatedActor='intruder';
+    assert.throws(()=>store.revokeApproval({
+      runId:'revoke-queued',reason:'policy withdrawn',actorId:'auditor'
+    }),/authorizer denied/);
+    assert.equal(store.getApproval('revoke-queued').revokedAt,undefined);
+    assert.equal(store.getRun('revoke-queued').status,'queued');
+    authenticatedActor='auditor';
+    assert.deepEqual({...store.revokeApproval({
+      runId:'revoke-queued',reason:'policy withdrawn',actorId:'forged'
+    })},{runId:'revoke-queued',status:'blocked',revoked:true});
+    assert.equal(store.getApproval('revoke-queued').revokedBy,'auditor');
+    assert.equal(store.getRun('revoke-queued').reason,'approval-revoked');
+    assert.deepEqual(store.listEvents('revoke-queued').map(e=>e.type),[
+      'planned','status','approval-granted','approval-revoked','status'
+    ]);
+    const recorded=store.listEvents('revoke-queued').length;
+    assert.deepEqual({...store.revokeApproval({
+      runId:'revoke-queued',reason:'second request'
+    })},{runId:'revoke-queued',status:'blocked',revoked:true});
+    assert.equal(store.listEvents('revoke-queued').length,recorded);
+    assert.equal(authorizations,3);
+    store.close();
+
+    // Revocation is durable and evaluated after store reopen.
+    store=createStore({filename,clock});
+    const grant=store.getApproval('revoke-queued');
+    assert.equal(grant.revokedBy,'auditor');
+    const policy=createApprovalPolicy({readOnlyKinds:[],mutationKinds:[KIND],clock});
+    const registry=qualifiedRegistry();
+    assert.equal(policy.evaluate({
+      plan,run:store.getRun('revoke-queued'),approval:grant,
+      executor:registry.registry.resolve(KIND)
+    }).reason,'approval-revoked');
+    assert.equal((await createWorker({store,registry:registry.registry,
+      workerId:'blocked-revocation',clock,approvalPolicy:policy}).runOnce()),null);
+    assert.equal(registry.state.writes,0);
+    store.close();
+  });
+}
+
+async function revocationDuringReconciliationBlocksMutation() {
+  await withDirectory(async filename => {
+    const clock=()=>NOW;
+    const store=createStore({
+      filename,clock,approvalAuthorizer:()=>({allowed:true,approverId:'dba'}),
+      approvalRevocationAuthorizer:()=>({allowed:true,actorId:'auditor'})
+    });
+    try {
+      const plan=mutablePlan();
+      await submitForApproval(store,plan,'revoke-reconciling');
+      store.approveRun(request('revoke-reconciling',plan));
+      const {registry,state}=qualifiedRegistry({
+        reconcile(context) {
+          store.revokeApproval({runId:context.runId,reason:'target access withdrawn'});
+          return reconciliationReceipt(context);
+        }
+      });
+      const policy=createApprovalPolicy({readOnlyKinds:[],mutationKinds:[KIND],clock});
+      const worker=createWorker({
+        store,registry,workerId:'revoke-during-reconcile',clock,approvalPolicy:policy
+      });
+      assert.equal((await worker.runOnce()).status,'blocked');
+      assert.equal(store.getRun('revoke-reconciling').reason,'approval-denied:approval-revoked');
+      assert.equal(state.reconciliations,1);
+      assert.equal(state.writes,0);
+    } finally { store.close(); }
+  });
+}
+
+async function revocationDuringVerificationDoesNotClaimSuccess() {
+  await withDirectory(async filename => {
+    const clock=()=>NOW;
+    const store=createStore({
+      filename,clock,approvalAuthorizer:()=>({allowed:true,approverId:'dba'}),
+      approvalRevocationAuthorizer:()=>({allowed:true,actorId:'auditor'})
+    });
+    try {
+      const plan=mutablePlan();
+      await submitForApproval(store,plan,'revoke-verifying');
+      store.approveRun(request('revoke-verifying',plan));
+      const {registry,state}=qualifiedRegistry();
+      // Override the verifier of a qualified registry with one that withdraws
+      // authorization after a mutation, before the success transition.
+      const guarded=jobs.createExecutorRegistry();
+      const executor=registry.resolve(KIND);
+      guarded.register(KIND,{
+        ...executor,
+        async verify(context) {
+          store.revokeApproval({runId:context.runId,reason:'authorization withdrawn'});
+          return true;
+        }
+      });
+      const policy=createApprovalPolicy({readOnlyKinds:[],mutationKinds:[KIND],clock});
+      const worker=createWorker({
+        store,registry:guarded,workerId:'revoke-during-verify',clock,
+        approvalPolicy:policy
+      });
+      assert.equal((await worker.runOnce()).status,'blocked');
+      assert.equal(store.getRun('revoke-verifying').reason,'post-execution-authorization-lost');
+      assert.equal(state.writes,1);
+      assert.equal(store.getApproval('revoke-verifying').revokedBy,'auditor');
+    } finally { store.close(); }
+  });
+}
+
+async function revocationRequiresTrustedAuthorizer() {
+  await withDirectory(async filename => {
+    assert.throws(()=>createStore({filename,approvalRevocationAuthorizer:123}),
+      /approvalRevocationAuthorizer/);
+    const store=createStore({filename,clock:()=>NOW,
+      approvalAuthorizer:()=>({allowed:true,approverId:'dba'})});
+    try {
+      const plan=mutablePlan();
+      await submitForApproval(store,plan,'without-revoker');
+      store.approveRun(request('without-revoker',plan));
+      assert.throws(()=>store.revokeApproval({
+        runId:'without-revoker',reason:'unauthenticated'
+      }),/trusted approval revocation authorizer/);
+      assert.equal(store.getRun('without-revoker').status,'queued');
+    } finally {store.close();}
+  });
+}
+
 async function upgradeStoreFromV1() {
   await withDirectory(async filename=>{
     let store=createStore({filename});
@@ -316,6 +456,10 @@ async function upgradeStoreFromV1() {
   await reconciliationDeniesBeforeSideEffects();
   await bindingFailuresNeverMutate();
   await approvalExpiresDuringReconciliation();
+  await revokedApprovalsFailClosed();
+  await revocationDuringReconciliationBlocksMutation();
+  await revocationDuringVerificationDoesNotClaimSuccess();
+  await revocationRequiresTrustedAuthorizer();
   await upgradeStoreFromV1();
   console.log('NuBloxSQL durable approval policy and authorization contract: PASS');
 })().catch(error=>{console.error(error);process.exitCode=1;});
