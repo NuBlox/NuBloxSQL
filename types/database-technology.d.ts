@@ -1,3 +1,5 @@
+import type { DialectRegistryProduct } from './dialect-registry';
+
 /** Catalogue classification is not a claim that a vendor connection adapter exists. */
 export type DatabaseModel =
   | 'relational' | 'document' | 'key-value' | 'graph' | 'wide-column'
@@ -35,10 +37,11 @@ export interface DatabaseTechnologyInspection {
 }
 export interface DatabaseTechnologyReport {
   readonly schemaVersion: 1;
-  readonly counts: Readonly<{ technologies: number; routable: number; unimplemented: number; models: number }>;
+  readonly counts: Readonly<{ technologies: number; routable: number; unimplemented: number; models: number; relationalSqlProfiles: number }>;
   readonly models: readonly DatabaseModel[];
   readonly nativeInterfaces: readonly DatabaseNativeInterface[];
   readonly technologies: readonly DatabaseTechnology[];
+  readonly relationalSqlProfiles: readonly DialectRegistryProduct[];
 }
 export interface DatabaseTechnologyValidation {
   readonly valid: boolean;
@@ -56,6 +59,7 @@ export interface DatabaseTechnologyRegistry {
   readonly INTERFACES: readonly DatabaseNativeInterface[];
   readonly OPERATIONS: readonly DatabaseCandidateOperation[];
   readonly technologies: readonly DatabaseTechnology[];
+  readonly relationalSqlProfiles: readonly DialectRegistryProduct[];
   get(id: string): DatabaseTechnology | null;
   list(options?: DatabaseTechnologyFilters): readonly DatabaseTechnology[];
   inspect(id: string): DatabaseTechnologyInspection | null;
