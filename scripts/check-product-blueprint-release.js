@@ -22,7 +22,10 @@ var lifecycleDoc=fs.readFileSync(lifecycleDocPath,'utf8');
 var jobsDoc=fs.readFileSync(jobsDocPath,'utf8');
 var lifecycle=JSON.parse(fs.readFileSync(lifecyclePath,'utf8'));
 
-assert(blueprint.includes('one coherent JavaScript and TypeScript API for the complete SQL database lifecycle'),'canonical lifecycle promise missing');
+assert(blueprint.includes('NuBloxSQL is a universal SQL driver'),'universal SQL driver identity missing');
+assert(blueprint.includes('complete SQL database lifecycle'),'end-to-end lifecycle commitment missing');
+assert(blueprint.includes('NuBloxSQL Shell'),'professional Shell product missing');
+assert(blueprint.includes('NuBloxSQL Workbench'),'professional Workbench product missing');
 assert(blueprint.includes('One developer API, honest dialect semantics.'),'governing design rule missing');
 assert(blueprint.includes('## Infrastructure boundary'),'infrastructure boundary missing');
 assert(blueprint.includes('## Product decision gate'),'product decision gate missing');
