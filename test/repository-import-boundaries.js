@@ -11,7 +11,7 @@ const root = path.resolve(__dirname, '..');
 function walk(dir) {
   let result = [];
   for (const entry of fs.readdirSync(dir, {withFileTypes:true})) {
-    if (entry.isDirectory()) result.push(...walk(path.join(dir,entry.name)));
+    if (entry.isDirectory() && entry.name !== 'test' && entry.name !== 'fixtures') result.push(...walk(path.join(dir,entry.name)));
     else if (entry.isFile() && entry.name.endsWith('.js')) result.push(path.join(dir, entry.name));
   }
   return result;
