@@ -7,6 +7,7 @@ on:
       - 'index.d.ts'
       - 'package.json'
       - 'lib/client/**'
+      - 'test/native-job-live-sqlserver.js'
       - 'lib/dialects/sqlserver/**'
       - '.github/workflows/sqlserver.yml'
   push:
@@ -16,6 +17,7 @@ on:
       - 'index.d.ts'
       - 'package.json'
       - 'lib/client/**'
+      - 'test/native-job-live-sqlserver.js'
       - 'lib/dialects/sqlserver/**'
       - '.github/workflows/sqlserver.yml'
   workflow_dispatch:
@@ -83,6 +85,11 @@ jobs:
           docker logs "nublox-sqlserver-${MSSQL_VERSION}"
           echo "SQL Server ${MSSQL_VERSION} did not report engine readiness within 90 seconds" >&2
           exit 1
+      - name: Live SQL Server Agent inventory qualification (TDS 7.4)
+        env:
+          MSSQL_HOST: 127.0.0.1
+          MSSQL_PORT: 1434
+        run: node test/native-job-live-sqlserver.js
       - name: Encrypted public-client TDS 7.4 qualification
         env:
           MSSQL_HOST: 127.0.0.1
@@ -200,6 +207,12 @@ jobs:
           MSSQL_SERVER_NAME: sqlserver
           MSSQL_PORT: 1433
         run: node lib/dialects/sqlserver/test/live-connection.js
+      - name: Live SQL Server Agent inventory qualification (TDS 8)
+        env:
+          MSSQL_HOST: 127.0.0.1
+          MSSQL_SERVER_NAME: sqlserver
+          MSSQL_PORT: 1433
+        run: node test/native-job-live-sqlserver.js
       - name: Portable SQL Server metadata qualification
         env:
           MSSQL_HOST: 127.0.0.1
