@@ -64,6 +64,7 @@ try {
     "if (sql.DIALECT_REGISTRY_SCHEMA_VERSION !== 1 || sql.DIALECT_REGISTRY_MASTER_PROFILE_COUNT !== 100) throw new Error('dialect registry schema mismatch');",
     "if (sql.PROFILE_CAPABILITY_OVERLAY_SCHEMA_VERSION !== 1 || !sql.profileCapabilities.validate().valid) throw new Error('profile capability overlay qualification failed');",
     "if (sql.DATABASE_BOOTSTRAP_PLAN_SCHEMA_VERSION !== 1 || sql.DATABASE_BOOTSTRAP_EXECUTION_SCHEMA_VERSION !== 1) throw new Error('database bootstrap schema mismatch');",
+    "if (sql.NATIVE_DATABASE_JOB_DISCOVERY_SCHEMA_VERSION !== 1 || typeof sql.discoverNativeDatabaseJobs !== 'function') throw new Error('native job discovery export missing');",
     "const bootstrapPlan = sql.planDatabaseBootstrap({ database: 'release_bootstrap', schemas: ['app'] }, { targetDialect: 'postgresql' });",
     "if (!bootstrapPlan.planHash || bootstrapPlan.summary.steps !== 2 || !bootstrapPlan.requires.databaseClientAfterCreate) throw new Error('database bootstrap planning qualification failed');",
     "if (!sql.dialectRegistry.validate().valid || sql.dialectRegistry.report().counts.firstClassDialects !== 25) throw new Error('dialect registry qualification failed');",
