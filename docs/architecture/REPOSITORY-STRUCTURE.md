@@ -36,6 +36,10 @@ NuBloxSQL/
 └── NOTICE
 ```
 
+## Database vendor and cloud implementation boundaries
+
+The existing SQL dialect registry remains under `lib/capabilities/` and is distinct from `DatabaseTechnologyRegistry.js` (SQL and non-SQL model catalogue) and `CloudDatabaseRegistry.js` (managed-cloud service placement and credential-free connection requirements). Only the four qualified native SQL adapters currently exist under `lib/dialects/`. Catalogue records are not connectors. New SQL/non-SQL protocol adapters must be isolated under their own qualified runtime and must not pull cloud identity, secret persistence or vendor UI into the shared driver.
+
 ## Driver ownership and grouping
 
 The repository consists of **three distinct products**: `nubloxsql` is the
