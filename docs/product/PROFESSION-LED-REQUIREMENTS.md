@@ -6,7 +6,7 @@
 
 ## Decision
 
-Use the supplied **18 career-family** catalogue as a requirements-discovery lens for the independent NuBloxSQL database platform. Model **what database professionals need to accomplish**, the evidence they produce and which database capabilities enable their activities. Do **not** turn job titles into SQL grants, database roles, employment records, a human-capital-management system or a dependency on NuBlox Enterprise Operating System, MetaObject or a downstream Workbench.
+Use the supplied **18 career-family** catalogue as a requirements-discovery lens for **NuBloxSQL Driver, NuBloxSQL Shell and NuBloxSQL Workbench**. Model what professionals need to accomplish, which database-specific driver API powers the task, what Shell and Workbench must expose, and which verifiable work product is produced. Do not turn job titles into SQL grants, database roles, employment records, human-capital-management features or a dependency of the **driver** on either tool or another product.
 
 The register currently contains:
 
@@ -37,6 +37,25 @@ This is a curated starting taxonomy based on user-provided professional labels, 
 **Access-control boundary:** authentication, privileges, approval policy and segregation of duties must be validated against the actual authenticated principal, target and requested action. A job's title, family, seniority or competency must *never* be accepted as sufficient authority to execute a privileged database operation.
 
 **Product boundary:** NuBloxSQL provides the database-specific primitives and engine-honest semantics. Enterprise career management, hiring, organization structures, generic training systems, analytics dashboards, broad AI tooling and generic cloud infrastructure are **not** new NuBloxSQL product domains. A downstream interface may consume this requirements taxonomy but must not become a dependency of the core package.
+
+## Three-product delivery traceability
+
+The register specifies the work of database professions; the universal SQL
+**driver** provides shared semantics, while **Shell** and **Workbench** are
+two different ways to complete that work.
+
+| Work dimension | NuBloxSQL Driver | NuBloxSQL Shell | NuBloxSQL Workbench |
+| --- | --- | --- | --- |
+| Database capability | Qualified public operation and native semantics | Invoke and compose commands | Invoke via guided UI |
+| Governance | Policy and evidence primitives | Inspect, compare, report | Visual assessment, review and approval |
+| Delivery | Controlled native execution and verification | Scripted/interactive execution | Guided execution and verification |
+| Work product | Typed result, plan or report | Machine-readable or human-readable output | Contextual view, record and export |
+
+An activity can serve multiple roles without duplicating driver logic or
+permissions. A career title never grants access; authorization must use a
+trusted identity, target, action and DBMS policy. **A UI button or command
+alone does not constitute a delivered activity.** See [Product Surfaces](PRODUCT-SURFACES.md).
+The register's requirements must not be presented as 40 implemented workflows.
 
 ## Family-to-work traceability
 
