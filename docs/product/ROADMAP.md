@@ -150,6 +150,8 @@ Target coverage areas:
 
 ## Priority 3 — Administration security
 
+**Status:** A public, read-only, engine-specific security-discovery foundation is now delivered: PostgreSQL roles/memberships, MySQL current-account grants, SQL Server database principals/explicit permissions, and an explicit SQLite not-applicable boundary. No native write-side security administration or effective privilege engine is qualified. See [Database Security](../architecture/DATABASE-SECURITY.md).
+
 Create an honest cross-engine security-administration model:
 
 - users/logins;
