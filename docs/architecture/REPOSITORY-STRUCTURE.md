@@ -5,7 +5,8 @@ This document defines the intended NuBloxSQL repository layout. New files should
 ```text
 NuBloxSQL/
 ├── apps/
-│   └── shell/                 Official downstream CLI application
+│   ├── shell/                 NuBloxSQL Shell: terminal and automation
+│   └── workbench/             NuBloxSQL Workbench: graphical professional tool
 ├── docs/
 │   ├── architecture/          Detailed system/design architecture
 │   ├── cookbook/              Worked public recipes
@@ -37,7 +38,7 @@ NuBloxSQL/
 ## Rules
 
 - `lib/` is the production runtime and remains dependency-free at the npm package boundary.
-- `apps/` contains products that consume NuBloxSQL but are not part of the `nubloxsql` package runtime.
+- `apps/` contains **NuBloxSQL Shell** and **NuBloxSQL Workbench**, two tools for database professionals. Both consume the public universal SQL driver API and remain outside the `nubloxsql` package runtime.
 - `docs/product/BLUEPRINT.md` is the product authority.
 - `docs/architecture/` contains implementation/design models, not historical notes.
 - `scripts/` replaces the ambiguous historical `tool/` directory.

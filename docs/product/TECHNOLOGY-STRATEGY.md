@@ -9,7 +9,7 @@
 - **Primary source-language direction:** strict TypeScript for future core development and progressively migrated existing modules, while keeping the npm consumer contract usable from both JavaScript and TypeScript.
 - **Current source baseline:** JavaScript/CommonJS plus maintained TypeScript declaration files. This remains supported; an unqualified mass conversion is prohibited.
 - **SQL engines:** PostgreSQL, MySQL, SQLite and SQL Server, preserving native dialect semantics. Dialects and drivers remain independently qualified.
-- **Presentation:** a separate Svelte/SvelteKit layer (including the NuBlox Shell as appropriate), not a dependency of the SQL runtime.
+- **Three products:** NuBloxSQL Driver is the independent Node.js JS/TS runtime. NuBloxSQL Shell is a Node.js CLI/REPL. NuBloxSQL Workbench is the independent graphical product, with Svelte/SvelteKit the preferred direction for future UI work (not a description of the current local preview). Neither application is a dependency of the driver.
 - **Persistence:** use explicit domain-specific stores. The existing SQLite JobStore is local, same-host coordination; a multi-host system will need a separately qualified transactional backend.
 
 ## Implementation rules

@@ -1,4 +1,4 @@
-# NuBlox Shell
+# NuBloxSQL Shell
 
 NuBlox Shell is the terminal interface for NuBloxSQL. It intentionally contains no database-engine implementation; commands use the public `nubloxsql` API.
 

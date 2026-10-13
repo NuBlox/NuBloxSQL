@@ -4,7 +4,9 @@ This roadmap is governed by the [Product Blueprint](BLUEPRINT.md).
 
 **Integrity hardening (13 October 2026):** lifecycle plan validators now recompute content hashes and return immutable snapshots. Migration direct resume validates full-plan fingerprints, and transactional step checkpoints are withheld until commit. See [Plan Integrity](../architecture/PLAN-INTEGRITY.md). Trusted approver identity, live instance binding and external checkpoint durability are further gates, not claims of completion.
 
-NuBloxSQL is being built as **one coherent JavaScript/TypeScript API for the complete SQL database lifecycle**, not as a parser project, ORM, workbench UI or race to support the largest number of dialect names.
+NuBloxSQL development delivers **three products**: a universal SQL **Driver**, a professional terminal **Shell**, and a professional graphical **Workbench**. The driver is a separately useful, coherent JavaScript/TypeScript API. Shell and Workbench consume that public driver to carry out database activities and produce work products across all eleven phases. See [Product Surfaces](PRODUCT-SURFACES.md) and the [profession work register](database-profession-work-register.json).
+
+**Prioritize complete driver-backed professional workflows** rather than disconnected SQL grammar waves, collections of dialect names, or UI screens that cannot finish a task. The driver must remain independent of both tools.
 
 ## Product focus
 
@@ -47,7 +49,7 @@ Until the lifecycle priorities below are substantially addressed:
 
 1. do not add another DBMS runtime/profile solely to increase dialect breadth;
 2. do not create another numbered DML/DDL wave merely because adjacent grammar exists;
-3. do not couple NuBloxSQL to SQL Workbench, MetaObject, Enterprise OS or any downstream product;
+3. do not make the NuBloxSQL **driver** depend on Shell, Workbench, MetaObject, Enterprise OS or another downstream product; Shell and Workbench are its official API consumers;
 4. do not widen into generic cloud or infrastructure-as-code responsibilities.
 
 Existing registry/profile work remains useful architecture. It is not the current development priority.

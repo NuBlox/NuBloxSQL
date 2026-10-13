@@ -20,6 +20,7 @@
     "test/job-scheduler.js",
     "test/job-scheduler-service.js",
     "test/profession-work-register.js",
+    "test/product-surface-model.js",
     "test/server-discovery-job-adapter.js",
     "test/host-inspection-job-adapter.js",
     "test/workbench-smoke.js",
