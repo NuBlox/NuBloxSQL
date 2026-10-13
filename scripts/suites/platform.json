@@ -74,6 +74,7 @@
     "test/database-bootstrap.js",
     "test/database-server-discovery.js",
     "test/database-configuration.js",
+    "test/database-security-discovery.js",
     "test/database-configuration-planner.js",
     "test/database-configuration-executor.js",
     "test/data-movement.js",
