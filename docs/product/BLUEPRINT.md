@@ -16,6 +16,8 @@ Governing design rule:
 
 NuBloxSQL exists to give application developers, database engineers, DBAs, platform teams, tooling developers and automation systems one programmable driver foundation without flattening PostgreSQL, MySQL, SQLite and SQL Server into a false lowest-common-denominator abstraction.
 
+The **complete SQL database lifecycle** remains the end-to-end professional goal. The driver provides database semantics; Shell and Workbench make those capabilities usable as terminal and graphical workflows.
+
 **The product family comprises three separate products:**
 
 - **NuBloxSQL Driver** (`nubloxsql`) — universal SQL connectivity, dialect semantics, SQL execution, metadata and reusable headless database lifecycle capabilities.
