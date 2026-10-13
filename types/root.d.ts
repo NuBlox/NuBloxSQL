@@ -21,6 +21,7 @@ export * from './profile-capabilities';
 export * from './database-bootstrap';
 export * from './server-discovery';
 export * from './database-configuration';
+export * from './database-security';
 export * from './database-configuration-planner';
 export * from './database-configuration-executor';
 export * from './engine-lifecycle';
