@@ -9,7 +9,9 @@ export type MigrationFailurePolicy = 'stop' | 'compensate';
 export type MigrationTransactionMode = 'none' | 'single';
 
 export interface MigrationCheckpoint {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
+  /** SHA-256 of the full migration plan; integrity binding, not caller authentication. */
+  readonly planHash: string;
   readonly migrationPlanSchemaVersion: 1;
   readonly targetDialect: root.Dialect;
   readonly sourceSemanticHash: string | null;
