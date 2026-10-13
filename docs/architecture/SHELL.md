@@ -1,6 +1,6 @@
-# NuBlox Shell
+# NuBloxSQL Shell
 
-NuBlox Shell is the terminal application built on the public NuBloxSQL platform.
+NuBloxSQL Shell is the terminal tool for database professionals, built solely on the public universal NuBloxSQL SQL driver's API. It is the CLI sibling of NuBloxSQL Workbench: both expose database career activities and work products without duplicating DBMS semantics.
 
 ## Product role
 
