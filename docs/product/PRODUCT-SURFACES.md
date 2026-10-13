@@ -6,9 +6,15 @@
 
 | Product | Identity | Responsibility | Current state |
 | --- | --- | --- | --- |
-| **NuBloxSQL Driver** (`nubloxsql`) | Universal SQL **driver** and headless JavaScript/TypeScript API | Native connection drivers, dialect semantics, SQL execution, metadata, diagnostics, and reusable DBMS-specific lifecycle operations | Released npm package, four engine families with unequal qualification |
+| **NuBloxSQL Driver** (`nubloxsql`) | Universal **database driver foundation** and headless JavaScript/TypeScript API | Native connection drivers, dialect semantics, SQL execution, metadata, diagnostics, and reusable DBMS-specific lifecycle operations | Released npm package, four engine families with unequal qualification |
 | **NuBloxSQL Shell** (`apps/shell/`) | Professional terminal tool | Interactive SQL, command scripts, automation, machine-readable work products, database lifecycle command workflows | Runnable source-tree CLI; full lifecycle commands incomplete |
 | **NuBloxSQL Workbench** (`apps/workbench/`) | Professional graphical tool | Database explorer, editor, plans/reviews, graphical lifecycle workflows and evidence | Runnable local-only preview; full lifecycle experience incomplete |
+
+The driver is designed to support **SQL and non-SQL database families**.
+Today the execution layer contains four SQL runtimes; all other cross-model
+and cloud profiles are non-routable or conditional reference descriptions.
+Each future adapter will expose the native operations appropriate to its
+database model. See [Universal Database Driver Architecture](../architecture/UNIVERSAL-DATABASE-DRIVER.md).
 
 Both professional tools consume the **public driver API**, not each other's implementation. The driver must not import a tool. No tool is permitted to reimplement native DBMS protocols or create its own incompatible dialect behavior.
 

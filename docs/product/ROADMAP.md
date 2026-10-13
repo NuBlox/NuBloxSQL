@@ -4,9 +4,35 @@ This roadmap is governed by the [Product Blueprint](BLUEPRINT.md).
 
 **Integrity hardening (13 October 2026):** lifecycle plan validators now recompute content hashes and return immutable snapshots. Migration direct resume validates full-plan fingerprints, and transactional step checkpoints are withheld until commit. See [Plan Integrity](../architecture/PLAN-INTEGRITY.md). Trusted approver identity, live instance binding and external checkpoint durability are further gates, not claims of completion.
 
-NuBloxSQL development delivers **three products**: a universal SQL **Driver**, a professional terminal **Shell**, and a professional graphical **Workbench**. The driver is a separately useful, coherent JavaScript/TypeScript API. Shell and Workbench consume that public driver to carry out database activities and produce work products across all eleven phases. See [Product Surfaces](PRODUCT-SURFACES.md) and the [profession work register](database-profession-work-register.json).
+NuBloxSQL development delivers **three products**: a universal **database Driver**, a professional terminal **Shell**, and a professional graphical **Workbench**. The driver is a separately useful, coherent JavaScript/TypeScript API. Shell and Workbench consume that public driver to carry out database activities and produce work products across all eleven phases. See [Product Surfaces](PRODUCT-SURFACES.md) and the [profession work register](database-profession-work-register.json).
 
 **Prioritize complete driver-backed professional workflows** rather than disconnected SQL grammar waves, collections of dialect names, or UI screens that cannot finish a task. The driver must remain independent of both tools.
+
+## Universal database architecture — new cross-cutting priority
+
+**Decision (13 October 2026):** the driver is not permanently restricted to
+SQL. Continue qualifying all relational SQL vendors over time while designing
+vendor-neutral, capability-gated native adapters for document, key-value,
+graph, wide-column, search, time-series and vector engines. Preserve the
+existing four qualified SQL runtimes and all 100 SQL vendor-profile records.
+
+**Cloud placement is separate from engine identity.** Connect through verified
+TLS, the correct native wire protocol or API, proper IAM/Entra/database
+authentication, private-network reachability and credential rotation.
+Existing base SQL drivers may be candidates for managed services, but their
+cloud configurations must be qualified independently. A catalogue entry or
+connection hint is not a working cloud-native connector.
+
+The first new foundation is the [Universal Database Driver](../architecture/UNIVERSAL-DATABASE-DRIVER.md)
+model and read-only technology/cloud registries. **Next**: a strict runtime
+adapter interface (capability negotiation, authentication and native query
+namespaces), followed by one fully integrated non-SQL engine and a carefully
+verified managed-cloud SQL connection. Then expand relational vendor adapters
+by compatibility and demand, with published live evidence for each.
+
+This extends—not cancels—the eleven-phase professional lifecycle. Native
+engines supply appropriate operations only where meaningful. Shell and
+Workbench expose the same real driver capabilities.
 
 ## Product focus
 
@@ -17,7 +43,7 @@ Executable engine focus:
 - SQLite;
 - SQL Server.
 
-The dialect/DBMS registry remains future-expansion and knowledge infrastructure. Additional DBMS profile/runtime expansion is frozen until the core lifecycle becomes coherent.
+The SQL dialect registry is reference and qualification infrastructure for eventual **comprehensive relational vendor coverage**. Non-SQL vendor families have a separate technology registry; cloud deployment profiles are another axis. We do not enable unsupported adapters just to raise vendor counts.
 
 ## Lifecycle direction
 

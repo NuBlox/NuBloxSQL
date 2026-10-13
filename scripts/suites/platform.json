@@ -5,6 +5,7 @@
     "test/platform-entry.js",
     "test/sql-capability-model.js",
     "test/dialect-registry.js",
+    "test/database-technology-foundation.js",
     "test/profile-capability-overlays.js",
     "test/sql-capability-ontology.js",
     "test/product-coverage-v2.js",

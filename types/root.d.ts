@@ -15,6 +15,8 @@ export * from './migration-executor';
 export * from './data-movement';
 
 export * from './dialect-registry';
+export * from './database-technology';
+export * from './cloud-database';
 
 export * from './profile-capabilities';
 

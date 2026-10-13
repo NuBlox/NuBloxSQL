@@ -8,11 +8,13 @@ If another roadmap, architecture note, capability document, implementation discu
 
 ## Product promise
 
-> **NuBloxSQL is a universal SQL driver — one JavaScript/TypeScript API for native SQL, database connectivity and headless lifecycle capabilities, with honest engine-specific semantics.**
+> **NuBloxSQL is a universal database driver foundation — a JavaScript/TypeScript API intended for SQL and non-SQL databases, preserving each engine's native query model and operational semantics.**
 
 Governing design rule:
 
 > **One developer API, honest dialect semantics.**
+
+For non-SQL engines, the equivalent rule is: **one database driver foundation, honest native interfaces**. A document store, graph database or key-value store must never be forced into a fictitious SQL abstraction.
 
 NuBloxSQL exists to give application developers, database engineers, DBAs, platform teams, tooling developers and automation systems one programmable driver foundation without flattening PostgreSQL, MySQL, SQLite and SQL Server into a false lowest-common-denominator abstraction.
 
@@ -24,7 +26,7 @@ The **complete SQL database lifecycle** remains the end-to-end professional goal
 - **NuBloxSQL Shell** (`apps/shell/`) — terminal and automation tools for professional database tasks through the public driver API.
 - **NuBloxSQL Workbench** (`apps/workbench/`) — graphical tools for the same professional tasks through the public driver API.
 
-The driver's architecture aims at universal SQL coverage, **not** a claim that every DBMS or lifecycle capability is already supported. Shell and Workbench are independently useful **tools**, not runtime engines, DBMS adapters or drivers. See [Product Surfaces](PRODUCT-SURFACES.md) and the [profession work register](database-profession-work-register.json).
+The driver targets universal **database vendor** coverage, including all relevant relational SQL dialects and non-SQL families. This is a **development objective**, not a claim that every DBMS or lifecycle capability is already supported. SQL grammar remains a separately qualified capability domain, not a requirement for non-SQL adapters. See [Universal Database Driver Architecture](../architecture/UNIVERSAL-DATABASE-DRIVER.md). Shell and Workbench are independently useful **tools**, not runtime engines, DBMS adapters or drivers. See [Product Surfaces](PRODUCT-SURFACES.md) and the [profession work register](database-profession-work-register.json).
 
 ## Supported runtime engines
 
@@ -35,7 +37,7 @@ The current executable product focus is deliberately limited to:
 - SQLite;
 - SQL Server.
 
-The broader dialect/profile registry is knowledge and future-expansion infrastructure. Registry presence does not imply runtime support.
+These four are the existing **SQL** runtimes. The 100-profile SQL vendor/dialect catalogue remains reference knowledge for relational vendor expansion; a separate database-technology registry describes document, key-value, graph, wide-column, search, time-series, vector and multi-model vendors. The independent cloud-service registry records hosting and connection requirements. **Neither registry creates a native adapter or qualifies cloud authentication.**
 
 A database family/version becomes supported only when implementation, semantics, qualification and release evidence exist.
 
