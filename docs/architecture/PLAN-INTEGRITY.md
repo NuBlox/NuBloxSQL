@@ -101,6 +101,21 @@ This remains a content-integrity check, not authenticated approval, remote
 target attestation or remote side-effect fencing. The kernel and worker tests
 qualify rejection and zero execution for a forged stored-plan response.
 
+## Mutation-step reconciliation receipts
+
+The internal job worker now rejects boolean and unbound mutation reconciliation
+assertions. It requires an exact schema-versioned receipt for the plan hash,
+run, step, target/observed target identity, worker identity and lease fence.
+The worker also rechecks approval after asynchronous reconciliation, preventing
+an approval that expired during target inspection from authorizing `execute()`.
+Invalid/mismatched receipts or reconciliation errors block the run without
+executing the mutating step. No sensitive exception details enter audit events.
+
+This strengthens receipt correlation and fail-closed execution, **not** physical
+database-instance attestation or native target-side fencing. Only a qualified
+engine-native adapter can establish those properties, and no mutation adapter
+is enabled by default.
+
 ## Testing
 
 `test/plan-integrity-hardening.js` is part of `npm run test:platform`.

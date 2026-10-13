@@ -42,14 +42,25 @@ async function submitForApproval(store, plan, runId) {
   await kernel.advance(runId, 0, 'awaiting-approval');
 }
 
+function reconciliationReceipt(context, overrides = {}) {
+  return {
+    schemaVersion: 1, verified: true, runId: context.runId,
+    planHash: context.plan.planHash, targetIdentity: context.plan.targetIdentity,
+    observedTargetIdentity: context.plan.targetIdentity,
+    stepId: context.step.stepId, stepIndex: context.stepIndex,
+    workerId: context.workerId, fence: context.fence,
+    ...overrides
+  };
+}
+
 function qualifiedRegistry(overrides = {}) {
   const registry = jobs.createExecutorRegistry();
   const state = { writes: 0, reconciliations: 0 };
   registry.register(KIND, {
     targetSideFencing: true,
-    async reconcile() {
+    async reconcile(context) {
       state.reconciliations++;
-      return overrides.reconcile ? overrides.reconcile() : true;
+      return overrides.reconcile ? overrides.reconcile(context) : reconciliationReceipt(context);
     },
     async execute() { state.writes++; return { done: true }; },
     async verify() { return true; }
@@ -215,6 +226,70 @@ async function reconciliationDeniesBeforeSideEffects() {
   });
 }
 
+async function bindingFailuresNeverMutate() {
+  const candidates = [
+    ['boolean', () => true],
+    ['bare-verified', () => ({ verified: true })],
+    ['wrong-observed-target', c => reconciliationReceipt(c,{observedTargetIdentity:'mysql:other'})],
+    ['wrong-target', c => reconciliationReceipt(c,{targetIdentity:'mysql:other'})],
+    ['wrong-plan', c => reconciliationReceipt(c,{planHash:'0'.repeat(64)})],
+    ['wrong-run', c => reconciliationReceipt(c,{runId:'other-run'})],
+    ['wrong-step', c => reconciliationReceipt(c,{stepId:'other-step'})],
+    ['wrong-step-index', c => reconciliationReceipt(c,{stepIndex:1})],
+    ['wrong-worker', c => reconciliationReceipt(c,{workerId:'other-worker'})],
+    ['wrong-fence', c => reconciliationReceipt(c,{fence:c.fence+1})],
+    ['wrong-version', c => reconciliationReceipt(c,{schemaVersion:2})],
+    ['reconcile-throws', () => { throw new Error('secret reconciliation detail'); }]
+  ];
+  for (const [label, reconcile] of candidates) {
+    await withDirectory(async filename => {
+      const store=createStore({
+        filename, clock:()=>NOW, approvalAuthorizer:()=>({allowed:true,approverId:'dba'})
+      });
+      try {
+        const plan=mutablePlan();
+        await submitForApproval(store,plan,'binding-'+label);
+        store.approveRun(request('binding-'+label,plan));
+        const {registry,state}=qualifiedRegistry({reconcile});
+        const policy=createApprovalPolicy({readOnlyKinds:[],mutationKinds:[KIND],clock:()=>NOW});
+        const worker=createWorker({store,registry,workerId:'worker-'+label,
+          clock:()=>NOW,approvalPolicy:policy});
+        assert.equal((await worker.runOnce()).status,'blocked',label);
+        assert.equal(state.writes,0,label);
+        assert.equal(state.reconciliations,1,label);
+        assert.equal(store.getRun('binding-'+label).reason,
+          'mutation-target-reconciliation-unconfirmed',label);
+        assert.ok(!JSON.stringify(store.listEvents('binding-'+label)).includes('secret reconciliation detail'));
+      } finally { store.close(); }
+    });
+  }
+}
+
+async function approvalExpiresDuringReconciliation() {
+  await withDirectory(async filename => {
+    let now=NOW;
+    const clock=()=>now;
+    const store=createStore({filename,clock,approvalAuthorizer:()=>({allowed:true,approverId:'dba'})});
+    try {
+      const plan=mutablePlan();
+      await submitForApproval(store,plan,'approval-race');
+      store.approveRun(request('approval-race',plan,{expiresAt:new Date(NOW+1000).toISOString()}));
+      const {registry,state}=qualifiedRegistry({
+        reconcile(context) {
+          now += 2000;
+          return reconciliationReceipt(context);
+        }
+      });
+      const policy=createApprovalPolicy({readOnlyKinds:[],mutationKinds:[KIND],clock});
+      const worker=createWorker({store,registry,workerId:'race',clock,approvalPolicy:policy});
+      assert.equal((await worker.runOnce()).status,'blocked');
+      assert.equal(store.getRun('approval-race').reason,'approval-denied:approval-expired-or-invalid');
+      assert.equal(state.reconciliations,1);
+      assert.equal(state.writes,0);
+    } finally { store.close(); }
+  });
+}
+
 async function upgradeStoreFromV1() {
   await withDirectory(async filename=>{
     let store=createStore({filename});
@@ -239,6 +314,8 @@ async function upgradeStoreFromV1() {
   await approvalsCannotBeBorrowedOrExpired();
   await unqualifiedMutationNeverExecutes();
   await reconciliationDeniesBeforeSideEffects();
+  await bindingFailuresNeverMutate();
+  await approvalExpiresDuringReconciliation();
   await upgradeStoreFromV1();
   console.log('NuBloxSQL durable approval policy and authorization contract: PASS');
 })().catch(error=>{console.error(error);process.exitCode=1;});

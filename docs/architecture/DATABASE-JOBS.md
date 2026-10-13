@@ -148,7 +148,18 @@ only. No engine-mutating adapter is qualified, packaged or enabled by default.
 `targetSideFencing: true` is an assertion by trusted adapter code, *not* a
 universal guarantee: each real engine integration must separately prove that its
 native operations are idempotent/fenced and independently reconciled before it
-can be registered. Approval authn/authz integration is owned by the embedding
+can be registered. Before each mutating step the worker now requires a version-1
+reconciliation receipt containing `verified: true`, exact `runId`, `planHash`,
+`targetIdentity`, `observedTargetIdentity`, `stepId`, `stepIndex`, `workerId`
+and `fence`. The observed target identity must match the planned target.
+Boolean `true` and bare `{ verified: true }` are rejected; a mismatched receipt
+blocks the run without executing the step. Reconciliation exceptions are
+redacted and the worker re-evaluates approval after asynchronous reconciliation,
+immediately before execution. These receipt fields **correlate claims**; they
+do not independently prove what remote endpoint was contacted. Trusted native
+adapters must obtain live, independently verified engine/instance evidence
+and enforce fencing at the database or host. No such mutating adapter has been
+qualified for production. Approval authn/authz integration is owned by the embedding
 trusted application; arbitrary client-provided callbacks must not be treated as
 an approval authority. The store remains same-host only and the job API remains
 unpublished. Revocation, scheduler, retry/cancellation policy and multi-host
