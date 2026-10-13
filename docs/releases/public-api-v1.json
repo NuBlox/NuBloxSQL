@@ -176,7 +176,9 @@
     "createLocalHostInstallationProvider",
     "ENGINE_INSTALLATION_PREREQUISITE_SCHEMA_VERSION",
     "ENGINE_INSTALLATION_PREREQUISITE_STATUSES",
-    "assessEngineInstallationPrerequisites"
+    "assessEngineInstallationPrerequisites",
+    "DATABASE_SECURITY_DISCOVERY_SCHEMA_VERSION",
+    "discoverDatabaseSecurity"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -281,7 +283,9 @@
     "lib/lifecycle/EngineInitializationPlanner.js",
     "lib/lifecycle/EngineLifecycleExecutor.js",
     "lib/lifecycle/LocalHostInstallationProvider.js",
-    "lib/lifecycle/EngineInstallationPrerequisites.js"
+    "lib/lifecycle/EngineInstallationPrerequisites.js",
+    "types/database-security.d.ts",
+    "lib/client/DatabaseSecurityDiscovery.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
