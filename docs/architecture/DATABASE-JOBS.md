@@ -246,6 +246,50 @@ Trusted callers must control who can register and enable schedules. Native
 engine jobs, orchestrated mutation workflows and fleet scheduling remain out
 of scope until their own safety qualifications exist.
 
+### Internal scheduling service and diagnostics (13 October 2026)
+
+`lib/jobs/JobSchedulerService.js` is the next internal execution-layer
+component, built on the SQLite JobStore v4 scheduler. The service owns only
+**when to poll**. It does not own database semantics, job execution, worker
+leasing, authorization or the durable scheduling state.
+
+Use a trusted host to create the service with `createSchedulerService({
+store, approvalPolicy, registry, pollIntervalMs?, maxBackoffMs?, limit?,
+clock?, timers?, onEvent? })`. It requires a same-host SQLite JobStore
+and a trusted approval policy/registered executor set. Its lifecycle API is:
+
+- `await service.start()` — starts the loop and runs an immediate dispatch
+  pass; a running service can be started idempotently.
+- `await service.pollNow()` — requests an immediate, single-flight pass while
+  running. Multiple concurrent requests share one in-flight poll.
+- `await service.stop()` — clears the timer, awaits the current poll and
+  prevents further dispatch. The trusted host must await this before closing
+  its store or terminating. A stopped service may be restarted.
+- `service.status()` — frozen health snapshot: lifecycle state,
+  in-flight/next-run information, cumulative polls, dispatch counts,
+  consecutive failures, and last success/failure timestamps.
+
+The polling interval defaults to 1 second (allowed 100 ms to 1 hour); an
+error triggers bounded exponential backoff (default cap 60 seconds).
+`limit` defaults to 20 schedules per pass and cannot exceed 100. A polling
+failure never executes unsafe work or leaks a native error, credentials,
+paths or SQL through status or event hooks: failure reports use the stable
+`dispatch-failed` reason code. Observer exceptions do not change dispatch
+semantics. No timer is retained after graceful shutdown.
+
+**Runtime guarantees and limitations:** the scheduling loop is *in-memory*
+and requires a running trusted Node.js host. Durable schedules and scheduled
+runs live in SQLite, so a new host process can resume polling after a
+crash. The existing SQLite transaction protects against duplicate scheduling
+when multiple local pollers run concurrently. No global distributed locks
+or guaranteed exactly-once remote effects are claimed. This service does
+**not** execute queued runs: a separately configured qualified read-only
+job worker must run them. Production hosts must supply signal handling,
+process supervision, appropriately bound targets and local filesystem
+permissions. No new API is published via `nubloxsql`. Mutation work
+remains disabled by default, and no unattended mutation authority is
+introduced.
+
 ## Scope
 
 The job architecture applies to work that is:
