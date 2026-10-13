@@ -271,7 +271,7 @@
     "lib/client/DatabaseBootstrapPlanner.js",
     "lib/client/DatabaseBootstrapExecutor.js",
     "types/server-discovery.d.ts",
-    "lib/client/DatabaseServerDiscovery.js",
+    "lib/client/discovery/DatabaseServerDiscovery.js",
     "types/database-configuration.d.ts",
     "lib/client/DatabaseConfiguration.js",
     "types/database-configuration-planner.d.ts",
@@ -287,9 +287,9 @@
     "lib/lifecycle/LocalHostInstallationProvider.js",
     "lib/lifecycle/EngineInstallationPrerequisites.js",
     "types/database-security.d.ts",
-    "lib/client/DatabaseSecurityDiscovery.js",
+    "lib/client/discovery/DatabaseSecurityDiscovery.js",
     "types/database-native-jobs.d.ts",
-    "lib/client/DatabaseNativeJobDiscovery.js"
+    "lib/client/discovery/DatabaseNativeJobDiscovery.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
