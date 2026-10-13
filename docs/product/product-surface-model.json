@@ -7,7 +7,7 @@
     {
       "id": "driver",
       "name": "NuBloxSQL",
-      "kind": "universal-sql-driver",
+      "kind": "universal-database-driver",
       "root": ".",
       "entry": "index.js",
       "consumes": [],
@@ -15,11 +15,15 @@
         "native-driver-protocols",
         "dialect-semantics",
         "public-sql-api",
-        "database-lifecycle-primitives"
+        "database-lifecycle-primitives",
+        "native-query-model-extensions",
+        "cross-model-capability-discovery",
+        "cloud-placement-connectivity-contracts"
       ],
       "mustNotOwn": [
         "career-entitlements",
-        "user-interface"
+        "user-interface",
+        "force-non-sql-engines-through-sql"
       ]
     },
     {
