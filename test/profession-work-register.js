@@ -93,12 +93,14 @@ for (const phase of phases) {
 for (const domain of domains) {
   assert.ok(model.activities.some(activity => activity.productDomains.includes(domain)), 'uncovered domain '+domain);
 }
-for (const track of model.tracks) assert.equal(model.families.filter(f => f.track===track.id).length, 3);
+for (const [trackId, expected] of [['A',3],['B',5],['C',2],['D',2],['E',2],['F',4]]) {
+  assert.equal(model.families.filter(f => f.track === trackId).length, expected);
+}
 const executable = model.technologySpecializations.filter(spec => spec.runtimeQualification==='supported-engine');
 assert.deepEqual(executable.map(spec => spec.id), ['mysql','postgresql','sqlite','sqlserver']);
 assert.equal(model.technologySpecializations.length, 18);
 assert.ok(model.technologySpecializations.filter(spec => spec.runtimeQualification==='reference-only-not-qualified').length===14);
 for (const spec of model.technologySpecializations) assert.ok(typeof spec.example === 'string' && spec.example);
-assert.match(guide, /not permission/i);
+assert.match(guide, /Access-control boundary/);
 assert.match(guide, /database-profession-work-register\.json/);
 console.log('NuBloxSQL profession requirements: 18 families, 240 title entries, 40 activities and capability traceability: PASS');
