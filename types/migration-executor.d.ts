@@ -11,6 +11,8 @@ export type MigrationTransactionMode = 'none' | 'single';
 export interface MigrationCheckpoint {
   readonly schemaVersion: 1;
   readonly migrationPlanSchemaVersion: 1;
+  /** SHA-256 of the full immutable migration plan; required for safe resume. */
+  readonly planFingerprint: string;
   readonly targetDialect: root.Dialect;
   readonly sourceSemanticHash: string | null;
   readonly targetSemanticHash: string | null;

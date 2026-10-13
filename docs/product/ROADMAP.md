@@ -2,6 +2,8 @@
 
 This roadmap is governed by the [Product Blueprint](BLUEPRINT.md).
 
+**Integrity hardening (13 October 2026):** lifecycle plan validators now recompute content hashes and return immutable snapshots. Migration direct resume validates full-plan fingerprints, and transactional step checkpoints are withheld until commit. See [Plan Integrity](../architecture/PLAN-INTEGRITY.md). Trusted approver identity, live instance binding and external checkpoint durability are further gates, not claims of completion.
+
 NuBloxSQL is being built as **one coherent JavaScript/TypeScript API for the complete SQL database lifecycle**, not as a parser project, ORM, workbench UI or race to support the largest number of dialect names.
 
 ## Product focus
