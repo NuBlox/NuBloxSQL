@@ -8,13 +8,21 @@ If another roadmap, architecture note, capability document, implementation discu
 
 ## Product promise
 
-> **NuBloxSQL — one coherent JavaScript and TypeScript API for the complete SQL database lifecycle, with honest engine-specific semantics.**
+> **NuBloxSQL is a universal SQL driver — one JavaScript/TypeScript API for native SQL, database connectivity and headless lifecycle capabilities, with honest engine-specific semantics.**
 
 Governing design rule:
 
 > **One developer API, honest dialect semantics.**
 
-NuBloxSQL exists to give application developers, database engineers, DBAs, platform teams, tooling developers and automation systems one programmable database foundation without flattening PostgreSQL, MySQL, SQLite and SQL Server into a false lowest-common-denominator abstraction.
+NuBloxSQL exists to give application developers, database engineers, DBAs, platform teams, tooling developers and automation systems one programmable driver foundation without flattening PostgreSQL, MySQL, SQLite and SQL Server into a false lowest-common-denominator abstraction.
+
+**The product family comprises three separate products:**
+
+- **NuBloxSQL Driver** (`nubloxsql`) — universal SQL connectivity, dialect semantics, SQL execution, metadata and reusable headless database lifecycle capabilities.
+- **NuBloxSQL Shell** (`apps/shell/`) — terminal and automation tools for professional database tasks through the public driver API.
+- **NuBloxSQL Workbench** (`apps/workbench/`) — graphical tools for the same professional tasks through the public driver API.
+
+The driver's architecture aims at universal SQL coverage, **not** a claim that every DBMS or lifecycle capability is already supported. Shell and Workbench are independently useful **tools**, not runtime engines, DBMS adapters or drivers. See [Product Surfaces](PRODUCT-SURFACES.md) and the [profession work register](database-profession-work-register.json).
 
 ## Supported runtime engines
 
@@ -191,29 +199,46 @@ Jobs are a **cross-cutting execution substrate**, not a ninth lifecycle phase an
 
 The detailed model is defined in [Database Jobs](../architecture/DATABASE-JOBS.md).
 
-## Interfaces
+## Three product surfaces
 
-Interfaces sit **outside** the eight product domains.
+The eight driver capability domains stay independent of interfaces. The
+[product surface model](product-surface-model.json) records the machine-readable
+driver/tool relationship.
 
-### Public JavaScript/TypeScript API
+### NuBloxSQL Driver — public JavaScript/TypeScript API
 
-The `nubloxsql` package is the primary public product surface.
+The `nubloxsql` npm package is the universal SQL **driver** and shared
+headless foundation. It owns native database protocols, SQL/dialect behavior,
+execution, schema intelligence and qualified reusable lifecycle operations.
+The driver must not import Shell or Workbench or implement their user journeys.
 
-All core database semantics belong here.
+### NuBloxSQL Shell — professional terminal product
 
-### NuBlox Shell
-
-The Shell is an official application consuming the public API.
-
-It must not implement database-engine semantics that are absent from the package.
-
+The existing `apps/shell/` app consumes the **public driver API** to provide
+interactive database work, repeatable commands, automation and evidence
+outputs. It must not fork engine or compiler logic.
 See [Shell Architecture](../architecture/SHELL.md).
 
-### Future workbench and other products
+### NuBloxSQL Workbench — professional graphical product
 
-A future graphical SQL Workbench, IDE integration or other NuBlox product may consume NuBloxSQL.
+The existing `apps/workbench/` local graphical preview consumes the
+**same public driver API**. It is the graphical sibling of Shell, with
+database exploration, SQL authoring and an intended set of guided lifecycle
+workflows. It is not a completed, independently released Workbench suite.
 
-Those products are downstream consumers. NuBloxSQL must remain independently useful and must not depend on them.
+### Profession-led requirements
+
+The [profession work register](database-profession-work-register.json)
+provides a curated **18-family, 40-activity** requirements input. For each
+activity, identify governance/delivery responsibility, lifecycle phase,
+expected work product, underlying driver capability, and terminal/graphical
+workflow. **Career title is not authorization.** The register is not
+an employment, workforce management, DBMS role or grants model.
+
+Driver, Shell and Workbench are **three separate deliverables**, each
+requiring its own acceptance and release evidence. Not every increment must
+ship three finished products, but end-to-end usable professional tasks are
+the goal; isolated APIs and buttons are not sufficient.
 
 ## Core terminology
 
@@ -327,18 +352,22 @@ NuBloxSQL is not:
 At the highest level:
 
 ```text
-Interfaces
-├── JavaScript / TypeScript API
-└── NuBlox Shell
-        │
-        ▼
-Cross-cutting execution substrate
-├── immediate operations
-├── durable jobs
-└── workflows
-        │
-        ▼
-Eight product domains
+Database professions → activities → expected work products
+                             │
+                 ┌───────────┴────────────┐
+                 ▼                        ▼
+          NuBloxSQL Shell          NuBloxSQL Workbench
+        Terminal / automation      Graphical professional tool
+                 │                        │
+                 └───────────┬────────────┘
+                             ▼
+                     NuBloxSQL DRIVER
+                       Public JS/TS API
+                             │
+           Immediate operations / jobs / workflows
+                             │
+                             ▼
+Eight driver capability domains
 ├── Engine lifecycle & installation
 ├── Connectivity & runtime
 ├── SQL language
@@ -389,10 +418,10 @@ The frozen high-level sequence is:
 15. Schema engineering/migration depth.
 16. Data movement/import/export depth.
 
-### Interfaces
+### Professional tools
 
-17. Expand NuBlox Shell only as public APIs become available.
-18. Future higher-level tooling only after the underlying package contracts exist.
+17. Extend NuBloxSQL Shell with usable professional work-product flows built on qualified driver capabilities.
+18. Extend the **existing** NuBloxSQL Workbench preview with graphical workflows built on the **same** public driver contracts.
 
 Existing capabilities that are already ahead of this sequence are retained. They are not rebuilt merely to match the ordering.
 
@@ -417,7 +446,7 @@ The implementation sequence for jobs is maintained in [Database Jobs](../archite
 
 Before a new feature enters implementation, answer:
 
-1. Which supported user problem does it solve?
+1. Which professional activity ID and work product does it deliver?
 2. Which product domain owns it?
 3. Which lifecycle phases use it?
 4. Is it an operation, job or workflow concern?
@@ -471,4 +500,4 @@ A developer or database engineer should be able to begin with engine selection a
 
 The goal is not simply broad SQL syntax support.
 
-The goal is a coherent, trustworthy database engineering and management platform for the complete lifecycle.
+The goal is a trustworthy universal SQL **driver** and two distinct professional tools — Shell and Workbench — enabling database work across the complete lifecycle.
