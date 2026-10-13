@@ -21,6 +21,14 @@ async function main() {
   assert.throws(() => jobs.createPlan({jobKind:'test',lifecyclePhase:'Use',targetIdentity:'one',steps:[{stepId:'x',data:Infinity}]}), /finite JSON/);
   assert.throws(() => jobs.createPlan({jobKind:'test',lifecyclePhase:'Use',targetIdentity:'one',steps:[{stepId:'x'}],planHash:'tampered'}), /generated/);
   assert.throws(() => jobs.createRun({...plan,schemaVersion:2}), /valid immutable job plan/);
+  const trustedSnapshot = jobs.validatePlan(plan);
+  assert.deepEqual(trustedSnapshot, plan);
+  assert.notEqual(trustedSnapshot, plan);
+  assert.ok(Object.isFrozen(trustedSnapshot.steps[0]));
+  const tampered = {...plan, steps: [{stepId:'replaced'}]};
+  assert.throws(() => jobs.validatePlan(tampered), /job plan hash does not match content/);
+  assert.throws(() => jobs.createRun(tampered), /job plan hash does not match content/);
+  assert.throws(() => jobs.createRun({...plan, planHash:'0'.repeat(64)}), /job plan hash does not match content/);
 
   const registry = jobs.createExecutorRegistry();
   const executor = {execute: async () => true};
@@ -99,8 +107,8 @@ async function main() {
   await assert.rejects(kernel.advance('durable-1', cancelling.version, 'cancelled'), /fencing token/);
   const cancelled = await kernel.advance('durable-1', cancelling.version, 'cancelled', {workerId:'worker',fence:1});
   assert.equal(cancelled.lease, undefined);
-  await assert.rejects(kernel.submit({...plan, steps:[{stepId:'altered'}]}), /hash or schema version/);
-  await assert.rejects(kernel.submit({...plan, schemaVersion:2}), /hash or schema version/);
+  await assert.rejects(kernel.submit({...plan, steps:[{stepId:'altered'}]}), /job plan hash does not match content/);
+  await assert.rejects(kernel.submit({...plan, schemaVersion:2}), /valid immutable job plan/);
   assert.throws(() => jobs.createKernel({}), /durable JobStore/);
   console.log('NuBloxSQL durable job kernel foundational contracts: PASS');
 }

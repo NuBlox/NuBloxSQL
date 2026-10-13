@@ -98,6 +98,25 @@ async function incompleteAndUnapproved() {
   });
 }
 
+async function tamperedStoredPlanRejected() {
+  await withStore(async store => {
+    const p = plan('test.worker.success');
+    await enqueue(store, p, 'tampered-stored-plan');
+    const forged = {...p, steps:[{stepId:'forged'}]};
+    const untrustedStore = {...store, getPlan() { return forged; }};
+    const registry = jobs.createExecutorRegistry();
+    let executions = 0;
+    registry.register(p.jobKind, {
+      async execute() { executions++; return null; },
+      async verify() { return true; }
+    });
+    const worker = createWorker({store:untrustedStore,registry,workerId:'worker-tampered'});
+    assert.deepEqual(await worker.runOnce(), {runId:'tampered-stored-plan',status:'blocked'});
+    assert.equal(store.getRun('tampered-stored-plan').reason,'missing-or-invalid-plan');
+    assert.equal(executions,0);
+  });
+}
+
 async function ambiguousOutcomeDoesNotAutoRetry() {
   await withStore(async store => {
     const p = plan('test.worker.partial');
@@ -200,6 +219,7 @@ async function validateInputs() {
 (async () => {
   await successfulExecution();
   await incompleteAndUnapproved();
+  await tamperedStoredPlanRejected();
   await ambiguousOutcomeDoesNotAutoRetry();
   await heartbeatAndLoss();
   await concurrentClaims();

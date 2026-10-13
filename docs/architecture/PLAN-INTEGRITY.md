@@ -87,6 +87,20 @@ migrations or external clients. In particular, the caller still controls the
 binding, isolation of approval principals, replay resistance in external
 checkpoint storage and physical rollback qualification remain outstanding.
 
+## Durable job plans
+
+The internal JobKernel now uses a single `validatePlan()` boundary across
+`createRun()`, kernel submission, and the SQLite JobStore. The worker independently
+validates the retrieved plan **and** checks its hash against the leased run before
+resolving an executor or performing any step. Plans are reconstructed into deeply
+immutable snapshots; hash-shaped identifiers attached to altered steps are
+rejected. Missing, corrupt or mismatched stored plans block the run without
+executing work.
+
+This remains a content-integrity check, not authenticated approval, remote
+target attestation or remote side-effect fencing. The kernel and worker tests
+qualify rejection and zero execution for a forged stored-plan response.
+
 ## Testing
 
 `test/plan-integrity-hardening.js` is part of `npm run test:platform`.
