@@ -49,6 +49,17 @@ and SQL Server `rejectUnauthorized`) or an explicit native TLS
 configuration object. A URL option by itself does not certify a cloud
 deployment's transport or identity configuration.
 
+## Test a real managed-cloud endpoint (opt-in)
+
+The repository now has an explicit [managed-cloud qualification harness](docs/architecture/UNIVERSAL-DATABASE-DRIVER.md#opt-in-live-managed-cloud-qualification)
+for existing PostgreSQL and MySQL wire protocols. Its read-only probe requires
+certificate-verified TLS and emits sanitized evidence. The offline harness test
+runs as part of CI; **real cloud connections do not run in ordinary CI**.
+To test a real RDS/Aurora or Azure Database endpoint, configure the protected
+`cloud-qualification` GitHub Environment and manually run
+`NuBloxSQL Managed Cloud Qualification`. No cloud profiles are automatically
+marked as production-qualified by this workflow.
+
 ## Read-only security administration discovery
 
 NuBloxSQL provides a read-only security inspection API for the four executable
