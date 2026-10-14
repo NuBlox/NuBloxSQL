@@ -145,3 +145,62 @@ jobs:
       - name: Stop ephemeral replica-set member
         if: always()
         run: docker rm -f nublox-mongo-rs || true
+
+  failover:
+    name: live MongoDB 8.0 three-member failover
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      NUBLOX_EPHEMERAL_MONGO_FAILOVER: three-node-ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Start isolated three-member replica set
+        shell: bash
+        run: |
+          set -euo pipefail
+          for number in 1 2 3; do
+            port=$((27016 + number))
+            docker run -d --name "nublox-mongo-failover-$number" \
+              --network host mongo:8.0 \
+              --replSet nubloxrs --bind_ip_all --port "$port" \
+              --wiredTigerCacheSizeGB 0.25
+          done
+          ready=0
+          for attempt in $(seq 1 60); do
+            if docker exec nublox-mongo-failover-1 mongosh --quiet \
+              --host 127.0.0.1 --port 27017 \
+              --eval 'db.adminCommand({ping:1}).ok' 2>/dev/null | grep -qx 1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" -eq 1
+          docker exec nublox-mongo-failover-1 mongosh --quiet \
+            --host 127.0.0.1 --port 27017 \
+            --eval "rs.initiate({_id:'nubloxrs',members:[{_id:0,host:'127.0.0.1:27017'},{_id:1,host:'127.0.0.1:27018'},{_id:2,host:'127.0.0.1:27019'}]})"
+          secondaries_ready=0
+          for attempt in $(seq 1 90); do
+            states=$(docker exec nublox-mongo-failover-1 mongosh --quiet \
+              --host 127.0.0.1 --port 27017 \
+              --eval "rs.status().members.filter(m => m.stateStr === 'SECONDARY').length" 2>/dev/null || true)
+            if [ "$states" = 2 ]; then
+              secondaries_ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$secondaries_ready" -eq 1
+      - name: Install optional official MongoDB driver in ephemeral CI
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund mongodb@7
+      - name: Stop elected primary and verify native client recovery
+        run: node lib/dialects/mongodb/test/failover.js
+      - name: Destroy ephemeral database nodes
+        if: always()
+        run: |
+          for number in 1 2 3; do
+            docker rm -f "nublox-mongo-failover-$number" 2>/dev/null || true
+          done
