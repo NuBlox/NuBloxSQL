@@ -58,4 +58,47 @@ assert.throws(function () {
   sql.createConnection('mysql://user:pw@localhost/db?ssl=maybe');
 }, /ssl must be a boolean/);
 
+
+var urlParser = require('../lib/client/ConnectionUrl');
+for (var [mode, expected] of [
+  ['ro', 'readonly'], ['rw', 'readwrite'], ['rwc', 'readwrite-create']
+]) {
+  assert.strictEqual(urlParser.parse('sqlite:///tmp/nubloxsql-url-test.db?mode=' + mode).config.mode, expected);
+}
+
+// SQLite's URL mode is effective at the native connection layer, not ignored.
+var fs = require('node:fs');
+var os = require('node:os');
+var path = require('node:path');
+var directory = fs.mkdtempSync(path.join(os.tmpdir(), 'nubloxsql-url-'));
+try {
+  var filename = path.join(directory, 'readonly.sqlite');
+  var writable = sql.createConnection({ dialect: 'sqlite', filename: filename });
+  writable.close();
+  var readonly = sql.createConnection('sqlite://' + filename + '?mode=ro');
+  assert.strictEqual(readonly.mode, 'readonly');
+  assert.strictEqual(readonly._openOptions.readOnly, true);
+  readonly.close();
+} finally {
+  fs.rmSync(directory, { recursive: true, force: true });
+}
+
+for (var url of [
+  'mysql://app@localhost/db?sslmode=require',
+  'mysql://app@localhost/db?ssl=true&ssl=false',
+  'postgresql://app@localhost/db?sslmode=require&sslmode=disable',
+  'postgresql://app@localhost/db?applicationName=one&application_name=two',
+  'postgresql://app@localhost/db?rejectUnauthorized=false',
+  'mssql://app@localhost/db?encrypt=true',
+  'sqlite:///tmp/example.db?readOnly=true',
+  'sqlite:///tmp/example.db?mode=invalid',
+  'sqlite:///tmp/example.db?mode=ro&mode=rwc',
+  'sqlite:///tmp/example.db#readonly',
+  'mysql://app@localhost/db#ssl=true'
+]) {
+  assert.throws(function () { sql.createConnection(url); },
+    /URL query parameter|connection URL parameters|mode must be ro|fragments are not supported/,
+    'unsupported or ambiguous connection URL must fail closed: ' + url);
+}
+
 console.log('NuBloxSQL connection URL routing contract passed');

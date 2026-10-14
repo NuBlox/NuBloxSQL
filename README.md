@@ -25,6 +25,30 @@ const row = await db.one(sql`SELECT id, name FROM users WHERE id = ${42}`);
 await db.close();
 ```
 
+## Connection URL safety
+
+Connection URLs accept only **implemented query options**. Unknown options,
+duplicate query keys, conflicting PostgreSQL application-name aliases and URL
+fragments are rejected rather than silently discarded. This is important for
+TLS and read-only requests: an unrecognised parameter must never be mistaken
+for an enforced security control. Use an options object for supported native
+options that do not have a documented URL equivalent.
+
+For SQLite, the `mode` parameter now maps to actual open modes:
+
+```js
+const readOnly = createClient('sqlite:///path/to/existing.db?mode=ro');
+await readOnly.close();
+```
+
+The supported SQLite URL values are `mode=ro` (read-only),
+`mode=rw` (existing read/write) and `mode=rwc` (read/write/create).
+An unknown mode is an error. For network databases, use the existing supported
+URL parameters (such as PostgreSQL `sslmode=require`, MySQL `ssl=true`,
+and SQL Server `rejectUnauthorized`) or an explicit native TLS
+configuration object. A URL option by itself does not certify a cloud
+deployment's transport or identity configuration.
+
 ## Read-only security administration discovery
 
 NuBloxSQL provides a read-only security inspection API for the four executable
