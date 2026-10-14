@@ -22,6 +22,7 @@ lib/
   dialects/<engine>/     Native dialect, protocol, runtime and engine-local tests
   jobs/                  Internal durable orchestration and evidence
   lifecycle/             Pre-connect engine lifecycle and installation providers
+  runtime/               Internal SQL routing and model-neutral adapter contracts
 types/                   Public declaration surface (no UI dependencies)
 test/                    Cross-cutting public, package and architecture tests
 scripts/                 Release, build, qualification and maintenance tools
@@ -43,7 +44,9 @@ does not itself implement IAM, authentication, tunnelling or provider APIs.
 | Vendor and cloud catalogues | Grouped in `lib/catalog/` | Registry validation, non-routable vendor assertions, packaged type/API surface |
 | Bootstrap and configuration | Grouped in `lib/client/administration/` | Plan integrity, execution contracts and release manifests |
 | Schema/migrations/data movement | Grouped in `lib/client/engineering/` | SQL metadata, migration and data movement contracts, packed consumers |
-| Connection/transaction/stream/error integrations | Remaining | Native engine regression matrix and unchanged public `Client` |
+| SQL connection adapter routing | Extracted into `lib/runtime/SqlAdapterRouter.js` | Alias/URL/error parity, lazy imports, packed client and four dialect runtime tests |
+| Model-neutral native adapter declaration | Internal contract implemented | Contract tests; non-SQL catalogue entries remain non-routable |
+| Connection/transaction/stream/error integrations | Partially complete: routing extracted; remaining Client policies and integrations | Native engine regression matrix and unchanged public `Client` |
 | SQL compiler/parser pipeline (`lib/capabilities/`) | Remaining | Stable AST and per-dialect compiler regression tests |
 | DBMS adapters (`lib/dialects/`) | Preserve native isolation | Live MySQL/PostgreSQL/SQLite/SQL Server CI and version evidence |
 | Durable job kernel and lifecycle | Preserve, harden progressively | Job safety, approval, replay and lifecycle checks |
