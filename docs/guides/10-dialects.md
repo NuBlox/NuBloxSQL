@@ -174,6 +174,36 @@ const db = createClient({
 
 Native configuration includes TDS 7.4/8.0 selection, connect/query/cancel timeouts, certificate verification, TLS versions, MARS and pool settings.
 
+For SQL Server reached through a proxy, private endpoint or custom DNS route,
+the TCP `host`, TDS LOGIN7 `serverName` and certificate identity may be
+different. Use `hostnameInCertificate` for the **actual trusted DNS name in
+the server certificate**, independently of the login server name:
+
+```js
+const db = createClient({
+  dialect: 'sqlserver',
+  tdsVersion: '8.0',
+  host: '127.0.0.1', // existing tunnel or private-network endpoint
+  port: 1433,
+  serverName: 'logical-sql-instance',
+  hostnameInCertificate: 'trusted-db.example.internal',
+  user: 'app',
+  password: process.env.DB_PASSWORD,
+  database: 'app',
+  rejectUnauthorized: true,
+  ca: require('node:fs').readFileSync('/path/to/trusted-ca.pem'),
+  minTlsVersion: 'TLSv1.2',
+  maxVersion: 'TLSv1.3'
+});
+```
+
+Both TDS 8.0 and TDS 7.4 apply the same certificate-name precedence and
+TLS `maxVersion` limit. An invalid explicit `hostnameInCertificate` fails
+validation rather than silently falling back to another name. Do not use
+`rejectUnauthorized: false` as a workaround for certificate mismatches.
+This configuration does not create tunnels or cloud identity tokens; use a
+trusted, already established network route.
+
 The native runtime exposes raw queries, typed parameter execution, prepared statements, streaming, cancellation, transactions/savepoints and TDS protocol facilities. `readOnly` and `deferrable` transaction options are not supported in the SQL Server portable transaction declaration.
 
 ## Choosing portable versus native APIs
