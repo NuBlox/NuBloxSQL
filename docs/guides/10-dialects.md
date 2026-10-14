@@ -117,7 +117,11 @@ MySQL also validates TLS modes before creating a TCP connection. Use only
 An SSL options object without `mode` defaults to `require`, while an
 omitted `ssl` setting retains the existing opportunistic `prefer`
 behaviour. Prefer `ssl: { mode: 'require', rejectUnauthorized: true }`
-for trusted cloud database connections. NuBloxSQL sends standard internal connector attributes by default and accepts application attributes whose names do not begin with `_`; set `connectionAttributes: false` to disable them.
+for trusted cloud database connections.
+
+NuBloxSQL sends standard internal connector attributes by default and accepts
+application attributes whose names do not begin with `_`; set
+`connectionAttributes: false` to disable them.
 
 Native runtime depth includes prepared execution, reset/session handling, streaming, operation control, connection-attribute negotiation, secure LOCAL INFILE, structured EXPLAIN/EXPLAIN ANALYZE, authentication-plugin qualification and deep INFORMATION_SCHEMA/Performance Schema metadata.
 
