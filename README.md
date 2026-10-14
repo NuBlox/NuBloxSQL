@@ -1,6 +1,6 @@
 # NuBloxSQL
 
-**NuBloxSQL is a universal database driver foundation**, designed to cover relational SQL and non-SQL database vendors through truthful, native, capability-gated adapters. Its current working runtimes remain PostgreSQL, MySQL, SQLite and SQL Server; future document, key-value, graph, search and vector vendors are not yet implemented.
+**NuBloxSQL is a universal database driver foundation**, designed to cover relational SQL and non-SQL database vendors through truthful, native, capability-gated adapters. Its existing SQL runtimes are PostgreSQL, MySQL, SQLite and SQL Server. The first **non-SQL native adapter** now implements standalone Redis RESP2 commands; other document, graph, search and vector vendors remain unimplemented.
 
 This repository contains **three distinct products**: the NuBloxSQL **Driver** (`nubloxsql`), **NuBloxSQL Shell** (terminal and automation tools) and **NuBloxSQL Workbench** (graphical professional workspace). Shell and Workbench serve database professions across the database lifecycle using the driver's public API. See the [Product Surfaces](docs/product/PRODUCT-SURFACES.md) and [profession work register](docs/product/database-profession-work-register.json). The complete professional lifecycle is our destination, **not** a claim that all capabilities are already released.
 
@@ -24,6 +24,29 @@ const db = createClient({
 const row = await db.one(sql`SELECT id, name FROM users WHERE id = ${42}`);
 await db.close();
 ```
+
+## Native non-SQL Redis connection
+
+NuBloxSQL now includes an initial native Redis RESP2 driver, separate from
+all SQL interfaces:
+
+```js
+const {createNativeConnection} = require('nubloxsql');
+const redis = createNativeConnection('redis', {host:'127.0.0.1'});
+await redis.connect();
+try {
+  await redis.set('hello','world');
+  console.log((await redis.get('hello')).toString('utf8'));
+} finally {
+  await redis.close();
+}
+```
+
+Native bulk-string replies are Buffers and preserve binary data.
+Non-loopback connections require verified TLS. This is standalone RESP2
+support, **not** Redis Cluster, Sentinel, RESP3 or Redis Cloud certification.
+See [Native Redis Adapter](docs/architecture/NATIVE-REDIS-ADAPTER.md).
+The SQL factory `createClient({dialect:'redis'})` remains deliberately unsupported.
 
 ## Connection URL safety
 
