@@ -73,6 +73,8 @@ export interface MongoNativeConnection {
   readonly connected: boolean;
   readonly ended: boolean;
   connect(): Promise<this>;
+  /** Live server round-trip (not the cached connected flag); sanitized errors. */
+  ping(): Promise<boolean>;
   findOne<T = Record<string, unknown>>(collection: string, filter?: Readonly<Record<string, unknown>>): Promise<T | null>;
   find<T = Record<string, unknown>>(collection: string, filter?: Readonly<Record<string, unknown>>,
     options?: {readonly limit?: number;readonly batchSize?: number}): Promise<T[]>;
