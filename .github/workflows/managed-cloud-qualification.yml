@@ -16,6 +16,9 @@ on:
           - aws-rds-mysql
           - aws-aurora-mysql
           - azure-mysql-flexible
+          - aws-rds-sqlserver
+          - azure-sql
+          - azure-sql-managed-instance
 
 permissions:
   contents: read

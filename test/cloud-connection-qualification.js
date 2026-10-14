@@ -75,9 +75,45 @@ async function main() {
   assert.equal(explicit.config.ssl.ca, 'test CA');
   assert.equal(explicit.config.ssl.rejectUnauthorized, true);
 
+  for (const serviceId of [
+    'aws-rds-sqlserver', 'azure-sql', 'azure-sql-managed-instance'
+  ]) {
+    const sqlServerPlan = qualification.plan(configured({
+      NUBLOX_CLOUD_SERVICE: serviceId,
+      NUBLOX_CLOUD_HOST: '127.0.0.1',
+      NUBLOX_CLOUD_SERVERNAME: 'sql.azure-certificate.example.test',
+      NUBLOX_CLOUD_CA_PEM: 'trusted SQL Server CA'
+    }));
+    assert.equal(sqlServerPlan.dialect, 'sqlserver');
+    assert.equal(sqlServerPlan.config.port, 1433);
+    assert.equal(sqlServerPlan.config.tdsVersion, '7.4');
+    assert.equal(sqlServerPlan.config.hostnameInCertificate,
+      'sql.azure-certificate.example.test');
+    assert.equal(sqlServerPlan.config.rejectUnauthorized, true);
+    assert.equal(sqlServerPlan.config.readOnlyIntent, true);
+    assert.equal(sqlServerPlan.config.ca, 'trusted SQL Server CA');
+    assert.equal(sqlServerPlan.config.ssl, undefined,
+      'SQL Server must not receive PG/MySQL TLS options');
+    assert.equal(sqlServerPlan.config.user, ENV.NUBLOX_CLOUD_USER);
+
+    // Exercise the actual public driver dispatcher without opening TCP,
+    // then inspect the same TDS 7.4 TLS options used at connection time.
+    const native = sql.createConnection(sqlServerPlan.config);
+    assert.equal(typeof native.connect, 'function');
+    assert.equal(native.config.tdsVersion, '7.4');
+    const transportSocket = {kind:'tls-bridge'};
+    const tlsOptions = require('../lib/dialects/sqlserver/lib/LegacyTransport')
+      .tlsOptions(native.config, transportSocket);
+    assert.equal(tlsOptions.socket, transportSocket);
+    assert.equal(tlsOptions.servername, 'sql.azure-certificate.example.test');
+    assert.equal(tlsOptions.rejectUnauthorized, true);
+    assert.equal(tlsOptions.ca, 'trusted SQL Server CA');
+    assert.equal(tlsOptions.minVersion, 'TLSv1.2');
+  }
+
   for (const input of [
     configured({NUBLOX_CLOUD_SERVICE: 'snowflake'}),
-    configured({NUBLOX_CLOUD_SERVICE: 'aws-rds-sqlserver'}),
+    configured({NUBLOX_CLOUD_SERVICE: 'aws-redshift'}),
     configured({NUBLOX_CLOUD_SERVICE: 'gcp-cloudsql-postgresql'}),
     configured({NUBLOX_CLOUD_SERVICE: 'unknown'}),
     configured({NUBLOX_CLOUD_PORT: '99999'}),
@@ -96,7 +132,8 @@ async function main() {
 
   for (const service of ['aws-rds-postgresql','aws-aurora-postgresql',
      'azure-postgresql-flexible','aws-rds-mysql','aws-aurora-mysql',
-     'azure-mysql-flexible']) {
+     'azure-mysql-flexible', 'aws-rds-sqlserver', 'azure-sql',
+     'azure-sql-managed-instance']) {
     const api = mockApi();
     const evidence = await qualification.run(configured({
       NUBLOX_CLOUD_SERVICE:service
@@ -132,6 +169,17 @@ async function main() {
   await rejectsCode(qualification.run(configured({
     NUBLOX_CLOUD_SERVICE:'aws-rds-mysql'
   }),mockApi({secure:false})),'TLS_NOT_VERIFIED');
+
+  for (const sqlServerFailure of [
+    [{socket:{encrypted:false,authorized:true}},'TLS_NOT_VERIFIED'],
+    [{socket:{encrypted:true,authorized:false}},'TLS_NOT_VERIFIED'],
+    [{failQuery:true},'READ_ONLY_QUERY_FAILED'],
+    [{failClose:true},'CLOSE_FAILED']
+  ]) {
+    await rejectsCode(qualification.run(configured({
+      NUBLOX_CLOUD_SERVICE:'azure-sql'
+    }), mockApi(sqlServerFailure[0])), sqlServerFailure[1]);
+  }
 
   const neverConnect = mockApi();
   await assert.rejects(qualification.run(configured({

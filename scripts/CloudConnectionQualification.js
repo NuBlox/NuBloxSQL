@@ -4,7 +4,7 @@
 // connector, authentication token broker, or qualification claim.
 const driver = require('..');
 
-const DIALECTS = Object.freeze(['postgresql', 'mysql']);
+const DIALECTS = Object.freeze(['postgresql', 'mysql', 'sqlserver']);
 const PROBE_SQL = 'SELECT 1 AS nublox_cloud_probe';
 const TIMEOUT_MS = 10000;
 
@@ -56,18 +56,28 @@ function plan(env, api = driver) {
       typeof servername !== 'string' || !servername.trim()) {
     throw qualifyError('INVALID_TLS_SERVERNAME');
   }
-  const ssl = {
-    mode: 'require', rejectUnauthorized: true, servername
-  };
-  if (env.NUBLOX_CLOUD_CA_PEM !== undefined && env.NUBLOX_CLOUD_CA_PEM !== '') {
-    ssl.ca = env.NUBLOX_CLOUD_CA_PEM;
-  }
-  const config = Object.freeze({
+  const config = {
     dialect: service.existingSqlAdapter,
     host: hint.driverHint.host, port: hint.driverHint.port,
-    user, password, database, connectTimeout: TIMEOUT_MS,
-    ssl: Object.freeze(ssl)
-  });
+    user, password, database, connectTimeout: TIMEOUT_MS
+  };
+  if (service.existingSqlAdapter === 'sqlserver') {
+    // TDS 7.4 is the conservative compatibility baseline for existing
+    // managed SQL Server services. It still negotiates and verifies TLS.
+    // SQL Server TLS options are top-level, not the MySQL/PG ssl object.
+    config.tdsVersion = '7.4';
+    config.hostnameInCertificate = servername;
+    config.rejectUnauthorized = true;
+    config.readOnlyIntent = true;
+    if (env.NUBLOX_CLOUD_CA_PEM) config.ca = env.NUBLOX_CLOUD_CA_PEM;
+  } else {
+    const ssl = {
+      mode: 'require', rejectUnauthorized: true, servername
+    };
+    if (env.NUBLOX_CLOUD_CA_PEM) ssl.ca = env.NUBLOX_CLOUD_CA_PEM;
+    config.ssl = Object.freeze(ssl);
+  }
+  Object.freeze(config);
   return Object.freeze({serviceId:service.id, dialect:service.existingSqlAdapter, config});
 }
 

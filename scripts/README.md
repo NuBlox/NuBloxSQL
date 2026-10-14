@@ -6,7 +6,7 @@ This directory contains repository-level qualification and maintenance scripts.
 - `suites/platform.json` defines cross-cutting package/platform contract tests.
 - `suites/release.json` defines release qualification checks.
 - `check-*.js` files enforce focused release, package, architecture and capability contracts.
-- `CloudConnectionQualification.js` contains the optional managed-cloud PostgreSQL/MySQL
+- `CloudConnectionQualification.js` contains the optional managed-cloud PostgreSQL/MySQL/SQL Server
   read-only TLS qualification contract and error-redaction policy.
 - `qualify-cloud-connection.js` is the explicit opt-in, secrets-injected
   live endpoint CLI. See [cloud qualification setup](../docs/architecture/UNIVERSAL-DATABASE-DRIVER.md#opt-in-live-managed-cloud-qualification);

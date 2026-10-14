@@ -64,8 +64,8 @@ All cloud plans explicitly reject credential-bearing configuration keys (passwor
 ## Opt-in live managed-cloud qualification
 
 A **manual, protected GitHub Actions workflow** now provides an executable
-read-only smoke qualification harness for existing PostgreSQL and MySQL
-protocols. This is evidence for **one configured endpoint**, not a claim that
+read-only smoke qualification harness for existing PostgreSQL, MySQL and
+SQL Server protocols. This is evidence for **one configured endpoint**, not a claim that
 NuBloxSQL is qualified for an entire cloud provider, region, edition or
 authentication method. The `cloudDatabaseRegistry` qualification fields
 deliberately remain `cloud-unqualified` until a separate reviewed provider
@@ -73,10 +73,17 @@ certification programme is completed.
 
 The workflow is `.github/workflows/managed-cloud-qualification.yml`, triggered
 only by **Actions → NuBloxSQL Managed Cloud Qualification → Run workflow**.
-It accepts AWS RDS / Aurora and Azure managed PostgreSQL/MySQL profiles.
-Google Cloud SQL proxy profiles are excluded because separate proxy lifecycle,
-transport and authentication qualification is still required. SQL Server is
-not yet included in this harness.
+It accepts AWS RDS / Aurora and Azure managed PostgreSQL/MySQL profiles,
+and the existing SQL Server protocol for AWS RDS for SQL Server, Azure SQL
+Database and Azure SQL Managed Instance. SQL Server uses the driver's encrypted
+TDS 7.4 path for this smoke test, with `hostnameInCertificate`,
+`rejectUnauthorized: true`, a trusted CA if configured, and the
+`readOnlyIntent` login hint. **Read-only intent is not an access-control
+boundary**: the provisioned database principal must itself have read-only
+permissions. This harness deliberately does not qualify Entra or IAM sign-in,
+or TDS 8.0 cloud deployment compatibility. Google Cloud SQL proxy profiles
+are excluded because separate proxy lifecycle, transport and authentication
+qualification is still required.
 
 **Before starting the manual workflow:**
 
@@ -96,7 +103,7 @@ not yet included in this harness.
    `NUBLOX_CLOUD_CA_PEM` (trusted PEM CA chain when system trust is
    insufficient). Never disable peer certificate validation.
 4. Select the matching service profile. Only explicitly supported direct-TCP
-   PostgreSQL or MySQL service IDs are eligible. Wrong profiles or
+   PostgreSQL, MySQL or SQL Server service IDs are eligible. Wrong profiles or
    incomplete configurations fail before a connection attempt.
 
 For a trusted local/CI environment with the same **environment variables**
@@ -109,8 +116,9 @@ node scripts/qualify-cloud-connection.js
 
 The first command is an **offline test using fake connections**, safe without
 cloud credentials; it is also part of the normal Node 22/24/26 platform suite.
-The second connects to the real managed endpoint, requires TLS with
-`rejectUnauthorized: true`, verifies the negotiated socket is encrypted and
+The second connects to the real managed endpoint, requires verified TLS
+(under the driver-specific SSL or SQL Server TLS settings), verifies that
+`rejectUnauthorized` is enabled and the negotiated socket is encrypted and
 its certificate authenticated, runs only
 `SELECT 1 AS nublox_cloud_probe`, and closes the connection. The printed
 evidence contains only the service ID, dialect, fixed check names/statuses
