@@ -1,0 +1,52 @@
+name: NuBloxSQL Managed Cloud Qualification
+
+# Explicit opt-in only: never access managed cloud credentials from PR CI.
+# Configure the protected "cloud-qualification" GitHub Environment first.
+on:
+  workflow_dispatch:
+    inputs:
+      service_id:
+        description: Existing SQL protocol / managed cloud service to probe
+        required: true
+        type: choice
+        options:
+          - aws-rds-postgresql
+          - aws-aurora-postgresql
+          - azure-postgresql-flexible
+          - aws-rds-mysql
+          - aws-aurora-mysql
+          - azure-mysql-flexible
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nublox-cloud-qualification
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Verified TLS and read-only cloud probe
+    runs-on: ubuntu-latest
+    environment: cloud-qualification
+    timeout-minutes: 10
+    env:
+      NUBLOX_CLOUD_SERVICE: ${{ inputs.service_id }}
+      NUBLOX_CLOUD_HOST: ${{ secrets.NUBLOX_CLOUD_HOST }}
+      NUBLOX_CLOUD_PORT: ${{ secrets.NUBLOX_CLOUD_PORT }}
+      NUBLOX_CLOUD_USER: ${{ secrets.NUBLOX_CLOUD_USER }}
+      NUBLOX_CLOUD_PASSWORD: ${{ secrets.NUBLOX_CLOUD_PASSWORD }}
+      NUBLOX_CLOUD_DATABASE: ${{ secrets.NUBLOX_CLOUD_DATABASE }}
+      NUBLOX_CLOUD_SERVERNAME: ${{ secrets.NUBLOX_CLOUD_SERVERNAME }}
+      NUBLOX_CLOUD_CA_PEM: ${{ secrets.NUBLOX_CLOUD_CA_PEM }}
+    steps:
+      - name: Check out NuBloxSQL
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Validate cloud qualification harness without network
+        run: node test/cloud-connection-qualification.js
+      - name: Connect with required TLS, verify peer and run read-only probe
+        run: node scripts/qualify-cloud-connection.js

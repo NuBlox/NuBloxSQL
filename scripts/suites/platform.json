@@ -10,6 +10,7 @@
     "test/sql-capability-model.js",
     "test/dialect-registry.js",
     "test/database-technology-foundation.js",
+    "test/cloud-connection-qualification.js",
     "test/profile-capability-overlays.js",
     "test/sql-capability-ontology.js",
     "test/product-coverage-v2.js",

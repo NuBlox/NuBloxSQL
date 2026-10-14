@@ -61,6 +61,70 @@ const snowflake = sql.planCloudDatabaseConnection({ serviceId: 'snowflake' });
 
 All cloud plans explicitly reject credential-bearing configuration keys (passwords, tokens, URLs), malformed endpoints or insecure remote proxy hints. Neither secret storage nor token refresh is introduced.
 
+## Opt-in live managed-cloud qualification
+
+A **manual, protected GitHub Actions workflow** now provides an executable
+read-only smoke qualification harness for existing PostgreSQL and MySQL
+protocols. This is evidence for **one configured endpoint**, not a claim that
+NuBloxSQL is qualified for an entire cloud provider, region, edition or
+authentication method. The `cloudDatabaseRegistry` qualification fields
+deliberately remain `cloud-unqualified` until a separate reviewed provider
+certification programme is completed.
+
+The workflow is `.github/workflows/managed-cloud-qualification.yml`, triggered
+only by **Actions → NuBloxSQL Managed Cloud Qualification → Run workflow**.
+It accepts AWS RDS / Aurora and Azure managed PostgreSQL/MySQL profiles.
+Google Cloud SQL proxy profiles are excluded because separate proxy lifecycle,
+transport and authentication qualification is still required. SQL Server is
+not yet included in this harness.
+
+**Before starting the manual workflow:**
+
+1. Create a protected GitHub Actions **Environment** named
+   `cloud-qualification`, restrict deployments to `main`, and configure
+   required reviewers as appropriate. Never run unreviewed branch code with
+   cloud qualification secrets.
+2. Store `NUBLOX_CLOUD_HOST`, `NUBLOX_CLOUD_USER`,
+   `NUBLOX_CLOUD_PASSWORD` and `NUBLOX_CLOUD_DATABASE` as **environment
+   secrets**. Use a dedicated read-only DBMS principal. The target must
+   already be network reachable from the runner (or run the same script on
+   your preconfigured trusted host). Do not grant schema or data mutation
+   rights for qualification.
+3. Optionally add `NUBLOX_CLOUD_PORT` (otherwise uses the profile's default
+   port), `NUBLOX_CLOUD_SERVERNAME` (the certificate's actual DNS hostname
+   when the TCP endpoint is an IP or has a different name), and
+   `NUBLOX_CLOUD_CA_PEM` (trusted PEM CA chain when system trust is
+   insufficient). Never disable peer certificate validation.
+4. Select the matching service profile. Only explicitly supported direct-TCP
+   PostgreSQL or MySQL service IDs are eligible. Wrong profiles or
+   incomplete configurations fail before a connection attempt.
+
+For a trusted local/CI environment with the same **environment variables**
+already injected by your secret manager:
+
+```bash
+node test/cloud-connection-qualification.js
+node scripts/qualify-cloud-connection.js
+```
+
+The first command is an **offline test using fake connections**, safe without
+cloud credentials; it is also part of the normal Node 22/24/26 platform suite.
+The second connects to the real managed endpoint, requires TLS with
+`rejectUnauthorized: true`, verifies the negotiated socket is encrypted and
+its certificate authenticated, runs only
+`SELECT 1 AS nublox_cloud_probe`, and closes the connection. The printed
+evidence contains only the service ID, dialect, fixed check names/statuses
+and `single-live-endpoint-smoke-not-provider-certification`. It never prints
+connection settings, credentials, certificates, endpoints or raw vendor
+exceptions. A failure prints only a sanitized failure code; inspect and fix
+networking, CA trust and database permissions separately.
+
+A successful endpoint smoke test does **not** verify provider IAM/Entra,
+credential rotation, failover, DNS recovery, TLS trust renewal, regional
+resilience, production pooling or lifecycle management. No hosted database
+credentials are configured in this repository, and the ordinary pull-request
+CI **never** makes a secret-bearing cloud connection.
+
 ## Required architecture before implementing a non-SQL vendor
 
 1. Specify a **vendor-independent adapter contract** separating identity, transport, authentication, connection pooling and capabilities from query-model extensions.
