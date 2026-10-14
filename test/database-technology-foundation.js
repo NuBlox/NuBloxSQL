@@ -15,7 +15,7 @@ assert.deepEqual(cloud.validate().errors, []);
 const technologiesReport = technologies.report();
 assert.equal(technologiesReport.schemaVersion, 1);
 assert.equal(technologiesReport.counts.technologies, 20);
-assert.equal(technologiesReport.counts.routable, 4);
+assert.equal(technologiesReport.counts.routable, 5);
 assert.equal(technologiesReport.counts.relationalSqlProfiles, 100);
 assert.strictEqual(technologies.relationalSqlProfiles, sql.dialectRegistry.products);
 assert.equal(technologies.relationalSqlProfiles.find(x => x.id === 'oracle').driver.routable, false);
@@ -33,7 +33,7 @@ for (const id of ['postgresql','mysql','sqlite','sqlserver']) {
   assert.deepEqual(technologies.inspect(id).executableOperations, ['sql.query']);
 }
 for (const [id,model] of [
-  ['mongodb','document'],['redis','key-value'],['neo4j','graph'],
+  ['mongodb','document'],['neo4j','graph'],
   ['cassandra','wide-column'],['elasticsearch','search'],
   ['influxdb','time-series'],['qdrant','vector'],['arangodb','graph']
 ]) {
@@ -47,12 +47,21 @@ for (const [id,model] of [
   assert.deepEqual(technologies.inspect(id).executableOperations, []);
   assert.ok(Object.isFrozen(record));
 }
+const redisTechnology = technologies.get('redis');
+assert.equal(redisTechnology.runtime.routable, true);
+assert.equal(redisTechnology.runtime.adapter, 'redis');
+assert.equal(redisTechnology.runtime.qualification, 'initial');
+assert.equal(redisTechnology.sqlDialect, null);
+assert.deepEqual(technologies.inspect('redis').executableOperations,['key-value.command']);
+assert.equal(typeof sql.createNativeConnection, 'function');
+assert.ok(sql.createNativeConnection('redis') instanceof require('../lib/dialects/redis').RedisConnection);
+assert.throws(()=>sql.createClient({dialect:'redis'}), /Unsupported NuBloxSQL dialect/);
 assert.equal(technologies.get('PG'), technologies.get('postgresql'));
 assert.equal(technologies.get('Mongo'), technologies.get('mongodb'));
 assert.equal(technologies.get('unknown-vendor'), null);
 assert.equal(technologies.inspect('unknown-vendor'), null);
 assert.equal(technologies.list({model:'graph'}).length, 3);
-assert.equal(technologies.list({routable:true}).length, 4);
+assert.equal(technologies.list({routable:true}).length, 5);
 assert.equal(technologies.list({nativeInterface:'cypher'}).length, 1);
 assert.throws(() => technologies.get(''), /nonempty/);
 for (const bad of [null,[],42,{model:'unknown'},{nativeInterface:'sqlish'},{routable:'yes'},{foo:true}]) {
