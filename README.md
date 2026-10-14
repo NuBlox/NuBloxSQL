@@ -74,8 +74,11 @@ TLS is mandatory for remote MongoDB hosts and all replica-set seeds; DNS SRV
 connections also enforce TLS. MongoDB supports validated seed lists and SRV
 targets through its official driver, with a bounded async document iterator.
 Initially supported operations are
-`findOne`, bounded `find`, `insertOne`, `updateOne`, `deleteOne`
-and `countDocuments` plus `iterate`. See the
+`ping`, `findOne`, bounded `find` and `iterate`, `insertOne`,
+`updateOne`, `deleteOne` and `countDocuments`. Ephemeral CI also
+qualifies reconnecting to a **three-member replica set after primary loss**;
+in-flight write replay and real external SRV deployments remain unqualified.
+See the
 [MongoDB Native Adapter](docs/architecture/NATIVE-MONGODB-ADAPTER.md)
 for driver setup, credentials, limits and unimplemented capabilities.
 The SQL client intentionally continues to reject `dialect:'mongodb'`.
