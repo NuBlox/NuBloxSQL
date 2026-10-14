@@ -3,6 +3,8 @@
   "name": "NuBloxSQL platform suite",
   "steps": [
     "test/platform-entry.js",
+    "test/native-adapter-contract.js",
+    "test/sql-adapter-router.js",
     "test/sql-capability-model.js",
     "test/dialect-registry.js",
     "test/database-technology-foundation.js",
