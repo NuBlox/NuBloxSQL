@@ -1,6 +1,6 @@
 # NuBloxSQL
 
-**NuBloxSQL is a universal database driver foundation**, designed to cover relational SQL and non-SQL database vendors through truthful, native, capability-gated adapters. Its existing SQL runtimes are PostgreSQL, MySQL, SQLite and SQL Server. The first **non-SQL native adapter** now implements standalone Redis RESP2 commands; other document, graph, search and vector vendors remain unimplemented.
+**NuBloxSQL is a universal database driver foundation**, designed to cover relational SQL and non-SQL database vendors through truthful, native, capability-gated adapters. Its existing SQL runtimes are PostgreSQL, MySQL, SQLite and SQL Server. Initial **non-SQL native adapters** now include standalone Redis RESP2 commands and MongoDB document CRUD through the optional official MongoDB driver; graph, search and vector vendors remain unimplemented.
 
 This repository contains **three distinct products**: the NuBloxSQL **Driver** (`nubloxsql`), **NuBloxSQL Shell** (terminal and automation tools) and **NuBloxSQL Workbench** (graphical professional workspace). Shell and Workbench serve database professions across the database lifecycle using the driver's public API. See the [Product Surfaces](docs/product/PRODUCT-SURFACES.md) and [profession work register](docs/product/database-profession-work-register.json). The complete professional lifecycle is our destination, **not** a claim that all capabilities are already released.
 
@@ -47,6 +47,35 @@ Non-loopback connections require verified TLS. This is standalone RESP2
 support, **not** Redis Cluster, Sentinel, RESP3 or Redis Cloud certification.
 See [Native Redis Adapter](docs/architecture/NATIVE-REDIS-ADAPTER.md).
 The SQL factory `createClient({dialect:'redis'})` remains deliberately unsupported.
+
+## Native MongoDB document connections
+
+NuBloxSQL's MongoDB document API uses MongoDB's separately installed official
+Apache-2.0 Node.js driver, keeping the core SQL/Redis package dependency-free.
+
+```bash
+npm install nubloxsql mongodb@7
+```
+
+```js
+const mongo = createNativeConnection('mongodb', {
+  host:'127.0.0.1',database:'projects'
+});
+await mongo.connect();
+try {
+  await mongo.insertOne('components', {code:'A-001'});
+  console.log(await mongo.find('components', {code:'A-001'}, {limit:10}));
+} finally {
+  await mongo.close();
+}
+```
+
+TLS is mandatory for remote MongoDB hosts. Initially supported operations are
+`findOne`, bounded `find`, `insertOne`, `updateOne`, `deleteOne`
+and `countDocuments`. See the
+[MongoDB Native Adapter](docs/architecture/NATIVE-MONGODB-ADAPTER.md)
+for driver setup, credentials, limits and unimplemented capabilities.
+The SQL client intentionally continues to reject `dialect:'mongodb'`.
 
 ## Connection URL safety
 
