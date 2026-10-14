@@ -8,7 +8,7 @@ export type DatabaseNativeInterface =
   | 'sql' | 'document-api' | 'command-api' | 'cypher' | 'cql'
   | 'search-api' | 'time-series-api' | 'vector-api' | 'multi-api';
 export type DatabaseCandidateOperation =
-  | 'sql.query' | 'document.read' | 'key-value.command' | 'graph.query'
+  | 'sql.query' | 'document.read' | 'document.write' | 'key-value.command' | 'graph.query'
   | 'wide-column.query' | 'search.query' | 'time-series.query' | 'vector.search';
 
 export interface DatabaseTechnology {
@@ -21,7 +21,7 @@ export interface DatabaseTechnology {
   readonly candidateOperations: readonly DatabaseCandidateOperation[];
   readonly runtime: Readonly<{
     readonly routable: boolean;
-    readonly adapter: 'postgresql' | 'mysql' | 'sqlite' | 'sqlserver' | 'redis' | null;
+    readonly adapter: 'postgresql' | 'mysql' | 'sqlite' | 'sqlserver' | 'redis' | 'mongodb' | null;
     readonly status: 'implemented' | 'not-implemented';
     readonly qualification: 'tier-1' | 'tier-2' | 'initial' | 'none';
   }>;
@@ -32,7 +32,7 @@ export interface DatabaseTechnologyInspection {
   readonly schemaVersion: 1;
   readonly technology: DatabaseTechnology;
   readonly canConnect: boolean;
-  readonly executableOperations: readonly ('sql.query' | 'key-value.command')[];
+  readonly executableOperations: readonly ('sql.query' | 'key-value.command' | 'document.read' | 'document.write')[];
   readonly reason: string;
 }
 export interface DatabaseTechnologyReport {
