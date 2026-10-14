@@ -302,7 +302,9 @@
     "lib/client/engineering/DataMovement.js",
     "lib/runtime/NativeAdapterContract.js",
     "lib/runtime/SqlAdapterRouter.js",
-    "lib/runtime/NativeAdapterRegistry.js"
+    "lib/runtime/NativeAdapterRegistry.js",
+    "lib/client/runtime/ResultNormalization.js",
+    "lib/client/runtime/PreparedBindings.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",

@@ -69,6 +69,7 @@
     "test/typescript-ddl-surface.js",
     "test/client-api.js",
     "test/client-typed-binds.js",
+    "test/client-runtime-helpers.js",
     "test/operation-control.js",
     "test/client-observability.js",
     "test/client-types.js",
