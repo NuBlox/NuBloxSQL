@@ -39,6 +39,14 @@ const db = createClient({
 
 Native PostgreSQL configuration includes application name, startup parameters, SSL policy, connection/cancel timeout, message/result limits and protocol version controls.
 
+TLS mode selection is now **fail-closed**: `ssl.mode` accepts only `disable`,
+`prefer` or `require`. A misspelling or unsupported value is rejected before
+any TCP connection is opened, for both normal queries and cancellation
+connections. As before, `ssl: { ... }` without a mode means `require`;
+the legacy omitted `ssl` default remains `prefer` and can negotiate
+plaintext. For cloud databases, explicitly use `mode: 'require'` with
+certificate verification enabled and a trusted certificate chain.
+
 When an existing private tunnel or proxy routes TCP to a hostname different
 from the certificate's DNS identity, configure the TLS `servername`
 explicitly. The driver now preserves that value rather than replacing it
@@ -101,7 +109,15 @@ const db = createClient({
 });
 ```
 
-Native configuration includes packet/result limits, stream high-water mark, connection attributes, LOCAL INFILE policy, server public-key controls and guarded cleartext-authentication opt-in. NuBloxSQL sends standard internal connector attributes by default and accepts application attributes whose names do not begin with `_`; set `connectionAttributes: false` to disable them.
+Native configuration includes packet/result limits, stream high-water mark, connection attributes, LOCAL INFILE policy, server public-key controls and guarded cleartext-authentication opt-in.
+
+MySQL also validates TLS modes before creating a TCP connection. Use only
+`disable`, `prefer` or `require`; an invalid string or
+`ssl.mode` property is an error, not an implicit plaintext fallback.
+An SSL options object without `mode` defaults to `require`, while an
+omitted `ssl` setting retains the existing opportunistic `prefer`
+behaviour. Prefer `ssl: { mode: 'require', rejectUnauthorized: true }`
+for trusted cloud database connections. NuBloxSQL sends standard internal connector attributes by default and accepts application attributes whose names do not begin with `_`; set `connectionAttributes: false` to disable them.
 
 Native runtime depth includes prepared execution, reset/session handling, streaming, operation control, connection-attribute negotiation, secure LOCAL INFILE, structured EXPLAIN/EXPLAIN ANALYZE, authentication-plugin qualification and deep INFORMATION_SCHEMA/Performance Schema metadata.
 
