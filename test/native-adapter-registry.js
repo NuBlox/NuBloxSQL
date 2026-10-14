@@ -121,8 +121,11 @@ assert.equal(isolated.list()[0].nativeInterface,'sql');
 assert.strictEqual(isolated.load('mysql'),sql.adapter('mysql'));
 assert.equal(typeof require.cache[lazyMysqlPath]?.exports.createConnection,'function');
 
-// Real SQL qualification remains unchanged, and non-SQL catalogue is not a driver.
-assert.equal(sql.databaseTechnologyRegistry.get('mongodb').runtime.routable,false);
+// Real SQL qualification remains unchanged. MongoDB is a separate native
+// document runtime, not an SQL dialect and not a catalogue-only descriptor.
+assert.equal(sql.databaseTechnologyRegistry.get('mongodb').runtime.routable,true);
+assert.deepEqual(sql.databaseTechnologyRegistry.inspect('mongodb').executableOperations,
+  ['document.read','document.write']);
 assert.equal(sql.cloudDatabaseRegistry.report().counts.cloudQualified,0);
 assert.throws(()=>sql.adapter('mongodb'),/Unsupported NuBloxSQL dialect/);
 console.log('NuBloxSQL private native adapter registry and fail-closed operations: PASS');
