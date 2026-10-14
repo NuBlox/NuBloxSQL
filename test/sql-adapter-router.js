@@ -114,6 +114,7 @@ assert.throws(() => routerApi.create({
 
 // This is a routing refactor, not a new public runtime type.
 assert.strictEqual(typeof sql.createClient,'function');
-assert.equal(sql.databaseTechnologyRegistry.inspect('mongodb').canConnect,false);
+assert.equal(sql.databaseTechnologyRegistry.inspect('mongodb').canConnect,true);
+assert.throws(()=>sql.createClient({dialect:'mongodb'}),/Unsupported NuBloxSQL dialect/);
 assert.equal(sql.cloudDatabaseRegistry.report().counts.cloudQualified,0);
 console.log('NuBloxSQL lazy SQL adapter router and fail-closed routing: PASS');

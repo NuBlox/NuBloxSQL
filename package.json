@@ -34,6 +34,8 @@
     "lib/dialects/sqlserver/lib/",
     "lib/dialects/redis/index.js",
     "lib/dialects/redis/lib/",
+    "lib/dialects/mongodb/index.js",
+    "lib/dialects/mongodb/lib/",
     "README.md",
     "LICENSE",
     "NOTICE"
@@ -59,7 +61,7 @@
     "test:sqlserver": "node lib/dialects/sqlserver/test/protocol.js && node lib/dialects/sqlserver/test/login-token.js && node lib/dialects/sqlserver/test/connection.js && node lib/dialects/sqlserver/test/result-stream.js && node lib/dialects/sqlserver/test/type-fidelity.js && node lib/dialects/sqlserver/test/typed-bind.js && node lib/dialects/sqlserver/test/plp-max.js && node lib/dialects/sqlserver/test/collation-codepages.js && node lib/dialects/sqlserver/test/sql-variant.js && node lib/dialects/sqlserver/test/incremental-stream.js && node lib/dialects/sqlserver/test/rpc.js && node lib/dialects/sqlserver/test/legacy-tls-bridge.js && node lib/dialects/sqlserver/test/capability-honesty.js && node lib/dialects/sqlserver/test/bulk-load.js",
     "test:tier1-evidence": "node scripts/check-tier1-evidence.js",
     "release:qualify": "node scripts/run-suite.js scripts/suites/release.json",
-    "verify": "npm run test:platform && npm run test:mysql && npm run test:redis && npm run test:sql-core && npm run test:postgresql && npm run test:sqlite && npm run test:sqlserver && npm run test:shell",
+    "verify": "npm run test:platform && npm run test:mysql && npm run test:redis && npm run test:mongodb && npm run test:sql-core && npm run test:postgresql && npm run test:sqlite && npm run test:sqlserver && npm run test:shell",
     "release:check": "npm run verify:release && npm run release:qualify && npm pack --dry-run",
     "prepublishOnly": "npm run release:check",
     "test:shell": "node apps/shell/test/shell-contract.js && node test/working-shell-smoke.js && node scripts/check-shell-release.js",
@@ -73,6 +75,7 @@
     "audit:proprietary": "node scripts/check-proprietary-boundary.js",
     "audit:release": "node scripts/check-release-surface.js",
     "verify:release": "npm run verify && npm run audit:proprietary && npm run audit:release",
-    "test:redis": "node lib/dialects/redis/test/protocol.js"
+    "test:redis": "node lib/dialects/redis/test/protocol.js",
+    "test:mongodb": "node lib/dialects/mongodb/test/contracts.js"
   }
 }

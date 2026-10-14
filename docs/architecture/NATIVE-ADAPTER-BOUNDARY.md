@@ -1,7 +1,7 @@
 # Native Adapter and Shared Connection Routing Boundary
 
 **Status:** The four SQL engines retain the internal SQL router; a separate closed
-non-SQL router now loads the initial Redis RESP2 standalone runtime. Provider
+non-SQL router loads initial Redis RESP2 standalone and MongoDB document runtimes. Provider
 cloud qualification remains independent.
 
 ## Why this exists
@@ -59,12 +59,14 @@ unregistered after creation.
 declarations only specify intended native interface coverage; they do not
 prove any operation executes, that credentials are valid or that a vendor is
 live-qualified. A mock document adapter in tests demonstrates the contract
-without enabling MongoDB or another external product.
+without alone enabling any external product.
 
 No public adapter registration, plugin loading, third-party entry points or
 non-SQL SQL-client routing is exposed. The separate public `createNativeConnection`
-factory currently routes only the implemented Redis RESP2 adapter, with native
-`key-value.command` rather than `sql.query`. See [Redis native adapter](NATIVE-REDIS-ADAPTER.md). This is a closed internal foundation
+factory currently routes Redis RESP2 `key-value.command` and MongoDB native
+`document.read` / `document.write` rather than `sql.query`.
+See [Redis native adapter](NATIVE-REDIS-ADAPTER.md) and
+[MongoDB native adapter](NATIVE-MONGODB-ADAPTER.md). This is a closed internal foundation
 until a separate security, version and authorization review approves broader
 registration.
 

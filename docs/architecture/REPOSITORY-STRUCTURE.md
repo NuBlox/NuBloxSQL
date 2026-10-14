@@ -43,7 +43,7 @@ NuBloxSQL/
 
 ## Database vendor and cloud implementation boundaries
 
-The existing SQL dialect registry remains under `lib/capabilities/` and is distinct from `lib/catalog/DatabaseTechnologyRegistry.js` (SQL and non-SQL model catalogue) and `lib/catalog/CloudDatabaseRegistry.js` (managed-cloud service placement and credential-free connection requirements). Four native SQL adapters and an initial standalone native Redis RESP2 adapter currently exist under `lib/dialects/`. Catalogue records are not connectors. New SQL/non-SQL protocol adapters must be isolated under their own qualified runtime and must not pull cloud identity, secret persistence or vendor UI into the shared driver.
+The existing SQL dialect registry remains under `lib/capabilities/` and is distinct from `lib/catalog/DatabaseTechnologyRegistry.js` (SQL and non-SQL model catalogue) and `lib/catalog/CloudDatabaseRegistry.js` (managed-cloud service placement and credential-free connection requirements). Four native SQL adapters plus initial native Redis RESP2 and MongoDB document adapters currently exist under `lib/dialects/`. The MongoDB adapter uses an optional separately installed official driver. Catalogue records are not connectors. New SQL/non-SQL protocol adapters must be isolated under their own qualified runtime and must not pull cloud identity, secret persistence or vendor UI into the shared driver.
 
 ## Driver ownership and grouping
 

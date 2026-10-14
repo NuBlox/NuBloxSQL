@@ -1,0 +1,76 @@
+name: NuBloxSQL MongoDB Native
+
+on:
+  pull_request:
+    paths:
+      - 'index.js'
+      - 'index.d.ts'
+      - 'package.json'
+      - 'lib/runtime/**'
+      - 'lib/dialects/mongodb/**'
+      - 'lib/catalog/DatabaseTechnologyRegistry.js'
+      - 'types/native.d.ts'
+      - 'types/database-technology.d.ts'
+      - 'test/database-technology-foundation.js'
+      - '.github/workflows/mongodb-native.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'index.js'
+      - 'index.d.ts'
+      - 'package.json'
+      - 'lib/runtime/**'
+      - 'lib/dialects/mongodb/**'
+      - 'lib/catalog/DatabaseTechnologyRegistry.js'
+      - 'types/native.d.ts'
+      - 'types/database-technology.d.ts'
+      - 'test/database-technology-foundation.js'
+      - '.github/workflows/mongodb-native.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: MongoDB native contracts (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm run test:mongodb
+
+  live:
+    name: live MongoDB ${{ matrix.mongodb }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mongodb: ['7.0', '8.0']
+    services:
+      mongodb:
+        image: mongo:${{ matrix.mongodb }}
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd="mongosh --quiet --eval 'db.adminCommand({ping:1}).ok' | grep -q 1"
+          --health-interval=5s
+          --health-timeout=10s
+          --health-retries=30
+    env:
+      MONGODB_HOST: 127.0.0.1
+      MONGODB_PORT: 27017
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install official MongoDB Node driver (separate, CI-only dependency)
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund mongodb@7
+      - name: Exercise live native document operations
+        run: node lib/dialects/mongodb/test/live.js

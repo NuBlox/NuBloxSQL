@@ -1,6 +1,6 @@
 # Universal Database Driver — Vendor and Cloud Boundaries
 
-**Status (14 October 2026): the four existing SQL drivers and an initial native Redis RESP2 standalone adapter are implemented; most non-SQL vendors and cloud-native authentication remain unimplemented.**
+**Status (14 October 2026): the four existing SQL drivers and initial native Redis RESP2 and MongoDB document adapters are implemented; most non-SQL vendors and cloud-native authentication remain unimplemented.**
 
 The canonical [Product Blueprint](../product/BLUEPRINT.md) defines NuBloxSQL as a **universal database driver foundation**, with **NuBloxSQL Shell** and **NuBloxSQL Workbench** as separate tools for database professions.
 
@@ -25,6 +25,7 @@ The shared driver kernel can eventually expose common **intent and metadata**, i
 - **Existing SQL runtimes:** PostgreSQL, MySQL, SQLite, SQL Server. Individual capability and version qualification remains separate; the SQL public API is unchanged.
 - **Existing SQL reference catalogue:** **100 vendor SQL profiles** in `dialectRegistry`, independently preserved and exposed via `databaseTechnologyRegistry.relationalSqlProfiles`. Profile presence means **discovered/reference-only** unless `driver.routable` is true. Oracle, Db2, Snowflake, BigQuery, SAP HANA, Teradata, DuckDB and other vendors remain **unimplemented** as connection drivers.
 - **Initial non-SQL runtime:** Redis RESP2 standalone key-value commands via `createNativeConnection('redis', config)`. It does **not** use the SQL client or SQL compiler. See [Redis native adapter](NATIVE-REDIS-ADAPTER.md); Cluster, Sentinel and Redis Cloud are not yet qualified.
+- **Initial MongoDB document runtime:** native `createNativeConnection('mongodb', config)` wraps the separately installed, Apache-2.0 official MongoDB Node.js driver; bounded find and CRUD, TLS enforcement for remote connections, no SQL translation. See [MongoDB native adapter](NATIVE-MONGODB-ADAPTER.md). This does not qualify Atlas/cloud identities, transactions, change streams or SRV discovery.
 - **Cross-model catalogue:** `databaseTechnologyRegistry` provides representative document, graph, key-value, wide-column, search, time-series, vector and multi-model families. Only the four existing SQL runtimes and the initial standalone Redis RESP2 runtime are routable.
 - **Cloud services:** `cloudDatabaseRegistry` describes managed SQL and non-SQL services separately from engines; **zero cloud-hosted services have vendor-specific live qualification** here.
 - `cloudDatabaseRegistry.planConnection` and `planCloudDatabaseConnection` accept a service ID and **credential-free** endpoint/port. They provide a base SQL driver **hint** only where a compatible native SQL protocol may be used; unsupported interfaces have `driverHint:null` and `status:'not-implemented'`. They are **not connection methods**.
