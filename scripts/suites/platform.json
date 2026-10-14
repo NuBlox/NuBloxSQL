@@ -4,6 +4,7 @@
   "steps": [
     "test/platform-entry.js",
     "test/native-adapter-contract.js",
+    "test/native-adapter-registry.js",
     "test/sql-adapter-router.js",
     "test/sql-capability-model.js",
     "test/dialect-registry.js",
