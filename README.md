@@ -70,9 +70,12 @@ try {
 }
 ```
 
-TLS is mandatory for remote MongoDB hosts. Initially supported operations are
+TLS is mandatory for remote MongoDB hosts and all replica-set seeds; DNS SRV
+connections also enforce TLS. MongoDB supports validated seed lists and SRV
+targets through its official driver, with a bounded async document iterator.
+Initially supported operations are
 `findOne`, bounded `find`, `insertOne`, `updateOne`, `deleteOne`
-and `countDocuments`. See the
+and `countDocuments` plus `iterate`. See the
 [MongoDB Native Adapter](docs/architecture/NATIVE-MONGODB-ADAPTER.md)
 for driver setup, credentials, limits and unimplemented capabilities.
 The SQL client intentionally continues to reject `dialect:'mongodb'`.
