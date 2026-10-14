@@ -36,6 +36,14 @@ assert.throws(() => router.normalizeDialect(''), /requires a dialect/);
 assert.throws(() => router.normalizeDialect('mongodb'), /Unsupported NuBloxSQL dialect/);
 assert.equal(loaded.length,0,'normalising a dialect must not load it');
 
+// Mutating the original loader map must not change the closed registry.
+loaders.mongodb = () => stub('mongodb');
+delete loaders.mysql;
+assert.equal(router.normalizeDialect('mysql'),'mysql');
+assert.throws(() => router.normalizeDialect('mongodb'), /Unsupported NuBloxSQL dialect/);
+assert.throws(() => router.normalizeDialect('toString'), /Unsupported NuBloxSQL dialect/);
+assert.equal(loaded.length,0,'injected or removed loaders must not be executed');
+
 const mysql=router.resolveInvocation({dialect:'mysql',host:'db.test',user:'tester'});
 assert.equal(mysql.dialect,'mysql');
 assert.equal(mysql.config.host,'db.test');

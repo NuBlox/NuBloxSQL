@@ -13,10 +13,11 @@ stores. Its current implementation and public `createClient`, `createPool`,
 runtime families: MySQL, PostgreSQL, SQLite and SQL Server.
 
 The public `index.js` remains the stable package façade. Internal
-`lib/runtime/SqlAdapterRouter.js` owns SQL alias normalisation, resolution of
-connection URLs and options, lazy adapter loading/caching and fail-closed
-routing. `lib/runtime/NativeAdapterContract.js` owns the first model-neutral
-runtime descriptor requirement. Neither module depends on Shell or Workbench.
+`lib/runtime/SqlAdapterRouter.js` owns SQL alias normalisation and connection
+URL/config precedence, delegating adapter registration/loading to
+`lib/runtime/NativeAdapterRegistry.js`.
+`lib/runtime/NativeAdapterContract.js` owns the first model-neutral runtime
+descriptor requirement. None of these components depends on Shell or Workbench.
 
 ## Model-neutral adapter contract
 
@@ -34,6 +35,36 @@ These checks assert **module shape**, not that the adapter has connected,
 authenticated, negotiated a protocol or passed live vendor tests. A declaration
 does not register a runtime. Future non-SQL adapters require model-specific
 operations and their own implementation/qualification gates.
+
+### Immutable native adapter registry (internal)
+
+`NativeAdapterRegistry.create(registrations)` accepts a complete list of
+`{ id, models, nativeInterface, operations, load }` records and returns a
+**closed** registry. All declarations are validated before construction
+completes; registrations are immutable and cannot be appended, replaced or
+unregistered after creation.
+
+- `get(id)` returns a frozen declaration, or `null` for unknown IDs.
+- `list()` returns a frozen, declaration-only snapshot. Executable loader
+  functions and credentials are never exposed.
+- `load(id, operation?)` rejects unregistered IDs and undeclared operations
+  **before** executing a loader; loaded modules must pass the runtime contract.
+- Loaders remain lazy and successful implementations are cached once. Failed,
+  incomplete or recursive loader attempts are never cached.
+- SQL routing registers only the four built-in SQL engines, with declared
+  `sql.query` and `relational` model; aliases are normalized before registry
+  lookup.
+
+**Declaration, loading and qualification are different states.** Operation
+declarations only specify intended native interface coverage; they do not
+prove any operation executes, that credentials are valid or that a vendor is
+live-qualified. A mock document adapter in tests demonstrates the contract
+without enabling MongoDB or another external product.
+
+No public adapter registration, plugin loading, third-party entry points or
+non-SQL SQL-client routing is exposed. This is a closed internal foundation
+until a separate security, version and authorization review approves broader
+registration.
 
 ## Routing guarantees
 
@@ -57,9 +88,10 @@ operations and their own implementation/qualification gates.
 2. Define native operation families per data model with explicit
    support/unsupported outcomes; do not invent universal SQL/transaction
    semantics for incompatible products.
-3. Implement an internal extensible adapter registry with safe lifecycle
-   registration, version/capability negotiation, audited provenance and
-   compatibility policies **before** enabling third-party plugins.
+3. Extend the now-implemented **closed native adapter registry** with actual
+   version/capability negotiation, audited provenance and compatibility
+   policies **before** considering third-party plugins. The registry currently
+   validates only identity, declared operations and module shape.
 4. Add a real non-SQL adapter only with its native transport, authentication,
    core operations, TypeScript API and live integration evidence.
 5. Independently qualify SQL coverage across Oracle, Db2, MariaDB and
@@ -76,7 +108,8 @@ is introduced.
 
 Changes affecting SQL routing require the existing engine/dialect CI workflows,
 Node 22/24/26 package tests, TypeScript packed consumers, public API contract
-checks and `test/native-adapter-contract.js` and `test/sql-adapter-router.js`.
+checks and `test/native-adapter-contract.js`, `test/native-adapter-registry.js`
+and `test/sql-adapter-router.js`.
 
 The long-term identity **universal database driver** is architectural intent,
 not a claim that all vendors currently have executable NuBloxSQL adapters.

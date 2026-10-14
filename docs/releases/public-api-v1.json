@@ -301,7 +301,8 @@
     "types/cloud-database.d.ts",
     "lib/client/engineering/DataMovement.js",
     "lib/runtime/NativeAdapterContract.js",
-    "lib/runtime/SqlAdapterRouter.js"
+    "lib/runtime/SqlAdapterRouter.js",
+    "lib/runtime/NativeAdapterRegistry.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",

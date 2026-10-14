@@ -46,6 +46,7 @@ does not itself implement IAM, authentication, tunnelling or provider APIs.
 | Schema/migrations/data movement | Grouped in `lib/client/engineering/` | SQL metadata, migration and data movement contracts, packed consumers |
 | SQL connection adapter routing | Extracted into `lib/runtime/SqlAdapterRouter.js` | Alias/URL/error parity, lazy imports, packed client and four dialect runtime tests |
 | Model-neutral native adapter declaration | Internal contract implemented | Contract tests; non-SQL catalogue entries remain non-routable |
+| Native adapter registry and loader safety | Immutable internal registry wired to SQL router | Duplicate-ID rejection, operation gating, lazy cache, no public registration, no non-SQL runtime claims |
 | Connection/transaction/stream/error integrations | Partially complete: routing extracted; remaining Client policies and integrations | Native engine regression matrix and unchanged public `Client` |
 | SQL compiler/parser pipeline (`lib/capabilities/`) | Remaining | Stable AST and per-dialect compiler regression tests |
 | DBMS adapters (`lib/dialects/`) | Preserve native isolation | Live MySQL/PostgreSQL/SQLite/SQL Server CI and version evidence |
