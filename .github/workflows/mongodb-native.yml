@@ -74,3 +74,74 @@ jobs:
         run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund mongodb@7
       - name: Exercise live native document operations
         run: node lib/dialects/mongodb/test/live.js
+
+  authenticated:
+    name: live MongoDB 8.0 SCRAM authentication
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:8.0
+        env:
+          MONGO_INITDB_ROOT_USERNAME: nublox_ci
+          MONGO_INITDB_ROOT_PASSWORD: ephemeral_only_mongodb_ci_password
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd="mongosh --quiet --eval 'db.adminCommand({ping:1}).ok' | grep -q 1"
+          --health-interval=5s
+          --health-timeout=10s
+          --health-retries=30
+    env:
+      MONGODB_HOST: 127.0.0.1
+      MONGODB_PORT: 27017
+      MONGODB_USERNAME: nublox_ci
+      MONGODB_PASSWORD: ephemeral_only_mongodb_ci_password
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install official MongoDB driver only in ephemeral test environment
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund mongodb@7
+      - name: Verify real SCRAM login, rejected bad credentials and CRUD
+        run: node lib/dialects/mongodb/test/live.js
+
+  replica:
+    name: live MongoDB 8.0 replica-set discovery
+    runs-on: ubuntu-latest
+    env:
+      MONGODB_HOST: 127.0.0.1
+      MONGODB_PORT: 27017
+      MONGODB_REPLICA_SET: nubloxrs
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Launch ephemeral local replica-set member
+        shell: bash
+        run: |
+          docker run -d --name nublox-mongo-rs --network host mongo:8.0             --replSet nubloxrs --bind_ip_all
+          for i in $(seq 1 45); do
+            if docker exec nublox-mongo-rs mongosh --quiet               --eval 'db.adminCommand({ping:1}).ok' | grep -q 1; then
+              break
+            fi
+            sleep 2
+          done
+          docker exec nublox-mongo-rs mongosh --quiet --eval             "rs.initiate({_id:'nubloxrs',members:[{_id:0,host:'127.0.0.1:27017'}]})"
+          ready=0
+          for i in $(seq 1 45); do
+            if docker exec nublox-mongo-rs mongosh --quiet               --eval 'db.hello().isWritablePrimary' | grep -q true; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" -eq 1
+      - name: Install official MongoDB driver only in ephemeral test environment
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund mongodb@7
+      - name: Verify replica-set identity, discovery and native CRUD
+        run: node lib/dialects/mongodb/test/live.js
+      - name: Stop ephemeral replica-set member
+        if: always()
+        run: docker rm -f nublox-mongo-rs || true
