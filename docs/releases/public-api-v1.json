@@ -310,7 +310,9 @@
     "lib/dialects/redis/index.js",
     "lib/dialects/redis/lib/Resp2.js",
     "lib/dialects/redis/lib/Connection.js",
-    "lib/runtime/NonSqlAdapterRouter.js"
+    "lib/runtime/NonSqlAdapterRouter.js",
+    "lib/dialects/mongodb/index.js",
+    "lib/dialects/mongodb/lib/Connection.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
