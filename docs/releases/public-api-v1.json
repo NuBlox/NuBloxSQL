@@ -185,7 +185,8 @@
     "databaseTechnologyRegistry",
     "CLOUD_DATABASE_REGISTRY_SCHEMA_VERSION",
     "cloudDatabaseRegistry",
-    "planCloudDatabaseConnection"
+    "planCloudDatabaseConnection",
+    "createNativeConnection"
   ],
   "requiredPackageFiles": [
     "index.js",
@@ -304,7 +305,12 @@
     "lib/runtime/SqlAdapterRouter.js",
     "lib/runtime/NativeAdapterRegistry.js",
     "lib/client/runtime/ResultNormalization.js",
-    "lib/client/runtime/PreparedBindings.js"
+    "lib/client/runtime/PreparedBindings.js",
+    "types/native.d.ts",
+    "lib/dialects/redis/index.js",
+    "lib/dialects/redis/lib/Resp2.js",
+    "lib/dialects/redis/lib/Connection.js",
+    "lib/runtime/NonSqlAdapterRouter.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
