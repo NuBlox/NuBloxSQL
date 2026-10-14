@@ -31,10 +31,12 @@ function plan(env, api = driver) {
     throw qualifyError('UNSUPPORTED_SERVICE');
   }
   const portText = env.NUBLOX_CLOUD_PORT;
-  if (portText !== undefined && !/^[0-9]+$/.test(portText)) {
+  // GitHub Actions supplies unset optional secrets as empty strings.
+  if (portText !== undefined && portText !== '' && !/^[0-9]+$/.test(portText)) {
     throw qualifyError('INVALID_PORT');
   }
-  const port = portText === undefined ? service.defaultPort : Number(portText);
+  const port = portText === undefined || portText === ''
+    ? service.defaultPort : Number(portText);
   // Delegate endpoint and port validation to the canonical cloud catalogue.
   const hint = api.cloudDatabaseRegistry.planConnection({
     serviceId, endpoint: host, port
