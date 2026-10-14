@@ -39,6 +39,33 @@ const db = createClient({
 
 Native PostgreSQL configuration includes application name, startup parameters, SSL policy, connection/cancel timeout, message/result limits and protocol version controls.
 
+When an existing private tunnel or proxy routes TCP to a hostname different
+from the certificate's DNS identity, configure the TLS `servername`
+explicitly. The driver now preserves that value rather than replacing it
+with the TCP `host`:
+
+```js
+const db = createClient({
+  dialect: 'postgresql',
+  host: '127.0.0.1', // separately configured local TCP tunnel
+  port: 5433,
+  user: 'app',
+  password: process.env.DB_PASSWORD,
+  database: 'app',
+  ssl: {
+    mode: 'require',
+    rejectUnauthorized: true,
+    servername: 'database.example.internal',
+    ca: require('node:fs').readFileSync('/path/to/trusted-ca.pem')
+  }
+});
+```
+
+The `servername` must match the **actual trusted server certificate**;
+never use a made-up name or turn off certificate verification to resolve
+a mismatch. This only configures TLS over an existing connection route:
+NuBloxSQL does not provision tunnels, proxies, IAM tokens or cloud networking.
+
 Native runtime depth includes prepared statements, portal cursors, cancellation, transactions/savepoints, COPY FROM/TO, LISTEN/NOTIFY, structured EXPLAIN/EXPLAIN ANALYZE and deep catalog introspection.
 
 Example native diagnostic call:
