@@ -299,7 +299,9 @@
     "lib/catalog/CloudDatabaseRegistry.js",
     "types/database-technology.d.ts",
     "types/cloud-database.d.ts",
-    "lib/client/engineering/DataMovement.js"
+    "lib/client/engineering/DataMovement.js",
+    "lib/runtime/NativeAdapterContract.js",
+    "lib/runtime/SqlAdapterRouter.js"
   ],
   "forbiddenPackagePrefixes": [
     "test/",
