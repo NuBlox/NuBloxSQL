@@ -496,3 +496,6 @@ export {
   createPool,
   createClient
 };
+
+export {createNativeConnection} from './types/native';
+export type {RedisNativeConfig,RedisNativeConnection,RedisNativeReply,RedisNativeArgument} from './types/native';
