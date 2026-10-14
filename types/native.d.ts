@@ -48,8 +48,15 @@ export function createNativeConnection(config: RedisNativeConfig & {technology:'
  * Requires the separately installed `mongodb` official Node.js package.
  */
 export interface MongoNativeConfig {
+  /** Direct host (mutually exclusive with seeds and srvHost). */
   host?: string;
   port?: number;
+  /** Replica-set discovery seed list (max 16 entries), requires replicaSet. */
+  seeds?: readonly Readonly<{host: string; port?: number}>[];
+  /** DNS SRV hostname. Excludes host, port and seeds; verified TLS is mandatory. */
+  srvHost?: string;
+  /** Replica-set name, checked by the MongoDB driver during discovery. */
+  replicaSet?: string;
   database: string;
   username?: string;
   password?: string;
@@ -69,6 +76,9 @@ export interface MongoNativeConnection {
   findOne<T = Record<string, unknown>>(collection: string, filter?: Readonly<Record<string, unknown>>): Promise<T | null>;
   find<T = Record<string, unknown>>(collection: string, filter?: Readonly<Record<string, unknown>>,
     options?: {readonly limit?: number;readonly batchSize?: number}): Promise<T[]>;
+  /** Bounded async document iteration; releases cursor on exhaustion, error or early exit. */
+  iterate<T = Record<string, unknown>>(collection: string, filter?: Readonly<Record<string, unknown>>,
+    options?: {readonly limit?: number;readonly batchSize?: number}): AsyncIterableIterator<T>;
   insertOne(collection: string, document: Record<string, unknown>): Promise<{acknowledged: boolean;insertedId: unknown}>;
   updateOne(collection: string, filter: Record<string, unknown>, update: Record<string, unknown>): Promise<{matchedCount: number;modifiedCount: number}>;
   deleteOne(collection: string, filter: Record<string, unknown>): Promise<{deletedCount: number}>;
