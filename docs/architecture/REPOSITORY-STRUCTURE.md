@@ -23,7 +23,8 @@ NuBloxSQL/
 │   ├── client/                Public driver client façade and shared runtime
 │   │   ├── administration/    Bootstrap and configuration plans/execution
 │   │   ├── discovery/         Server, security and native-job discovery
-│   │   └── engineering/       Schema/diff, migration and data movement
+│   │   ├── engineering/       Schema/diff, migration and data movement
+│   │   └── runtime/           SQL result and prepared-parameter helpers
 │   ├── core/                  Shared SQL-core runtime
 │   ├── dialects/              Native engine implementations
 │   ├── jobs/                  Internal durable job orchestration foundation
@@ -62,6 +63,7 @@ not change as a side effect of rearranging source files.
 | `lib/client/administration/` | Database bootstrap and configuration | Preserve public plan/inspect/execute contracts and plan integrity |
 | `lib/client/discovery/` | Read-only server identity/catalogue, security and native scheduler discovery | Preserve public `discoverDatabaseServer`, `discoverDatabaseSecurity`, `discoverNativeDatabaseJobs` and Client methods |
 | `lib/client/engineering/` | Schema object identity, dependency graph, diff, migration and data movement | Preserve public planning/execution semantics and safety controls |
+| `lib/client/runtime/` | SQL-specific result and prepared-parameter normalisation | Preserve `Client.js` helper exports and qualified dialect semantics; do not conflate with native cross-model adapter contract |
 | `lib/client/` | Public Client integration and remaining cross-dialect features | Group related modules in later bounded changes only after mapping every dependency and release evidence path |
 | `lib/runtime/` | Internal lazy SQL routing and model-neutral native adapter contracts | Unsupported vendor entries cannot be routed; preserve SQL entry point, URL aliases and lazy imports |
 | `lib/core/` | Shared cross-engine SQL primitives | No application/UI imports |
