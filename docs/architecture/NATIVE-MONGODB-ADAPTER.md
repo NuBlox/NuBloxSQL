@@ -38,8 +38,8 @@ try {
 }
 ```
 
-Use `findOne`, bounded `find`, bounded async `iterate`, `insertOne`,
-`updateOne`, `deleteOne` and `countDocuments`. The API returns native document objects, including
+Use `ping`, `findOne`, bounded `find`, bounded async `iterate`,
+`insertOne`, `updateOne`, `deleteOne` and `countDocuments`. The API returns native document objects, including
 MongoDB BSON values such as ObjectId. Query filters and updates are passed to
 the official MongoDB driver; no SQL compilation or query translation occurs.
 The client factory `createClient({dialect:'mongodb'})` remains unsupported.
@@ -112,8 +112,16 @@ try {
   that fetches batches without forcing the entire result into memory.
 - The official driver handles retryable **reads** and ongoing replica-set
   server selection. NuBloxSQL leaves automatic retryable **writes** disabled
-  to avoid hidden write replay in the initial public API. Actual multi-node
-  failover resilience remains unqualified until a dedicated failover test.
+  to avoid hidden write replay in the initial public API. Ephemeral
+  three-member primary-loss CI verifies rediscovery and application-level
+  read/write recovery after an election, but this does not certify recovery
+  under arbitrary network partitions, multi-region conditions or Atlas.
+- `ping()` makes a real read-only round trip to the server and returns
+  `true` when the server responds successfully. It is not a cached
+  `connected` flag. During elections it can return sanitized
+  `NUBLOX_MONGODB_PING_FAILED` without closing the client. Applications
+  should retry **safe reads and explicitly idempotent operations** after
+  recovery; do not blindly replay writes whose completion is uncertain.
 - Errors from the driver are presented as stable NuBloxSQL error codes rather
   than raw vendor exception messages, to avoid accidentally disclosing
   credential-bearing configuration.
@@ -140,15 +148,23 @@ network access or the `mongodb` package. A dedicated
 `.github/workflows/mongodb-native.yml` workflow installs official
 `mongodb@7` in the CI runner and verifies CRUD through live ephemeral
 MongoDB 7.0 and 8.0 containers, a separately authenticated MongoDB 8.0
-server (successful SCRAM and rejected bad password), and an initialized
-single-member replica set (discovery + CRUD). SRV URI assembly and enforced
-TLS are qualified offline using a fake MongoClient, **not by contacting a
-real DNS SRV provider**. This does not establish production compatibility
-for MongoDB Atlas, multi-member failover, Sharded Clusters or every
+server (successful SCRAM and rejected bad password), an initialized
+single-member replica set (discovery + CRUD), **and three ephemeral replica-set
+members**. The three-member CI scenario waits for a majority-committed
+secondary read, stops the actual elected primary, and verifies that the
+unchanged NuBloxSQL client recovers access after a secondary wins election.
+It tests a new read, a safe application-level update, and delete after recovery,
+and emits only sanitized fixed-format results. The test is explicitly gated to
+disposable CI containers and cleans them up. SRV URI assembly and enforced TLS
+are qualified offline using a fake MongoClient, **not by contacting a
+real DNS SRV provider**. These tests do not certify MongoDB Atlas, cross-region
+partitions, transparent in-flight write replay, sharded clusters or every
 MongoDB-compatible product.
 
 ## Vendor references
 
 - [MongoDB official Node.js driver](https://github.com/mongodb/node-mongodb-native)
 - [Official MongoClient connection settings](https://www.mongodb.com/docs/drivers/node/current/connect/connection-options/)
+- [MongoDB replica-set elections](https://www.mongodb.com/docs/manual/core/replica-set-elections/)
+- [Connection troubleshooting and failover considerations](https://www.mongodb.com/docs/drivers/node/current/connect/connection-troubleshooting/)
 - [TLS configuration](https://www.mongodb.com/docs/drivers/node/current/fundamentals/connection/tls/)
