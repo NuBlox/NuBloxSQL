@@ -1,6 +1,6 @@
 # Universal Database Driver — Vendor and Cloud Boundaries
 
-**Status (13 October 2026): architecture and catalogue foundation implemented; non-SQL runtimes and cloud-native authentication are not yet implemented.**
+**Status (14 October 2026): the four existing SQL drivers and an initial native Redis RESP2 standalone adapter are implemented; most non-SQL vendors and cloud-native authentication remain unimplemented.**
 
 The canonical [Product Blueprint](../product/BLUEPRINT.md) defines NuBloxSQL as a **universal database driver foundation**, with **NuBloxSQL Shell** and **NuBloxSQL Workbench** as separate tools for database professions.
 
@@ -24,7 +24,8 @@ The shared driver kernel can eventually expose common **intent and metadata**, i
 
 - **Existing SQL runtimes:** PostgreSQL, MySQL, SQLite, SQL Server. Individual capability and version qualification remains separate; the SQL public API is unchanged.
 - **Existing SQL reference catalogue:** **100 vendor SQL profiles** in `dialectRegistry`, independently preserved and exposed via `databaseTechnologyRegistry.relationalSqlProfiles`. Profile presence means **discovered/reference-only** unless `driver.routable` is true. Oracle, Db2, Snowflake, BigQuery, SAP HANA, Teradata, DuckDB and other vendors remain **unimplemented** as connection drivers.
-- **Cross-model catalogue:** `databaseTechnologyRegistry` provides representative document, graph, key-value, wide-column, search, time-series, vector and multi-model families. Only the same four existing SQL runtimes are routable.
+- **Initial non-SQL runtime:** Redis RESP2 standalone key-value commands via `createNativeConnection('redis', config)`. It does **not** use the SQL client or SQL compiler. See [Redis native adapter](NATIVE-REDIS-ADAPTER.md); Cluster, Sentinel and Redis Cloud are not yet qualified.
+- **Cross-model catalogue:** `databaseTechnologyRegistry` provides representative document, graph, key-value, wide-column, search, time-series, vector and multi-model families. Only the four existing SQL runtimes and the initial standalone Redis RESP2 runtime are routable.
 - **Cloud services:** `cloudDatabaseRegistry` describes managed SQL and non-SQL services separately from engines; **zero cloud-hosted services have vendor-specific live qualification** here.
 - `cloudDatabaseRegistry.planConnection` and `planCloudDatabaseConnection` accept a service ID and **credential-free** endpoint/port. They provide a base SQL driver **hint** only where a compatible native SQL protocol may be used; unsupported interfaces have `driverHint:null` and `status:'not-implemented'`. They are **not connection methods**.
 
