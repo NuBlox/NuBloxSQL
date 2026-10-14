@@ -21,9 +21,9 @@ export interface DatabaseTechnology {
   readonly candidateOperations: readonly DatabaseCandidateOperation[];
   readonly runtime: Readonly<{
     readonly routable: boolean;
-    readonly adapter: 'postgresql' | 'mysql' | 'sqlite' | 'sqlserver' | null;
+    readonly adapter: 'postgresql' | 'mysql' | 'sqlite' | 'sqlserver' | 'redis' | null;
     readonly status: 'implemented' | 'not-implemented';
-    readonly qualification: 'tier-1' | 'tier-2' | 'none';
+    readonly qualification: 'tier-1' | 'tier-2' | 'initial' | 'none';
   }>;
   readonly sqlDialect: 'postgresql' | 'mysql' | 'sqlite' | 'sqlserver' | null;
   readonly limitation: string;
@@ -32,7 +32,7 @@ export interface DatabaseTechnologyInspection {
   readonly schemaVersion: 1;
   readonly technology: DatabaseTechnology;
   readonly canConnect: boolean;
-  readonly executableOperations: readonly 'sql.query'[];
+  readonly executableOperations: readonly ('sql.query' | 'key-value.command')[];
   readonly reason: string;
 }
 export interface DatabaseTechnologyReport {

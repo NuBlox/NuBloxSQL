@@ -1,8 +1,8 @@
 # Native Adapter and Shared Connection Routing Boundary
 
-**Status:** Driver-internal router and native adapter contract implemented for the
-four pre-existing SQL engines. No new DBMS, non-SQL engine or cloud provider is
-qualified by this increment.
+**Status:** The four SQL engines retain the internal SQL router; a separate closed
+non-SQL router now loads the initial Redis RESP2 standalone runtime. Provider
+cloud qualification remains independent.
 
 ## Why this exists
 
@@ -62,7 +62,9 @@ live-qualified. A mock document adapter in tests demonstrates the contract
 without enabling MongoDB or another external product.
 
 No public adapter registration, plugin loading, third-party entry points or
-non-SQL SQL-client routing is exposed. This is a closed internal foundation
+non-SQL SQL-client routing is exposed. The separate public `createNativeConnection`
+factory currently routes only the implemented Redis RESP2 adapter, with native
+`key-value.command` rather than `sql.query`. See [Redis native adapter](NATIVE-REDIS-ADAPTER.md). This is a closed internal foundation
 until a separate security, version and authorization review approves broader
 registration.
 
@@ -76,8 +78,9 @@ registration.
   merge precedence, validation and public errors.
 - A successful module load is cached; an invalid/failed load is not.
 - Catalogue records, cloud service profiles and generic declarations never
-  bypass runtime availability checks. Unsupported `mongodb`, `redis`,
-  `oracle` etc. are **not** silently mapped onto an SQL driver.
+  bypass runtime availability checks. Unsupported `mongodb`, `oracle` etc.
+  are **not** silently mapped onto an SQL driver. Redis is available only
+  through its explicit non-SQL native factory.
 - The router is private to the driver package; the public exported API and
   TypeScript client semantics do not change.
 
@@ -92,8 +95,9 @@ registration.
    version/capability negotiation, audited provenance and compatibility
    policies **before** considering third-party plugins. The registry currently
    validates only identity, declared operations and module shape.
-4. Add a real non-SQL adapter only with its native transport, authentication,
-   core operations, TypeScript API and live integration evidence.
+4. Extend the initial Redis native adapter (RESP2 and ACL authentication with
+   standalone live qualification) toward clustering, topology, RESP3 and failover
+   only after dedicated compatibility/security evidence.
 5. Independently qualify SQL coverage across Oracle, Db2, MariaDB and
    cloud services. Common wire-protocol ancestry is not proof of cloud IAM,
    TLS, credential refresh or version compatibility.

@@ -43,7 +43,7 @@ NuBloxSQL/
 
 ## Database vendor and cloud implementation boundaries
 
-The existing SQL dialect registry remains under `lib/capabilities/` and is distinct from `lib/catalog/DatabaseTechnologyRegistry.js` (SQL and non-SQL model catalogue) and `lib/catalog/CloudDatabaseRegistry.js` (managed-cloud service placement and credential-free connection requirements). Only the four qualified native SQL adapters currently exist under `lib/dialects/`. Catalogue records are not connectors. New SQL/non-SQL protocol adapters must be isolated under their own qualified runtime and must not pull cloud identity, secret persistence or vendor UI into the shared driver.
+The existing SQL dialect registry remains under `lib/capabilities/` and is distinct from `lib/catalog/DatabaseTechnologyRegistry.js` (SQL and non-SQL model catalogue) and `lib/catalog/CloudDatabaseRegistry.js` (managed-cloud service placement and credential-free connection requirements). Four native SQL adapters and an initial standalone native Redis RESP2 adapter currently exist under `lib/dialects/`. Catalogue records are not connectors. New SQL/non-SQL protocol adapters must be isolated under their own qualified runtime and must not pull cloud identity, secret persistence or vendor UI into the shared driver.
 
 ## Driver ownership and grouping
 
@@ -67,7 +67,7 @@ not change as a side effect of rearranging source files.
 | `lib/client/` | Public Client integration and remaining cross-dialect features | Group related modules in later bounded changes only after mapping every dependency and release evidence path |
 | `lib/runtime/` | Internal lazy SQL routing and model-neutral native adapter contracts | Unsupported vendor entries cannot be routed; preserve SQL entry point, URL aliases and lazy imports |
 | `lib/core/` | Shared cross-engine SQL primitives | No application/UI imports |
-| `lib/dialects/<engine>/` | Native wire protocols, driver implementations and dialect-local tests | Do not flatten or blend engine-specific behavior |
+| `lib/dialects/<engine>/` | Native SQL/non-SQL wire protocols, driver implementations and engine-local tests | Do not flatten or blend engine-specific behavior |
 | `lib/lifecycle/` | Pre-connection engine lifecycle providers | Do not depend on Shell/Workbench |
 | `lib/jobs/` | Internal durable job coordination | Reuse qualified public/domain capabilities; avoid independently reimplementing discovery |
 | `apps/shell/`, `apps/workbench/` | Separate professional tooling products | Consume only the driver's public API |
