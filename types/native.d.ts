@@ -43,3 +43,38 @@ export interface RedisNativeConnection {
 }
 export function createNativeConnection(technology: 'redis', options?: RedisNativeConfig): RedisNativeConnection;
 export function createNativeConnection(config: RedisNativeConfig & {technology:'redis'}): RedisNativeConnection;
+
+/** Initial MongoDB direct-host document adapter, independent of the SQL API.
+ * Requires the separately installed `mongodb` official Node.js package.
+ */
+export interface MongoNativeConfig {
+  host?: string;
+  port?: number;
+  database: string;
+  username?: string;
+  password?: string;
+  authSource?: string;
+  /** Required on non-loopback hosts. Certificate validation cannot be disabled. */
+  tls?: boolean;
+  tlsCAFile?: string;
+  connectTimeout?: number;
+  commandTimeout?: number;
+  maxPoolSize?: number;
+  maxResults?: number;
+}
+export interface MongoNativeConnection {
+  readonly connected: boolean;
+  readonly ended: boolean;
+  connect(): Promise<this>;
+  findOne<T = Record<string, unknown>>(collection: string, filter?: Readonly<Record<string, unknown>>): Promise<T | null>;
+  find<T = Record<string, unknown>>(collection: string, filter?: Readonly<Record<string, unknown>>,
+    options?: {readonly limit?: number;readonly batchSize?: number}): Promise<T[]>;
+  insertOne(collection: string, document: Record<string, unknown>): Promise<{acknowledged: boolean;insertedId: unknown}>;
+  updateOne(collection: string, filter: Record<string, unknown>, update: Record<string, unknown>): Promise<{matchedCount: number;modifiedCount: number}>;
+  deleteOne(collection: string, filter: Record<string, unknown>): Promise<{deletedCount: number}>;
+  countDocuments(collection: string, filter?: Readonly<Record<string, unknown>>): Promise<number>;
+  close(): Promise<void>;
+  end(): Promise<void>;
+}
+export function createNativeConnection(technology: 'mongodb', options: MongoNativeConfig): MongoNativeConnection;
+export function createNativeConnection(config: MongoNativeConfig & {technology:'mongodb'}): MongoNativeConnection;
