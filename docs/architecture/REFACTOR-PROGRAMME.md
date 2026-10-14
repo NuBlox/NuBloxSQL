@@ -17,6 +17,7 @@ lib/
     administration/      Bootstrap and configuration planning/execution
     discovery/           Read-only server, security and scheduler inventory
     engineering/         Schema intelligence, migration and data movement
+    runtime/               SQL result and prepared-value helpers
     [root integrations]   Public Client façade, connections, transactions, streaming
   core/                  Shared SQL core
   dialects/<engine>/     Native dialect, protocol, runtime and engine-local tests
@@ -47,7 +48,7 @@ does not itself implement IAM, authentication, tunnelling or provider APIs.
 | SQL connection adapter routing | Extracted into `lib/runtime/SqlAdapterRouter.js` | Alias/URL/error parity, lazy imports, packed client and four dialect runtime tests |
 | Model-neutral native adapter declaration | Internal contract implemented | Contract tests; non-SQL catalogue entries remain non-routable |
 | Native adapter registry and loader safety | Immutable internal registry wired to SQL router | Duplicate-ID rejection, operation gating, lazy cache, no public registration, no non-SQL runtime claims |
-| Connection/transaction/stream/error integrations | Partially complete: routing extracted; remaining Client policies and integrations | Native engine regression matrix and unchanged public `Client` |
+| Connection/transaction/stream/error integrations | Partially complete: routing and SQL result/binding helpers extracted; remaining Client lifecycle/transaction/stream/error policies | Native engine regression matrix and unchanged public `Client` |
 | SQL compiler/parser pipeline (`lib/capabilities/`) | Remaining | Stable AST and per-dialect compiler regression tests |
 | DBMS adapters (`lib/dialects/`) | Preserve native isolation | Live MySQL/PostgreSQL/SQLite/SQL Server CI and version evidence |
 | Durable job kernel and lifecycle | Preserve, harden progressively | Job safety, approval, replay and lifecycle checks |
