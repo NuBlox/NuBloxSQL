@@ -13,6 +13,11 @@ The canonical [Product Blueprint](../product/BLUEPRINT.md) defines NuBloxSQL as 
 3. **Native interface and protocol** — SQL over MySQL/PostgreSQL/TDS, document APIs, key-value commands, Cypher, CQL, HTTP/REST or vendor-specific APIs. SQL capability semantics apply **only** where the native interface is SQL; non-SQL databases must not be forced into SQL.
 4. **Deployment/hosting** — local, self-hosted, managed cloud or cloud-native API. Authentication, TLS, network routing, private links and token renewal belong to their correct adapter/provider layers and are not automatically inherited from a base DBMS.
 
+The initial [native adapter contract](NATIVE-ADAPTER-BOUNDARY.md) separates module
+identity and lazy SQL routing from the public `index.js` façade. It is internal
+foundation infrastructure; it does not enable non-SQL connectivity or cloud
+IAM/TLS flows by itself.
+
 The shared driver kernel can eventually expose common **intent and metadata**, including connection lifecycle, authenticated target identity, capability negotiation, cancellation, streaming with backpressure, diagnostics, structured error evidence and authorization. It must not promise uniform SQL statements, transactions, keys, schemas or isolation across incompatible engines.
 
 ### Real current runtime support

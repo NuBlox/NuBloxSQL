@@ -27,7 +27,8 @@ NuBloxSQL/
 │   ├── core/                  Shared SQL-core runtime
 │   ├── dialects/              Native engine implementations
 │   ├── jobs/                  Internal durable job orchestration foundation
-│   └── lifecycle/             Pre-connect engine lifecycle implementation
+│   ├── lifecycle/             Pre-connect engine lifecycle implementation
+│   └── runtime/               Lazy SQL router and native adapter contracts
 ├── scripts/                   Repository/release qualification scripts
 ├── test/                      Cross-cutting package/integration tests
 ├── types/                     Public TypeScript declarations
@@ -62,6 +63,7 @@ not change as a side effect of rearranging source files.
 | `lib/client/discovery/` | Read-only server identity/catalogue, security and native scheduler discovery | Preserve public `discoverDatabaseServer`, `discoverDatabaseSecurity`, `discoverNativeDatabaseJobs` and Client methods |
 | `lib/client/engineering/` | Schema object identity, dependency graph, diff, migration and data movement | Preserve public planning/execution semantics and safety controls |
 | `lib/client/` | Public Client integration and remaining cross-dialect features | Group related modules in later bounded changes only after mapping every dependency and release evidence path |
+| `lib/runtime/` | Internal lazy SQL routing and model-neutral native adapter contracts | Unsupported vendor entries cannot be routed; preserve SQL entry point, URL aliases and lazy imports |
 | `lib/core/` | Shared cross-engine SQL primitives | No application/UI imports |
 | `lib/dialects/<engine>/` | Native wire protocols, driver implementations and dialect-local tests | Do not flatten or blend engine-specific behavior |
 | `lib/lifecycle/` | Pre-connection engine lifecycle providers | Do not depend on Shell/Workbench |
@@ -70,7 +72,8 @@ not change as a side effect of rearranging source files.
 
 **Refactoring sequence:** discovery, catalogue, database administration and
 database engineering have been grouped with package/evidence migration and
-regression checks. Subsequent work should partition remaining public client
+regression checks. The lazy SQL adapter router and native module contract have
+also been extracted into `lib/runtime/`. Subsequent work should partition remaining public client
 runtime integrations, preserve dialect-local protocol separation, make SQL
 parser/compile layers easier to maintain, and independently organize Shell/
 Workbench workflows. Avoid a single whole-repository directory shuffle:
