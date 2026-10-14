@@ -95,6 +95,20 @@ async function main() {
     assert.equal(sqlServerPlan.config.ssl, undefined,
       'SQL Server must not receive PG/MySQL TLS options');
     assert.equal(sqlServerPlan.config.user, ENV.NUBLOX_CLOUD_USER);
+
+    // Exercise the actual public driver dispatcher without opening TCP,
+    // then inspect the same TDS 7.4 TLS options used at connection time.
+    const native = sql.createConnection(sqlServerPlan.config);
+    assert.equal(typeof native.connect, 'function');
+    assert.equal(native.config.tdsVersion, '7.4');
+    const transportSocket = {kind:'tls-bridge'};
+    const tlsOptions = require('../lib/dialects/sqlserver/lib/LegacyTransport')
+      .tlsOptions(native.config, transportSocket);
+    assert.equal(tlsOptions.socket, transportSocket);
+    assert.equal(tlsOptions.servername, 'sql.azure-certificate.example.test');
+    assert.equal(tlsOptions.rejectUnauthorized, true);
+    assert.equal(tlsOptions.ca, 'trusted SQL Server CA');
+    assert.equal(tlsOptions.minVersion, 'TLSv1.2');
   }
 
   for (const input of [
