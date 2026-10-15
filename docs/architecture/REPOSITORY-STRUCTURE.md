@@ -36,7 +36,9 @@ NuBloxSQL/
 │   ├── release/ddl/           DDL packed-consumer qualifications (v1–v11)
 │   └── release/dml/           DML packed-consumer qualifications (v2–v10)
 ├── test/                      Cross-cutting package/integration tests
-│   └── sql/ast/               SQL language/compiler AST regression suites
+│   └── sql/
+│       ├── ast/               SQL language/compiler AST regression suites
+│       └── integration/       Live SQL query/DDL/DML engine qualification
 ├── types/                     Public TypeScript declarations
 ├── index.js
 ├── index.d.ts
@@ -109,6 +111,8 @@ SQL-language release checkers are grouped by DDL/DML under `scripts/release/`. T
 The SQL compiler source modules now live under `lib/capabilities/ddl/` and `lib/capabilities/dml/` rather than the former flat directory. `lib/capabilities/index.js` preserves the public compiler facade and ordering of semantic stages. The stable release manifest verifies that every moved module is packed; the structure gate rejects future flat DDL/DML source additions.
 
 SQL AST regression tests are now located under `test/sql/ast/` rather than the previous root-level `test/sql-ast-*.js` sprawl. The platform suite, Tier-1 evidence, capability coverage and all SQL engine workflow triggers reference the new location. The repository structure gate requires every SQL AST test to be executed and evidenced, and prohibits flat AST tests. Remaining non-AST SQL/compiler tests will be reviewed in a separate bounded move.
+
+Live SQL compiler test suites are grouped under `test/sql/integration/`. Their original vendor-specific execution is preserved in the MySQL, PostgreSQL and SQLite GitHub workflows, with updated command and path filters; no live test was converted into an offline-only placeholder. The structural checker validates that every live compiler test is present in Tier-1 release evidence and at least one vendor workflow.
 
 A release check enforces these top-level boundaries.
 

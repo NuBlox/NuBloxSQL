@@ -54,7 +54,7 @@ does not itself implement IAM, authentication, tunnelling or provider APIs.
 | Durable job kernel and lifecycle | Preserve, harden progressively | Job safety, approval, replay and lifecycle checks |
 | Shell command families | Remaining | Shell public-API-only dependency check and actual command execution tests |
 | Workbench feature areas | Remaining | Workbench local runtime and HTTP acceptance suite |
-| Tests and release tooling | SQL DDL/DML packed-consumer qualifiers grouped under `scripts/release/`; all 22 SQL AST/compiler contract tests grouped under `test/sql/ast/`; remaining cross-cutting tests ungrouped | Release/platform suites, Tier-1 evidence, CI trigger paths, import-boundary tests, packed files, Node 22/24/26 |
+| Tests and release tooling | SQL DDL/DML package qualifiers grouped under `scripts/release/`; 22 AST tests under `test/sql/ast/`; 19 live compiler tests under `test/sql/integration/`; remaining cross-cutting tests ungrouped | Release/platform suites, Tier-1 evidence, vendor CI triggers/commands, import boundaries, Node 22/24/26 |
 | Documentation/technology references | Continuous | No stale internal paths in authoritative release evidence |
 
 Status means only the **structural location is updated**, not that the
