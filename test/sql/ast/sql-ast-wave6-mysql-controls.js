@@ -1,7 +1,7 @@
 'use strict';
 
 var assert=require('assert');
-var sql=require('..');
+var sql=require('../../..');
 var model=sql.capabilityModel;
 
 (function singleUpdateControls(){
