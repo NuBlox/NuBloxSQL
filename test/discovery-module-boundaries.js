@@ -51,4 +51,15 @@ for (const [moduleName] of cases) {
   assert.ok(client.includes('./discovery/' + moduleName), moduleName);
 }
 assert.ok(worker.includes('../client/discovery/DatabaseServerDiscovery'));
+// Vendor-specific metadata inspection implementations belong to discovery,
+// not the flat client root. Both remain internal and packaged via lib/client/.
+for (const name of ['MySQLSecurityMetadataIntegration','SqlServerMetadataIntegration']) {
+  const grouped='lib/client/discovery/'+name+'.js';
+  assert.equal(fs.existsSync(path.join(root,'lib/client/'+name+'.js')),false);
+  assert.equal(fs.statSync(path.join(root,grouped)).isFile(),true);
+  assert.equal(typeof require(path.join(root,grouped)).install,'function');
+}
+assert.ok(fs.readFileSync(path.join(root,'lib/client/MetadataIntegration.js'),'utf8')
+  .includes('./discovery/MySQLSecurityMetadataIntegration'));
+assert.ok(entry.includes('./lib/client/discovery/SqlServerMetadataIntegration'));
 console.log('NuBloxSQL grouped driver discovery imports and public API: PASS');
