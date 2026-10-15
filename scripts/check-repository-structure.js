@@ -134,4 +134,29 @@ fs.readdirSync(path.join(root,'test')).forEach(function(name){
   assert(!(name.startsWith('sql-ast-') && name.endsWith('.js')),
     'SQL AST test belongs under test/sql/ast: '+name);
 });
+// Live SQL compiler integration tests belong to test/sql/integration,
+// remain listed as Tier-1 evidence, and must run in a real-engine workflow.
+var liveCompilerDir=path.join(root,'test/sql/integration');
+assert(exists('test/sql/integration'),'SQL compiler integration directory is missing');
+var liveCompilerTests=fs.readdirSync(liveCompilerDir).filter(function(name){
+  return name.startsWith('compiler-') && name.endsWith('-live.js');
+});
+assert(liveCompilerTests.length>=19,'SQL live compiler test suite unexpectedly shrank');
+var liveEvidence=JSON.parse(fs.readFileSync(path.join(root,
+  'docs/releases/tier1-stable-evidence.json'),'utf8'));
+var sqlWorkflows=['mysql-cleanroom.yml','postgresql-dialect.yml','sqlite-dialect.yml']
+  .map(function(name){
+    return fs.readFileSync(path.join(root,'.github/workflows',name),'utf8');
+  });
+liveCompilerTests.forEach(function(name){
+  var location='test/sql/integration/'+name;
+  assert(liveEvidence.sharedRequiredFiles.includes(location),
+    'live SQL compiler test missing Tier-1 evidence: '+location);
+  assert(sqlWorkflows.some(function(src){return src.includes(location);}),
+    'live SQL compiler test is not referenced by an engine workflow: '+location);
+});
+fs.readdirSync(path.join(root,'test')).forEach(function(name){
+  assert(!(name.startsWith('compiler-') && name.endsWith('-live.js')),
+    'live SQL compiler tests belong under test/sql/integration: '+name);
+});
 console.log('NuBloxSQL repository structure: PASS');

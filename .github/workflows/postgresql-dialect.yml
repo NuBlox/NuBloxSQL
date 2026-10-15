@@ -14,23 +14,23 @@ on:
       - 'test/client-types-live.js'
       - 'test/client-transaction-live.js'
       - 'test/client-operation-live.js'
-      - 'test/compiler-query-live.js'
-      - 'test/compiler-dml-merge-actions-live.js'
-      - 'test/compiler-dml-merge-versioned-live.js'
-      - 'test/compiler-dml-merge-rich-source-live.js'
-      - 'test/compiler-dml-advanced-live.js'
-      - 'test/compiler-dml-source-composition-live.js'
-      - 'test/compiler-ddl-live.js'
-      - 'test/compiler-ddl-lifecycle-live.js'
-      - 'test/compiler-ddl-column-constraints-live.js'
-      - 'test/compiler-ddl-object-lifecycle-live.js'
-      - 'test/compiler-ddl-dependency-concurrent-live.js'
-      - 'test/compiler-ddl-generated-identity-live.js'
-      - 'test/compiler-ddl-foreign-keys-live.js'
-      - 'test/compiler-ddl-index-semantics-live.js'
-      - 'test/compiler-ddl-index-key-options-live.js'
-      - 'test/compiler-ddl-ctas-live.js'
-      - 'test/compiler-ddl-identity-sequence-live.js'
+      - 'test/sql/integration/compiler-query-live.js'
+      - 'test/sql/integration/compiler-dml-merge-actions-live.js'
+      - 'test/sql/integration/compiler-dml-merge-versioned-live.js'
+      - 'test/sql/integration/compiler-dml-merge-rich-source-live.js'
+      - 'test/sql/integration/compiler-dml-advanced-live.js'
+      - 'test/sql/integration/compiler-dml-source-composition-live.js'
+      - 'test/sql/integration/compiler-ddl-live.js'
+      - 'test/sql/integration/compiler-ddl-lifecycle-live.js'
+      - 'test/sql/integration/compiler-ddl-column-constraints-live.js'
+      - 'test/sql/integration/compiler-ddl-object-lifecycle-live.js'
+      - 'test/sql/integration/compiler-ddl-dependency-concurrent-live.js'
+      - 'test/sql/integration/compiler-ddl-generated-identity-live.js'
+      - 'test/sql/integration/compiler-ddl-foreign-keys-live.js'
+      - 'test/sql/integration/compiler-ddl-index-semantics-live.js'
+      - 'test/sql/integration/compiler-ddl-index-key-options-live.js'
+      - 'test/sql/integration/compiler-ddl-ctas-live.js'
+      - 'test/sql/integration/compiler-ddl-identity-sequence-live.js'
       - 'test/sql/ast/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
@@ -50,20 +50,20 @@ on:
       - 'test/client-types-live.js'
       - 'test/client-transaction-live.js'
       - 'test/client-operation-live.js'
-      - 'test/compiler-query-live.js'
-      - 'test/compiler-dml-merge-actions-live.js'
-      - 'test/compiler-dml-merge-versioned-live.js'
-      - 'test/compiler-dml-merge-rich-source-live.js'
-      - 'test/compiler-dml-advanced-live.js'
-      - 'test/compiler-dml-source-composition-live.js'
-      - 'test/compiler-ddl-live.js'
-      - 'test/compiler-ddl-lifecycle-live.js'
-      - 'test/compiler-ddl-column-constraints-live.js'
-      - 'test/compiler-ddl-object-lifecycle-live.js'
-      - 'test/compiler-ddl-dependency-concurrent-live.js'
-      - 'test/compiler-ddl-generated-identity-live.js'
-      - 'test/compiler-ddl-foreign-keys-live.js'
-      - 'test/compiler-ddl-index-semantics-live.js'
+      - 'test/sql/integration/compiler-query-live.js'
+      - 'test/sql/integration/compiler-dml-merge-actions-live.js'
+      - 'test/sql/integration/compiler-dml-merge-versioned-live.js'
+      - 'test/sql/integration/compiler-dml-merge-rich-source-live.js'
+      - 'test/sql/integration/compiler-dml-advanced-live.js'
+      - 'test/sql/integration/compiler-dml-source-composition-live.js'
+      - 'test/sql/integration/compiler-ddl-live.js'
+      - 'test/sql/integration/compiler-ddl-lifecycle-live.js'
+      - 'test/sql/integration/compiler-ddl-column-constraints-live.js'
+      - 'test/sql/integration/compiler-ddl-object-lifecycle-live.js'
+      - 'test/sql/integration/compiler-ddl-dependency-concurrent-live.js'
+      - 'test/sql/integration/compiler-ddl-generated-identity-live.js'
+      - 'test/sql/integration/compiler-ddl-foreign-keys-live.js'
+      - 'test/sql/integration/compiler-ddl-index-semantics-live.js'
       - 'test/sql/ast/sql-ast-compiler.js'
       - 'test/operation-control.js'
       - 'lib/dialects/postgresql/**'
@@ -131,39 +131,39 @@ jobs:
       - name: Portable operation control contract
         run: node test/client-operation-live.js
       - name: SQL compiler live qualification
-        run: node test/compiler-query-live.js
+        run: node test/sql/integration/compiler-query-live.js
       - name: Advanced DML compiler live qualification
-        run: node test/compiler-dml-advanced-live.js
+        run: node test/sql/integration/compiler-dml-advanced-live.js
       - name: Rich DML source composition live qualification
-        run: node test/compiler-dml-source-composition-live.js
+        run: node test/sql/integration/compiler-dml-source-composition-live.js
       - name: MERGE action-chain live qualification
-        run: node test/compiler-dml-merge-actions-live.js
+        run: node test/sql/integration/compiler-dml-merge-actions-live.js
       - name: Version-qualified MERGE live qualification
-        run: node test/compiler-dml-merge-versioned-live.js
+        run: node test/sql/integration/compiler-dml-merge-versioned-live.js
       - name: MERGE rich-source live qualification
-        run: node test/compiler-dml-merge-rich-source-live.js
+        run: node test/sql/integration/compiler-dml-merge-rich-source-live.js
       - name: DDL compiler live qualification
-        run: node test/compiler-ddl-live.js
+        run: node test/sql/integration/compiler-ddl-live.js
       - name: DDL lifecycle live qualification
-        run: node test/compiler-ddl-lifecycle-live.js
+        run: node test/sql/integration/compiler-ddl-lifecycle-live.js
       - name: DDL column and constraint lifecycle qualification
-        run: node test/compiler-ddl-column-constraints-live.js
+        run: node test/sql/integration/compiler-ddl-column-constraints-live.js
       - name: DDL object lifecycle qualification
-        run: node test/compiler-ddl-object-lifecycle-live.js
+        run: node test/sql/integration/compiler-ddl-object-lifecycle-live.js
       - name: DDL dependency and concurrent index qualification
-        run: node test/compiler-ddl-dependency-concurrent-live.js
+        run: node test/sql/integration/compiler-ddl-dependency-concurrent-live.js
       - name: DDL generated and identity qualification
-        run: node test/compiler-ddl-generated-identity-live.js
+        run: node test/sql/integration/compiler-ddl-generated-identity-live.js
       - name: DDL foreign-key semantic qualification
-        run: node test/compiler-ddl-foreign-keys-live.js
+        run: node test/sql/integration/compiler-ddl-foreign-keys-live.js
       - name: DDL advanced index semantic qualification
-        run: node test/compiler-ddl-index-semantics-live.js
+        run: node test/sql/integration/compiler-ddl-index-semantics-live.js
       - name: DDL index key option qualification
-        run: node test/compiler-ddl-index-key-options-live.js
+        run: node test/sql/integration/compiler-ddl-index-key-options-live.js
       - name: DDL CREATE TABLE AS qualification
-        run: node test/compiler-ddl-ctas-live.js
+        run: node test/sql/integration/compiler-ddl-ctas-live.js
       - name: DDL identity/autoincrement/sequence qualification
-        run: node test/compiler-ddl-identity-sequence-live.js
+        run: node test/sql/integration/compiler-ddl-identity-sequence-live.js
       - name: Native runtime, extended protocol, cancellation, pooling and portals
         run: node lib/dialects/postgresql/test/live.js
       - name: Native COPY FROM/TO streaming and pool qualification

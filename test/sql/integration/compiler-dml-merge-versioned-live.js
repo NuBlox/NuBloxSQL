@@ -1,7 +1,7 @@
 'use strict';
 
 var assert=require('assert');
-var nublox=require('..');
+var nublox=require('../../..');
 
 function config(){
   return {
