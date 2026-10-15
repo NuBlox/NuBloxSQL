@@ -123,7 +123,7 @@ assert.strictEqual(implemented.qualified, true);
   assert.strictEqual(setWave.stages.renderer, 'implemented', path + ' renderer');
   assert.strictEqual(setWave.stages.rewrite, 'partial', path + ' rewrite');
   assert.strictEqual(setWave.qualified, true, path + ' qualification');
-  assert.ok(setWave.evidence.indexOf('test/compiler-query-live.js') >= 0, path + ' live evidence');
+  assert.ok(setWave.evidence.indexOf('test/sql/integration/compiler-query-live.js') >= 0, path + ' live evidence');
 });
 
 [
@@ -144,7 +144,7 @@ assert.strictEqual(implemented.qualified, true);
   assert.strictEqual(expressionWave.stages.renderer, 'implemented', path + ' renderer');
   assert.strictEqual(expressionWave.stages.rewrite, 'partial', path + ' rewrite');
   assert.strictEqual(expressionWave.qualified, true, path + ' qualification');
-  assert.ok(expressionWave.evidence.indexOf('test/compiler-query-live.js') >= 0, path + ' live evidence');
+  assert.ok(expressionWave.evidence.indexOf('test/sql/integration/compiler-query-live.js') >= 0, path + ' live evidence');
 });
 
 var sqliteIntersectAll = ontology.observation('sqlite', 'queries.setOperators.intersectAll');
