@@ -19,6 +19,8 @@ NuBloxSQL/
 │   └── README.md
 ├── lib/
 │   ├── capabilities/          SQL dialect, parser/compiler and capability ontology
+│   │   ├── ddl/               SQL DDL grammar/policies/semantics
+│   │   └── dml/               SQL DML grammar/policies/semantics
 │   ├── catalog/               Vendor/model and cloud-service reference catalogues
 │   ├── client/                Public driver client façade and shared runtime
 │   │   ├── administration/    Bootstrap and configuration plans/execution
@@ -102,5 +104,7 @@ may be removed without an explicit breaking-change decision.
 - Dialect-local tests remain with their dialect runtime because they qualify native implementation behaviour.
 
 SQL-language release checkers are grouped by DDL/DML under `scripts/release/`. The release suite and Tier-1 evidence manifest reference their exact paths. The repository structure gate rejects a return to flat version-numbered SQL release checkers. Future runtime moves must preserve imports, packaged consumers and engine CI evidence.
+
+The SQL compiler source modules now live under `lib/capabilities/ddl/` and `lib/capabilities/dml/` rather than the former flat directory. `lib/capabilities/index.js` preserves the public compiler facade and ordering of semantic stages. The stable release manifest verifies that every moved module is packed; the structure gate rejects future flat DDL/DML source additions.
 
 A release check enforces these top-level boundaries.

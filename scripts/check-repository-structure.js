@@ -88,4 +88,21 @@ for (var file of fs.readdirSync(path.join(root,'scripts'))) {
     assert.fail('flat SQL release checker is not permitted: scripts/'+file);
   }
 }
+// SQL language files are grouped by semantic responsibility; reject the
+// previous flat hierarchy and ensure every pipeline is still loadable.
+var ddlModules=['DdlAdvancedModelPolicy','DdlColumnConstraintPipeline','DdlCreateTableAsPipeline','DdlDependencyConcurrentPipeline','DdlForeignKeyModelPolicy','DdlForeignKeyPipeline','DdlGeneratedIdentityPipeline','DdlIdentitySequenceModelPolicy','DdlIdentitySequencePipeline','DdlIndexModelPolicy','DdlIndexSemanticsPipeline','DdlLifecyclePipeline','DdlObjectLifecyclePipeline','DdlPipeline','ForeignKeySemantics'];
+var dmlModules=['DmlAdvancedModelPolicy','DmlAdvancedPipeline','DmlMergeActionsPipeline','DmlMergeModelPolicy','DmlMysqlMultiTablePipeline','DmlMysqlMutationControlPipeline','DmlPipeline','DmlPolicy','DmlSemanticPipeline','DmlSourceCompositionPipeline'];
+[['ddl',ddlModules],['dml',dmlModules]].forEach(function(group){
+  group[1].forEach(function(name){
+    var modulePath='lib/capabilities/'+group[0]+'/'+name+'.js';
+    assert(exists(modulePath),'SQL language module is missing: '+modulePath);
+    assert.strictEqual(exists('lib/capabilities/'+name+'.js'),false,
+      'legacy flat SQL language module must not exist: '+name);
+  });
+});
+fs.readdirSync(path.join(root,'lib/capabilities')).forEach(function(name){
+  assert(!((name.startsWith('Ddl')||name.startsWith('Dml')||
+    name==='ForeignKeySemantics.js')&&name.endsWith('.js')),
+    'SQL DDL/DML modules belong in language subdirectories: '+name);
+});
 console.log('NuBloxSQL repository structure: PASS');
