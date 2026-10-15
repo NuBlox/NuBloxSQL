@@ -117,7 +117,7 @@ fs.readdirSync(path.join(root,'lib/capabilities')).forEach(function(name){
 var astFolder=path.join(root,'test/sql/ast');
 assert(exists('test/sql/ast'),'SQL AST test directory is missing');
 var astTests=fs.readdirSync(astFolder).filter(function(name){
-  return /^sql-ast-.*\\.js$/.test(name);
+  return name.startsWith('sql-ast-') && name.endsWith('.js');
 });
 assert(astTests.length>=22,'SQL AST regression suite unexpectedly shrank');
 var astSuite=JSON.parse(fs.readFileSync(path.join(root,'scripts/suites/platform.json'),'utf8'));
@@ -131,6 +131,7 @@ assert.strictEqual(astSuite.steps.filter(function(file){
   return file.startsWith('test/sql/ast/sql-ast-');
 }).length,astTests.length,'duplicate or missing SQL AST tests in platform suite');
 fs.readdirSync(path.join(root,'test')).forEach(function(name){
-  assert(!/^sql-ast-.*\\.js$/.test(name),'SQL AST test belongs under test/sql/ast: '+name);
+  assert(!(name.startsWith('sql-ast-') && name.endsWith('.js')),
+    'SQL AST test belongs under test/sql/ast: '+name);
 });
 console.log('NuBloxSQL repository structure: PASS');
