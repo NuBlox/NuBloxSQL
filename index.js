@@ -51,7 +51,7 @@ require('./lib/client/ErrorIntegration').install(clientApi);
 observabilityApi.install(clientApi, streamApi);
 require('./lib/client/TypesIntegration').install(clientApi, streamApi);
 require('./lib/client/TransactionIntegration').install(clientApi);
-require('./lib/client/SqlServerMetadataIntegration').install(metadataApi);
+require('./lib/client/discovery/SqlServerMetadataIntegration').install(metadataApi);
 require('./lib/client/SQLiteAdvancedMetadataIntegration').install(metadataApi);
 metadataIntegrationApi.install(clientApi, metadataApi);
 lifecycleApi.install(clientApi);

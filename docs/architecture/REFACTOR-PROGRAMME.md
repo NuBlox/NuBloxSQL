@@ -41,7 +41,7 @@ does not itself implement IAM, authentication, tunnelling or provider APIs.
 | Scope | Status | Required completion evidence |
 | --- | --- | --- |
 | Products and public boundaries | Defined | Blueprint and three-product release gate |
-| Driver read-only discovery | Grouped | Public API and discovery boundary tests |
+| Driver read-only discovery | Server/security/jobs grouped; MySQL security metadata and SQL Server metadata integrations additionally grouped | Public API and discovery boundary tests, legacy path rejection |
 | Vendor and cloud catalogues | Grouped in `lib/catalog/` | Registry validation, non-routable vendor assertions, packaged type/API surface |
 | Bootstrap and configuration | Grouped in `lib/client/administration/` | Plan integrity, execution contracts and release manifests |
 | Schema/migrations/data movement | Grouped in `lib/client/engineering/` | SQL metadata, migration and data movement contracts, packed consumers |
