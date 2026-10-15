@@ -112,4 +112,25 @@ fs.readdirSync(path.join(root,'lib/capabilities')).forEach(function(name){
   assert.strictEqual(exists('lib/client/'+name+'.js'),false,
     'vendor metadata discovery integration must not be in flat client root: '+name);
 });
+// SQL AST compiler qualifications belong to test/sql/ast, not the flat
+// test/ root. Every tracked suite must be executed and evidenced on release.
+var astFolder=path.join(root,'test/sql/ast');
+assert(exists('test/sql/ast'),'SQL AST test directory is missing');
+var astTests=fs.readdirSync(astFolder).filter(function(name){
+  return /^sql-ast-.*\\.js$/.test(name);
+});
+assert(astTests.length>=22,'SQL AST regression suite unexpectedly shrank');
+var astSuite=JSON.parse(fs.readFileSync(path.join(root,'scripts/suites/platform.json'),'utf8'));
+var astEvidence=JSON.parse(fs.readFileSync(path.join(root,'docs/releases/tier1-stable-evidence.json'),'utf8'));
+astTests.forEach(function(name){
+  var location='test/sql/ast/'+name;
+  assert(astSuite.steps.includes(location),'SQL AST test is not executed by platform suite: '+location);
+  assert(astEvidence.sharedRequiredFiles.includes(location),'SQL AST test missing Tier-1 evidence: '+location);
+});
+assert.strictEqual(astSuite.steps.filter(function(file){
+  return file.startsWith('test/sql/ast/sql-ast-');
+}).length,astTests.length,'duplicate or missing SQL AST tests in platform suite');
+fs.readdirSync(path.join(root,'test')).forEach(function(name){
+  assert(!/^sql-ast-.*\\.js$/.test(name),'SQL AST test belongs under test/sql/ast: '+name);
+});
 console.log('NuBloxSQL repository structure: PASS');
