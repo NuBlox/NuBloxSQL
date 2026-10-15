@@ -65,7 +65,7 @@ not change as a side effect of rearranging source files.
 | --- | --- | --- |
 | `lib/catalog/` | Vendor, technology, model and cloud profile catalogue, separate from SQL grammar | Read-only, no imported runtime/client/application, catalogue is not connection support |
 | `lib/client/administration/` | Database bootstrap and configuration | Preserve public plan/inspect/execute contracts and plan integrity |
-| `lib/client/discovery/` | Read-only server identity/catalogue, security and native scheduler discovery | Preserve public `discoverDatabaseServer`, `discoverDatabaseSecurity`, `discoverNativeDatabaseJobs` and Client methods |
+| `lib/client/discovery/` | Read-only server identity/catalogue, security, native scheduler and vendor-specific metadata discovery | Preserve public `discoverDatabaseServer`, `discoverDatabaseSecurity`, `discoverNativeDatabaseJobs` and Client methods |
 | `lib/client/engineering/` | Schema object identity, dependency graph, diff, migration and data movement | Preserve public planning/execution semantics and safety controls |
 | `lib/client/runtime/` | SQL-specific result and prepared-parameter normalisation | Preserve `Client.js` helper exports and qualified dialect semantics; do not conflate with native cross-model adapter contract |
 | `lib/client/` | Public Client integration and remaining cross-dialect features | Group related modules in later bounded changes only after mapping every dependency and release evidence path |
@@ -108,3 +108,5 @@ SQL-language release checkers are grouped by DDL/DML under `scripts/release/`. T
 The SQL compiler source modules now live under `lib/capabilities/ddl/` and `lib/capabilities/dml/` rather than the former flat directory. `lib/capabilities/index.js` preserves the public compiler facade and ordering of semantic stages. The stable release manifest verifies that every moved module is packed; the structure gate rejects future flat DDL/DML source additions.
 
 A release check enforces these top-level boundaries.
+
+Vendor metadata discovery helpers `MySQLSecurityMetadataIntegration.js` and `SqlServerMetadataIntegration.js` are now grouped under `lib/client/discovery/`. The root public API continues to install these internals, and the structure/boundary tests reject obsolete flat copies. Further metadata integration grouping remains to be completed independently.
