@@ -31,6 +31,8 @@ NuBloxSQL/
 │   ├── lifecycle/             Pre-connect engine lifecycle implementation
 │   └── runtime/               Lazy SQL router and native adapter contracts
 ├── scripts/                   Repository/release qualification scripts
+│   ├── release/ddl/           DDL packed-consumer qualifications (v1–v11)
+│   └── release/dml/           DML packed-consumer qualifications (v2–v10)
 ├── test/                      Cross-cutting package/integration tests
 ├── types/                     Public TypeScript declarations
 ├── index.js
@@ -98,5 +100,7 @@ may be removed without an explicit breaking-change decision.
 - Release contracts may reference current source/docs only; superseded contracts remain available through Git history rather than the active tree.
 - Tests may remain under the current root `test/` while their execution is centrally orchestrated; avoid large path-only test moves unless there is a functional reason.
 - Dialect-local tests remain with their dialect runtime because they qualify native implementation behaviour.
+
+SQL-language release checkers are grouped by DDL/DML under `scripts/release/`. The release suite and Tier-1 evidence manifest reference their exact paths. The repository structure gate rejects a return to flat version-numbered SQL release checkers. Future runtime moves must preserve imports, packaged consumers and engine CI evidence.
 
 A release check enforces these top-level boundaries.
