@@ -6,7 +6,7 @@ var fs = require('fs');
 var os = require('os');
 var path = require('path');
 
-var root = path.resolve(__dirname, '..');
+var root = path.resolve(__dirname, '../../..');
 var npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 function run(command, args, options) {
   return childProcess.execFileSync(command, args, Object.assign({ cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }, options || {}));
