@@ -11,8 +11,7 @@
 | **NuBloxSQL Workbench** (`apps/workbench/`) | Professional graphical tool | Database explorer, editor, plans/reviews, graphical lifecycle workflows and evidence | Runnable local-only preview; full lifecycle experience incomplete |
 
 The driver is designed to support **SQL and non-SQL database families**.
-Today the execution layer contains four SQL runtimes; all other cross-model
-and cloud profiles are non-routable or conditional reference descriptions.
+Today the execution layer includes four SQL runtimes plus initial native Redis RESP2 and MongoDB document adapters. Other cross-model vendors remain catalogue-only, while managed-cloud qualification is independent and incomplete.
 Each future adapter will expose the native operations appropriate to its
 database model. See [Universal Database Driver Architecture](../architecture/UNIVERSAL-DATABASE-DRIVER.md).
 

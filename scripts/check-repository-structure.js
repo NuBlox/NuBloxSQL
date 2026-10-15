@@ -59,4 +59,33 @@ var pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
 assert.strictEqual(pkg.scripts['test:platform'],'node scripts/run-suite.js scripts/suites/platform.json');
 assert.strictEqual(pkg.scripts['release:qualify'],'node scripts/run-suite.js scripts/suites/release.json');
 
+// Prevent release-checker sprawl and stale qualification evidence.
+var suite = JSON.parse(fs.readFileSync(path.join(root,'scripts/suites/release.json'),'utf8'));
+var evidence = JSON.parse(fs.readFileSync(path.join(root,'docs/releases/tier1-stable-evidence.json'),'utf8'));
+var languageQualifiers = [];
+for (var ddlVersion=1;ddlVersion<=11;ddlVersion++) {
+  languageQualifiers.push('ddl/check-ddl-v'+ddlVersion+'-release.js');
+}
+for (var dmlVersion=2;dmlVersion<=10;dmlVersion++) {
+  languageQualifiers.push('dml/check-dml-v'+dmlVersion+'-release.js');
+}
+assert.strictEqual(languageQualifiers.length,20);
+languageQualifiers.forEach(function(relative){
+  var basename=path.basename(relative);
+  var full='scripts/release/'+relative;
+  assert(exists(full),'grouped SQL release checker missing: '+full);
+  assert.strictEqual(exists('scripts/'+basename),false,
+    'obsolete flat SQL release checker must not exist: scripts/'+basename);
+  assert(suite.steps.includes(full),'release suite missing grouped SQL checker: '+full);
+  assert(evidence.sharedRequiredFiles.includes(full),'Tier-1 evidence missing grouped SQL checker: '+full);
+});
+assert.strictEqual(suite.steps.filter(function(step){
+  return step.startsWith('scripts/release/ddl/') || step.startsWith('scripts/release/dml/');
+}).length,languageQualifiers.length,'unexpected SQL checker duplication in release suite');
+for (var file of fs.readdirSync(path.join(root,'scripts'))) {
+  if ((file.startsWith('check-ddl-v') || file.startsWith('check-dml-v')) &&
+      file.endsWith('-release.js')) {
+    assert.fail('flat SQL release checker is not permitted: scripts/'+file);
+  }
+}
 console.log('NuBloxSQL repository structure: PASS');

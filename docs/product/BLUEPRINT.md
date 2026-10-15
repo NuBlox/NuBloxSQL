@@ -37,7 +37,7 @@ The current executable product focus is deliberately limited to:
 - SQLite;
 - SQL Server.
 
-These four are the existing **SQL** runtimes. The 100-profile SQL vendor/dialect catalogue remains reference knowledge for relational vendor expansion; a separate database-technology registry describes document, key-value, graph, wide-column, search, time-series, vector and multi-model vendors. The independent cloud-service registry records hosting and connection requirements. **Neither registry creates a native adapter or qualifies cloud authentication.**
+These four are the existing **SQL** runtimes. Initial non-SQL runtime support separately covers Redis RESP2 key-value commands and MongoDB document CRUD through the optional official MongoDB driver. Those interfaces are neither SQL dialects nor blanket cloud certifications. The 100-profile SQL vendor/dialect catalogue remains reference knowledge for relational vendor expansion; a separate database-technology registry describes document, key-value, graph, wide-column, search, time-series, vector and multi-model vendors. The independent cloud-service registry records hosting and connection requirements. **Neither registry creates a native adapter or qualifies cloud authentication.**
 
 A database family/version becomes supported only when implementation, semantics, qualification and release evidence exist.
 
