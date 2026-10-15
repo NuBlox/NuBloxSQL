@@ -105,4 +105,11 @@ fs.readdirSync(path.join(root,'lib/capabilities')).forEach(function(name){
     name==='ForeignKeySemantics.js')&&name.endsWith('.js')),
     'SQL DDL/DML modules belong in language subdirectories: '+name);
 });
+// Native read-only metadata services are discovery-owned, not flat client files.
+['MySQLSecurityMetadataIntegration','SqlServerMetadataIntegration'].forEach(function(name){
+  var grouped='lib/client/discovery/'+name+'.js';
+  assert(exists(grouped),'discovery-owned metadata integration missing: '+grouped);
+  assert.strictEqual(exists('lib/client/'+name+'.js'),false,
+    'vendor metadata discovery integration must not be in flat client root: '+name);
+});
 console.log('NuBloxSQL repository structure: PASS');
