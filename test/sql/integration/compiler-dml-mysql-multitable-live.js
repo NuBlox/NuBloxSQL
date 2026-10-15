@@ -1,7 +1,7 @@
 'use strict';
 
 var assert=require('assert');
-var nublox=require('..');
+var nublox=require('../../..');
 
 function config(){
   return {dialect:'mysql',host:process.env.MYSQL_HOST||'127.0.0.1',port:Number(process.env.MYSQL_PORT||3306),user:process.env.MYSQL_USER,password:process.env.MYSQL_PASSWORD,database:process.env.MYSQL_DATABASE,ssl:'disable',getServerPublicKey:true,pool:{max:2}};

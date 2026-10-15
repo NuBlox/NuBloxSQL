@@ -1,7 +1,7 @@
 'use strict';
 
 var assert=require('assert');
-var nublox=require('..');
+var nublox=require('../../..');
 
 function configFor(dialect){
   if(dialect==='postgresql')return {dialect:'postgresql',host:process.env.PGHOST||'127.0.0.1',port:Number(process.env.PGPORT||5432),user:process.env.PGUSER,password:process.env.PGPASSWORD,database:process.env.PGDATABASE,pool:{max:2}};
