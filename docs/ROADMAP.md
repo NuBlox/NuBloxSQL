@@ -20,7 +20,8 @@
 
 - [x] Resolve the [TASK-001 specification](TASK-001.md), [inventory JSON Schema](contracts/database-inventory-v1.schema.json) and [error schema](contracts/database-operation-error-v1.schema.json) into an accepted G0 engineering contract: PostgreSQL 17, bounded read-only queries, API/CLI naming, secret boundary and TLS policy.
 - [x] Validate positive, partial and negative work-product examples in docs-only CI.
-- [ ] Finish reproducible G1: commit generated npm lockfile, switch CI to `npm ci`, and digest-pin the PostgreSQL 17 fixture. Initial private Driver/Shell packages are under qualification.
+- [x] Commit the npm dependency lockfile, switch to `npm ci`, and pin the PostgreSQL 17 test image by SHA-256 digest; the private Driver/Shell build and live integration test are in CI.
+- [ ] Complete G1 package-consumer smoke tests, resource/timeout/security negative cases and Workbench build boundaries. G2/G3 release qualification remains incomplete.
 - Define one typed Driver API request/result/error contract.
 - Define credentials, TLS, privileges, timeouts, safe output, target identity and failure cases.
 - Design Shell help/script output and Workbench user journey based on the same result schema.
