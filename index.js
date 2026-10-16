@@ -48,7 +48,6 @@ require('./lib/client/SqlServerStreamIntegration').install(streamApi);
 diagnosticsApi.install(clientApi);
 require('./lib/client/OperationControlIntegration').install(clientApi);
 require('./lib/client/ErrorIntegration').install(clientApi);
-observabilityApi.install(clientApi, streamApi);
 require('./lib/client/TypesIntegration').install(clientApi, streamApi);
 require('./lib/client/TransactionIntegration').install(clientApi);
 require('./lib/client/discovery/SqlServerMetadataIntegration').install(metadataApi);
@@ -56,6 +55,8 @@ require('./lib/client/SQLiteAdvancedMetadataIntegration').install(metadataApi);
 metadataIntegrationApi.install(clientApi, metadataApi);
 lifecycleApi.install(clientApi);
 capabilitiesApi.install(clientApi);
+// Instrument final method implementations, including advanced transaction retries.
+observabilityApi.install(clientApi, streamApi);
 
 var router = require('./lib/runtime/SqlAdapterRouter').create({
   loaders: {
