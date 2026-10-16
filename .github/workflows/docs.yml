@@ -24,12 +24,13 @@ jobs:
           test -f LICENSE
           test -f NOTICE
           test -f README.md
-          test ! -e package.json
+          test -f package.json
+          test -f packages/driver/package.json
+          test -f apps/shell/package.json
+          test -f packages/driver/src/index.ts
+          test -f apps/shell/src/cli.ts
           test ! -e index.js
-          test ! -d apps
           test ! -d lib
-          test ! -d test
-          test ! -d scripts
           python3 - <<'PY'
           from pathlib import Path
           import json

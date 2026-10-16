@@ -1,6 +1,6 @@
 # NuBloxSQL
 
-**Status: G0 engineering specification established — no runnable application or published package is built from this branch.**
+**Status: G1 implementation underway — the first private PostgreSQL Driver and independent Shell code is present for CI qualification. Workbench and a complete TASK-001 release are not yet implemented. Nothing in this repository is published from the reboot.**
 
 NuBloxSQL is a proposed **universal database connectivity and professional database-work platform**. It consists of three distinct products:
 
@@ -31,12 +31,20 @@ This is a deliberately clean restart. The previous implementation is preserved o
 
 The [administrator ruleset procedure](docs/admin/README.md) defines the required PR/CI protection for `main` and immutability of the archived implementation. **Both branches are now protected** (active rulesets #25231727 and #25231728); the owner may run the final read-only verifier. Follow [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328).
 
+## First executable slice — not a released product
+
+The `@nubloxsql/driver` private TypeScript package now implements **read-only PostgreSQL 17 inventory** with a scoped catalog query, safe error codes, explicit transport policy, finite limits and redacted output. The independent `@nubloxsql/shell` package calls its **public API** to write a protected JSON work product. Both are experimental; Workbench is not yet implemented.
+
+The initial local fixture contract requires a PostgreSQL instance on `127.0.0.1`, explicit environment-sourced credentials and `security=isolated-local`; remote TLS/cloud deployments have **not** passed qualification. Source API and work-product details are defined in [TASK-001](docs/TASK-001.md).
+
+After Node.js 24 and workspace dependencies are installed, run `npm ci` (once the lockfile is committed), `npm run build`, `npm run test:unit`. Live tests run against a disposable PostgreSQL 17 service through GitHub Actions. **Do not publish** the private package or claim production support.
+
 ## Ground rules
 
 - **Specification before implementation.** No new driver, CLI, Workbench, vendor integration or package until requirements and its qualification criteria are approved.
 - **One source of truth for each topic.** Update the appropriate document; do not create a competing blueprint, wave, phase, registry or roadmap.
 - **No fake compatibility.** SQL and non-SQL native semantics remain distinct. Catalogue entries are not implemented adapters. Cloud hosting is not equivalent to proven cloud authentication.
 - **Preserve history.** Never delete or rewrite the archive; recover useful prior code selectively, after a requirement and interface contract justify it.
-- **Docs-only means docs-only.** There is currently no `package.json`, `index.js`, runtime or executable tool on `main`.
+- **Incremental qualification:** private TypeScript packages may now be introduced only for approved TASK-001 outcomes; live tests and work-product evidence are mandatory before support claims. Avoid unrelated feature expansion.
 
 Copyright (c) 2026 Stephen J T Spittal. All rights reserved. See [LICENSE](LICENSE).

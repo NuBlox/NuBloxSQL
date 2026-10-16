@@ -1,4 +1,4 @@
-# Proposed architecture — no implementation yet
+# Proposed architecture and first private implementation — not a released product
 
 Design is **dependency directed**: tools consume the Driver's public API, which composes native database adapters. The architecture is a hypothesis until verified through a thin vertical implementation.
 
@@ -50,7 +50,7 @@ docs/                   Authoritative specification and qualification
 tests/                  Contracts + real DBMS integration/live matrices
 ~~~
 
-This is a **target layout**, not a request to create empty folders. Package boundaries and publication strategy must be decided before adding files. Native implementation can be reused from the archived version only after tests prove the new contracts.
+The initial implementation contains `packages/driver` and `apps/shell` as **private TypeScript npm workspaces**, each compiled separately and connected through the driver's public export. `apps/workbench` is planned, not present yet. The complete layout remains a **target architecture**, not an instruction to create empty directories. This slice uses the maintained `pg` transport behind the NuBloxSQL adapter; it does **not** reimplement PostgreSQL's wire protocol. The archive is not imported wholesale.
 
 ## API design rules
 

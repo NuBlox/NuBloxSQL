@@ -18,6 +18,7 @@ This is the only decision log. “Proposed” means review is still required; it
 | ADR-010 | Catalogue 40 archived and 24 gap candidate activities with explicit work products and independent acceptance evidence | Make gaps reviewable without treating research input as delivered functionality; keep WORK-REGISTER.md and its one JSON dataset authoritative |
 | ADR-011 | Specify TASK-001 with one common Driver/Shell/Workbench database inventory work-product contract | Establish a concrete vertical integration acceptance target before implementing packages |
 | ADR-012 | Accept TASK-001's PostgreSQL 17 discovery contract, safe error/schema examples, native CONNECT visibility filter, Node 24/strict TS/ESM/npm workspaces and independent SvelteKit Workbench server | Close G0 for a bounded, testable vertical slice; native `pg` transport is an adapter dependency, not a claim of proprietary wire-protocol implementation; all release support remains unqualified |
+| ADR-013 | Implement the first private experimental Driver and Shell packages for TASK-001 with actual PostgreSQL catalog reads, safe output and live CI | Validate an end-to-end partial slice before introducing SvelteKit Workbench; neither runtime nor public release is qualified until G1/G2/G3 evidence exists |
 
 ## Proposed decisions requiring specification review
 
