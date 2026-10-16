@@ -37,7 +37,7 @@ The `@nubloxsql/driver` private TypeScript package now implements **read-only Po
 
 The initial local fixture contract requires a PostgreSQL instance on `127.0.0.1`, explicit environment-sourced credentials and `security=isolated-local`; remote TLS/cloud deployments have **not** passed qualification. Source API and work-product details are defined in [TASK-001](docs/TASK-001.md).
 
-After Node.js 24 and workspace dependencies are installed, run `npm ci` (once the lockfile is committed), `npm run build`, `npm run test:unit`. Live tests run against a disposable PostgreSQL 17 service through GitHub Actions. **Do not publish** the private package or claim production support.
+On Node.js 24, run `npm ci`, `npm run build` and `npm run test:unit`. Live tests run against a digest-pinned PostgreSQL 17 CI service. The Shell requires an explicit `NUBLOXSQL_PG_SECURITY` value (`isolated-local` or `verified-tls`) and an environment-based secret; it does not accept a password on the command line. **Do not publish** the private package or claim production support.
 
 ## Ground rules
 
