@@ -1,5 +1,10 @@
-.nyc_output
-coverage/
+.DS_Store
 node_modules/
-npm-debug.log
+dist/
+build/
+coverage/
+.env
+.env.*
+!.env.example
+npm-debug.log*
 package-lock.json
