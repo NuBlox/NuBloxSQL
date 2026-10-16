@@ -178,4 +178,13 @@ var platformSteps=JSON.parse(fs.readFileSync(path.join(root,
   'scripts/suites/platform.json'),'utf8')).steps;
 assert(platformSteps.includes('test/client-connection-targets.js'),
   'connection target regression must be included in platform suite');
+// The base SQL transaction coordinator must remain outside the public facade.
+// Nested savepoints, retry policy and observability composition remain separate.
+assert(exists('lib/client/runtime/TransactionRunner.js'),'transaction runner module missing');
+assert(clientSource.includes("require('./runtime/TransactionRunner')"),
+  'Client must delegate base transactions to the runtime coordinator');
+assert(!clientSource.includes("connection.rollback()"),
+  'native/SQLite rollback orchestration must not reappear in Client facade');
+assert(platformSteps.includes('test/client-transaction-runner.js'),
+  'transaction runner regression must be included in platform suite');
 console.log('NuBloxSQL repository structure: PASS');

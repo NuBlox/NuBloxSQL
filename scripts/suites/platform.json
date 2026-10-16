@@ -93,6 +93,7 @@
     "test/database-configuration-executor.js",
     "test/data-movement.js",
     "test/data-movement-planner.js",
-    "test/client-transactions.js"
+    "test/client-transactions.js",
+    "test/client-transaction-runner.js"
   ]
 }
