@@ -27,7 +27,8 @@ The preserved [legacy archive](ARCHIVE.md) contains materially broader first-par
 - [x] Resolve the [TASK-001 specification](TASK-001.md), [inventory JSON Schema](contracts/database-inventory-v1.schema.json) and [error schema](contracts/database-operation-error-v1.schema.json) into an accepted G0 engineering contract: PostgreSQL 17, bounded read-only queries, API/CLI naming, secret boundary and TLS policy.
 - [x] Validate positive, partial and negative work-product examples in docs-only CI.
 - [x] Remove `pg` and `@types/pg` from the live dependency lockfile, restore strict `npm ci`, and validate the NuBloxSQL-owned PostgreSQL v3/SCRAM/extended-query inventory slice against the digest-pinned PostgreSQL 17 CI fixture (PR #341). This remains **limited** protocol qualification.
-- [ ] Complete G1 package-consumer smoke tests, resource/timeout/security negative cases and Workbench build boundaries. G2/G3 release qualification remains incomplete.
+- [x] Consolidate first-party PostgreSQL query deadlines, error-session isolation and bounded native result memory from archived design concepts; add independent live CI tests (PR #344).
+- [ ] Complete G1 package-consumer smoke tests, remaining authentication/TLS/abort negative cases and Workbench build boundaries. G2/G3 release qualification remains incomplete.
 - Define one typed Driver API request/result/error contract.
 - Define credentials, TLS, privileges, timeouts, safe output, target identity and failure cases.
 - Design Shell help/script output and Workbench user journey based on the same result schema.
@@ -69,7 +70,7 @@ Expand securely into selection, installation, initialization, administration, mo
 
 ## Evidence-driven next implementation order
 
-1. **PostgreSQL consolidation:** compare archived and current native wire components; select verified and more complete first-party implementation strategy; retain TASK-001 API and real-engine acceptance. Add native TLS/SCRAM variant testing before network or cloud support is claimed.
+1. **PostgreSQL consolidation:** native result budgets, error invalidation and independent query timeouts are integrated and live-tested in the existing first-party Driver (PR #344). Next compare archived auxiliary cancellation, verified TLS/SCRAM variants, session pooling and type decoding against current API, prove them with real PostgreSQL tests, and only then claim network/cloud support.
 2. **Core language/query reuse:** review archived parser/compiler/dialect/type subsystems and their tests; establish shared native query/metadata contracts and developer-facing query builder goals.
 3. **First ORM/query builder design:** specify independently consumable contracts and acceptance tests; the archive's compiler does not by itself deliver an ORM or a complete query builder.
 4. **Expand parallel vendor qualification:** bring MySQL first-party protocol forward through comparative tests, then SQL Server, SQLite and model-native Redis where user tasks justify them. Do not call the historical MongoDB wrapper a native adapter.

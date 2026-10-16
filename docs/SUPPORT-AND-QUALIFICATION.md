@@ -26,7 +26,7 @@ A support claim must be recorded at the intersection of:
 
 | Engine family | Target evaluation | Release status on new main | Special qualification |
 | --- | --- | --- | --- |
-| PostgreSQL | First native SQL vertical slice | Experimental first-party PostgreSQL 17 wire/SCRAM inventory adapter; no release qualification | Isolated loopback-only, catalog CONNECT privilege filtering and deterministic limits; verified remote TLS, SCRAM-PLUS, Unicode/SASLprep passwords, cancellation and broader native SQL still pending |
+| PostgreSQL | First native SQL vertical slice | Experimental first-party PostgreSQL 17 wire/SCRAM inventory adapter; no release qualification | Local loopback only, catalog CONNECT filtering, native query deadline with fatal disconnect, single-active-query guard, 2 MiB row/8 MiB result/1,001 row limits; verified remote TLS, SCRAM-PLUS, Unicode/SASLprep passwords, graceful cancellation, pooling and broader native SQL still pending |
 | MySQL | Subsequent SQL adapter | Not implemented | MySQL native authentication/TLS and pooling |
 | SQLite | Embedded SQL adapter | Not implemented | File modes, locks, changes, transaction and corruption behaviour |
 | SQL Server | Native TDS adapter | Not implemented | TDS versions, login/TLS, metadata, type fidelity |

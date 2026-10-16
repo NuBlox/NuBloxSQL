@@ -98,7 +98,7 @@ The [archived asset assessment](ARCHIVE.md) is the **authoritative source-level 
 
 First-party means **we own the actual database communication implementation**, not merely that our source code calls a third-party native client. The archived MongoDB adapter loads the `mongodb` package's client and is not compatible with this requirement as a first-party wire adapter. By contrast, Node standard networking/TLS/crypto and built-in SQLite APIs are general-purpose/runtime facilities; they do not automatically represent third-party DBMS clients.
 
-Archived test execution is an input to engineering qualification; real current vendor/version/auth/TLS/database tests and negative security review are still mandatory. This prevents both reinventing existing native modules and exaggerating legacy maturity.
+Archived test execution is an input to engineering qualification; real current vendor/version/auth/TLS/database tests and negative security review are still mandatory. Initial consolidation from the archive's PostgreSQL operation and result governance has been implemented **inside the existing private wire client**, with strict native result budgets, independent query deadlines and fail-closed session invalidation. See [archive assessment](ARCHIVE.md). This prevents both reinventing existing native modules and exaggerating legacy maturity.
 
 ## Avoid accidental scope narrowing
 
