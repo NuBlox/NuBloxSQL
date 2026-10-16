@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "1.0.0",
+  "operation": "database.inspect",
+  "code": "AUTH_FAILED",
+  "message": "Database authentication failed.",
+  "retryable": false
+}

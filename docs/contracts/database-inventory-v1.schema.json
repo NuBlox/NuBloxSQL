@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:nubloxsql:database-inventory:1.0.0",
-  "title": "NuBloxSQL database inventory work product, proposal v1",
-  "description": "Proposed typed evidence output for TASK-001; observed-only native database inventory. Not a runtime support claim.",
+  "title": "NuBloxSQL TASK-001 PostgreSQL inventory contract v1",
+  "description": "G0 engineering contract, not runtime support or released API evidence. PostgreSQL 17 catalog inspection restricted to connect-privileged, datallowconn=true databases.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -83,7 +83,8 @@
         "capturedAt",
         "maxDatabases",
         "truncated",
-        "completeness"
+        "completeness",
+        "visibilityRule"
       ],
       "properties": {
         "capturedAt": {
@@ -100,6 +101,10 @@
         },
         "completeness": {
           "const": "observed-only"
+        },
+        "visibilityRule": {
+          "const": "connect-privilege-and-datallowconn",
+          "description": "Only PostgreSQL databases with CONNECT catalog privilege and datallowconn=true are included; not proof of network access."
         }
       }
     },
@@ -144,19 +149,17 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "name",
-          "accessible"
+          "name"
         ],
         "properties": {
           "name": {
             "type": "string",
-            "minLength": 1
-          },
-          "accessible": {
-            "type": "boolean"
+            "minLength": 1,
+            "description": "Name from permitted pg_database rows; names of inaccessible databases are excluded."
           }
         }
-      }
+      },
+      "uniqueItems": true
     },
     "warnings": {
       "type": "array",
@@ -199,6 +202,25 @@
         },
         "required": [
           "capture"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "partial"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "warnings": {
+            "minItems": 1
+          }
+        },
+        "required": [
+          "warnings"
         ]
       },
       "then": {

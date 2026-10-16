@@ -10,15 +10,17 @@
 - [x] Catalogue 64 *candidate* professional activities, preserving archived provenance and marking scope limits.
 - [ ] Review, split/merge and approve the candidate activities relevant to the first real-world task.
 - [ ] Review the proposed baseline and decide the first product demonstration.
-- [ ] Apply GitHub branch/ruleset protection to both the default and archived refs.
+- [x] Apply GitHub branch/ruleset protection to both the default and archived refs (live GitHub API verified; optional owner CLI endpoint check remains in issue #328).
 
 **Exit:** the product definition and initial task are confirmed, open design decisions are tracked, and a reviewer can explain the three products in one page.
 
 ## Stage 1 — specify one actual task end to end
 
-**Candidate:** TASK-001, inspect a real PostgreSQL database and export an inventory.
+**Accepted G0 engineering target:** [TASK-001](TASK-001.md), PostgreSQL 17 native catalogue inspection producing one versioned inventory through Driver, Shell and Workbench. Initial choices are documented; the release claims remain explicitly unqualified.
 
-- Review the proposed [TASK-001 specification](TASK-001.md) and [inventory JSON Schema](contracts/database-inventory-v1.schema.json); confirm version/auth/TLS fixture and API method names.
+- [x] Resolve the [TASK-001 specification](TASK-001.md), [inventory JSON Schema](contracts/database-inventory-v1.schema.json) and [error schema](contracts/database-operation-error-v1.schema.json) into an accepted G0 engineering contract: PostgreSQL 17, bounded read-only queries, API/CLI naming, secret boundary and TLS policy.
+- [x] Validate positive, partial and negative work-product examples in docs-only CI.
+- [ ] Produce digest-pinned PostgreSQL 17 fixture and strict TypeScript/Node 24 lockfile-backed build CI (G1).
 - Define one typed Driver API request/result/error contract.
 - Define credentials, TLS, privileges, timeouts, safe output, target identity and failure cases.
 - Design Shell help/script output and Workbench user journey based on the same result schema.

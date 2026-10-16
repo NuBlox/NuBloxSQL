@@ -1,6 +1,6 @@
 # Product definition — the authority
 
-**Status:** Proposed specification baseline, 16 October 2026.
+**Status:** Product definition accepted as initial G0 engineering scope, 16 October 2026. The first workflow is specified in [TASK-001](TASK-001.md); no executable new Driver/Shell/Workbench implementation has been qualified.
 **Owner:** Stephen J T Spittal.
 **Change control:** Record a deliberate decision in [DECISIONS.md](DECISIONS.md) before changing this definition. No other document may silently override it.
 

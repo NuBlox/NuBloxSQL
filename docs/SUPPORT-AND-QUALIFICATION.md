@@ -42,7 +42,7 @@ These rows represent priorities for evaluating archived assets, not a commitment
 
 ## Release gates
 
-- **G0 — specification:** product, tasks, acceptance, security boundaries and first adapter chosen.
+- **G0 — specification:** product, tasks, acceptance, security boundaries and first adapter chosen (**TASK-001 engineering baseline documented; live behaviour not yet validated**).
 - **G1 — reproducible build:** strict TypeScript and Node compilation, test/lint/typecheck, locked deps and package contents verified.
 - **G2 — adapter qualified:** real-engine acceptance across declared platform/version matrix.
 - **G3 — first task delivered:** Driver + independent Shell + Workbench complete TASK-001 with identical evidence semantics.
