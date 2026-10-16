@@ -70,7 +70,7 @@ These examples modify a profession rather than create additional career families
 
 ## How this changes what NuBloxSQL must deliver
 
-The professions are a **who-does-the-work taxonomy**. They inform, but do not replace, the **what-work-is-done register** in [WORK-REGISTER.md](WORK-REGISTER.md). The eleven lifecycle phases tell us **when**; database models and vendors tell us **where/how**; Driver, Shell and Workbench tell us **how the outcome is delivered**.
+The professions are a **who-does-the-work taxonomy**. They inform, but do not replace, the **what-work-is-done register** in [WORK-REGISTER.md](WORK-REGISTER.md). The eleven lifecycle phases tell us **when**; database models and vendors tell us **where/how**; the relevant NuBloxSQL platform capability (Driver, ORM, query builder, SDK, Shell, Workbench or another justified tool) tells us **how the outcome is delivered**.
 
 | Professional constituency | Database-scoped capability and work products to investigate |
 | --- | --- |
@@ -86,7 +86,7 @@ The professions are a **who-does-the-work taxonomy**. They inform, but do not re
 ## Operational mapping rule
 
 For each proposed activity, trace:
-`career-family ID → professional task ID → governance/delivery activity → lifecycle phase → work-product schema → native DBMS/model capabilities → Driver public API → Shell task → Workbench journey → real-engine acceptance test`.
+`career-family ID → developer/professional task ID → governance/delivery activity → lifecycle phase → work-product schema → native DBMS/model capabilities → relevant NuBloxSQL capability API (Driver, ORM, query builder, migration, etc.) → applicable Shell/Workbench journey → real-engine acceptance test`.
 
 Do not infer permissions or approvals from job title, seniority or family. Those require trustworthy user identity, target-specific privileges, risk policy and authorisation evidence.
 

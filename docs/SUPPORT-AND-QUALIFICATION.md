@@ -2,6 +2,10 @@
 
 **Current reboot support status: experimental, privately developed NuBloxSQL-owned PostgreSQL protocol 3.0 Driver/Shell inventory implementation under qualification; no production-qualified Driver/Shell/Workbench product or cloud connector.** The historical implementations are preserved on the [archive](ARCHIVE.md); only narrowly specified TASK-001 source has been introduced on main.
 
+## Platform-wide support truth
+
+The product vision extends to ORM, query builder, modelling, migrations, administration, professional automation and future cross-vendor interoperability. **None of those capabilities is qualified merely because the first-party PostgreSQL inventory Driver and Shell work in one CI fixture.** Independently record API, qualified vendors/versions, evidence and limitations for each released platform technology. No current claim of market or performance superiority is established.
+
 ## Separate support declarations
 
 A support claim must be recorded at the intersection of:

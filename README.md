@@ -2,24 +2,26 @@
 
 **Status: proprietary, ground-up native-driver implementation underway. The first private PostgreSQL protocol v3 Driver and independent Shell are undergoing live CI qualification. Workbench, remote TLS and a complete TASK-001 release are not yet implemented. Nothing in this repository is published from the reboot.**
 
-NuBloxSQL is a proposed **universal database connectivity and professional database-work platform**. It consists of three distinct products:
+**Mission: NuBloxSQL aims to become the database technology platform of choice.**
 
-1. **NuBloxSQL Driver** — a headless, programmable JavaScript/TypeScript API with qualified native database adapters, capability discovery and reusable database operations.
-2. **NuBloxSQL Shell** — a terminal application for interactive and automated database work through the public Driver API.
-3. **NuBloxSQL Workbench** — a graphical application for guided database work through the same public Driver API.
+NuBloxSQL is a **proprietary, independently engineered universal database technology platform**, not just a driver accompanied by two tools. It aims to cover first-party native drivers, ORM and model-native mapping, type-safe query builders, parsing/compilation, schema/migration tools, database design and development, security, administration, data operations and complete professional lifecycle workflows. A further ambition is genuine cross-vendor interoperability: for example, giving MySQL-oriented users a familiar way to access supported PostgreSQL capabilities without pretending the engines are equivalent.
 
-**Universal does not mean that every vendor is supported today.** The target includes relational SQL and non-SQL databases, local and managed cloud deployments, with each native protocol, database model, authentication method and vendor feature independently qualified.
+**NuBloxSQL Driver** is the native programmable foundation; **NuBloxSQL Shell** and **NuBloxSQL Workbench** are terminal and graphical professional applications. **ORM, query builder and other developer-facing technologies are independent capabilities within the wider NuBloxSQL platform**, not automatically part of the Driver or subordinate to the applications.
+
+The ambition to become the tool of choice must be **earned and verified** through demonstrable depth, reliability, performance, security and user productivity. The authoritative scope is [the product definition](docs/PRODUCT.md).
+
+**Universal describes the intended destination, not current vendor coverage.** The target includes relational SQL and non-SQL databases, local and managed cloud deployments, with each native protocol, database model, authentication method and vendor feature independently qualified.
 
 This is a deliberately clean restart. The previous implementation is preserved on [archive/legacy-implementation-2026-10-16](https://github.com/NuBlox/NuBloxSQL/tree/archive/legacy-implementation-2026-10-16), at commit `4ed0e35fbfe71ac110c9ec41cf62ba3355e9d56c`. Existing v1 npm releases are historical artefacts; **this branch must not be treated as their source or published over them**.
 
 ## Read this, in order
 
-1. [Product definition](docs/PRODUCT.md) — **what, why, who, where, when and how**.
+1. [Product definition](docs/PRODUCT.md) — **mission, strategic capability families, audience and non-goals**.
 2. [Users and lifecycle](docs/USERS-AND-LIFECYCLE.md) — the work NuBloxSQL must make possible.
 3. [Database careers and job roles](docs/CAREERS.md) — 18 families, 240 role entries and vendor specialisations.
 4. [TASK-001: inspect a database](docs/TASK-001.md) — proposed first complete Driver/Shell/Workbench workflow and work-product schema.
 5. [Requirements](docs/REQUIREMENTS.md) — what must be demonstrated and accepted.
-6. [Architecture](docs/ARCHITECTURE.md) — hard product/module boundaries.
+6. [Architecture](docs/ARCHITECTURE.md) — native infrastructure, composable technologies and application boundaries.
 7. [Support and qualification](docs/SUPPORT-AND-QUALIFICATION.md) — truthful vendor and cloud support.
 8. [Roadmap](docs/ROADMAP.md) — gated delivery order.
 9. [Decision log](docs/DECISIONS.md) — agreed decisions versus open questions.
@@ -41,9 +43,9 @@ On Node.js 24, run `npm ci`, `npm run build` and `npm run test:unit`. Live tests
 
 ## Ground rules
 
-- **Specification before implementation.** No new driver, CLI, Workbench, vendor integration or package until requirements and its qualification criteria are approved.
+- **Mission before implementation.** Every Driver, ORM, query builder, Shell, Workbench or other feature must trace to a professional or developer outcome, accepted interfaces and qualification evidence.
 - **One source of truth for each topic.** Update the appropriate document; do not create a competing blueprint, wave, phase, registry or roadmap.
-- **No fake compatibility.** SQL and non-SQL native semantics remain distinct. Catalogue entries are not implemented adapters. Cloud hosting is not equivalent to proven cloud authentication.
+- **No fake compatibility or superiority.** SQL and non-SQL native semantics remain distinct, interoperability needs evidence, a catalogue entry is not an adapter, and comparative superiority needs reproducible benchmarking.
 - **Preserve history.** Never delete or rewrite the archive; recover useful prior code selectively, after a requirement and interface contract justify it.
 - **Incremental qualification:** private TypeScript packages may now be introduced only for approved TASK-001 outcomes; live tests and work-product evidence are mandatory before support claims. Avoid unrelated feature expansion.
 

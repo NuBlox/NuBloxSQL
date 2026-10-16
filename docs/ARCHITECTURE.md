@@ -1,22 +1,27 @@
 # Proposed architecture and first private implementation — not a released product
 
-Design is **dependency directed**: tools consume the Driver's public API, which composes native database adapters. The architecture is a hypothesis until verified through a thin vertical implementation.
+**Platform scope is defined by [PRODUCT.md](PRODUCT.md), not by the size of today's executable slice.** The Driver is a foundational native technology within the larger platform; ORM, query builder, schema/migration and other independently consumable developer capabilities must not be misclassified as Shell/Workbench functionality or forced inside the Driver. Implementation dependency direction remains explicit, with native database adapters owned by NuBloxSQL.
 
 ~~~text
-NuBloxSQL Shell (CLI / REPL)    NuBloxSQL Workbench (SvelteKit)
-            |                             |
-            +-----> public Driver API <---+
-                        |
-            capability + policy boundary
-                        |
-       shared runtime contracts / resource lifecycle
-                        |
-       +----------------+----------------+
-       |                |                |
-   SQL adapters     document/kv/...   deployment/auth
-   + dialects       native adapters   provider boundary
-       |                |                |
-  qualified DBMS     qualified DBMS   cloud/local target
+       Application developers             Database professionals
+                  |                                |
+   ORM / model APIs / query builders        Shell / Workbench
+   schema & migrations / developer SDKs     design / operations / automation
+                  |                                |
+                  +------------+-------------------+
+                               |
+                  NuBloxSQL public capability APIs
+                  metadata / query / policy / lifecycle
+                               |
+                 First-party native Driver foundation
+                 protocol + identity + query semantics
+                               |
+              SQL and non-SQL model-native implementations
+                               |
+              Qualified DBMS / version / deployment targets
+
+  Long-term interoperability: explicit vendor-aware translation/bridges,
+  governed by native capability evidence and semantic-loss disclosure.
 ~~~
 
 ## Separate axes — never conflate
@@ -29,11 +34,26 @@ NuBloxSQL Shell (CLI / REPL)    NuBloxSQL Workbench (SvelteKit)
 
 A vendor catalogue is descriptive; it cannot route operations until an adapter exists. A managed service that speaks PostgreSQL may reuse a PostgreSQL wire adapter, but only after its actual TLS, authentication, endpoint and token-lifecycle combinations are validated.
 
+## Platform composition and boundaries
+
+- **Native Driver foundation:** first-party protocols, DBMS sessions, authentication, native types, parameter binding, transactions, metadata, errors and capability contracts.
+- **Developer technologies:** ORM (where relational semantics apply), model-native mappings, query builders, query processing, schema diff/migrations, SDKs, testing and development tools. They consume public Driver/native capabilities and are independently useful **without Shell or Workbench**.
+- **Professional tooling:** Shell, Workbench and independently justified task services for the entire database lifecycle; command/UI experiences use shared public APIs and work products.
+- **Interoperability:** a future optional semantic translation/compatibility layer above native adapters. It must declare when a cross-vendor operation is equivalent, emulated, lossy or unsupported. It must never silently misrepresent vendor behaviour.
+- **Common platform services:** typed contracts, secure credential/profile resolution, durable jobs where needed, authorisation policy, audit and observability. Keep these distinct from vendor protocol adapters.
+- **External boundaries:** authorised cloud identity, database provisioning or deployment providers; NuBloxSQL is not an arbitrary cloud account or generic infrastructure administrator.
+
+The platform is **not constrained to a fixed number of libraries or applications**. Create new packages only when their public contracts and acceptance tests justify independent consumption, never as empty placeholders.
+
+## First delivery slice — not the product boundary
+
+The current private PostgreSQL read-only inventory Driver and Shell are the first verified experiment towards the larger platform. Missing ORM, query builder, Workbench, migration, other vendor and interoperability implementations remain explicit future work.
+
 ## Product boundaries
 
 - **Driver:** owns native adapters, operation contracts, metadata, resource control, errors, capability negotiation and explicitly database-scoped lifecycle primitives.
-- **Shell:** owns commands, interactivity, human/machine output, scripting and task flows.
-- **Workbench:** owns accessible UI, inspection, editing, guided operations and review/approval experiences.
+- **Shell:** owns commands, interactivity, human/machine output, scripting and task flows; it does not own shared ORM, query builder or vendor semantics.
+- **Workbench:** owns accessible UI, inspection, editing, guided operations and review/approval experiences; independent developer technologies are not tied to its lifecycle.
 - **Providers:** constrained external mechanisms for identity, connection or database installation; no arbitrary cloud/host management inside the Driver.
 - **Durable jobs:** shared application service for authorised database-specific work; job state is not a new database model or an excuse to embed orchestration in every adapter.
 
@@ -71,6 +91,10 @@ NuBloxSQL's proprietary product identity is **not simply a matter of the licence
 - Observability events have stable schema and avoid credential/statement leaks.
 - Shell and Workbench never import private adapter/runtime paths.
 - Cloud secret acquisition, tunnel creation and token refresh are explicitly contracted, not assumed.
+
+## Avoid accidental scope narrowing
+
+The first Driver → Shell → Workbench task is an **integration acceptance exercise**, not the complete NuBloxSQL product taxonomy. Develop model-aware libraries and services as specified, without duplicating core semantics inside UIs. Do not add third-party DBMS client drivers to first-party native adapters. Benchmark quality with realistic tasks and honest comparable evidence, not file counts.
 
 ## Quality gate
 
