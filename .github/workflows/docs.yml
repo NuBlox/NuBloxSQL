@@ -28,10 +28,12 @@ jobs:
           test ! -d scripts
           python3 - <<'PY'
           from pathlib import Path
+          import json
           import re
           docs = [
               'docs/PRODUCT.md',
               'docs/USERS-AND-LIFECYCLE.md',
+              'docs/CAREERS.md',
               'docs/REQUIREMENTS.md',
               'docs/ARCHITECTURE.md',
               'docs/WORK-REGISTER.md',
@@ -50,5 +52,21 @@ jobs:
                   if not target:
                       continue
                   assert (md.parent / target).exists(), f'Broken local link: {md}: {link}'
-          print('NuBloxSQL docs-only authority and links: PASS')
+          careers = json.loads(Path('docs/data/database-careers.json').read_text())
+          assert careers['schemaVersion'] == 1
+          assert careers['kind'] == 'database-careers-and-technology-specialisations'
+          tracks = careers['tracks']
+          families = careers['families']
+          specialties = careers['technologySpecializations']
+          assert len(tracks) == 6 and len({t['id'] for t in tracks}) == 6
+          assert len(families) == 18 and len({f['id'] for f in families}) == 18
+          assert {f['track'] for f in families}.issubset({t['id'] for t in tracks})
+          roles = [role for family in families for role in family['jobTitles']]
+          assert len(roles) == 240 and len(set(roles)) == 239
+          assert roles.count('Data Warehouse Architect') == 2
+          assert len(specialties) == 18
+          assert len({s['id'] for s in specialties}) == 18
+          assert all(s['technology'] and s['exampleRole'] for s in specialties)
+          assert careers['workAuthority'] == 'docs/WORK-REGISTER.md'
+          print('NuBloxSQL documentation and career taxonomy: PASS')
           PY

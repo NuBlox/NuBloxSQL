@@ -23,8 +23,12 @@ A database career title is not a permission, role assignment or feature. Capture
 
 Each task needs a unique ID, actor, starting state, target DBMS/version, required authorisations, inputs, operation semantics, failure strategy, final state, work-product schema, Shell interface, Workbench interface, tests and evidence paths. Both tools must use the Driver public API. **UI coverage without a complete verified result is not completion.**
 
-## Existing profession catalogue
+## Career taxonomy and prior candidate activities
 
-The archived design-input register contains **6 tracks, 18 families, 40 candidate activities and 11 phases**, plus career examples. It remains accessible at [archived database-profession-work-register.json](https://github.com/NuBlox/NuBloxSQL/blob/archive/legacy-implementation-2026-10-16/docs/product/database-profession-work-register.json). Do not copy it wholesale into the new baseline. Review tasks for actual database responsibility, boundary with downstream analytics, duplicate activities, missing governance work and acceptance criteria.
+The [current career catalogue](CAREERS.md) is the user-affirmed authority for **6 groups, 18 career families, 240 job-title entries and 18 technology specialisations**; its [canonical data file](data/database-careers.json) is intentionally separate from this **task/work-product** register.
+
+The old [40-activity profession-work register](https://github.com/NuBlox/NuBloxSQL/blob/archive/legacy-implementation-2026-10-16/docs/product/database-profession-work-register.json) remains an archived *candidate* requirements input, not imported implementation. Review each activity for actual database responsibilities, overlap with downstream analytics/AI, missing governance activities and demonstrable acceptance evidence.
+
+Every prioritised task must reference the relevant career family IDs (for example `family-04`) and specify governance/delivery context without assigning privileges based on job titles.
 
 Before code begins, validate TASK-001 and TASK-002 in [REQUIREMENTS.md](REQUIREMENTS.md), including a real target engine and their work-product output contracts.

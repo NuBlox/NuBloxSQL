@@ -22,7 +22,9 @@ Database professionals repeatedly switch between vendor tools, connection conven
 
 ## Who is it for?
 
-Primary: database administrators, architects, developers, engineers, platform/reliability engineers, operators, security specialists and migration specialists. Secondary: application developers and automation developers who need one programmable entry point.
+The [authoritative career taxonomy](CAREERS.md) establishes **six professional groups spanning 18 career families**: strategy/architecture/engineering; administration/operations; security/governance; data movement/analytics; specialist/non-relational technologies; and change/quality/innovation/consultancy. It preserves 240 job-title entries and 18 vendor/technology specialisations as *research inputs*.
+
+Primary users are database administrators, architects, developers, platform/reliability engineers, operators, security specialists and migration specialists. Adjacent stakeholders include governance, analytics, AI, enterprise leadership and consultancy roles **where their tasks touch native database capabilities and evidence**. The career list expands the user research lens, not the Driver's scope into ERP, BI or ML training.
 
 Careers are a **requirements-discovery lens**, not access rights. Authorisation is determined by authenticated identity, database privileges, approved action and environment controls.
 
