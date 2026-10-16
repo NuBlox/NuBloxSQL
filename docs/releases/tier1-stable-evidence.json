@@ -261,6 +261,8 @@
     "docs/architecture/REPOSITORY-STRUCTURE.md",
     "lib/client/runtime/ConnectionTargets.js",
     "test/client-connection-targets.js",
+    "lib/client/runtime/TransactionRunner.js",
+    "test/client-transaction-runner.js",
     "scripts/check-repository-structure.js",
     "scripts/release/dml/check-dml-v5-release.js"
   ]

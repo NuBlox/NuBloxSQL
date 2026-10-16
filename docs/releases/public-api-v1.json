@@ -307,6 +307,7 @@
     "lib/client/runtime/ResultNormalization.js",
     "lib/client/runtime/PreparedBindings.js",
     "lib/client/runtime/ConnectionTargets.js",
+    "lib/client/runtime/TransactionRunner.js",
     "types/native.d.ts",
     "lib/dialects/redis/index.js",
     "lib/dialects/redis/lib/Resp2.js",
