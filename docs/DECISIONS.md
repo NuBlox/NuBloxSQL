@@ -16,16 +16,13 @@ This is the only decision log. “Proposed” means review is still required; it
 | ADR-008 | Preserve the proprietary licence and ownership notice | Avoid unintentional relicensing |
 | ADR-009 | Use one career taxonomy data file for the 6 groups, 18 families, 240 role entries and 18 technology examples | Preserve the user-supplied research dataset without equating titles to permissions, features or supported vendors; tasks stay authoritative in WORK-REGISTER.md |
 | ADR-010 | Catalogue 40 archived and 24 gap candidate activities with explicit work products and independent acceptance evidence | Make gaps reviewable without treating research input as delivered functionality; keep WORK-REGISTER.md and its one JSON dataset authoritative |
-| ADR-011 | Specify TASK-001 with one common Driver/Shell/Workbench database inventory work-product contract | Establish a concrete vertical integration acceptance target before implementing packages; PostgreSQL version, API method names and TLS fixtures remain proposals |
+| ADR-011 | Specify TASK-001 with one common Driver/Shell/Workbench database inventory work-product contract | Establish a concrete vertical integration acceptance target before implementing packages |
+| ADR-012 | Accept TASK-001's PostgreSQL 17 discovery contract, safe error/schema examples, native CONNECT visibility filter, Node 24/strict TS/ESM/npm workspaces and independent SvelteKit Workbench server | Close G0 for a bounded, testable vertical slice; native `pg` transport is an adapter dependency, not a claim of proprietary wire-protocol implementation; all release support remains unqualified |
 
 ## Proposed decisions requiring specification review
 
 | ID | Proposal | What must be decided |
 | --- | --- | --- |
-| ADR-P01 | TypeScript + Node.js for headless Driver/Shell | Module format, package manager, release targets, minimal supported Node |
-| ADR-P02 | SvelteKit for Workbench | Web/server/local deployment and privilege boundary |
-| ADR-P03 | PostgreSQL first vertical slice (TASK-001) | Version(s), fixture, required capabilities and acceptance contract |
-| ADR-P04 | Split packages into Driver, native adapters and independent apps | Precise package topology, plugin/runtime dependency policy |
 | ADR-P05 | Initially use simple operation execution; add durable jobs when required | Checkpointing, approval, audit and target-fencing criteria |
 | ADR-P06 | Separate public reusable database APIs from environment provider APIs | Remote installation/cloud identity and destructive action contracts |
 

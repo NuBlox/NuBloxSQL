@@ -1,6 +1,6 @@
 # NuBloxSQL
 
-**Status: documentation-first reboot — no runnable application or published package is built from this branch.**
+**Status: G0 engineering specification established — no runnable application or published package is built from this branch.**
 
 NuBloxSQL is a proposed **universal database connectivity and professional database-work platform**. It consists of three distinct products:
 
@@ -29,7 +29,7 @@ This is a deliberately clean restart. The previous implementation is preserved o
 
 ## GitHub repository protection
 
-The [administrator ruleset procedure](docs/admin/README.md) defines the required PR/CI protection for `main` and immutability of the archived implementation. **Protection remains inactive until the repository owner executes the installer.** Follow [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328).
+The [administrator ruleset procedure](docs/admin/README.md) defines the required PR/CI protection for `main` and immutability of the archived implementation. **Both branches are now protected** (active rulesets #25231727 and #25231728); the owner may run the final read-only verifier. Follow [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328).
 
 ## Ground rules
 

@@ -1,7 +1,7 @@
 # TASK-001 — inspect a real database and export an inventory
 
-**Status:** **Proposed** vertical-slice specification; not approved, implemented, qualified or released.
-**First candidate:** a single **PostgreSQL** engine/version running in an isolated repeatable integration fixture. Exact engine version and connection settings must be pinned at implementation review; the broader universal-driver ambition is not a promise here.
+**Status (16 October 2026):** G0 **engineering baseline accepted for implementation**, not implemented, live-qualified or released. No public npm API exists yet.
+**Initial target:** **PostgreSQL 17** in a disposable CI container. Additional PostgreSQL versions, all other DBMS vendors and managed-cloud offerings require separate evidence.
 
 ## User outcome
 
@@ -36,18 +36,54 @@ These are requirement relationships only; neither the roles nor the activities g
 | Authorisation | User identity, allowed metadata scope and native permissions verified at execution time; role names from the career taxonomy do not authorise actions |
 | Intent | Read-only metadata inspection; no DDL/DML, privilege elevation, unrestricted arbitrary statements or discovery outside the authorised target |
 
-**Assumptions still to approve:** the primary PostgreSQL engine version, supported login method and TLS test fixture, installation/distribution model for each surface, and the exact naming of the public API methods. These are not implementation facts.
+## Engineering decisions for G0
+
+- **Target:** PostgreSQL 17 as the first CI qualification fixture (pin `postgres:17` to a digest in the G1 pipeline). This is a **test target**, not current release support.
+- **Runtime/build:** Node.js 24 baseline, strict TypeScript with ESM/`NodeNext` module semantics, an npm-workspaces monorepo and committed lockfile. Distinct Driver, Shell and Workbench packages must remain private until independently qualified. Use the native `pg` Node transport library behind a NuBloxSQL PostgreSQL adapter for the first discovery implementation; **do not claim NuBloxSQL has reimplemented the PostgreSQL wire protocol**.
+- **API:** `inspectDatabase(profile, options): Promise<InventoryV1>`. The Driver owns native discovery. `profile` is resolved on the trusted server/process side; accepted fields are explicitly allowlisted rather than handing arbitrary options/connection strings to `pg`. `options` include `maxDatabases` (1–1000, default 100), finite timeout and abort signal.
+- **CLI:** `nublox shell inspect --profile ALIAS --format json --output PATH`. A private connection profile/secret resolver runs locally; passwords never appear in flags or work products. The CLI must write atomic, permission-restricted output and return nonzero on failure.
+- **Workbench:** local/private SvelteKit server-side operations call the Driver API. No `pg` connection or secrets in browser bundles, stores, JSON responses or local storage. Export exactly the same canonical inventory object.
+- **Authentication:** PostgreSQL SCRAM/password fixture from CI secrets/environment only. Do not persist raw secrets or include connection strings in diagnostics.
+- **Transport:** loopback `127.0.0.1` **only** for explicitly configured isolated test connections without TLS. Non-loopback connections require **certificate-chain and hostname verification**; TLS fallback, `rejectUnauthorized:false`, credentials in URI strings and claimed cloud qualification are forbidden. A separate TLS-enabled negative/positive test fixture is required before remote target support is released.
+- **Error:** failures use the [safe error v1 contract](contracts/database-operation-error-v1.schema.json), never an inventory with `status=completed`, a leaked raw `pg` exception or an unredacted target string.
+- **Scope:** source catalog rows are filtered by native `CONNECT` privilege and `datallowconn`; `visible` does not mean “every database in the cluster,” and `CONNECT` privilege does **not** prove a network/host-based connection is possible.
+
+These are **approved design choices for the first implementation only**. Success remains gated on reproducible tests, public API review, secure export behaviour and real DBMS → Driver → both tools integration.
 
 ## Expected behaviour
 
 1. Validate a profile alias and qualified native adapter identity; reject unknown/unimplemented vendors.
 2. Establish the database connection with the requested verified security controls. Authenticate the real target and enforce timeout/cleanup.
-3. Query native, **read-only**, privilege-scoped PostgreSQL catalog/identity interfaces; obtain the current database, current principal, version and database entries visible to that principal.
+3. Read the native PostgreSQL identity using parameter-free built-ins, and read the shared `pg_catalog.pg_database` with the exact `CONNECT` privilege and `datallowconn` filter below. PostgreSQL's `pg_database` may expose names without `CONNECT` permission; **never treat bare catalog rows as authorised inventory**. <https://www.postgresql.org/docs/17/catalog-pg-database.html>
 4. Return typed, deterministically ordered records; cap the number of entries and record `truncated` accurately. Do not infer that hidden databases do not exist.
 5. Mark every observed native capability with evidence status. Unsupported or unobserved features remain `unsupported` or `unknown`; never manufacture capability availability.
 6. Create exactly one result envelope conforming to the [inventory v1 schema](contracts/database-inventory-v1.schema.json), with a capture timestamp, source alias, redacted identity, native version and visibility caveat.
 7. Export that **same envelope schema** through the public Driver, scriptable Shell and Workbench; only presentation changes. All three must preserve warnings, completeness and error state.
 8. Always release native sessions, statements, timers and streams on success, failure or cancellation. Return a separately coded failure (not a forged successful inventory) when connection or core identity discovery cannot complete.
+
+## PostgreSQL 17 read-only discovery oracle
+
+The first adapter must use static, reviewed PostgreSQL catalog queries rather than accepting caller-supplied SQL. Run the following under a least-privilege identity and a finite timeout; the Driver alone owns the query semantics.
+
+```sql
+SELECT current_database() AS current_database,
+       current_user AS current_principal,
+       current_setting('server_version') AS engine_version,
+       current_setting('server_version_num')::integer AS server_version_number;
+
+SELECT datname::text AS name
+FROM pg_catalog.pg_database
+WHERE datallowconn IS TRUE
+  AND has_database_privilege(oid, 'CONNECT') IS TRUE
+ORDER BY datname::text COLLATE "C"
+LIMIT $1;
+```
+
+Bind `$1 = maxDatabases + 1`, validate the bound (1–1000), retain only the first `maxDatabases` returned rows and mark `capture.truncated=true` and `status=partial` if the extra row exists. Never interpolate an identifier, a free-form catalog filter or SQL from the profile alias. PostgreSQL lists database catalog entries separately from SQL `CONNECT` privileges, and host-based access may still deny a connection. See the official [PostgreSQL 17 catalogue](https://www.postgresql.org/docs/17/catalog-pg-database.html) and [privilege inquiry functions](https://www.postgresql.org/docs/17/functions-info.html).
+
+For local-only test exceptions, explicitly require a disposable loopback target. For network/TLS connections, the client must independently verify certificate chain and DNS hostname; `pg_stat_ssl` may corroborate TLS on the current backend but is **not** a substitute for client-side certificate verification. See [pg_stat_ssl](https://www.postgresql.org/docs/17/monitoring-stats.html) and [node-postgres SSL configuration](https://node-postgres.com/features/ssl).
+
+A result envelope is `completed` only when all queried fields are collected for its permitted scope without truncation or omissions. Any warning communicating incomplete metadata makes `status=partial`. True authentication, TLS, timeout and discovery failures must throw a safe error object rather than returning a plausible but false inventory.
 
 ## Work-product semantics
 
@@ -58,22 +94,22 @@ The machine-readable response is scoped to the principal's observable catalog pr
 - `status`: `completed` or `partial`; `partial` is permitted only when missing/limited metadata is explicitly communicated.
 - `target`: alias, `engineId`, engine version/version number, current database and native current principal. No host, full DSN or secrets.
 - `transportSecurity`: `verified-tls` or `isolated-local`; neither value implies unqualified cloud vendor support.
-- `capture`: ISO UTC timestamp, requested maximum, truncation flag, and `observed-only` completeness.
+- `capture`: ISO UTC timestamp, requested maximum, truncation flag, `observed-only` completeness, and fixed `connect-privilege-and-datallowconn` visibility rule.
 - `capabilities`: only observed native capability decisions with `supported`, `unsupported`, or `unknown` state and provenance.
-- `databases`: ordered native visible database identifiers and accessibility information, with a maximum enforced by the caller's controls.
+- `databases`: ordered permitted database names only; *no* misleading `accessible` flag. A database is included iff the catalog reports `datallowconn` and `has_database_privilege(oid, 'CONNECT')`. Actual network/HBA readiness is not asserted. Names lacking either predicate are **excluded**, even if `pg_database` itself exposes them.
 - `warnings`: typed, redacted explanations of partial permission-limited results or unsupported optional metadata.
 
-The JSON Schema is a **proposed output contract**, not proof that any real database output already conforms. Treat inventory exports as potentially sensitive operational metadata with restricted file permissions and clear retention policies.
+The [v1 JSON Schema](contracts/database-inventory-v1.schema.json), [safe error schema](contracts/database-operation-error-v1.schema.json), and [executable examples](contracts/examples/inventory-success.json) are **accepted G0 contract inputs**, not proof that any real database output already conforms. Treat inventory exports as potentially sensitive operational metadata with restricted file permissions and clear retention policies.
 
 ## Product surface acceptance
 
 | Surface | Proposed contract | Must not do |
 | --- | --- | --- |
-| Driver | `inspectDatabase(profile, controls) → InventoryV1` (conceptual method name, not yet final API) | Import UI/Shell code or fabricate driver capabilities |
-| Shell | Proposed `nublox shell inspect --profile NAME --format json --output PATH`; exit nonzero for failures | Store raw passwords in command history or implement native SQL discovery itself |
+| Driver | `inspectDatabase(profile, options): Promise<InventoryV1>` — accepted G0 API name | Import UI/Shell code or fabricate driver capabilities |
+| Shell | `nublox shell inspect --profile NAME --format json --output PATH`; exit nonzero for failures | Store raw passwords in command history or implement native SQL discovery itself |
 | Workbench | Choose secure connection profile → inspect → review capability/visibility notices → export inventory | Implement private native protocol, silently conceal incomplete discovery or auto-save secrets |
 
-The CLI syntax and API naming must be approved as part of the API design gate. Workbench must have keyboard navigation and accessible error/visibility explanations.
+The API and CLI naming above are the accepted initial G0 interface; exported types, compatibility and release status still require G1–G5 evidence. Workbench must have keyboard navigation and accessible error/visibility explanations.
 
 ## Acceptance scenarios (must run on a real qualified engine)
 
@@ -83,7 +119,7 @@ The CLI syntax and API naming must be approved as part of the API design gate. W
 | INV-02 | Run same operation from Driver, Shell and Workbench | Equivalent canonical inventory data, status, ordering, capability states and warnings; no duplicated native adapter |
 | INV-03 | Authenticate with an invalid or revoked secret | Explicit categorised failure, no captured secret and no leaked connection |
 | INV-04 | Reject invalid certificate or remote connection without required verification | Connection refused; no unsafe fallback to cleartext or unverified TLS |
-| INV-05 | Low-privilege principal with restricted catalog visibility | Observed-only scope, honest partial/permission warning or explicit error; no elevated access |
+| INV-05 | Low-privilege principal when pg_database lists DBs without CONNECT | Exclude database names lacking CONNECT or datallowconn; prove no catalog-name disclosure; no elevation |
 | INV-06 | Inventory limit lower than number of visible databases | Deterministic bounded output, `truncated=true` and `status=partial` |
 | INV-07 | Unreachable target and timeout/cancel during discovery | Bounded failure, clean session disposal, no misleading success document |
 | INV-08 | Unsupported adapter, PostgreSQL version or optional capability | Deterministic unsupported/unknown result; never claim a supported vendor because it is catalogued |
@@ -96,4 +132,4 @@ Mocks may test API-level shape and fault injection but **cannot substitute for r
 
 ## Exit gate
 
-The **specification** is ready to leave draft only when the database-engine version, API naming, schema/error contract, profile security model, fixtures and all test oracle expectations are reviewed and accepted. It becomes **delivered** only after a successful real DBMS → public Driver → Shell + Workbench → common inventory test. No current green docs-only workflow proves that software exists.
+G0's implementation choices are now specified; the next gate (G1) must pin dependency lockfile, PostgreSQL 17 image digest, native discovery test fixtures, and make the strict Node/TypeScript build reproducible. G2 requires live fixture results and TLS negative tests; G3 requires successful real DBMS → public Driver → Shell + Workbench → identical inventory evidence. **No current green docs-only workflow proves that any executable product exists.**

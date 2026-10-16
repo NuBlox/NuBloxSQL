@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0.0",
+  "operation": "database.inspect",
+  "status": "completed",
+  "target": {
+    "alias": "local-fixture",
+    "engineId": "postgresql",
+    "engineVersion": "17.0",
+    "serverVersionNumber": 170000,
+    "currentDatabase": "postgres",
+    "currentPrincipal": "nublox_readonly"
+  },
+  "transportSecurity": "isolated-local",
+  "capture": {
+    "capturedAt": "2026-10-16T09:00:00Z",
+    "maxDatabases": 100,
+    "truncated": false,
+    "completeness": "observed-only",
+    "visibilityRule": "connect-privilege-and-datallowconn"
+  },
+  "capabilities": [
+    {
+      "id": "postgresql.catalog.database-inspection",
+      "state": "supported",
+      "evidence": "native-observation"
+    }
+  ],
+  "databases": [
+    {
+      "name": "postgres"
+    },
+    {
+      "name": "template1"
+    }
+  ],
+  "warnings": []
+}
