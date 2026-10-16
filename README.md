@@ -27,6 +27,10 @@ This is a deliberately clean restart. The previous implementation is preserved o
 
 [Profession work register](docs/WORK-REGISTER.md) maps 64 unreviewed professional activities, expected work products and lifecycle phases to future Shell and Workbench workflows. [The career taxonomy](docs/data/database-careers.json) captures the complete supplied job-title and technology-specialisation list, while archived activity mappings remain provisional and are not blindly inherited.
 
+## GitHub repository protection
+
+The [administrator ruleset procedure](docs/admin/README.md) defines the required PR/CI protection for `main` and immutability of the archived implementation. **Protection remains inactive until the repository owner executes the installer.** Follow [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328).
+
 ## Ground rules
 
 - **Specification before implementation.** No new driver, CLI, Workbench, vendor integration or package until requirements and its qualification criteria are approved.

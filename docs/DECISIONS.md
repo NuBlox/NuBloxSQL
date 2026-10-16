@@ -37,4 +37,4 @@ This is the only decision log. “Proposed” means review is still required; it
 4. Update affected authoritative documents in the same PR.
 5. Add verification criteria before source code.
 
-**Outstanding GitHub administration:** default branch has no enforced ruleset and the new archive ref is not administratively protected. The repository owner must configure both; see [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328). This is not fixed by writing documentation.
+**Outstanding GitHub administration:** the [owner-run branch-protection installer](admin/README.md) contains the proposed exact rulesets and verification checks, but these **cannot be activated through the linked GitHub tool**. The owner must run the administrator-only command on their Mac and record live confirmation in [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328). Do not close it merely because the script is committed.

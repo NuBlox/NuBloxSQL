@@ -40,6 +40,10 @@ Restore **individual files or ideas onto a new feature branch**, only after requ
 
 Earlier npm v1 artefacts, release records and historical licence grants are not revoked or replaced by this documentation reset. The new default branch deliberately has **no package manifest and no publishing workflow**, so it cannot be mistaken for a functioning new release. The exact historical licence remains in this repository's LICENSE.
 
+## Branch-protection installer
+
+The [GitHub administrator procedure](admin/README.md) provides two exact ruleset manifests and a verification script for `main` and this archive. The script must be run through the repository owner's admin-authenticated GitHub CLI session. **Committing the installer is not evidence of live GitHub protection.** See [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328).
+
 ## Future archive hardening
 
 The repository owner should configure ruleset protection for `main` and `archive/legacy-implementation-2026-10-16`, then ideally add an annotated archival tag using local Git once its target SHA is verified. Do not delete the archive to make the branch list look empty: the archive is intentionally retained.
