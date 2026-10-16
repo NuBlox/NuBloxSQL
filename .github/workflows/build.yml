@@ -1,0 +1,48 @@
+name: Build and live PostgreSQL slice
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  driver-shell:
+    name: Node 24 — Driver and Shell
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-fixture-admin-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned npm workspace dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Build strict TypeScript Driver and Shell
+        run: npm run build
+      - name: Test contracts, boundaries and CLI
+        run: node --test tests/inventory-contract.test.mjs tests/shell-interface.test.mjs
+      - name: Live PostgreSQL 17 discovery and privilege filtering
+        env:
+          NUBLOXSQL_CI_ADMIN_PASSWORD: ci-fixture-admin-only
+        run: node --test tests/live-postgres.test.mjs
+      - name: Export lockfile for reproducible npm ci follow-up
+        shell: bash
+        run: |
+          echo NUBLOXSQL_LOCK_BEGIN
+          base64 -w0 package-lock.json
+          echo
+          echo NUBLOXSQL_LOCK_END
