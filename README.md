@@ -29,7 +29,7 @@ This is a deliberately clean restart. The previous implementation is preserved o
 
 ## GitHub repository protection
 
-The [administrator ruleset procedure](docs/admin/README.md) defines the required PR/CI protection for `main` and immutability of the archived implementation. **Both branches are now protected** (active rulesets #25231727 and #25231728); the owner may run the final read-only verifier. Follow [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328).
+The [administrator ruleset procedure](docs/admin/README.md) defines the required PR/CI protection for `main` and immutability of the archived implementation. **Both branches are now protected** (active rulesets #25231727 and #25231728); the owner may run the final read-only verifier. Now that runtime CI exists, the owner must also require the always-on Node check; [the guarded upgrade instructions](docs/admin/README.md) and [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328) track this last administrator action.
 
 ## First executable slice — not a released product
 
