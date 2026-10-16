@@ -1,6 +1,11 @@
 NuBloxSQL
 Copyright (c) 2026 Stephen J T Spittal. All rights reserved.
 
-NuBloxSQL v1 is proprietary software. See LICENSE for the terms governing the current v1 release line.
+NuBloxSQL is proprietary software. See LICENSE for applicable current terms.
 
-Historical versions or commits previously distributed under other licence terms remain governed by the rights validly granted for those historical copies.
+The default branch is a documentation-first reboot and is not a distributable runtime.
+The previous implementation and its release evidence are preserved on
+archive/legacy-implementation-2026-10-16.
+
+Historic copies and releases remain governed by their applicable historical
+licence grants. This repository reset does not revoke prior permissions.
