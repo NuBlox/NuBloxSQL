@@ -17,6 +17,7 @@ This is a deliberately clean restart. The previous implementation is preserved o
 1. [Product definition](docs/PRODUCT.md) — **what, why, who, where, when and how**.
 2. [Users and lifecycle](docs/USERS-AND-LIFECYCLE.md) — the work NuBloxSQL must make possible.
 3. [Database careers and job roles](docs/CAREERS.md) — 18 families, 240 role entries and vendor specialisations.
+10. [TASK-001: inspect a database](docs/TASK-001.md) — proposed first complete Driver/Shell/Workbench workflow and work-product schema.
 4. [Requirements](docs/REQUIREMENTS.md) — what must be demonstrated and accepted.
 5. [Architecture](docs/ARCHITECTURE.md) — hard product/module boundaries.
 6. [Support and qualification](docs/SUPPORT-AND-QUALIFICATION.md) — truthful vendor and cloud support.

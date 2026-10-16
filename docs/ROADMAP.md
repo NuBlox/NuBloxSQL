@@ -18,6 +18,7 @@
 
 **Candidate:** TASK-001, inspect a real PostgreSQL database and export an inventory.
 
+- Review the proposed [TASK-001 specification](TASK-001.md) and [inventory JSON Schema](contracts/database-inventory-v1.schema.json); confirm version/auth/TLS fixture and API method names.
 - Define one typed Driver API request/result/error contract.
 - Define credentials, TLS, privileges, timeouts, safe output, target identity and failure cases.
 - Design Shell help/script output and Workbench user journey based on the same result schema.

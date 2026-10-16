@@ -16,6 +16,7 @@ This is the only decision log. “Proposed” means review is still required; it
 | ADR-008 | Preserve the proprietary licence and ownership notice | Avoid unintentional relicensing |
 | ADR-009 | Use one career taxonomy data file for the 6 groups, 18 families, 240 role entries and 18 technology examples | Preserve the user-supplied research dataset without equating titles to permissions, features or supported vendors; tasks stay authoritative in WORK-REGISTER.md |
 | ADR-010 | Catalogue 40 archived and 24 gap candidate activities with explicit work products and independent acceptance evidence | Make gaps reviewable without treating research input as delivered functionality; keep WORK-REGISTER.md and its one JSON dataset authoritative |
+| ADR-011 | Specify TASK-001 with one common Driver/Shell/Workbench database inventory work-product contract | Establish a concrete vertical integration acceptance target before implementing packages; PostgreSQL version, API method names and TLS fixtures remain proposals |
 
 ## Proposed decisions requiring specification review
 
