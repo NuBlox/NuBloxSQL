@@ -1,0 +1,496 @@
+{
+  "schemaVersion": 1,
+  "kind": "database-careers-and-technology-specialisations",
+  "status": "requirements-research-input-not-runtime-authorization",
+  "provenance": "User-provided database careers and job roles list, confirmed 16 October 2026; individual family job titles cross-checked against preserved 2026 legacy requirements dataset.",
+  "boundary": "Career labels are not system accounts, database grants, licence roles, approved tasks, executable driver capabilities or release support. Include adjacent analytics, enterprise governance, AI and infrastructure occupations for requirements discovery, not automatic product scope.",
+  "counting": "The same job title may appear in more than one legitimate family; count entries separately and do not silently remove cross-family overlaps.",
+  "tracks": [
+    {
+      "id": "A",
+      "name": "Database strategy, architecture and engineering"
+    },
+    {
+      "id": "B",
+      "name": "Database administration and operational services"
+    },
+    {
+      "id": "C",
+      "name": "Security, governance and regulatory compliance"
+    },
+    {
+      "id": "D",
+      "name": "Data movement, analytics and intelligence"
+    },
+    {
+      "id": "E",
+      "name": "Specialist database technologies"
+    },
+    {
+      "id": "F",
+      "name": "Database change, quality and lifecycle management"
+    }
+  ],
+  "families": [
+    {
+      "id": "family-01",
+      "track": "A",
+      "name": "Database leadership and management",
+      "jobTitles": [
+        "Chief Data Officer (CDO)",
+        "Chief Database Architect",
+        "Chief Information Officer (CIO)",
+        "Director of Database Services",
+        "Director of Data Engineering",
+        "Head of Database Administration",
+        "Head of Database Engineering",
+        "Head of Data Platforms",
+        "Database Services Manager",
+        "Database Operations Manager",
+        "Database Engineering Manager",
+        "Database Team Leader",
+        "Database Technical Lead",
+        "Database Programme Manager"
+      ]
+    },
+    {
+      "id": "family-02",
+      "track": "A",
+      "name": "Database architecture and design",
+      "jobTitles": [
+        "Enterprise Data Architect",
+        "Database Architect",
+        "Data Architect",
+        "Database Solutions Architect",
+        "Cloud Database Architect",
+        "Distributed Database Architect",
+        "Relational Database Architect",
+        "NoSQL Database Architect",
+        "Data Warehouse Architect",
+        "Lakehouse Architect",
+        "Database Designer",
+        "Data Modeller",
+        "Conceptual Data Modeller",
+        "Logical Data Modeller",
+        "Physical Data Modeller",
+        "Information Architect"
+      ]
+    },
+    {
+      "id": "family-03",
+      "track": "A",
+      "name": "Database engineering and development",
+      "jobTitles": [
+        "Database Engineer",
+        "Senior Database Engineer",
+        "Database Developer",
+        "SQL Developer",
+        "SQL Programmer",
+        "PL/SQL Developer",
+        "T-SQL Developer",
+        "Stored Procedure Developer",
+        "Database Application Developer",
+        "Database API Developer",
+        "Backend Software Engineer",
+        "Database Integration Developer",
+        "Database Automation Engineer",
+        "Database Tooling Engineer",
+        "Schema Engineer"
+      ]
+    },
+    {
+      "id": "family-04",
+      "track": "B",
+      "name": "Database administration",
+      "jobTitles": [
+        "Database Administrator (DBA)",
+        "Junior DBA",
+        "Senior DBA",
+        "Principal DBA",
+        "Systems DBA",
+        "Application DBA",
+        "Production DBA",
+        "Development DBA",
+        "Cloud DBA",
+        "Database Infrastructure Administrator",
+        "Database Platform Administrator",
+        "Database Configuration Administrator",
+        "Database Access Administrator",
+        "Database Maintenance Administrator"
+      ]
+    },
+    {
+      "id": "family-05",
+      "track": "B",
+      "name": "Installation, provisioning and configuration",
+      "jobTitles": [
+        "Database Installation Engineer",
+        "Database Deployment Engineer",
+        "Database Provisioning Engineer",
+        "Database Configuration Engineer",
+        "Database Infrastructure Engineer",
+        "Cloud Database Provisioning Engineer",
+        "Database Build Engineer",
+        "Database Environment Manager",
+        "Database Automation Specialist",
+        "Infrastructure as Code Engineer",
+        "Database Platform Engineer"
+      ]
+    },
+    {
+      "id": "family-06",
+      "track": "B",
+      "name": "Performance, capacity and reliability",
+      "jobTitles": [
+        "Database Performance Engineer",
+        "Database Performance Tuning Specialist",
+        "SQL Query Optimisation Specialist",
+        "Database Reliability Engineer (DBRE)",
+        "Database Site Reliability Engineer (SRE)",
+        "Database Capacity Planning Analyst",
+        "Database Scalability Engineer",
+        "Database Availability Engineer",
+        "Database Replication Engineer",
+        "Database Monitoring Engineer",
+        "Database Observability Engineer",
+        "Database Performance Analyst"
+      ]
+    },
+    {
+      "id": "family-07",
+      "track": "B",
+      "name": "Backup, recovery and business continuity",
+      "jobTitles": [
+        "Database Backup Administrator",
+        "Database Recovery Specialist",
+        "Database Disaster Recovery Engineer",
+        "Database High Availability Engineer",
+        "Database Resilience Architect",
+        "Database Replication Specialist",
+        "Database Continuity Manager",
+        "Database Recovery Test Engineer",
+        "Database Archiving Specialist"
+      ]
+    },
+    {
+      "id": "family-08",
+      "track": "B",
+      "name": "Database support and service operations",
+      "jobTitles": [
+        "Database Support Analyst",
+        "Database Support Engineer",
+        "Database Technical Support Specialist",
+        "Database Incident Manager",
+        "Database Problem Manager",
+        "Database Service Delivery Manager",
+        "Database Operations Analyst",
+        "Database Service Desk Analyst",
+        "Database Vendor Support Engineer",
+        "Database Maintenance Engineer"
+      ]
+    },
+    {
+      "id": "family-09",
+      "track": "C",
+      "name": "Database security",
+      "jobTitles": [
+        "Database Security Architect",
+        "Database Security Engineer",
+        "Database Security Administrator",
+        "Database Access Control Specialist",
+        "Database Identity and Access Management Specialist",
+        "Database Encryption Specialist",
+        "Database Vulnerability Analyst",
+        "Database Security Auditor",
+        "Database Security Monitoring Analyst",
+        "Database Forensics Specialist",
+        "Database Security Incident Responder"
+      ]
+    },
+    {
+      "id": "family-10",
+      "track": "C",
+      "name": "Data governance and information management",
+      "jobTitles": [
+        "Data Governance Manager",
+        "Data Governance Analyst",
+        "Data Steward",
+        "Data Owner",
+        "Data Custodian",
+        "Data Quality Manager",
+        "Data Quality Analyst",
+        "Master Data Management Specialist",
+        "Metadata Management Specialist",
+        "Data Catalogue Manager",
+        "Data Lineage Analyst",
+        "Data Lifecycle Manager",
+        "Information Management Specialist",
+        "Data Standards Manager",
+        "Data Privacy Officer",
+        "Data Retention Specialist",
+        "Data Compliance Analyst"
+      ]
+    },
+    {
+      "id": "family-11",
+      "track": "D",
+      "name": "Data engineering and integration",
+      "jobTitles": [
+        "Data Engineer",
+        "Senior Data Engineer",
+        "Principal Data Engineer",
+        "Data Integration Engineer",
+        "Data Pipeline Engineer",
+        "ETL Developer",
+        "ELT Developer",
+        "Data Integration Architect",
+        "Data Ingestion Engineer",
+        "Change Data Capture (CDC) Specialist",
+        "Data Replication Specialist",
+        "Data Mapping Specialist",
+        "Data Transformation Engineer",
+        "Data Interoperability Engineer",
+        "Streaming Data Engineer"
+      ]
+    },
+    {
+      "id": "family-12",
+      "track": "D",
+      "name": "Data warehousing and business intelligence",
+      "jobTitles": [
+        "Data Warehouse Developer",
+        "Data Warehouse Engineer",
+        "Data Warehouse Administrator",
+        "Data Warehouse Architect",
+        "Business Intelligence Developer",
+        "Business Intelligence Analyst",
+        "Business Intelligence Engineer",
+        "Analytics Engineer",
+        "Data Analyst",
+        "Reporting Developer",
+        "SQL Reporting Analyst",
+        "Data Mart Developer",
+        "OLAP Developer",
+        "Semantic Data Modeller",
+        "Dashboard Developer",
+        "Database Reporting Specialist"
+      ]
+    },
+    {
+      "id": "family-13",
+      "track": "E",
+      "name": "Distributed, non-relational and emerging databases",
+      "jobTitles": [
+        "NoSQL Database Engineer",
+        "Distributed Database Engineer",
+        "Graph Database Engineer",
+        "Vector Database Engineer",
+        "Time-Series Database Engineer",
+        "Geospatial Database Specialist",
+        "Document Database Specialist",
+        "Key-Value Database Engineer",
+        "Columnar Database Engineer",
+        "In-Memory Database Engineer",
+        "Search Database Engineer",
+        "Real-Time Database Engineer",
+        "Big Data Platform Engineer",
+        "Database Sharding Specialist"
+      ]
+    },
+    {
+      "id": "family-14",
+      "track": "E",
+      "name": "Artificial intelligence and machine learning data systems",
+      "jobTitles": [
+        "AI Data Engineer",
+        "Machine Learning Data Engineer",
+        "Machine Learning Engineer",
+        "Feature Store Engineer",
+        "Vector Search Engineer",
+        "Retrieval-Augmented Generation (RAG) Engineer",
+        "AI Data Infrastructure Engineer",
+        "MLOps Engineer",
+        "Data Scientist",
+        "AI Data Quality Specialist",
+        "Knowledge Graph Engineer"
+      ]
+    },
+    {
+      "id": "family-15",
+      "track": "F",
+      "name": "Database testing and quality assurance",
+      "jobTitles": [
+        "Database Test Engineer",
+        "Database QA Analyst",
+        "Database Test Automation Engineer",
+        "Database Performance Tester",
+        "Database Load Testing Engineer",
+        "Database Stress Testing Engineer",
+        "Database Security Tester",
+        "Database Migration Tester",
+        "Data Validation Specialist",
+        "Data Integrity Analyst",
+        "Test Data Management Specialist",
+        "Database Test Manager"
+      ]
+    },
+    {
+      "id": "family-16",
+      "track": "F",
+      "name": "Database migration, modernisation and retirement",
+      "jobTitles": [
+        "Database Migration Engineer",
+        "Database Migration Architect",
+        "Database Modernisation Consultant",
+        "Legacy Database Specialist",
+        "Database Upgrade Engineer",
+        "Database Patch Management Specialist",
+        "Database Conversion Engineer",
+        "Database Cloud Migration Engineer",
+        "Database Consolidation Specialist",
+        "Database Archiving Engineer",
+        "Database Decommissioning Specialist",
+        "Database Lifecycle Manager",
+        "Database Change Manager",
+        "Database Release Manager"
+      ]
+    },
+    {
+      "id": "family-17",
+      "track": "F",
+      "name": "Database products, research and innovation",
+      "jobTitles": [
+        "Database Research Scientist",
+        "DBMS Software Engineer",
+        "Database Storage Engine Developer",
+        "Database Query Engine Developer",
+        "SQL Parser Engineer",
+        "SQL Compiler Engineer",
+        "Query Optimiser Engineer",
+        "Database Indexing Engineer",
+        "Database Transaction Processing Engineer",
+        "Database Protocol Engineer",
+        "Database Driver Developer",
+        "Database Connector Developer",
+        "Database Product Manager",
+        "Database Technical Product Owner",
+        "Database Technical Writer",
+        "Database Technical Trainer"
+      ]
+    },
+    {
+      "id": "family-18",
+      "track": "F",
+      "name": "Consultancy, advisory and specialist delivery",
+      "jobTitles": [
+        "Database Consultant",
+        "Senior Database Consultant",
+        "Database Solutions Consultant",
+        "Database Implementation Consultant",
+        "Database Performance Consultant",
+        "Database Security Consultant",
+        "Database Migration Consultant",
+        "Data Management Consultant",
+        "Database Technical Account Manager",
+        "Database Pre-Sales Engineer",
+        "Database Solutions Engineer",
+        "Database Trainer",
+        "Freelance Database Specialist"
+      ]
+    }
+  ],
+  "technologySpecializations": [
+    {
+      "id": "mysql",
+      "technology": "MySQL",
+      "exampleRole": "MySQL Database Administrator"
+    },
+    {
+      "id": "postgresql",
+      "technology": "PostgreSQL",
+      "exampleRole": "PostgreSQL Database Engineer"
+    },
+    {
+      "id": "oracle",
+      "technology": "Oracle Database",
+      "exampleRole": "Oracle DBA / PL/SQL Developer"
+    },
+    {
+      "id": "sqlserver",
+      "technology": "Microsoft SQL Server",
+      "exampleRole": "SQL Server DBA / T-SQL Developer"
+    },
+    {
+      "id": "mariadb",
+      "technology": "MariaDB",
+      "exampleRole": "MariaDB Database Administrator"
+    },
+    {
+      "id": "db2",
+      "technology": "IBM Db2",
+      "exampleRole": "Db2 Database Administrator"
+    },
+    {
+      "id": "sqlite",
+      "technology": "SQLite",
+      "exampleRole": "Embedded Database Developer"
+    },
+    {
+      "id": "mongodb",
+      "technology": "MongoDB",
+      "exampleRole": "MongoDB Database Engineer"
+    },
+    {
+      "id": "cassandra",
+      "technology": "Apache Cassandra",
+      "exampleRole": "Cassandra Database Engineer"
+    },
+    {
+      "id": "neo4j",
+      "technology": "Neo4j",
+      "exampleRole": "Graph Database Engineer"
+    },
+    {
+      "id": "redis",
+      "technology": "Redis",
+      "exampleRole": "Redis Database Engineer"
+    },
+    {
+      "id": "snowflake",
+      "technology": "Snowflake",
+      "exampleRole": "Snowflake Data Engineer"
+    },
+    {
+      "id": "aurora-rds",
+      "technology": "Amazon Aurora / RDS",
+      "exampleRole": "AWS Database Engineer"
+    },
+    {
+      "id": "azure-sql",
+      "technology": "Azure SQL",
+      "exampleRole": "Azure Database Administrator"
+    },
+    {
+      "id": "spanner",
+      "technology": "Google Cloud Spanner",
+      "exampleRole": "Distributed Database Engineer"
+    },
+    {
+      "id": "sap-hana",
+      "technology": "SAP HANA",
+      "exampleRole": "SAP HANA Database Administrator"
+    },
+    {
+      "id": "elasticsearch",
+      "technology": "Elasticsearch",
+      "exampleRole": "Search Platform Engineer"
+    },
+    {
+      "id": "influxdb",
+      "technology": "InfluxDB",
+      "exampleRole": "Time-Series Database Engineer"
+    }
+  ],
+  "workAuthority": "docs/WORK-REGISTER.md",
+  "architectureAuthority": "docs/ARCHITECTURE.md"
+}

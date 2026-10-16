@@ -16,14 +16,15 @@ This is a deliberately clean restart. The previous implementation is preserved o
 
 1. [Product definition](docs/PRODUCT.md) — **what, why, who, where, when and how**.
 2. [Users and lifecycle](docs/USERS-AND-LIFECYCLE.md) — the work NuBloxSQL must make possible.
-3. [Requirements](docs/REQUIREMENTS.md) — what must be demonstrated and accepted.
-4. [Architecture](docs/ARCHITECTURE.md) — hard product/module boundaries.
-5. [Support and qualification](docs/SUPPORT-AND-QUALIFICATION.md) — truthful vendor and cloud support.
-6. [Roadmap](docs/ROADMAP.md) — gated delivery order.
-7. [Decision log](docs/DECISIONS.md) — agreed decisions versus open questions.
-8. [Archive and recovery](docs/ARCHIVE.md) — how to inspect or restore previous work.
+3. [Database careers and job roles](docs/CAREERS.md) — 18 families, 240 role entries and vendor specialisations.
+4. [Requirements](docs/REQUIREMENTS.md) — what must be demonstrated and accepted.
+5. [Architecture](docs/ARCHITECTURE.md) — hard product/module boundaries.
+6. [Support and qualification](docs/SUPPORT-AND-QUALIFICATION.md) — truthful vendor and cloud support.
+7. [Roadmap](docs/ROADMAP.md) — gated delivery order.
+8. [Decision log](docs/DECISIONS.md) — agreed decisions versus open questions.
+9. [Archive and recovery](docs/ARCHIVE.md) — how to inspect or restore previous work.
 
-[Profession requirements register](docs/WORK-REGISTER.md) maps lifecycle outcomes to future Shell and Workbench workflows. This is the starting point for validating the previous 40-activity catalogue; it does not blindly inherit it.
+[Profession requirements register](docs/WORK-REGISTER.md) maps lifecycle outcomes to future Shell and Workbench workflows. [The career taxonomy](docs/data/database-careers.json) captures the complete supplied job-title and technology-specialisation list, while archived activity mappings remain provisional and are not blindly inherited.
 
 ## Ground rules
 

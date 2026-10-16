@@ -14,6 +14,7 @@ This is the only decision log. “Proposed” means review is still required; it
 | ADR-006 | Make native vendor support a qualified evidence claim, never a registry-count claim | Testable and trustworthy product |
 | ADR-007 | Define product scope and lifecycle tasks before implementing more code | Prevent repetition and speculative architecture |
 | ADR-008 | Preserve the proprietary licence and ownership notice | Avoid unintentional relicensing |
+| ADR-009 | Use one career taxonomy data file for the 6 groups, 18 families, 240 role entries and 18 technology examples | Preserve the user-supplied research dataset without equating titles to permissions, features or supported vendors; tasks stay authoritative in WORK-REGISTER.md |
 
 ## Proposed decisions requiring specification review
 
