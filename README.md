@@ -25,13 +25,19 @@ This is a deliberately clean restart. The previous implementation is preserved o
 7. [Support and qualification](docs/SUPPORT-AND-QUALIFICATION.md) — truthful vendor and cloud support.
 8. [Roadmap](docs/ROADMAP.md) — gated delivery order.
 9. [Decision log](docs/DECISIONS.md) — agreed decisions versus open questions.
-10. [Archive and recovery](docs/ARCHIVE.md) — how to inspect or restore previous work.
+10. [Archive evidence and reuse assessment](docs/ARCHIVE.md) — audited first-party implementations and engineering modules worth qualifying before writing duplicates.
 
 [Profession work register](docs/WORK-REGISTER.md) maps 64 unreviewed professional activities, expected work products and lifecycle phases to future Shell and Workbench workflows. [The career taxonomy](docs/data/database-careers.json) captures the complete supplied job-title and technology-specialisation list, while archived activity mappings remain provisional and are not blindly inherited.
 
 ## GitHub repository protection
 
 The [administrator ruleset procedure](docs/admin/README.md) defines the required PR/CI protection for `main` and immutability of the archived implementation. **Both branches are now protected** (active rulesets #25231727 and #25231728); the owner may run the final read-only verifier. Now that runtime CI exists, the owner must also require the always-on Node check; [the guarded upgrade instructions](docs/admin/README.md) and [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328) track this last administrator action.
+
+## Reuse existing NuBloxSQL engineering before rewriting
+
+The [immutable archived implementation assessment](docs/ARCHIVE.md) identifies substantial first-party PostgreSQL, MySQL, SQL Server and Redis protocol code and schema/migration/query compiler assets. **These are candidates for comparison and qualification, not current release support.** The archived MongoDB adapter wraps the third-party `mongodb` client and therefore does not satisfy our first-party native protocol rule.
+
+Development must investigate the relevant archived source and tests before implementing replacements. An isolated [archive reference CI job](.github/workflows/archive-assessment.yml) runs selected historic unit suites without modifying the archive.
 
 ## First executable slice — not a released product
 
