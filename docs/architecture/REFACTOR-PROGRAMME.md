@@ -17,7 +17,7 @@ lib/
     administration/      Bootstrap and configuration planning/execution
     discovery/           Read-only server, security and scheduler inventory
     engineering/         Schema intelligence, migration and data movement
-    runtime/               SQL target selection, result and prepared-value helpers
+    runtime/               SQL target/transaction coordination and result helpers
     [root integrations]   Public Client façade, connections, transactions, streaming
   core/                  Shared SQL core
   dialects/<engine>/     Native dialect, protocol, runtime and engine-local tests
@@ -48,7 +48,7 @@ does not itself implement IAM, authentication, tunnelling or provider APIs.
 | SQL connection adapter routing | Extracted into `lib/runtime/SqlAdapterRouter.js` | Alias/URL/error parity, lazy imports, packed client and four dialect runtime tests |
 | Model-neutral native adapter declaration | Internal contract implemented | Contract tests; non-SQL catalogue entries remain non-routable |
 | Native adapter registry and loader safety | Immutable internal registry wired to SQL router | Duplicate-ID rejection, operation gating, lazy cache, no public registration, no non-SQL runtime claims |
-| Connection/transaction/stream/error integrations | Partially complete: SQL target-selection and portable pool-option policy extracted alongside result/binding helpers; remaining Client lifecycle/transaction/stream/error policies | Native engine regression matrix and unchanged public `Client` |
+| Connection/transaction/stream/error integrations | Partially complete: SQL target selection, pool-option policy and base transaction coordinator extracted alongside result/binding helpers; advanced retry/savepoint composition and remaining Client lifecycle/stream/error policies continue separately | Native engine regression matrix and unchanged public `Client` |
 | SQL compiler/parser pipeline (`lib/capabilities/`) | DDL and DML modules grouped by semantic responsibility; AST/query-core regrouping remains | Stable AST and per-dialect compiler regression tests, moved-module packed manifest |
 | DBMS adapters (`lib/dialects/`) | Preserve native isolation | Live MySQL/PostgreSQL/SQLite/SQL Server CI and version evidence |
 | Durable job kernel and lifecycle | Preserve, harden progressively | Job safety, approval, replay and lifecycle checks |
@@ -123,6 +123,22 @@ security, vendor and archival evidence first.
   packaged API and Tier-1 release registers.
 - Connection lifecycle, transaction state, cancellation and metadata
   provider extraction remain separate future increments.
+
+## Base SQL transaction runner boundary (16 October 2026)
+
+- Moved the base SQL transaction coordinator into
+  `lib/client/runtime/TransactionRunner.js` without changing the public
+  `Client.transaction()` signature or native driver behaviour.
+- Preserved pooled `withTransaction`, direct native transaction methods,
+  SQLite begin/commit/rollback, borrowed connection ownership and
+  callback-scoped prepared statement disposal.
+- Preserved the original callback error and its existing
+  `resourceError`/`rollbackError` attachments when cleanup fails.
+- `TransactionIntegration.js` retains nested savepoints, isolation option
+  validation and retry/telemetry wrapping; installation order is unchanged.
+- Added isolated coordinator regression coverage, platform execution and
+  release/Tier-1/package-manifest ownership checks. Cross-engine live CI
+  remains the qualification gate before this refactor can merge.
 
 ## Recommended next owned units
 
