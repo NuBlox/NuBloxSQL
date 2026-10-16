@@ -34,6 +34,7 @@ function exists(relative){return fs.existsSync(path.join(root,relative));}
   'tool',
   'docs/strategy',
   'docs/archive',
+  '.github/workflows/reconcile-obsolete-branches.yml',
   'docs/releases/product-lifecycle-v1.json',
   '.eslintrc',
   '.eslintignore'

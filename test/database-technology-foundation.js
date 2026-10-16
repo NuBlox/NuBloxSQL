@@ -53,6 +53,12 @@ assert.equal(mongoTechnology.runtime.adapter, 'mongodb');
 assert.equal(mongoTechnology.runtime.qualification, 'initial');
 assert.equal(mongoTechnology.sqlDialect, null);
 assert.deepEqual(technologies.inspect('mongodb').executableOperations,['document.read','document.write']);
+const mongoDescriptor = require('../lib/dialects/mongodb').descriptor;
+assert.ok(mongoDescriptor.limitations.includes('no-real-SRV-live-qualification'));
+assert.ok(mongoDescriptor.limitations.includes('no-cloud-IAM-or-Atlas-qualification'));
+assert.ok(!mongoDescriptor.limitations.includes('direct-host-only'));
+assert.ok(!mongoDescriptor.limitations.includes('no-SRV-discovery'));
+assert.ok(Object.isFrozen(mongoDescriptor.limitations));
 assert.ok(sql.createNativeConnection('mongodb',{database:'example'}) instanceof
   require('../lib/dialects/mongodb').MongoNativeConnection);
 assert.throws(()=>sql.createClient({dialect:'mongodb'}),/Unsupported NuBloxSQL dialect/);

@@ -56,7 +56,6 @@ require('./lib/client/SQLiteAdvancedMetadataIntegration').install(metadataApi);
 metadataIntegrationApi.install(clientApi, metadataApi);
 lifecycleApi.install(clientApi);
 capabilitiesApi.install(clientApi);
-observabilityApi.install(clientApi, streamApi);
 
 var router = require('./lib/runtime/SqlAdapterRouter').create({
   loaders: {

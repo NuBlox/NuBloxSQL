@@ -24,20 +24,17 @@ Two historical branches remained after the integrity hardening release:
   superseded its implementation. It must **not** be merged over current
   migration and lifecycle integrity code.
 
-The narrowly scoped
-[`reconcile-obsolete-branches.yml`](../../.github/workflows/reconcile-obsolete-branches.yml)
-workflow performs this reconciliation with `contents: write` only on the
-trusted repository `main` branch. The workflow checks **exact expected commit
-SHAs**. For the ancestor branch it verifies Git ancestry. For the superseded
-branch it checks the closed PR and the merged replacement PR lineage, then
-creates the immutable archival tag
-`archive/superseded-pr-295-20261013` **before** deleting the branch ref.
-Any failed qualification or changed head preserves the branch. The workflow
-is safe to repeat; after cleanup it finds neither branch.
+**Reconciliation completed and verified on 16 October 2026.** GitHub lists
+only `main` as an active branch, and
+`archive/superseded-pr-295-20261013` points to the preserved superseded
+commit `509dc0254880d5675723af48ed5a1e15f8c00485`. The one-time workflow
+checked pinned SHAs, ancestry, closed/merged PR lineage and archival evidence
+before deleting those branch refs. Its definition remains recoverable from
+repository history, but the workflow itself has been retired so routine pushes
+to `main` no longer trigger a write-authorized branch-cleanup job.
 
-The archival tag preserves the superseded branch commit for later audit,
-without leaving another active branch. No production source is overwritten by
-the cleanup.
+No production source was overwritten by reconciliation. Never delete other
+unmerged branches or local work merely because they appear stale.
 
 ## Every subsequent change
 
@@ -55,6 +52,9 @@ the cleanup.
 
 ## Administrator protection still required
 
-As of this reconciliation, `main` is **not protected** by GitHub rulesets.
-An owner must enable a ruleset requiring PRs and successful required checks;
-repository workflow checks alone do not prevent a direct push.
+As checked on 16 October 2026, `main` remains **unprotected** and no
+repository rulesets were returned. An owner must enable a ruleset requiring
+pull requests and successful required checks, with bypass limited to trusted
+recovery administrators. Repository CI alone cannot prevent a direct push.
+See GitHub **Settings → Rules → Rulesets → New branch ruleset**, targeting
+`main`; verify enforcement using a non-admin test branch/pull request.
