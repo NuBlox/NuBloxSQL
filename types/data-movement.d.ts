@@ -53,6 +53,8 @@ export interface DataMovementCheckpoint {
   readonly schemaVersion: 1;
   readonly dataMovementSchemaVersion: 1;
   readonly planHash: string;
+  /** Dry-run checkpoints record planned rows, not committed writes, and cannot be resumed. */
+  readonly dryRun?: boolean;
   readonly rowOffset: number;
   readonly rowsRead: number;
   readonly rowsWritten: number;
