@@ -58,6 +58,8 @@ Each `ACT-###` has: a stable ID, title, source and original legacy ID (if any), 
 | TASK-011 | Upgrade or migrate | Change | Later | Real cutover, reconciliation, recovery/rollback evidence |
 | TASK-012 | Retire/decommission | Retire | Later | Retention, access revocation and disposal verification |
 
+The first outcome is now specified as a **proposed, unapproved** end-to-end [TASK-001 database inventory contract](TASK-001.md), including the [machine-readable inventory v1 schema](contracts/database-inventory-v1.schema.json) and twelve real-engine acceptance scenarios.
+
 These outcomes are **workflows**, not a duplicate activity list. Many activities may contribute to one task, and some profession research/strategic activities are not automatically a NuBloxSQL function.
 
 ## Requirements gate before development

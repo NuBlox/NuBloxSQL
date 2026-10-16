@@ -41,6 +41,10 @@
 - **Determinism:** pinned dependencies, reproducible builds, bounded resource use and controlled concurrency.
 - **Accessibility and usability:** CLI help, structured output, keyboard-accessible Workbench and explicit operation risk.
 
+## First vertical-slice specification
+
+The proposed [TASK-001 database inspection contract](TASK-001.md) traces PRD-002/003/004/005/006/008/009/011/012/013 to read-only native PostgreSQL discovery, shared [Inventory v1 output](contracts/database-inventory-v1.schema.json), Driver/Shell/Workbench experiences and twelve negative/positive real-engine acceptance cases. Its method names, DBMS version and security fixture are **still proposals**; no completed runtime claim follows from the document.
+
 ## Profession and activity traceability
 
 [WORK-REGISTER.md](WORK-REGISTER.md) records 64 **unreviewed activities** with source, career-family links, lifecycle phase, scope and candidate evidence. Their [machine-readable catalogue](data/database-work-activities.json) is input to PRD-023, not 64 approved feature commitments. Promote selected outcomes by adding stable requirements and verifiable native-engine acceptance tests here; do not interpret a job title or catalogue entry as implementation.

@@ -17,12 +17,13 @@ This is a deliberately clean restart. The previous implementation is preserved o
 1. [Product definition](docs/PRODUCT.md) — **what, why, who, where, when and how**.
 2. [Users and lifecycle](docs/USERS-AND-LIFECYCLE.md) — the work NuBloxSQL must make possible.
 3. [Database careers and job roles](docs/CAREERS.md) — 18 families, 240 role entries and vendor specialisations.
-4. [Requirements](docs/REQUIREMENTS.md) — what must be demonstrated and accepted.
-5. [Architecture](docs/ARCHITECTURE.md) — hard product/module boundaries.
-6. [Support and qualification](docs/SUPPORT-AND-QUALIFICATION.md) — truthful vendor and cloud support.
-7. [Roadmap](docs/ROADMAP.md) — gated delivery order.
-8. [Decision log](docs/DECISIONS.md) — agreed decisions versus open questions.
-9. [Archive and recovery](docs/ARCHIVE.md) — how to inspect or restore previous work.
+4. [TASK-001: inspect a database](docs/TASK-001.md) — proposed first complete Driver/Shell/Workbench workflow and work-product schema.
+5. [Requirements](docs/REQUIREMENTS.md) — what must be demonstrated and accepted.
+6. [Architecture](docs/ARCHITECTURE.md) — hard product/module boundaries.
+7. [Support and qualification](docs/SUPPORT-AND-QUALIFICATION.md) — truthful vendor and cloud support.
+8. [Roadmap](docs/ROADMAP.md) — gated delivery order.
+9. [Decision log](docs/DECISIONS.md) — agreed decisions versus open questions.
+10. [Archive and recovery](docs/ARCHIVE.md) — how to inspect or restore previous work.
 
 [Profession work register](docs/WORK-REGISTER.md) maps 64 unreviewed professional activities, expected work products and lifecycle phases to future Shell and Workbench workflows. [The career taxonomy](docs/data/database-careers.json) captures the complete supplied job-title and technology-specialisation list, while archived activity mappings remain provisional and are not blindly inherited.
 
