@@ -86,6 +86,17 @@ security, vendor and archival evidence first.
 8. Merge only after checks pass, then verify `main`, branch cleanup,
    the npm package and post-merge checks.
 
+## 16 October 2026 verification checkpoint
+
+- Removed redundant second observability instrumentation call from the public entry point.
+- Synced the MongoDB runtime descriptor and universal-driver documentation with
+  qualified replica/SRV configuration and the ephemeral three-member failover test.
+- Retired the completed pinned branch-reconciliation workflow after verifying its
+  archive tag and adding a repository-structure regression guard.
+- **Still outstanding:** an administrator-enforced `main` ruleset (pull request and
+  successful CI requirements). This is repository configuration, not a source-code
+  change.
+
 ## Recommended next owned units
 
 - **Shared connection runtime:** isolate URL parsing, pool lifecycle,
