@@ -1,0 +1,12 @@
+{
+  "name": "@nubloxsql/shell",
+  "version": "0.0.0-development",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "nublox": "./dist/cli.js"
+  },
+  "dependencies": {
+    "@nubloxsql/driver": "0.0.0-development"
+  }
+}

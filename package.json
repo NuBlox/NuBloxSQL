@@ -1,0 +1,25 @@
+{
+  "name": "nubloxsql-rebuild",
+  "version": "0.0.0-development",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p packages/driver/tsconfig.json && tsc -p apps/shell/tsconfig.json",
+    "test:unit": "npm run build && node --test tests/inventory-contract.test.mjs tests/shell-interface.test.mjs",
+    "test:live": "npm run build && node --test tests/live-postgres.test.mjs",
+    "test": "npm run test:unit",
+    "verify": "npm run test:unit"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "24.0.0",
+    "@types/pg": "8.23.1"
+  }
+}
