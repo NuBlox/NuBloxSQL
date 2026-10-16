@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import pg from 'pg';
+import {NativePgClient} from '../packages/driver/dist/postgresql/wire.js';
 import {spawnSync} from 'node:child_process';
 import {mkdtemp, readFile, stat, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -13,7 +13,9 @@ const base={alias:'local-ci',engineId:'postgresql',host:'127.0.0.1',port:5432,
 database:'postgres',user:'nublox_reader',password:'test-disposable-only',security:'isolated-local'};
 
 test('live PostgreSQL 17 inspection filters CONNECT-inaccessible databases',async()=>{
- const admin=new pg.Client({host:'127.0.0.1',user:'postgres',database:'postgres',password:adminPassword});
+ const admin=new NativePgClient({host:'127.0.0.1',port:5432,user:'postgres',database:'postgres',
+  password:adminPassword,ssl:false,connectionTimeoutMillis:10000,query_timeout:10000,
+  statement_timeout:10000,application_name:'nubloxsql-native-integration-test'});
  await admin.connect();
  try {
   await admin.query("CREATE ROLE nublox_reader LOGIN PASSWORD 'test-disposable-only'");
