@@ -20,12 +20,20 @@ For an existing SQLite database, prefer read-only mode:
 npm run workbench -- --dialect sqlite --filename "$HOME/nublox-first-run.sqlite" --option mode=readonly
 ~~~
 
-For a real PostgreSQL, MySQL or SQL Server connection, use the same environment variables/connection arguments supported by NuBlox Shell:
+For a real PostgreSQL, MySQL or SQL Server connection, use the same `NUBLOX_DATABASE_URL` or discrete `NUBLOX_*` connection environment variables as NuBlox Shell. Workbench parses its own command-line arguments and does not import Shell internals:
 
 ~~~bash
 export NUBLOX_DATABASE_URL='postgresql://app@127.0.0.1:5432/app'
 npm run workbench
 ~~~
+
+Workbench reserves `--port` (also `--listen-port`) for its **local HTTP listener**; it does not set the database port. To connect to a database on a non-default port, use `--db-port` or `NUBLOX_PORT`:
+
+~~~bash
+npm run workbench -- --dialect postgresql --host 127.0.0.1 --db-port 5433 --user app --database app
+~~~
+
+Supported discrete connection flags are `--dialect`, `--host`, `--user`, `--database`, `--filename`, `--db-port`, `--pool`/`--no-pool`, and `--option key=value`. `--url` takes precedence over discrete fields. Workbench rejects Shell-only execution flags (including `--format`, `--execute`, `--doctor` and `--stdin`) instead of silently ignoring them. Run `--help` to inspect the local-only launch arguments.
 
 Use database account privileges to control SQL mutation. The Workbench deliberately executes **native SQL**, which may modify or delete data. It does not offer a server-side, dialect-independent SQL-readonly guarantee. Connection passwords remain in the server process, not the browser; avoid embedding them in command-line arguments or sharing your workstation while it runs.
 
