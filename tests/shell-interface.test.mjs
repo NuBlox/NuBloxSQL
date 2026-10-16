@@ -19,3 +19,11 @@ test('Shell requires explicit authorized profile alias and output path',()=>{
  assert.equal(r.status,1);
  assert.match(r.stderr,/INVALID_INPUT/);
 });
+
+test('Shell does not silently downgrade missing transport security',()=>{
+ const env={...process.env,NUBLOXSQL_PROFILE_ALIAS:'local-test',NUBLOXSQL_PG_PASSWORD:'disposable-test-only'};
+ delete env.NUBLOXSQL_PG_SECURITY;
+ const r=spawnSync(process.execPath,[cli,'shell','inspect','--profile','local-test','--format','json','--output','/tmp/not-created.json'],{encoding:'utf8',env});
+ assert.equal(r.status,1);
+ assert.match(r.stderr,/TLS_UNVERIFIED/);
+});
