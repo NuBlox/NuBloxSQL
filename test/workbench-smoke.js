@@ -12,6 +12,7 @@ const {createWorkbench,quote}=require('../apps/workbench/lib/Server');
 const {buildBrowsePlan}=require('../apps/workbench/lib/Browse');
 const {compile}=require('../lib/client/Sql');
 const launcher=require('../apps/workbench/bin/nublox-workbench');
+const workbenchCli=require('../apps/workbench/lib/Options');
 const {normalizePlan}=require('../apps/workbench/lib/Plan');
 const {normalizeSchemaDetail}=require('../apps/workbench/lib/Schema');
 
@@ -585,10 +586,55 @@ function schemaProjectionContracts(){
   assert.equal(long.table.name.length,320);
 }
 
+
+function workbenchCliContracts(){
+  const shellCli=require('../apps/shell/lib/Cli'); // Parity test only; Workbench never imports Shell.
+  const dbArgs=['--dialect','postgresql','--host','db.local','--user','engineer',
+    '--database','main','--option','connectTimeout=5000','--no-pool'];
+  const env={NUBLOX_PASSWORD:'secret',NUBLOX_PORT:'5440'};
+  const workbench=workbenchCli.parseArgs([...dbArgs,'--port','0','--db-port','5433']);
+  assert.equal(workbench.listenPort,0);
+  assert.equal(workbench.dbPort,5433);
+  const db=workbenchCli.connectionFrom(workbench,env);
+  assert.equal(db.port,5433);
+  assert.equal(db.password,'secret');
+  assert.equal(db.connectTimeout,5000);
+  assert.deepEqual(db,shellCli.connectionFrom(
+    shellCli.parseArgs([...dbArgs,'--port','5433']),env));
+  assert.deepEqual(workbenchCli.connectionFrom(
+    workbenchCli.parseArgs(dbArgs),env),
+    shellCli.connectionFrom(shellCli.parseArgs(dbArgs),env));
+  assert.equal(workbenchCli.connectionFrom(
+    workbenchCli.parseArgs(['--url','sqlite::memory:']),
+    {DATABASE_URL:'postgresql://ignored'}),'sqlite::memory:');
+  assert.equal(workbenchCli.connectionFrom(workbenchCli.parseArgs([]),
+    {NUBLOX_DATABASE_URL:'mysql://first',DATABASE_URL:'mysql://second'}),
+    'mysql://first');
+  assert.equal(workbenchCli.connectionFrom(workbenchCli.parseArgs([]),{}),null);
+  assert.equal(workbenchCli.parseArgs(['--listen-port','0']).listenPort,0);
+  assert.equal(workbenchCli.parseArgs(['--option','mode=readonly']).extra.mode,'readonly');
+  assert.equal(workbenchCli.parseArgs(['--option','ssl=true']).extra.ssl,true);
+  assert.throws(()=>workbenchCli.parseArgs(['--option','__proto__=attack']),/reserved/);
+  assert.throws(()=>workbenchCli.parseArgs(['--db-port','0']),/--db-port/);
+  assert.throws(()=>workbenchCli.parseArgs(['--db-port','65536']),/--db-port/);
+  assert.throws(()=>workbenchCli.parseArgs(['--db-port','2.5']),/--db-port/);
+  assert.throws(()=>workbenchCli.parseArgs(['--port','65536']),/--port/);
+  assert.throws(()=>workbenchCli.parseArgs(['--option','invalid']),/key=value/);
+  assert.throws(()=>workbenchCli.parseArgs(['--option']),/requires a value/);
+  assert.throws(()=>workbenchCli.parseArgs(['--execute','SELECT 1']),/does not support/);
+  assert.throws(()=>workbenchCli.parseArgs(['--format','json']),/does not support/);
+  assert.throws(()=>workbenchCli.parseArgs(['--doctor']),/does not support/);
+  assert.throws(()=>workbenchCli.parseArgs(['--unknown']),/Unknown/);
+  const executable=fs.readFileSync(path.join(__dirname,'../apps/workbench/bin/nublox-workbench.js'),'utf8');
+  assert.ok(!executable.includes('../../shell/'), 'Workbench launcher must not import Shell internals');
+}
+
 async function launcherAcceptance(){
   const output=[];
   const streams={stdout:{write(text){output.push(text);}}};
   assert.equal(await launcher.run(['--help'],{},streams),null);
+  assert.equal(await launcher.run(['--version'],{},streams),null);
+  assert.match(output.join(''),/Workbench preview/);
   assert.match(output.join(''),/127\.0\.0\.1/);
   await assert.rejects(launcher.run(['--port','65536','--demo'],{},streams),/port/);
   const app=await launcher.run(['--demo','--port','0'],{
@@ -605,6 +651,7 @@ async function launcherAcceptance(){
   assert.equal(quote('mysql','danger\x60table'),'\x60danger\x60\x60table\x60');
   assert.equal(quote('sqlserver','danger]table'),'[danger]]table]');
   assert.equal(quote('sqlite','danger"table'),'"danger""table"');
+  workbenchCliContracts();
   dialectBrowseContracts();
   schemaProjectionContracts();
   await demoAcceptance();

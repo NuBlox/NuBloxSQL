@@ -10,6 +10,7 @@ function exists(relative){return fs.existsSync(path.join(root,relative));}
 
 [
   'apps/shell',
+  'apps/workbench/lib/Options.js',
   'docs/architecture',
   'docs/cookbook',
   'docs/guides',
@@ -159,5 +160,11 @@ liveCompilerTests.forEach(function(name){
 fs.readdirSync(path.join(root,'test')).forEach(function(name){
   assert(!(name.startsWith('compiler-') && name.endsWith('-live.js')),
     'live SQL compiler tests belong under test/sql/integration: '+name);
+});
+// Prevent the graphical app from acquiring an undeclared dependency on Shell.
+['apps/workbench/bin/nublox-workbench.js','apps/workbench/lib/Options.js'].forEach(function(file){
+  var source=fs.readFileSync(path.join(root,file),'utf8');
+  assert(!/require\(['\"]\.\.\/\.\.\/shell\//.test(source),
+    'Workbench must not import Shell implementation: '+file);
 });
 console.log('NuBloxSQL repository structure: PASS');

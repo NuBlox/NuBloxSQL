@@ -52,6 +52,7 @@ does not itself implement IAM, authentication, tunnelling or provider APIs.
 | SQL compiler/parser pipeline (`lib/capabilities/`) | DDL and DML modules grouped by semantic responsibility; AST/query-core regrouping remains | Stable AST and per-dialect compiler regression tests, moved-module packed manifest |
 | DBMS adapters (`lib/dialects/`) | Preserve native isolation | Live MySQL/PostgreSQL/SQLite/SQL Server CI and version evidence |
 | Durable job kernel and lifecycle | Preserve, harden progressively | Job safety, approval, replay and lifecycle checks |
+| Workbench CLI dependency | Workbench argument/connection policy extracted into `apps/workbench/lib/Options.js`; legacy Shell-only flag coupling removed | Cross-application boundary, flag/env parity, listener vs database-port smoke tests |
 | Shell command families | Remaining | Shell public-API-only dependency check and actual command execution tests |
 | Workbench feature areas | Remaining | Workbench local runtime and HTTP acceptance suite |
 | Tests and release tooling | SQL DDL/DML package qualifiers grouped under `scripts/release/`; 22 AST tests under `test/sql/ast/`; 19 live compiler tests under `test/sql/integration/`; remaining cross-cutting tests ungrouped | Release/platform suites, Tier-1 evidence, vendor CI triggers/commands, import boundaries, Node 22/24/26 |
@@ -96,6 +97,18 @@ security, vendor and archival evidence first.
 - **Still outstanding:** an administrator-enforced `main` ruleset (pull request and
   successful CI requirements). This is repository configuration, not a source-code
   change.
+
+## Workbench CLI boundary increment (16 October 2026)
+
+- Workbench no longer imports Shell's internal CLI module. It owns its
+  options in `apps/workbench/lib/Options.js` while native database connection
+  semantics remain owned by the public driver API.
+- Existing `--port` retains its HTTP-listener meaning; `--db-port` explicitly
+  configures the database server and `NUBLOX_PORT` remains supported.
+- Cross-application parity tests verify common environment/connection mappings.
+  Shell-only execution flags are rejected rather than silently ignored.
+- Standalone Workbench packaging, graphical product workflows and database
+  vendor qualification remain separate future phases.
 
 ## Recommended next owned units
 
