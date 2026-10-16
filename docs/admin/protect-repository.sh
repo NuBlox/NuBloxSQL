@@ -47,7 +47,10 @@ AID="$(id_named "$ARCHIVE_NAME")"
 eq "$(gh api "repos/$REPO/rulesets/$MID" --jq '.rules[]|select(.type=="required_status_checks")|.parameters.required_status_checks|map(.context)|join(",")')" docs "Required CI"
 eq "$(gh api "repos/$REPO/rulesets/$MID" --jq '.rules[]|select(.type=="required_status_checks")|.parameters.strict_required_status_checks_policy')" true "Strict CI"
 eq "$(gh api "repos/$REPO/rulesets/$MID" --jq '.rules[]|select(.type=="pull_request")|.parameters.required_approving_review_count')" 0 "Solo maintainer approvals"
-eq "$(gh api "repos/$REPO/rulesets/$AID" --jq '.rules[]|select(.type=="update")|.parameters.update_allows_fetch_and_merge')" false "Archive immutability"
+# GitHub omits update.parameters when update_allows_fetch_and_merge is false.
+# The presence of the update restriction and absence of bypass actors are
+# checked above. Treat only an explicit true as a disallowed exception.
+eq "$(gh api "repos/$REPO/rulesets/$AID" --jq '.rules[]|select(.type=="update")|(.parameters.update_allows_fetch_and_merge // false)')" false "Archive update exception"
 for target in main "$ARCHIVE"; do
   actual="$(gh api "repos/$REPO/rules/branches/$target?per_page=100" --jq '[.[].type]|unique|sort|join(",")')"
   if [[ "$target" == main ]]; then wanted="deletion non_fast_forward pull_request required_status_checks"

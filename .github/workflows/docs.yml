@@ -18,6 +18,9 @@ jobs:
         run: |
           set -euo pipefail
           bash -n docs/admin/protect-repository.sh
+          # Regression: GitHub omits parameters for a default-false archive update rule.
+          test "$(printf '%s\\n' '{"rules":[{"type":"update"}]}' | jq -r '.rules[]|select(.type=="update")|(.parameters.update_allows_fetch_and_merge // false)')" = false
+          test "$(printf '%s\\n' '{"rules":[{"type":"update","parameters":{"update_allows_fetch_and_merge":false}}]}' | jq -r '.rules[]|select(.type=="update")|(.parameters.update_allows_fetch_and_merge // false)')" = false
           test -f LICENSE
           test -f NOTICE
           test -f README.md
