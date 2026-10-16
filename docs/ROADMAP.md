@@ -7,6 +7,8 @@
 - [x] Capture the complete former implementation in a named archive ref.
 - [x] Establish a clean docs-only default branch without legacy runtime/test/workflow clutter.
 - [x] Define one product authority, traceable requirements, boundaries, task register and quality gates.
+- [x] Catalogue 64 *candidate* professional activities, preserving archived provenance and marking scope limits.
+- [ ] Review, split/merge and approve the candidate activities relevant to the first real-world task.
 - [ ] Review the proposed baseline and decide the first product demonstration.
 - [ ] Apply GitHub branch/ruleset protection to both the default and archived refs.
 

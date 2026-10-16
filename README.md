@@ -24,7 +24,7 @@ This is a deliberately clean restart. The previous implementation is preserved o
 8. [Decision log](docs/DECISIONS.md) — agreed decisions versus open questions.
 9. [Archive and recovery](docs/ARCHIVE.md) — how to inspect or restore previous work.
 
-[Profession requirements register](docs/WORK-REGISTER.md) maps lifecycle outcomes to future Shell and Workbench workflows. [The career taxonomy](docs/data/database-careers.json) captures the complete supplied job-title and technology-specialisation list, while archived activity mappings remain provisional and are not blindly inherited.
+[Profession work register](docs/WORK-REGISTER.md) maps 64 unreviewed professional activities, expected work products and lifecycle phases to future Shell and Workbench workflows. [The career taxonomy](docs/data/database-careers.json) captures the complete supplied job-title and technology-specialisation list, while archived activity mappings remain provisional and are not blindly inherited.
 
 ## Ground rules
 

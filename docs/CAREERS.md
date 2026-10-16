@@ -92,4 +92,4 @@ Do not infer permissions or approvals from job title, seniority or family. Those
 
 ## Follow-up review
 
-Validate whether the existing 40 archived candidate activities are complete against these families, consolidate duplicate responsibilities, and explicitly identify the database-scoped work products. Do not import the legacy activity list into new `main` until those tasks have agreed inputs, outputs and acceptance criteria. Prior archived data: [legacy profession register](https://github.com/NuBlox/NuBloxSQL/blob/archive/legacy-implementation-2026-10-16/docs/product/database-profession-work-register.json).
+The [work register](WORK-REGISTER.md) now separates 40 *unreviewed* archived activities and 24 new gap candidates, with traceability to these families and expected database work products. They are not approved product requirements until reviewed and accepted. Original data: [legacy profession register](https://github.com/NuBlox/NuBloxSQL/blob/archive/legacy-implementation-2026-10-16/docs/product/database-profession-work-register.json).
