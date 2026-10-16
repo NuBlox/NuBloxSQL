@@ -134,3 +134,10 @@ jobs:
           assert next(r for r in archive_rules['rules'] if r['type']=='update')['parameters']['update_allows_fetch_and_merge'] is False
           print('NuBloxSQL docs baseline, TASK-001 and branch-protection payloads: PASS')
           PY
+      - name: Validate TASK-001 JSON Schema contracts and negative fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv .contracts-venv
+          .contracts-venv/bin/python -m pip install --disable-pip-version-check jsonschema==4.26.0
+          .contracts-venv/bin/python docs/contracts/test_task_001.py
