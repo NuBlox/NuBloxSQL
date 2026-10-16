@@ -30,10 +30,11 @@ async function main(args: string[]): Promise<void> {
   }
   const password = process.env.NUBLOXSQL_PG_PASSWORD;
   if (!password) throw new InspectionError('INVALID_INPUT', 'The local profile credential is unavailable.');
-  const security = process.env.NUBLOXSQL_PG_SECURITY;
-  if (security !== 'isolated-local' && security !== 'verified-tls') {
+  const candidateSecurity = process.env.NUBLOXSQL_PG_SECURITY;
+  if (candidateSecurity !== 'isolated-local' && candidateSecurity !== 'verified-tls') {
     throw new InspectionError('TLS_UNVERIFIED', 'An explicit secure transport policy is required.');
   }
+  const security: 'isolated-local' | 'verified-tls' = candidateSecurity;
   const profile = {
     alias, engineId: 'postgresql' as const,
     host: process.env.NUBLOXSQL_PG_HOST ?? '127.0.0.1',
