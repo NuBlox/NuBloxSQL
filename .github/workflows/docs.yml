@@ -68,5 +68,39 @@ jobs:
           assert len({s['id'] for s in specialties}) == 18
           assert all(s['technology'] and s['exampleRole'] for s in specialties)
           assert careers['workAuthority'] == 'docs/WORK-REGISTER.md'
-          print('NuBloxSQL documentation and career taxonomy: PASS')
+          work = json.loads(Path('docs/data/database-work-activities.json').read_text())
+          assert work['schemaVersion'] == 1
+          assert work['kind'] == 'database-professional-activity-requirements'
+          assert len(work['activities']) == 64
+          items = work['activities']
+          assert [x['id'] for x in items] == [f'ACT-{i:03}' for i in range(1,65)]
+          assert sum(x['source']['kind'] == 'archived-candidate' for x in items) == 40
+          assert sum(x['source']['kind'] == 'gap-analysis-2026-10-16' for x in items) == 24
+          assert [x['source']['legacyActivityId'] for x in items[:40]] == [f'a{i:02}' for i in range(1,41)]
+          assert all(x['source']['legacyActivityId'] is None for x in items[40:])
+          families = {f['id'] for f in careers['families']}
+          phases = set(work['lifecyclePhases'])
+          domains = set(work['productDomains'])
+          all_families = set()
+          for item in items:
+              assert item['reviewStatus'] == 'unreviewed-candidate'
+              assert item['workstream'] in ('governance','delivery')
+              assert item['scope'] in ('database-scoped','database-adjacent','out-of-product')
+              assert item['lifecyclePhases'] and set(item['lifecyclePhases']) <= phases
+              assert item['careerFamilyIds'] and set(item['careerFamilyIds']) <= families
+              assert item['productDomains'] and set(item['productDomains']) <= domains
+              assert item['workProducts'] and all(item['workProducts'])
+              assert item['capabilityNeeds'] and all(item['capabilityNeeds'])
+              assert item['acceptanceEvidence']
+              assert all(re.fullmatch(r'TASK-0(?:0[1-9]|1[0-2])', t) for t in item['relatedTaskIds'])
+              all_families.update(item['careerFamilyIds'])
+          assert all_families == families
+          assert len(items) == 64 and sum(x['workstream'] == 'governance' for x in items) == 27
+          assert sum(x['workstream'] == 'delivery' for x in items) == 37
+          assert sum(x['scope'] == 'database-scoped' for x in items) == 57
+          assert sum(x['scope'] == 'database-adjacent' for x in items) == 6
+          assert sum(x['scope'] == 'out-of-product' for x in items) == 1
+          assert all(any(p in x['lifecyclePhases'] and x['workstream'] == 'governance' for x in items) and
+                     any(p in x['lifecyclePhases'] and x['workstream'] == 'delivery' for x in items) for p in phases)
+          print('NuBloxSQL documentation, careers and professional activity catalogue: PASS')
           PY

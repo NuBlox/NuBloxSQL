@@ -41,6 +41,10 @@
 - **Determinism:** pinned dependencies, reproducible builds, bounded resource use and controlled concurrency.
 - **Accessibility and usability:** CLI help, structured output, keyboard-accessible Workbench and explicit operation risk.
 
+## Profession and activity traceability
+
+[WORK-REGISTER.md](WORK-REGISTER.md) records 64 **unreviewed activities** with source, career-family links, lifecycle phase, scope and candidate evidence. Their [machine-readable catalogue](data/database-work-activities.json) is input to PRD-023, not 64 approved feature commitments. Promote selected outcomes by adding stable requirements and verifiable native-engine acceptance tests here; do not interpret a job title or catalogue entry as implementation.
+
 ## Requirements management
 
 Propose requirements only in this document; give stable IDs, classify native model/engine applicability, and link them to lifecycle tasks and tests. Do not create parallel registers to boost apparent coverage. The specification exit gate is defined in [ROADMAP.md](ROADMAP.md).

@@ -8,7 +8,7 @@ The core planning unit is a **professional task with a demonstrable work product
 - **Delivery:** database setup, querying, schema engineering, diagnostics, monitoring, repair, migration, recovery, decommissioning and validation.
 - Real people may do work in both groups. A role or career label never confers access rights.
 
-The active [career taxonomy](CAREERS.md) contains **6 professional groups, 18 career families, 240 title entries (239 distinct titles), and 18 vendor/technology specialisations**. It is an explicitly user-provided reference input, not an authorisation or software-capability model. The prior 40 archived activities remain **unverified task candidates**; review responsibilities, deduplicate tasks and prioritise work products before translating them into requirements.
+The active [career taxonomy](CAREERS.md) contains **6 professional groups, 18 career families, 240 title entries (239 distinct titles), and 18 vendor/technology specialisations**. It is an explicitly user-provided reference input, not an authorisation or software-capability model. The [active work register](WORK-REGISTER.md) records **64 unreviewed candidate activities** (40 traceable to the archive plus 24 explicit gap candidates), each linked to career families, lifecycle phases, work products and evidence criteria. Review their scope and acceptance before promoting any to implemented requirements.
 
 ## Eleven phases with minimum evidence outcomes
 
