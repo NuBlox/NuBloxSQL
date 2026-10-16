@@ -17,6 +17,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          bash -n docs/admin/protect-repository.sh
           test -f LICENSE
           test -f NOTICE
           test -f README.md
@@ -116,5 +117,17 @@ jobs:
           for key in ('capabilities','databases','warnings'):
               assert output['properties'][key]['type'] == 'array'
               assert output['properties'][key]['items']['additionalProperties'] is False
-          print('NuBloxSQL docs-only foundation, activity catalogue and TASK-001 output contract: PASS')
+          main_rules = json.loads(Path('docs/admin/ruleset-main.json').read_text())
+          archive_rules = json.loads(Path('docs/admin/ruleset-archive.json').read_text())
+          assert main_rules['target'] == archive_rules['target'] == 'branch'
+          assert main_rules['enforcement'] == archive_rules['enforcement'] == 'active'
+          assert not main_rules['bypass_actors'] and not archive_rules['bypass_actors']
+          assert main_rules['conditions']['ref_name']['include'] == ['refs/heads/main']
+          assert archive_rules['conditions']['ref_name']['include'] == ['refs/heads/archive/legacy-implementation-2026-10-16']
+          assert {r['type'] for r in main_rules['rules']} == {'deletion','non_fast_forward','pull_request','required_status_checks'}
+          assert {r['type'] for r in archive_rules['rules']} == {'deletion','non_fast_forward','update'}
+          assert next(r for r in main_rules['rules'] if r['type']=='pull_request')['parameters']['required_approving_review_count'] == 0
+          assert next(r for r in main_rules['rules'] if r['type']=='required_status_checks')['parameters']['required_status_checks'] == [{'context':'docs'}]
+          assert next(r for r in archive_rules['rules'] if r['type']=='update')['parameters']['update_allows_fetch_and_merge'] is False
+          print('NuBloxSQL docs baseline, TASK-001 and branch-protection payloads: PASS')
           PY
