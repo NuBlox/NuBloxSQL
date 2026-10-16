@@ -42,4 +42,4 @@ jobs:
       - name: Live PostgreSQL 17 discovery and privilege filtering
         env:
           NUBLOXSQL_CI_ADMIN_PASSWORD: ci-fixture-admin-only
-        run: node --test tests/live-postgres.test.mjs
+        run: node --test tests/live-postgres.test.mjs tests/live-postgres-governance.test.mjs
