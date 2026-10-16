@@ -131,7 +131,7 @@ jobs:
           assert {r['type'] for r in main_rules['rules']} == {'deletion','non_fast_forward','pull_request','required_status_checks'}
           assert {r['type'] for r in archive_rules['rules']} == {'deletion','non_fast_forward','update'}
           assert next(r for r in main_rules['rules'] if r['type']=='pull_request')['parameters']['required_approving_review_count'] == 0
-          assert next(r for r in main_rules['rules'] if r['type']=='required_status_checks')['parameters']['required_status_checks'] == [{'context':'docs'}]
+          assert next(r for r in main_rules['rules'] if r['type']=='required_status_checks')['parameters']['required_status_checks'] == [{'context':'docs'}, {'context':'Node 24 — Driver and Shell'}]
           assert next(r for r in archive_rules['rules'] if r['type']=='update')['parameters']['update_allows_fetch_and_merge'] is False
           print('NuBloxSQL docs baseline, TASK-001 and branch-protection payloads: PASS')
           PY

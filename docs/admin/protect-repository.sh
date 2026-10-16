@@ -8,7 +8,7 @@ MODE="verify"
 if [[ "$#" -gt 0 ]]; then MODE="$1"; fi
 die() { echo "ERROR: $*" >&2; exit 1; }
 eq() { [[ "$1" == "$2" ]] || die "$3: expected [$2], got [$1]"; }
-[[ "$MODE" == "apply" || "$MODE" == "verify" ]] || die "Use: bash docs/admin/protect-repository.sh [apply|verify]"
+[[ "$MODE" == "apply" || "$MODE" == "verify" || "$MODE" == "upgrade-main" ]] || die "Use: bash docs/admin/protect-repository.sh [apply|verify|upgrade-main]"
 command -v gh >/dev/null || die "Install gh: brew install gh"
 gh auth status >/dev/null 2>&1 || die "Log in: gh auth login"
 eq "$(gh api "repos/$REPO" --jq '.permissions.admin')" true "Admin permission"
@@ -44,7 +44,17 @@ verify_named "$MAIN_NAME" refs/heads/main deletion,non_fast_forward,pull_request
 verify_named "$ARCHIVE_NAME" "refs/heads/$ARCHIVE" deletion,non_fast_forward,update
 MID="$(id_named "$MAIN_NAME")"
 AID="$(id_named "$ARCHIVE_NAME")"
-eq "$(gh api "repos/$REPO/rulesets/$MID" --jq '.rules[]|select(.type=="required_status_checks")|.parameters.required_status_checks|map(.context)|join(",")')" docs "Required CI"
+# Update exactly the known old main policy; refuse unexpected external edits.
+if [[ "$MODE" == "upgrade-main" ]]; then
+  eq "$(gh api "repos/$REPO/commits/$MAIN_SHA/check-runs?per_page=100" --jq '[.check_runs[]|select(.name=="Node 24 — Driver and Shell" and .conclusion=="success")]|length')" 1 "Live Driver and Shell check must pass"
+  required="$(gh api "repos/$REPO/rulesets/$MID" --jq '.rules[]|select(.type=="required_status_checks")|.parameters.required_status_checks|map(.context)|join(",")')"
+  if [[ "$required" == "docs" ]]; then
+    gh api --method PUT "repos/$REPO/rulesets/$MID" --input "$ROOT/docs/admin/ruleset-main.json" --jq '"Updated main ruleset #\(.id)"'
+  else
+    eq "$required" "docs,Node 24 — Driver and Shell" "Unknown required-check policy; refusing overwrite"
+  fi
+fi
+eq "$(gh api "repos/$REPO/rulesets/$MID" --jq '.rules[]|select(.type=="required_status_checks")|.parameters.required_status_checks|map(.context)|join(",")')" "docs,Node 24 — Driver and Shell" "Required CI"
 eq "$(gh api "repos/$REPO/rulesets/$MID" --jq '.rules[]|select(.type=="required_status_checks")|.parameters.strict_required_status_checks_policy')" true "Strict CI"
 eq "$(gh api "repos/$REPO/rulesets/$MID" --jq '.rules[]|select(.type=="pull_request")|.parameters.required_approving_review_count')" 0 "Solo maintainer approvals"
 # GitHub omits update.parameters when update_allows_fetch_and_merge is false.

@@ -1,10 +1,10 @@
 # GitHub administrator — branch protection
 
-**Status (16 October 2026): ACTIVE AND VERIFIED BY GITHUB.** The repository administrator installed [main ruleset #25231727](https://github.com/NuBlox/NuBloxSQL/rules/25231727) and [legacy archive ruleset #25231728](https://github.com/NuBlox/NuBloxSQL/rules/25231728). Both report `enforcement=active`, exact branch targets, no bypass actors, and `protected=true`. The owner's first verification run exposed a false-negative caused by GitHub omitting the default `update` rule parameters; this script now handles that response. Re-run read-only `verify` to validate the complete path from the Mac.
+**Status (16 October 2026): ACTIVE AND VERIFIED BY GITHUB; new runtime check upgrade pending.** The repository administrator installed [main ruleset #25231727](https://github.com/NuBlox/NuBloxSQL/rules/25231727) and [legacy archive ruleset #25231728](https://github.com/NuBlox/NuBloxSQL/rules/25231728). Both report `enforcement=active`, exact branch targets, no bypass actors, and `protected=true`. The owner's first verification run exposed a false-negative caused by GitHub omitting the default `update` rule parameters; this script now handles that response. Re-run read-only `verify` to validate the complete path from the Mac.
 
 ## Rules being installed
 
-- [Main ruleset](ruleset-main.json): exact branch `main`, PR required, current always-triggered `docs` status check required, strict up-to-date checks, disallow deletion and force pushes. Zero review approvals allows solo development via PR.
+- [Main ruleset](ruleset-main.json): exact branch `main`, PR required, both always-triggered `docs` and `Node 24 — Driver and Shell` checks required, strict up-to-date checks, disallow deletion and force pushes. Zero review approvals allows solo development via PR.
 - [Archive ruleset](ruleset-archive.json): exact branch `archive/legacy-implementation-2026-10-16`, reject ordinary updates, force pushes and deletion. Pinned archived head `4ed0e35fbfe71ac110c9ec41cf62ba3355e9d56c`.
 - Neither ruleset grants actor exemptions. An administrator can manually edit/disable a rule in a genuine emergency.
 
@@ -23,6 +23,19 @@ bash docs/admin/protect-repository.sh apply
 ~~~
 
 The installer uses GitHub CLI's authenticated REST API, requires repository admin access, validates the archive SHA and the most recent green `docs` CI check, creates only absent *named* rulesets and verifies both exact rulesets and GitHub's **effective branch rules**. It cannot silently modify an existing mismatched ruleset. Both rulesets already exist; **run `verify` (not `apply`) for subsequent confirmation**. GitHub may omit an `update` rule's `parameters` when the optional upstream fetch-and-merge setting is false; that absence is a safe default, not evidence the archive lacks protection.
+
+## Upgrade main after the first private Driver/Shell implementation
+
+GitHub's live main ruleset was originally created when only the `docs` check existed. The new Node 24 build, unit tests and live PostgreSQL 17 job passed after PR #339, but are **not yet enforced as a required check** until the repository owner explicitly upgrades the rule.
+
+After updating `main` on your Mac, run:
+
+~~~bash
+bash docs/admin/protect-repository.sh upgrade-main
+bash docs/admin/protect-repository.sh verify
+~~~
+
+`upgrade-main` requires a successful Node check on current `main`, verifies both existing active rule targets and no-bypass policies, and only updates the known old `docs`-only required-status rule. It refuses to overwrite unknown changes. It does **not** alter the archive. Subsequent runs are read-only if both checks are already required.
 
 ## Verify without changing anything
 

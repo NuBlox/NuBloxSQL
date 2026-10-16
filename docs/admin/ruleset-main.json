@@ -40,6 +40,9 @@
         "required_status_checks": [
           {
             "context": "docs"
+          },
+          {
+            "context": "Node 24 — Driver and Shell"
           }
         ]
       }
