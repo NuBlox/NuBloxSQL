@@ -88,11 +88,11 @@ export class NativePgClient {
   private send(type:string, parts:Buffer[]=[]):void {this.peer!.send(message(type,parts));}
   async connect():Promise<void> {
     if(this.socket)throw new Error('Cannot connect twice');
-    if(this.config.ssl) {
-      const e:Error & {code?:string}=new Error('Remote TLS protocol is not qualified by this native adapter');
+    const c=this.config;
+    if(c.ssl || (c.host !== '127.0.0.1' && c.host !== '::1')) {
+      const e:Error & {code?:string}=new Error('The native adapter is currently qualified for isolated loopback only');
       e.code='ERR_TLS_CERT_ALTNAME_INVALID';throw e;
     }
-    const c=this.config;
     if(!/^[\x20-\x7e]+$/.test(c.password)||[c.user,c.database,c.application_name].some(x=>x.includes('\0')))
       throw new Error('Unsupported credential encoding');
     const socket=createConnection({host:c.host,port:c.port});this.socket=socket;
@@ -141,7 +141,7 @@ export class NativePgClient {
           const salt=Buffer.from(saltText,'base64');
           if(salt.length<8||salt.length>256)throw new Error('Unsafe SCRAM salt');
           const finalBare='c=biws,r='+serverNonce,auth=firstBare+','+challenge+','+finalBare;
-          const salted=pbkdf2Sync(castPassword(this.config.password),salt,iterations,32,'sha256');
+          const salted=pbkdf2Sync(this.config.password,salt,iterations,32,'sha256');
           const clientKey=createHmac('sha256',salted).update('Client Key').digest();
           const storedKey=createHash('sha256').update(clientKey).digest();
           const clientSig=createHmac('sha256',storedKey).update(auth).digest();
@@ -218,4 +218,3 @@ export class NativePgClient {
     this.socket=undefined;
   }
 }
-function castPassword(password:string):string {return password;}
