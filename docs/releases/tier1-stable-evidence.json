@@ -259,6 +259,8 @@
     "docs/product/ROADMAP.md",
     "docs/architecture/DATABASE-JOBS.md",
     "docs/architecture/REPOSITORY-STRUCTURE.md",
+    "lib/client/runtime/ConnectionTargets.js",
+    "test/client-connection-targets.js",
     "scripts/check-repository-structure.js",
     "scripts/release/dml/check-dml-v5-release.js"
   ]

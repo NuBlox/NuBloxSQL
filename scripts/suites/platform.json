@@ -71,6 +71,7 @@
     "test/client-api.js",
     "test/client-typed-binds.js",
     "test/client-runtime-helpers.js",
+    "test/client-connection-targets.js",
     "test/operation-control.js",
     "test/client-observability.js",
     "test/client-types.js",
