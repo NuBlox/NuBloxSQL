@@ -1,6 +1,6 @@
 # Roadmap — gated, not date-driven
 
-**The objective is an understandable, trustworthy product, not rapid file growth.** Do not begin implementation until the documentation gate is explicitly accepted.
+**The objective is to make NuBloxSQL the database technology platform of choice, not to maximise file count or confuse the first demo with the entire product.** Build progressively with explicit gates. [PRODUCT.md](PRODUCT.md) is the fixed strategic authority; stages are delivery sequencing, not permission to redefine scope.
 
 ## Stage 0 — preserve and simplify (this reset)
 
@@ -12,7 +12,7 @@
 - [ ] Review the proposed baseline and decide the first product demonstration.
 - [x] Apply GitHub branch/ruleset protection to both the default and archived refs (live GitHub API verified; optional owner CLI endpoint check remains in issue #328).
 
-**Exit:** the product definition and initial task are confirmed, open design decisions are tracked, and a reviewer can explain the three products in one page.
+**Exit:** the overall platform vision and first task are explicit, decisions tracked, and a reviewer can explain how the native Driver, independent developer technologies, Shell and Workbench contribute to the same mission.
 
 ## Stage 1 — specify one actual task end to end
 
@@ -20,7 +20,7 @@
 
 - [x] Resolve the [TASK-001 specification](TASK-001.md), [inventory JSON Schema](contracts/database-inventory-v1.schema.json) and [error schema](contracts/database-operation-error-v1.schema.json) into an accepted G0 engineering contract: PostgreSQL 17, bounded read-only queries, API/CLI naming, secret boundary and TLS policy.
 - [x] Validate positive, partial and negative work-product examples in docs-only CI.
-- [ ] Regenerate and commit the npm lockfile **without `pg` or `@types/pg`**, restore strict `npm ci`, and validate NuBloxSQL-owned PostgreSQL v3 framing/SCRAM/extended-query code against the digest-pinned PostgreSQL 17 fixture. Initial third-party transport no longer satisfies the product vision.
+- [x] Remove `pg` and `@types/pg` from the live dependency lockfile, restore strict `npm ci`, and validate the NuBloxSQL-owned PostgreSQL v3/SCRAM/extended-query inventory slice against the digest-pinned PostgreSQL 17 CI fixture (PR #341). This remains **limited** protocol qualification.
 - [ ] Complete G1 package-consumer smoke tests, resource/timeout/security negative cases and Workbench build boundaries. G2/G3 release qualification remains incomplete.
 - Define one typed Driver API request/result/error contract.
 - Define credentials, TLS, privileges, timeouts, safe output, target identity and failure cases.
@@ -61,11 +61,23 @@
 
 Expand securely into selection, installation, initialization, administration, monitoring, backup/restore, migration, upgrades and retirement, with real vendor-specific implementations and recovery tests. Every increment must close a traceable task and meet the relevant quality gate.
 
+## Platform capability expansion — an outcome-driven sequence
+
+The eleven-phase professional lifecycle is not the full feature taxonomy. While native adapter qualification advances, independently plan and specify the developer technology **families** identified in [PRODUCT.md](PRODUCT.md), including:
+
+- Relational ORM and model-native mapping contracts, identity, metadata, relationships and change tracking.
+- Native-aware query builders, dialect handling, safe binding, compilation and query analysis.
+- Schema design, generation, comparison, migrations, deployment and rollback.
+- Administration, diagnostics, profiling, data movement, security, testing, automation and professional evidence.
+- Cross-vendor concept/terminology mapping **later**, after both vendors' native capabilities and semantics are documented and tested.
+
+Do not implement every capability at once. Prioritise professional/developer outcomes and prove each increment on real engines, then benchmark against relevant existing tools. Add a new library/application only when an independent public API and consumer scenario justify it. These are strategic directions, not announced delivery dates or support claims.
+
 ## Rules that prevent another sprawl
 
 - Maximum one authoritative document per topic (see README index).
 - No numbered “wave” modules, synthetic profile-count milestones or speculative adapters.
-- No code-only task without a professional outcome and acceptance test.
+- No code-only task without a developer/professional outcome and acceptance test; no PostgreSQL or Shell demo may redefine the wider platform.
 - Do not create a new registry when the documented support matrix can express the requirement.
 - Use small PRs, test/verify, merge cleanly, preserve archived work without mixing legacy implementations into main.
 - Record a decision when scope, architecture, priority or public API would change.

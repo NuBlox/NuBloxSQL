@@ -2,7 +2,7 @@
 
 **Status:** Candidate requirements, not implementation commitments. Every requirement needs ownership, risk analysis, design decision, acceptance evidence and test references before development.
 
-**Priority:** P0 = necessary to validate the foundation; P1 = first complete professional workflow; P2 = later extension. “Accepted” means demonstrated, not merely coded.
+**Priority:** P0 = necessary to validate the foundation; P1 = first complete professional workflow; P2 = later extension. Requirements may express **accepted product intent** without claiming their software is delivered. A **supported implementation** requires demonstrated real-engine tests, not merely code or documentation.
 
 | ID | Priority | Requirement | Observable acceptance evidence |
 | --- | --- | --- | --- |
@@ -30,6 +30,13 @@
 | PRD-022 | P2 | Wider relational SQL vendor coverage | New vendor/version live qualification, not a catalogue count |
 | PRD-023 | P2 | Full task/work-product coverage of the eleven phases | Prioritised task acceptance register with evidence links |
 | PRD-024 | P2 | Securely administered cloud connectivity variants | Per-provider IAM/Entra/rotating-token/private-endpoint qualification |
+| PRD-025 | P0 | Maintain NuBloxSQL as one platform with capabilities beyond Driver, Shell and Workbench | Traceable public platform contracts and architecture showing independently usable developer and professional technologies |
+| PRD-026 | P2 | Provide first-party relational ORM with native type and transaction fidelity | Entity/relation/change-tracking tests on qualified relational engines; unsupported semantics refused explicitly |
+| PRD-027 | P2 | Provide composable typed and vendor-aware query builder technology | Compile/bind/execute equivalent queries on qualified engines, with native feature/parameter safety tests |
+| PRD-028 | P2 | Provide database design, schema comparison, migration, development and testing technologies | Repeatable real-engine design/diff/apply/reverse/rollback work products and negative safety tests |
+| PRD-029 | P2 | Offer integrated professional administration, performance, data movement, security and automation tooling | Independently tested work products spanning the eleven phases and relevant profession roles |
+| PRD-030 | P2 | Investigate cross-vendor terminology and capability interoperability | Explicit compatibility matrix, semantic-difference diagnostics and round-trip tests with loss/refusal signals; no unsupported-equivalence claim |
+| PRD-031 | P2 | Benchmark competitiveness against established tools in each capability category | Publicly explainable like-for-like test tasks for correctness, speed, resource usage, security and developer/professional productivity |
 
 ## Quality constraints
 
@@ -43,7 +50,7 @@
 
 ## First vertical-slice specification
 
-The proposed [TASK-001 database inspection contract](TASK-001.md) traces PRD-002/003/004/005/006/008/009/011/012/013 to read-only native PostgreSQL discovery, shared [Inventory v1 output](contracts/database-inventory-v1.schema.json), Driver/Shell/Workbench experiences and twelve negative/positive real-engine acceptance cases. Its method names, DBMS version and security fixture are **still proposals**; no completed runtime claim follows from the document.
+The accepted [TASK-001 PostgreSQL inspection specification](TASK-001.md) traces PRD-002/003/004/005/006/008/009/011/012/013 to one bounded demonstration, including [Inventory v1 output](contracts/database-inventory-v1.schema.json). The native PostgreSQL Driver/Shell slice is experimental and Workbench remains unimplemented. **TASK-001 does not define or narrow the overall platform scope** in PRD-025–031.
 
 ## Profession and activity traceability
 

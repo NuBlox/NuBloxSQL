@@ -50,6 +50,11 @@ jobs:
           ]
           for doc in docs:
               assert Path(doc).is_file(), f'Missing authority: {doc}'
+          vision = Path('docs/PRODUCT.md').read_text()
+          assert 'database technology platform of choice' in vision
+          for core_term in ('ORM', 'query builder', 'native', 'Workbench', 'Shell', 'interoperability'):
+              assert core_term.lower() in vision.lower(), f'Missing platform pillar: {core_term}'
+          assert 'not yet implemented or qualified' in vision.lower()
           for md in [Path('README.md'), *Path('docs').glob('*.md')]:
               for link in re.findall(r'\]\(([^)]+)\)', md.read_text()):
                   if link.startswith(('https://','http://','mailto:','#')):

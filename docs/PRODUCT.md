@@ -1,58 +1,84 @@
-# Product definition — the authority
+# Product definition — authoritative vision and boundaries
 
-**Status:** Proprietary first-party native product scope accepted, 16 October 2026. The first PostgreSQL protocol v3 Driver/Shell workflow is experimental and defined in [TASK-001](TASK-001.md); no end-to-end released Driver/Shell/Workbench suite is qualified.
+**Mission: NuBloxSQL aims to become the database technology platform of choice.**
+
 **Owner:** Stephen J T Spittal.
-**Change control:** Record a deliberate decision in [DECISIONS.md](DECISIONS.md) before changing this definition. No other document may silently override it.
+**Status:** Accepted long-term vision, 16 October 2026. This is a strategic destination **not** a statement of currently implemented or superior software.
+**Authority:** Product scope lives here; decisions in [DECISIONS.md](DECISIONS.md) must record any deliberate change. Neither a specific feature, architecture diagram nor an experimental implementation may silently redefine the platform.
 
 ## What are we building?
 
-**NuBloxSQL is a universal database driver foundation, accompanied by two professional tools, spanning the complete working life of databases.**
+**NuBloxSQL is a proprietary, ground-up, independently engineered, universal database technology platform.** It aims to offer the most comprehensive, coherent and effective database technologies and professional tools for developers, administrators, architects, engineers and other database professionals working across database vendors, data models, environments and the entire lifecycle.
 
-| Product | Deliverable | Responsible for | Must not do |
-| --- | --- | --- | --- |
-| NuBloxSQL Driver | Independently distributable headless library | Native database connectivity, capability negotiation, safe query/data operations, metadata, reusable DB-specific lifecycle primitives | Contain UI, Shell commands, arbitrary infrastructure administration, or claim unsupported engines |
-| NuBloxSQL Shell | Independently distributable terminal tool | Interactive and scripted professional workflows; output and work products | Implement its own vendor protocol, SQL compiler or alternate driver |
-| NuBloxSQL Workbench | Independently distributable graphical tool | Browser/desktop-oriented professional workflows, inspection, editing, guided tasks and evidence | Reimplement driver behaviour or import Shell internals |
+**NuBloxSQL is larger than its Driver, Shell and Workbench.** They are major independently useful components, not a fixed three-product limit. ORM, query builders, development frameworks, design, migration, administration, automation and other database software capabilities also belong within the platform vision.
 
-The family supports **relational SQL and non-SQL data models**. A common kernel may expose connection lifecycle, identity, capabilities, errors, telemetry and cancellation. Engine-specific operations remain visible: SQL is not translated onto arbitrary document, graph, key-value or search systems just to manufacture “universality”.
+Becoming the **tool of choice** means earning users' preference with actual correctness, performance, security, native fidelity, professional usefulness and usability—not claiming market leadership without evidence.
 
 ## Why does it exist?
 
-Database professionals repeatedly switch between vendor tools, connection conventions, scripting interfaces and inconsistent lifecycle procedures. NuBloxSQL aims to consolidate the **way people connect, discover, operate, change and document databases** without discarding native database fidelity. Its competitive advantage must be demonstrated by completed professional tasks, not interface breadth, vendor counts or generated source-file volume.
+Today's database practitioners often combine competing vendor clients, native drivers, ORMs, query builders, query editors, data-modelling tools, migration frameworks, database consoles, monitoring products and scripts. Their features, terminology, access controls and outputs are inconsistent, and vendor differences increase training and maintenance costs.
 
-## Who is it for?
+NuBloxSQL aims to integrate the strongest capabilities from these categories into one coherent independently developed technology ecosystem, **without destroying the unique capabilities of each database**.
 
-The [authoritative career taxonomy](CAREERS.md) establishes **six professional groups spanning 18 career families**: strategy/architecture/engineering; administration/operations; security/governance; data movement/analytics; specialist/non-relational technologies; and change/quality/innovation/consultancy. It preserves 240 job-title entries and 18 vendor/technology specialisations as *research inputs*.
+## Who, where and when?
 
-Primary users are database administrators, architects, developers, platform/reliability engineers, operators, security specialists and migration specialists. Adjacent stakeholders include governance, analytics, AI, enterprise leadership and consultancy roles **where their tasks touch native database capabilities and evidence**. The career list expands the user research lens, not the Driver's scope into ERP, BI or ML training.
+- **Who:** Application developers, database developers, DBAs, administrators, designers, engineers, architects, operators, reliability and security practitioners, testing specialists, integration specialists and the 18 database career families described in [CAREERS.md](CAREERS.md). Roles are research lenses, never automatic privileges.
+- **Where:** Developer machines, servers, containers, embedded/local deployments, on-premises and networked systems, distributed infrastructure and supported managed/cloud database services. Actual security, networking and vendor combinations need qualification.
+- **When:** Throughout the canonical eleven-phase lifecycle: **Select → Install → Initialize → Discover → Establish → Build → Use → Understand → Operate → Change → Retire**. Each activity must have clear outcomes and work products.
 
-Careers are a **requirements-discovery lens**, not access rights. Authorisation is determined by authenticated identity, database privileges, approved action and environment controls.
+## Platform capability families
 
-## Where is it used?
+These are strategic coverage areas, **not** currently qualified features, commitments to a particular package topology or an exhaustive inventory of every product in the market.
 
-On developers’ machines, operator workstations, servers, containers and automation hosts, accessing local/self-hosted databases and supported managed/cloud services. Private networks, TLS, tokens, IAM/Entra and proxy configuration need explicit, testable boundaries. NuBloxSQL does not provision entire cloud subscriptions, generic networks, Kubernetes clusters or operating systems.
+| Family | Capabilities NuBloxSQL aims to provide |
+| --- | --- |
+| **First-party native connectivity** | NuBloxSQL-owned database protocols and native adapters, connection/session lifecycle, authentication, verified TLS, native data types, binding, transactions, metadata, capabilities, errors, pooling and resource control |
+| **Query technologies** | Composable, type-safe, model- and vendor-aware query builders; SQL/dialect parsing, compilation, validation, analysis, query plans, profiling and optimisation tooling |
+| **ORM and data mapping** | Relational ORM with entities, relationships, persistence, mapping, change tracking and schema generation; separately model-native abstractions for document, graph, key-value and other systems where appropriate |
+| **Database design and development** | Data modelling, logical/physical schema design, editors, object browsers, reverse engineering, code generation, debugging, testing and impact analysis |
+| **Schema change and delivery** | Schema comparison, migrations, change review, rollback, drift detection, version control integration and repeatable deployment |
+| **Administration and operations** | Technology selection, installation, initial configuration, users/privileges, diagnostics, monitoring, tuning, capacity, availability, maintenance, backup, restore, incident response and retirement |
+| **Data operations** | Secure browsing/editing, import/export, comparison, controlled migration, copying, transformation, integration and lineage evidence |
+| **Security and governance** | Least privilege, credential and secret policy, auditing, access assessment, reviewable evidence, compliance-related database operations and reliability safeguards |
+| **Automation and professional tooling** | SDKs and developer frameworks, NuBloxSQL Shell, NuBloxSQL Workbench, batch/scheduled/durable operations, workflows, approvals, recovery and role-relevant work products |
+| **Cross-vendor interoperability (future)** | Express supported capabilities and operations across database vendors in familiar terminology, including a possible MySQL-oriented experience over PostgreSQL capabilities, where semantics genuinely permit |
 
-## When is it used?
+This is a **living capability research scope**, not a synthetic list of release promises. NuBloxSQL should learn from all credible existing database tool categories and strive to build something substantially better.
 
-Across eleven canonical phases: **Select → Install → Initialize → Discover → Establish → Build → Use → Understand → Operate → Change → Retire**. “Complete lifecycle” is the product destination, not a statement that any phase currently has a working implementation.
+### Foundational products and independent developer technologies
 
-## How will it work?
+- **NuBloxSQL Driver:** the first-party programmable native database connectivity/execution foundation, supporting vendor-specific fidelity and a deliberate portable surface where semantics align.
+- **NuBloxSQL Shell:** a comprehensive command-line and scripting application for database work throughout the lifecycle, built on public platform APIs rather than private vendor implementations.
+- **NuBloxSQL Workbench:** an accessible, comprehensive graphical professional database environment built on the same public capabilities.
+- **ORM, query builder and other developer technologies:** independently consumable platform capabilities. Applications must not be required to install Shell or Workbench to use them.
 
-- A small and stable public Driver API delegates to **qualified native adapters**, each with explicit model/protocol, feature/version and deployment evidence.
-- Every operation states capability prerequisites, security assumptions, output/work product and failure/rollback semantics.
-- The Shell and Workbench use **only that public API** and independently prove an actual end-to-end professional outcome.
-- A database technology catalogue, a native adapter contract, and cloud deployment/connectivity profiles are **separate**.
-- Connection state, secrets and destructive privileges are tightly scoped. Long-running changes may require durable jobs, resumable state, approval and evidence; jobs do not replace product capabilities.
-- The preferred implementation direction is **TypeScript on Node.js for the Driver/Shell and SvelteKit for Workbench**. These are design choices pending the reproducible toolchain gate, not evidence that software exists.
+Other independently useful products or libraries may emerge from real requirements. Do **not** restrict the platform to three modules, create speculative empty packages, or require everything to live in the Driver.
 
-## Non-goals
+## How should the technology behave?
 
-An ERP, enterprise operating system, generic ETL platform, BI suite, cloud account provisioner, generic infrastructure-as-code platform, workforce system or “SQL translator for everything”. NuBloxSQL may integrate with such systems, but must not depend on them.
+1. **Ground-up proprietary engineering:** first-party native vendor protocol/driver implementations, typed public APIs and NuBloxSQL-owned product behaviour. General-purpose programming languages, operating systems, Node networking/TLS/crypto and legitimate build tools remain permissible. Do not wrap existing third-party database drivers while marketing them as native NuBloxSQL.
+2. **Native fidelity before artificial uniformity:** preserve dialects, database data models, transactions, type systems, deployment and native administrative semantics. A shared API may unify proven common behaviour, while native capability APIs remain available and explicit.
+3. **Composable, independent usage:** Driver, ORM, query builder, metadata, migrations, SDKs and other developer capabilities should be usable without either professional UI. Shell/Workbench are consumers of shared services, not the owners of database protocols.
+4. **Real professional outcomes:** derive work from database career activities, lifecycle tasks and measurable work products; test native operations and results against real qualified engines.
+5. **Secure, dependable and supportable:** verify host identity/TLS, honour privileges, handle secrets safely, bound work, support cancellation and cleanup, provide dependable diagnostics, rollback and audit where appropriate.
+6. **Vendor- and model-aware interoperability:** a MySQL user might eventually interact with PostgreSQL capabilities using familiar MySQL terms. Translation of terminology or SQL syntax must be distinguished from actual equivalent semantics, deliberate emulation or unimplementable features. Explicitly disclose any semantic changes, unsupported functions or loss.
 
-## What success looks like
+## What makes NuBloxSQL the tool of choice?
 
-A user can independently install each released product and complete an evidence-backed task with a real qualified database. Unsupported features are refused clearly. The Driver has documented public API stability; Shell and Workbench demonstrate the same database action without a second implementation. Every advertised vendor/cloud connection is backed by reproducible live tests and an explicit support matrix.
+This is a **measurable objective**, not a currently established fact. Evaluate against leading tools on like-for-like tasks using reproducible evidence for correctness, protocol/native depth, performance, memory, portability, security, reliability, accessibility, documentation, productivity, feature coverage and quality of completed professional work.
 
-## Product status today
+Do not assume we will immediately exceed every specialist incumbent in every category. Benchmark relevant capabilities honestly and improve until users can independently demonstrate a reason to choose NuBloxSQL.
 
-The **new main branch is a documentation-only specification**. The former code, tests, runtime coverage and v1 release line are archived, not silently declared qualified for the new design. Reuse is selective and requires acceptance tests before being reintroduced.
+## Boundaries and non-goals
+
+- **Not only a Driver, Shell and Workbench:** these do not define the full product limits.
+- **Not generic SQL pasted onto every database:** SQL and non-SQL native models remain distinct, and cross-vendor translation is a **long-term** goal, not current engine magic.
+- **Not automatically a NuBloxSQL database server/storage engine:** building a new DBMS is not presently an accepted requirement; it would need explicit separate scope and proof.
+- **Not an unrelated ERP, BI, AI training or infrastructure platform:** NuBloxSQL remains **database technology first**, while integrating with other tools and cloud providers through explicit contracts.
+- **Not universal vendor support today:** catalogued engines are not qualified implementations. Every advertised engine/version/auth/TLS/cloud/capability combination requires evidence.
+
+## Delivery discipline and current status
+
+The [TASK-001](TASK-001.md) PostgreSQL inventory is **one first engineering demonstration**, not the market definition or upper limit of NuBloxSQL. The [ROADMAP.md](ROADMAP.md) sequences risk-controlled proof points towards this broader goal. The [REQUIREMENTS.md](REQUIREMENTS.md) owns traceable feature requirements; the [ARCHITECTURE.md](ARCHITECTURE.md) owns implementation boundaries; [SUPPORT-AND-QUALIFICATION.md](SUPPORT-AND-QUALIFICATION.md) owns verified release claims.
+
+As of 16 October 2026, `main` has an experimental private first-party PostgreSQL 17 protocol v3/SCRAM read-only inventory Driver and a Shell using its public API, exercised by narrow live tests. **The ORM, query builder, complete Workbench, universal coverage and cross-vendor translation are not yet implemented or qualified.** Former implementation assets remain in the [legacy archive](ARCHIVE.md). Published npm v1 artefacts are historical and must not be overwritten by reboot builds.
