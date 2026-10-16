@@ -92,6 +92,14 @@ NuBloxSQL's proprietary product identity is **not simply a matter of the licence
 - Shell and Workbench never import private adapter/runtime paths.
 - Cloud secret acquisition, tunnel creation and token refresh are explicitly contracted, not assumed.
 
+## Archive-first engineering and clean-room product boundaries
+
+The [archived asset assessment](ARCHIVE.md) is the **authoritative source-level reuse review**. Historical PostgreSQL protocol, session/TLS, MySQL framing/auth, SQL Server TDS, Redis RESP and AST/schema/migration modules must be examined before duplicate modules are implemented. Reuse is selective and requires independently valid current interfaces and tests, not a mass restoration of the old repository.
+
+First-party means **we own the actual database communication implementation**, not merely that our source code calls a third-party native client. The archived MongoDB adapter loads the `mongodb` package's client and is not compatible with this requirement as a first-party wire adapter. By contrast, Node standard networking/TLS/crypto and built-in SQLite APIs are general-purpose/runtime facilities; they do not automatically represent third-party DBMS clients.
+
+Archived test execution is an input to engineering qualification; real current vendor/version/auth/TLS/database tests and negative security review are still mandatory. This prevents both reinventing existing native modules and exaggerating legacy maturity.
+
 ## Avoid accidental scope narrowing
 
 The first Driver → Shell → Workbench task is an **integration acceptance exercise**, not the complete NuBloxSQL product taxonomy. Develop model-aware libraries and services as specified, without duplicating core semantics inside UIs. Do not add third-party DBMS client drivers to first-party native adapters. Benchmark quality with realistic tasks and honest comparable evidence, not file counts.

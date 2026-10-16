@@ -1,49 +1,65 @@
-# Preserved implementation archive and recovery
+# Preserved source archive — evidence-led reuse
 
-## What was preserved?
+**Immutable archive:** [archive/legacy-implementation-2026-10-16](https://github.com/NuBlox/NuBloxSQL/tree/archive/legacy-implementation-2026-10-16), commit **4ed0e35fbfe71ac110c9ec41cf62ba3355e9d56c**, tree **d4cf114ac07cd3128eab645beb6f9721ef62c920**, **635 tracked file blobs**. The branch and active ruleset #25231728 are protected. Never rewrite or delete it.
 
-Before the documentation-first reboot, the complete repository was captured as a separate Git branch:
+**Decision:** This historical repository contains substantial NuBloxSQL work. Compare and qualify it **before** rebuilding anything that already exists. Historical module names, self-rated coverage and old tests do **not** establish current production support.
 
-- **Archive ref:** `archive/legacy-implementation-2026-10-16`
-- **Commit:** `4ed0e35fbfe71ac110c9ec41cf62ba3355e9d56c`
-- **Tree:** `d4cf114ac07cd3128eab645beb6f9721ef62c920`
-- **Verified source files:** 635 blobs in the tracked legacy tree
-- **Contents:** the previous Driver, Shell, Workbench, tests, releases, workflows, product/architecture docs and database-profession register
+## Source-level audit — 16 October 2026
 
-[Browse archived source](https://github.com/NuBlox/NuBloxSQL/tree/archive/legacy-implementation-2026-10-16).
+Reviewed immutable Git tree and selected actual source files, imports, tests, archived package and legacy capability register. The statuses below mean **source evidence**, not live qualification. All paths in this table are relative to the **archive** commit, not current main.
 
-The archive was verified against the original main SHA **before any reset**. Because it is a Git branch rather than an enforced immutable tag, repository administrators should protect it against deletion and force pushes. Its historic commit remains accessible from Git history even after the default branch advances.
+| Capability | Verified archived source paths | Evidence and next action |
+| --- | --- | --- |
+| PostgreSQL native protocol | lib/dialects/postgresql/lib/Connection.js; protocol/; ScramSha256.js; TlsPolicy.js; PostgreSQL tests | **Top reuse candidate.** First-party Node socket, message and auth code with substantially broader features than the new inventory proof. Compare both implementations, independently execute archived unit suites, review security/TLS/cancellation/types and real-engine tests **before** porting |
+| MySQL native protocol | lib/dialects/mysql/lib/Connection.js; lib/protocol/; auth, packet, prepared, test files | **Top reuse candidate.** NuBloxSQL first-party packet/auth logic; assess version-specific authentication, TLS and protocol fidelity |
+| SQL Server TDS | lib/dialects/sqlserver/lib/Connection.js; TdsPacket.js; Prelogin.js; Login7.js; Rpc.js; tests | **Candidate.** First-party TDS source; needs supported-version, TLS, login, type-fidelity and live conformance evidence |
+| SQLite | lib/dialects/sqlite/lib/Connection.js; maintenance/changeset/storage tests | **Candidate.** Uses the standard Node built-in SQLite API; do not claim that NuBloxSQL developed its own SQLite storage engine |
+| Redis RESP2 | lib/dialects/redis/lib/Connection.js; Resp2.js; protocol/live tests | **Candidate.** First-party RESP framing/client source; needs real Redis/security/bounds qualification |
+| MongoDB | lib/dialects/mongodb/lib/Connection.js; unit/live tests | **Does not meet first-party wire criterion:** runtime dynamically calls require('mongodb').MongoClient unless a client is injected. Retain learning/tests only; do not adopt as a native NuBloxSQL implementation |
+| SQL parser/compiler | lib/capabilities/Parser.js; Compiler.js; AstPipeline.js; ddl/; dml/ | **High-value candidate for query technology.** Contains AST/parser/compiler components; not proof of a complete publicly usable fluent/type-safe query builder |
+| Schema intelligence and migrations | lib/client/engineering/SchemaSnapshot.js; SchemaDiff.js; MigrationPlanner.js; MigrationExecutor.js; tests | **High-value candidates.** Audit deterministic models, actual native DDL, loss/risk labelling, dry run, rollback, crash recovery and dialect qualification |
+| ORM | No distinct ORM module/package or ORM acceptance suite identified in inspected archived paths | **New capability likely needed.** Some generic model modules refer to SQL capabilities, not object persistence. This source-path finding is not a formal proof of absence |
+| Developer query builder | AST/SQL compiler source exists; no separately identifiable fluent builder API/tests in inspected paths | **Independent public API and testing required**, reusing any qualified AST/compiler internals |
+| Shell and Workbench | apps/shell/; apps/workbench/; test/working-shell-smoke.js; test/workbench-smoke.js | **Selective UX/workflow reuse.** Historical Workbench is a local web UI, not a proven SvelteKit release; both require fresh contract, security and usability verification |
+| Lifecycle and database operations | lib/client/administration/; lib/client/engineering/DataMovement.js; lib/lifecycle/; lib/jobs/ | **Planning/control candidates**, not proof that full installation, recovery and retirement are executable and qualified |
+| Technology/vendor/cloud catalogues | lib/catalog/DatabaseTechnologyRegistry.js; CloudDatabaseRegistry.js | **Metadata**, not working wire adapters or cloud IAM/networking qualifications |
 
-## Inspect on your Mac without rewriting main
+The historical [capability register](https://github.com/NuBlox/NuBloxSQL/blob/archive/legacy-implementation-2026-10-16/docs/product/CAPABILITY-REGISTER.md) uses labels such as Strong and Established, but those labels must **not** be carried forward as today's supported-release statements.
+
+### An especially important comparison
+
+Current main has packages/driver/src/postgresql/wire.ts: a deliberately narrow first-party loopback/SCRAM protocol proof. The archive already has broader PostgreSQL connection, wire, TLS, authentication and operation modules. **Do not start another PostgreSQL rewrite before comparing their APIs, correctness, tests and security boundaries.**
+
+## Reproducible, read-only reference tests
+
+The [archive assessment workflow](../.github/workflows/archive-assessment.yml) checks out the exact immutable archive commit in a **separate directory** under Node.js 24 and runs selected old PostgreSQL, MySQL, SQL Server, Redis, schema-diff and migration unit suites.
+
+**Passing these tests proves only that the selected archived unit tests run in the CI environment.** It does not prove real-engine protocol compatibility, security, complete vendor/model coverage, ownership provenance or readiness to merge any code. Actual adoption requires current tests and release qualification.
+
+### Read archive files on your Mac without changing branches
 
 ~~~bash
-cd "$HOME/Sites/NuBlox_Development/NuBloxSQL"
-git fetch origin
-git show origin/archive/legacy-implementation-2026-10-16:package.json
-git show origin/archive/legacy-implementation-2026-10-16:docs/product/BLUEPRINT.md
-git diff --stat main origin/archive/legacy-implementation-2026-10-16
+nbx nubloxsql
+git status --short
+git fetch --prune origin
+git rev-parse origin/archive/legacy-implementation-2026-10-16
+git show 4ed0e35fbfe71ac110c9ec41cf62ba3355e9d56c:lib/dialects/postgresql/lib/Connection.js
+git show 4ed0e35fbfe71ac110c9ec41cf62ba3355e9d56c:lib/client/engineering/SchemaDiff.js
 ~~~
 
-If you need a local read-only working branch for legacy investigations:
+The archive reference must resolve to **4ed0e35fbfe71ac110c9ec41cf62ba3355e9d56c**. These commands read historical data; they do not change the checked-out branch or the archive.
 
-~~~bash
-git switch -c inspect/legacy-2026-10-16 origin/archive/legacy-implementation-2026-10-16
-# Inspect; do not push changes to the archive branch.
-git switch main
-~~~
+## Required component-by-component reuse gate
 
-## Restoring selected work
+1. Link the specific user outcome and capability to [PRODUCT.md](PRODUCT.md), [REQUIREMENTS.md](REQUIREMENTS.md) and a testable professional/developer task.
+2. Identify exact archive commit and source paths; check original authorship, dependencies, licence and security assumptions.
+3. Run reference tests in isolation; inspect native code and compare with current source. Do not call code qualified merely because unit tests pass.
+4. Adapt only justified source into coherent current API boundaries. Never restore the entire archive or smuggle MongoDB or other third-party driver wrappers into first-party runtime.
+5. Pass actual DBMS/version/auth/TLS/semantic/negative/live checks, clean consumer builds and regression tests before making support claims.
+6. Merge via required PR/CI, verify protected main, preserve immutable archive, record accepted capability evidence.
 
-Restore **individual files or ideas onto a new feature branch**, only after requirements and validation criteria are agreed. Copying everything from the archive back onto main would recreate the same problem. Do not force-reset main to the archive.
+**The mission remains the full database technology platform**—native drivers, ORM, query builder, schema technologies, professional tools and eventual vendor-aware interoperability—not reconstituting the legacy tree.
 
-## Existing public packages and legal history
+## Legacy releases and repository protection
 
-Earlier npm v1 artefacts, release records and historical licence grants are not revoked or replaced by this documentation reset. The new default branch deliberately has **no package manifest and no publishing workflow**, so it cannot be mistaken for a functioning new release. The exact historical licence remains in this repository's LICENSE.
-
-## Branch-protection installer
-
-The [GitHub administrator procedure](admin/README.md) provides two exact ruleset manifests and a verification script for `main` and this archive. The script must be run through the repository owner's admin-authenticated GitHub CLI session. **Committing the installer is not evidence of live GitHub protection.** See [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328).
-
-## Future archive hardening
-
-The repository owner should configure ruleset protection for `main` and `archive/legacy-implementation-2026-10-16`, then ideally add an annotated archival tag using local Git once its target SHA is verified. Do not delete the archive to make the branch list look empty: the archive is intentionally retained.
+Historical npm v1 releases and licence history are not replaced by reboot builds. New main remains private/unpublished. The main/archive protection installer and verifier are in [admin/README.md](admin/README.md); [issue #328](https://github.com/NuBlox/NuBloxSQL/issues/328) tracks the owner-only enhancement to require the Node/PostgreSQL check on protected main.
