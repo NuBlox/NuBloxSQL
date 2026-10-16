@@ -167,4 +167,15 @@ fs.readdirSync(path.join(root,'test')).forEach(function(name){
   assert(!/require\(['\"]\.\.\/\.\.\/shell\//.test(source),
     'Workbench must not import Shell implementation: '+file);
 });
+// Shared SQL client must delegate target selection to the internal runtime.
+assert(exists('lib/client/runtime/ConnectionTargets.js'),'connection target module missing');
+var clientSource=fs.readFileSync(path.join(root,'lib/client/Client.js'),'utf8');
+assert(clientSource.includes("require('./runtime/ConnectionTargets')"),
+  'Client must delegate connection target creation to its runtime module');
+assert(!clientSource.includes('function createPoolConfig('),
+  'portable pool option translation must not reappear in the Client facade');
+var platformSteps=JSON.parse(fs.readFileSync(path.join(root,
+  'scripts/suites/platform.json'),'utf8')).steps;
+assert(platformSteps.includes('test/client-connection-targets.js'),
+  'connection target regression must be included in platform suite');
 console.log('NuBloxSQL repository structure: PASS');
