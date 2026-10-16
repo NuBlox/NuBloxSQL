@@ -1,6 +1,6 @@
 # NuBloxSQL
 
-**Status: G1 implementation underway — the first private PostgreSQL Driver and independent Shell code is present for CI qualification. Workbench and a complete TASK-001 release are not yet implemented. Nothing in this repository is published from the reboot.**
+**Status: proprietary, ground-up native-driver implementation underway. The first private PostgreSQL protocol v3 Driver and independent Shell are undergoing live CI qualification. Workbench, remote TLS and a complete TASK-001 release are not yet implemented. Nothing in this repository is published from the reboot.**
 
 NuBloxSQL is a proposed **universal database connectivity and professional database-work platform**. It consists of three distinct products:
 
@@ -33,9 +33,9 @@ The [administrator ruleset procedure](docs/admin/README.md) defines the required
 
 ## First executable slice — not a released product
 
-The `@nubloxsql/driver` private TypeScript package now implements **read-only PostgreSQL 17 inventory** with a scoped catalog query, safe error codes, explicit transport policy, finite limits and redacted output. The independent `@nubloxsql/shell` package calls its **public API** to write a protected JSON work product. Both are experimental; Workbench is not yet implemented.
+The `@nubloxsql/driver` private TypeScript package implements **read-only PostgreSQL 17 inventory using NuBloxSQL-owned wire framing, SCRAM authentication and native query flow**, not a third-party PostgreSQL driver. It returns scoped catalog metadata, safe error codes, explicit transport policy, finite limits and redacted output. The independent `@nubloxsql/shell` package calls its **public API** to write a protected JSON work product. Both are experimental; Workbench is not yet implemented.
 
-The initial local fixture contract requires a PostgreSQL instance on `127.0.0.1`, explicit environment-sourced credentials and `security=isolated-local`; remote TLS/cloud deployments have **not** passed qualification. Source API and work-product details are defined in [TASK-001](docs/TASK-001.md).
+The initial native wire client supports explicitly isolated PostgreSQL loopback only, with SCRAM-SHA-256 using currently ASCII-only password input. Remote TLS/cloud, channel binding and other authentication schemes have **not** passed qualification and must be refused rather than silently delegated to another driver. Source API and work-product details are defined in [TASK-001](docs/TASK-001.md).
 
 On Node.js 24, run `npm ci`, `npm run build` and `npm run test:unit`. Live tests run against a digest-pinned PostgreSQL 17 CI service. The Shell requires an explicit `NUBLOXSQL_PG_SECURITY` value (`isolated-local` or `verified-tls`) and an environment-based secret; it does not accept a password on the command line. **Do not publish** the private package or claim production support.
 

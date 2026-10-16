@@ -50,7 +50,17 @@ docs/                   Authoritative specification and qualification
 tests/                  Contracts + real DBMS integration/live matrices
 ~~~
 
-The initial implementation contains `packages/driver` and `apps/shell` as **private TypeScript npm workspaces**, each compiled separately and connected through the driver's public export. `apps/workbench` is planned, not present yet. The complete layout remains a **target architecture**, not an instruction to create empty directories. This slice uses the maintained `pg` transport behind the NuBloxSQL adapter; it does **not** reimplement PostgreSQL's wire protocol. The archive is not imported wholesale.
+The initial implementation contains `packages/driver` and `apps/shell` as **private TypeScript npm workspaces**, each compiled separately and connected through the Driver's public export. `apps/workbench` is planned, not present yet. The complete layout remains a **target architecture**, not an instruction to create empty directories. The former `pg` wrapper was a temporary implementation shortcut inconsistent with the accepted proprietary-first-party requirement. The active PostgreSQL adapter now uses **NuBloxSQL-owned protocol 3.0 framing, SCRAM challenge/response and extended query encoding** built on Node core sockets/crypto. It is initially loopback-only; remote verified TLS requires separate proof and qualification. The archive is not imported wholesale.
+
+## Intellectual-property and dependency boundaries
+
+NuBloxSQL's proprietary product identity is **not simply a matter of the licence text**. The implementation must genuinely own its reusable Driver API, native database communication protocols, adapter behaviour, credential/session/resource handling and SQL/non-SQL operation semantics.
+
+- **First-party runtime:** NuBloxSQL-owned PostgreSQL, MySQL and other native vendor adapters (when implemented), transport framing, auth exchange implementations, errors, capability detection and query operations. No `pg`, `mysql2`, `tedious` or analogous driver may underpin a first-party adapter.
+- **Permitted foundations:** Node.js built-in networking, TLS and cryptographic primitives and independently licensed development/build tooling (TypeScript, test runners). We are **not** claiming to own Node, TLS or the PostgreSQL open protocol standard.
+- **Exceptions:** any future third-party client must be a clearly disclosed, explicitly optional compatibility layer, separately packaged, never described as a native NuBloxSQL protocol implementation and never included implicitly.
+- **Evidence:** native wire-protocol integration tests against the actual DBMS, standard test vectors and negative security cases. Passing a mock-only test is not vendor qualification.
+- **Intellectual-property hygiene:** write our own implementation using publicly available protocol specifications, maintain attribution and dependencies where required, and do not transplant third-party source code under the proprietary NuBloxSQL licence.
 
 ## API design rules
 

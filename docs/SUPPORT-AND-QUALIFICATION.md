@@ -1,6 +1,6 @@
 # Support, qualification and release policy
 
-**Current reboot support status: experimental private Driver/Shell PostgreSQL inventory implementation under qualification, no released/qualified Driver/Shell/Workbench product or cloud connector.** The historical implementations are preserved on the [archive](ARCHIVE.md); only narrowly specified TASK-001 source has been introduced on main.
+**Current reboot support status: experimental, privately developed NuBloxSQL-owned PostgreSQL protocol 3.0 Driver/Shell inventory implementation under qualification; no production-qualified Driver/Shell/Workbench product or cloud connector.** The historical implementations are preserved on the [archive](ARCHIVE.md); only narrowly specified TASK-001 source has been introduced on main.
 
 ## Separate support declarations
 
@@ -18,7 +18,7 @@ A support claim must be recorded at the intersection of:
 
 | Engine family | Target evaluation | Release status on new main | Special qualification |
 | --- | --- | --- | --- |
-| PostgreSQL | First SQL vertical slice | Experimental private PostgreSQL 17 inventory adapter, pending G1/G2/G3 qualification | Catalog privilege filtering, version, auth/TLS, limits, integration evidence; wider SQL functionality not implemented |
+| PostgreSQL | First native SQL vertical slice | Experimental first-party PostgreSQL 17 wire/SCRAM inventory adapter; no release qualification | Isolated loopback-only, catalog CONNECT privilege filtering and deterministic limits; verified remote TLS, SCRAM-PLUS, Unicode/SASLprep passwords, cancellation and broader native SQL still pending |
 | MySQL | Subsequent SQL adapter | Not implemented | MySQL native authentication/TLS and pooling |
 | SQLite | Embedded SQL adapter | Not implemented | File modes, locks, changes, transaction and corruption behaviour |
 | SQL Server | Native TDS adapter | Not implemented | TDS versions, login/TLS, metadata, type fidelity |
