@@ -136,7 +136,7 @@ export async function inspectDatabase(profile: PostgresProfile, options: Inspect
 
   const config: NativePgConfig = {
     host: profile.host, port: profile.port, user: profile.user, database: profile.database,
-    password: profile.password, connectionTimeoutMillis: timeout, query_timeout: timeout,
+    password: profile.password, ssl: false, connectionTimeoutMillis: timeout, query_timeout: timeout,
     statement_timeout: timeout, application_name: 'nubloxsql-task001'
   };
   if (profile.security === 'verified-tls') {
