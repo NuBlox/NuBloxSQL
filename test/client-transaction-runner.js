@@ -76,7 +76,7 @@ async function main() {
     assert.strictEqual(error.rollbackError,rollbackError);
     return true;
   });
-  assert.deepEqual(failureEvents,['begin:deferred','cleanup','cleanup','rollback']);
+  assert.deepEqual(failureEvents,['begin:deferred','cleanup','rollback']);
 
   // Native non-pooled connection passes through its transaction adapter.
   const nativeOptions={isolationLevel:'serializable'};
