@@ -1,6 +1,6 @@
 # Product definition — the authority
 
-**Status:** Product definition accepted as initial G0 engineering scope, 16 October 2026. The first workflow is specified in [TASK-001](TASK-001.md); no executable new Driver/Shell/Workbench implementation has been qualified.
+**Status:** Proprietary first-party native product scope accepted, 16 October 2026. The first PostgreSQL protocol v3 Driver/Shell workflow is experimental and defined in [TASK-001](TASK-001.md); no end-to-end released Driver/Shell/Workbench suite is qualified.
 **Owner:** Stephen J T Spittal.
 **Change control:** Record a deliberate decision in [DECISIONS.md](DECISIONS.md) before changing this definition. No other document may silently override it.
 

@@ -1,4 +1,4 @@
-import pg from 'pg';
+import {NativePgClient, type NativePgConfig} from './wire.js';
 
 export type InventoryStatus = 'completed' | 'partial';
 export type InventoryV1 = {
@@ -134,9 +134,9 @@ export async function inspectDatabase(profile: PostgresProfile, options: Inspect
     throw new InspectionError('INVALID_INPUT', 'The inspection limits are invalid.');
   }
 
-  const config: pg.ClientConfig = {
+  const config: NativePgConfig = {
     host: profile.host, port: profile.port, user: profile.user, database: profile.database,
-    password: profile.password, connectionTimeoutMillis: timeout, query_timeout: timeout,
+    password: profile.password, ssl: false, connectionTimeoutMillis: timeout, query_timeout: timeout,
     statement_timeout: timeout, application_name: 'nubloxsql-task001'
   };
   if (profile.security === 'verified-tls') {
@@ -146,7 +146,7 @@ export async function inspectDatabase(profile: PostgresProfile, options: Inspect
     config.ssl = false;
   }
 
-  const client = new pg.Client(config);
+  const client = new NativePgClient(config);
   let connected = false;
   try {
     await client.connect();
@@ -181,7 +181,7 @@ export async function inspectDatabase(profile: PostgresProfile, options: Inspect
     if (connected) {
       try { await client.end(); } catch { /* Preserve primary outcome; failure is not a credential disclosure. */ }
     } else {
-      // Connection failures may leave a socket; pg.Client.end is bounded by the driver.
+      // Connection failures may leave a socket; NativePgClient.end releases the socket.
       try { await client.end(); } catch { /* Already failed */ }
     }
   }

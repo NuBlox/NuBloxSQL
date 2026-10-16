@@ -31,6 +31,10 @@ jobs:
           node-version: '24'
       - name: Install pinned npm workspace dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Enforce first-party native database runtime
+        shell: bash
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; const root=JSON.parse(fs.readFileSync('package.json')); const driver=JSON.parse(fs.readFileSync('packages/driver/package.json')); const lock=JSON.parse(fs.readFileSync('package-lock.json')); if (Object.keys(driver.dependencies ?? {}).length || root.devDependencies?.['@types/pg'] || Object.keys(lock.packages).some(p => /node_modules\/(pg|@types\/pg|mysql2|tedious|mongodb|redis)$/.test(p))) process.exit(1)"
       - name: Build strict TypeScript Driver and Shell
         run: npm run build
       - name: Test contracts, boundaries and CLI
