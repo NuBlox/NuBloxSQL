@@ -8,7 +8,17 @@ export type NativePgConfig = {
   connectionTimeoutMillis: number; query_timeout: number;
   statement_timeout: number; application_name: string;
 };
+// Adopt the archived PostgreSQL ResultLimits concept, with tighter G1 inventory budgets.
+// All limits are applied before retaining decoded data, not just after row accumulation.
 const MAX_MESSAGE = 4 * 1024 * 1024;
+const MAX_ROWS = 1001;
+const MAX_ROW_BYTES = 2 * 1024 * 1024;
+const MAX_RESULT_BYTES = 8 * 1024 * 1024;
+function nativeFailure(code: string, messageText: string): Error & {code: string} {
+  const error = new Error(messageText) as Error & {code: string};
+  error.code = code;
+  return error;
+}
 function int32(n: number): Buffer {const b=Buffer.alloc(4); b.writeInt32BE(n); return b;}
 function int16(n: number): Buffer {const b=Buffer.alloc(2); b.writeInt16BE(n); return b;}
 function str(s: string): Buffer {
@@ -84,6 +94,7 @@ export class NativePgClient {
   private peer:FramedPeer|undefined;
   private timer:ReturnType<typeof setTimeout>|undefined;
   private ready=false;
+  private busy=false;
   constructor(private config:NativePgConfig){}
   private send(type:string, parts:Buffer[]=[]):void {this.peer!.send(message(type,parts));}
   async connect():Promise<void> {
@@ -111,6 +122,9 @@ export class NativePgClient {
       this.peer.send(Buffer.concat([int32(body.length+4),body]));
       await this.authenticate();
       this.ready=true;
+      // The handshake deadline is not a lifetime session deadline.
+      // The next query receives its own independent operation deadline.
+      if(this.timer) {clearTimeout(this.timer); this.timer=undefined;}
     } catch(e){await this.end();throw e;}
   }
   private async authenticate():Promise<void> {
@@ -165,54 +179,97 @@ export class NativePgClient {
     }
   }
   async query(sql:string,values:readonly (string|number)[]=[]):Promise<{rows:Record<string,unknown>[]}> {
-    if(!this.ready||!this.peer||sql.includes('\0')||values.length>16)throw new Error('Invalid native query state');
-    const parts=[str(''),str(''),int16(0),int16(values.length)];
-    for(const value of values) {
-      const t=String(value);
-      if(!(typeof value==='string'||typeof value==='number')||t.length>16384)
-        throw new Error('Invalid query parameter');
-      const b=Buffer.from(t);parts.push(int32(b.length),b);
-    }
-    parts.push(int16(0));
-    this.send('P',[str(''),str(sql),int16(0)]);
-    this.send('B',parts);this.send('D',[Buffer.from('P'),str('')]);
-    this.send('E',[str(''),int32(0)]);this.send('S');
-    let columns:string[]=[];const rows:Record<string,unknown>[]=[];
-    for (;;) {
-      const {type,body}=await this.peer.next();
-      if(type==='E')throw serverError(body);
-      if(type==='T') {
-        if(body.length<2)throw new Error('Malformed column information');
-        const size=body.readUInt16BE(0);if(size>128)throw new Error('Column count exceeded');
-        columns=[];let pos=2;
-        for(let i=0;i<size;i++){
-          const field=readCString(body,pos);pos=field.next+18;
-          if(pos>body.length)throw new Error('Malformed column type');
-          columns.push(field.value);
-        }
-      } else if(type==='D') {
-        if(body.length<2||body.readUInt16BE(0)!==columns.length||rows.length>=1001)
-          throw new Error('Invalid row count');
-        const row:Record<string,unknown>=Object.create(null);let pos=2;
-        for(const key of columns) {
-          if(pos+4>body.length)throw new Error('Truncated row');
-          const n=body.readInt32BE(pos);pos+=4;
-          if(n< -1||(n>=0&&pos+n>body.length))throw new Error('Invalid row length');
-          row[key]=n=== -1?null:body.toString('utf8',pos,pos+n);
-          if(n>=0)pos+=n;
-        }
-        if(pos!==body.length)throw new Error('Unexpected row bytes');
-        rows.push(row);
-      } else if(type==='Z') {
-        if(body.length!==1||body[0]!==73)throw new Error('Unexpected session state');
-        return {rows};
-      } else if(!['1','2','C','n','N','S','t'].includes(type))
-        throw new Error('Unexpected query response');
+    if(!this.ready||!this.peer||!this.socket||sql.includes('\0')||values.length>16)
+      throw new Error('Invalid native query state');
+    if(this.busy)throw new Error('Concurrent native queries are not supported by this session');
+    if(!Number.isInteger(this.config.query_timeout)||this.config.query_timeout<1||
+      this.config.query_timeout>60000)throw new Error('Invalid native query deadline');
+    this.busy=true;
+    const socket=this.socket;
+    const operationTimeout=setTimeout(()=>{
+      // A bounded fatal disconnect is safe until the independent native
+      // CancelRequest/recovery state machine is ported and qualified.
+      socket.destroy(nativeFailure('ETIMEDOUT','Native PostgreSQL query deadline exceeded'));
+    },this.config.query_timeout);
+    try {
+      const parts=[str(''),str(''),int16(0),int16(values.length)];
+      for(const value of values) {
+        const t=String(value);
+        if(!(typeof value==='string'||typeof value==='number')||t.length>16384||
+          (typeof value==='number'&&!Number.isFinite(value)))
+          throw new Error('Invalid query parameter');
+        const b=Buffer.from(t);parts.push(int32(b.length),b);
+      }
+      parts.push(int16(0));
+      this.send('P',[str(''),str(sql),int16(0)]);
+      this.send('B',parts);this.send('D',[Buffer.from('P'),str('')]);
+      this.send('E',[str(''),int32(0)]);this.send('S');
+      let columns:string[]=[];
+      let totalBytes=0;
+      const rows:Record<string,unknown>[]=[];
+      for (;;) {
+        const {type,body}=await this.peer!.next();
+        if(type==='E')throw serverError(body);
+        if(type==='T') {
+          if(body.length<2)throw new Error('Malformed column information');
+          const size=body.readUInt16BE(0);
+          if(size>128)throw new Error('Column count exceeded');
+          columns=[];
+          let pos=2;
+          for(let i=0;i<size;i++){
+            const field=readCString(body,pos);
+            pos=field.next+18;
+            if(pos>body.length)throw new Error('Malformed column type');
+            columns.push(field.value);
+          }
+          if(pos!==body.length)throw new Error('Unexpected column description bytes');
+        } else if(type==='D') {
+          if(body.length<2||body.readUInt16BE(0)!==columns.length)
+            throw new Error('Invalid native row shape');
+          if(rows.length>=MAX_ROWS)
+            throw nativeFailure('NUBLOX_POSTGRESQL_MAX_ROWS','Native PostgreSQL row limit exceeded');
+          const row:Record<string,unknown>=Object.create(null);
+          let pos=2;
+          let rowBytes=0;
+          for(const key of columns) {
+            if(pos+4>body.length)throw new Error('Truncated row');
+            const n=body.readInt32BE(pos);pos+=4;
+            if(n< -1||(n>=0&&pos+n>body.length))throw new Error('Invalid row length');
+            if(n>=0){
+              rowBytes+=n;
+              if(rowBytes>MAX_ROW_BYTES)
+                throw nativeFailure('NUBLOX_POSTGRESQL_MAX_ROW_BYTES','Native PostgreSQL row byte limit exceeded');
+              if(totalBytes+rowBytes>MAX_RESULT_BYTES)
+                throw nativeFailure('NUBLOX_POSTGRESQL_MAX_RESULT_BYTES','Native PostgreSQL result byte limit exceeded');
+            }
+            row[key]=n=== -1?null:body.toString('utf8',pos,pos+n);
+            if(n>=0)pos+=n;
+          }
+          if(pos!==body.length)throw new Error('Unexpected row bytes');
+          totalBytes+=rowBytes;
+          rows.push(row);
+        } else if(type==='Z') {
+          if(body.length!==1||body[0]!==73)throw new Error('Unexpected session state');
+          return {rows};
+        } else if(!['1','2','C','n','N','S','t'].includes(type))
+          throw new Error('Unexpected query response');
+      }
+    } catch(error) {
+      // PostgreSQL emits ErrorResponse and *then* ReadyForQuery after Sync.
+      // Until a full recovery state machine is implemented, never reuse a
+      // potentially unconsumed response (or a timed-out transport).
+      this.ready=false;
+      socket.destroy();
+      throw error;
+    } finally {
+      clearTimeout(operationTimeout);
+      this.busy=false;
     }
   }
   async end():Promise<void>{
     this.ready=false;
-    if(this.timer)clearTimeout(this.timer);
+    this.busy=false;
+    if(this.timer){clearTimeout(this.timer);this.timer=undefined;}
     try{if(this.peer&&this.socket&&!this.socket.destroyed)this.send('X');}catch{/* already disconnected */}
     if(this.socket)this.socket.destroy();
     this.socket=undefined;

@@ -30,6 +30,18 @@ The historical [capability register](https://github.com/NuBlox/NuBloxSQL/blob/ar
 
 Current main has packages/driver/src/postgresql/wire.ts: a deliberately narrow first-party loopback/SCRAM protocol proof. The archive already has broader PostgreSQL connection, wire, TLS, authentication and operation modules. **Do not start another PostgreSQL rewrite before comparing their APIs, correctness, tests and security boundaries.**
 
+## First selective consolidation — native PostgreSQL resource governance
+
+The first consolidation increment compares archived `lib/dialects/postgresql/lib/ResultLimits.js` and `CancellableConnection.js` with current `packages/driver/src/postgresql/wire.ts`.
+
+- **Adopted behaviour:** independent authentication vs query deadlines; an explicit single-operation session lock; per-row (2 MiB), per-query aggregate result (8 MiB) and row-count (1,001) hard limits; fatal disconnect and session invalidation after PostgreSQL ErrorResponse, oversized results or timeout.
+- **Reason:** the archive already distinguished result governance and operation timing. The initial native inventory proof had only a row count and a startup timer that accidentally continued throughout the session. An ErrorResponse could otherwise leave unread ReadyForQuery bytes on a seemingly usable session.
+- **Proof:** six additional disposable PostgreSQL 17 live acceptance tests exercise idle session survival, query timeout, stale response isolation, same-connection concurrent-call refusal and per-row/aggregate budgets, alongside the existing Driver/Shell tests.
+- **Not adopted yet:** archived auxiliary CancelRequest, cancellation recovery state machine, pooling, streaming, Unicode SCRAM/SASLprep or remote TLS. For now an operation timeout **disconnects** instead of promising graceful query cancellation. No archival source tree was mass-imported.
+- **Future direction:** compare those advanced archive implementations and integrate one capability at a time under current public API and security tests. These budgets are temporary private-inventory constraints, not universal driver API limits.
+
+This is a **behavioural consolidation of NuBloxSQL-owned concepts**, not a new PostgreSQL implementation or production qualification.
+
 ## Reproducible, read-only reference tests
 
 The [archive assessment workflow](../.github/workflows/archive-assessment.yml) checks out the exact immutable archive commit in a **separate directory** under Node.js 24 and runs selected old PostgreSQL, MySQL, SQL Server, Redis, schema-diff and migration unit suites.
