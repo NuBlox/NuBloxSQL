@@ -127,6 +127,27 @@ async function checkpointResumeContract() {
       target: { table: 'different_target', columns: ['id'] }
     }, first.checkpoint);
   }, /plan hash mismatch/);
+
+  // A checkpoint is evidence of a committed contiguous prefix, not an arbitrary offset.
+  var corruptCheckpoints = [
+    Object.assign({}, first.checkpoint, { rowOffset: 3 }),
+    Object.assign({}, first.checkpoint, { rowsWritten: -1 }),
+    Object.assign({}, first.checkpoint, { rowsWritten: Number.MAX_SAFE_INTEGER }),
+    Object.assign({}, first.checkpoint, { rowsSkipped: 1 }),
+    Object.assign({}, first.checkpoint, { rowsRead: 1 }),
+    Object.assign({}, first.checkpoint, { failedRow: -1 }),
+    Object.assign({}, first.checkpoint, { failedRow: 99 }),
+    Object.assign({}, first.checkpoint, { dryRun: 'false' })
+  ];
+  for (var i = 0; i < corruptCheckpoints.length; i += 1) {
+    await assert.rejects(function (value) {
+      return function () { return sql.resumeDataMovement(source(), healthyTarget, spec, value); };
+    }(corruptCheckpoints[i]), /checkpoint/);
+  }
+  await assert.rejects(function () {
+    return sql.resumeDataMovement(source(), healthyTarget, spec, undefined);
+  }, /checkpoint/);
+  assert.strictEqual(resumedWrites, 1, 'invalid checkpoints must never write additional rows');
 }
 
 async function dryRunContract() {
@@ -137,13 +158,19 @@ async function dryRunContract() {
   };
   var writes = 0;
   var target = { dialect: 'postgresql', execute: async function () { writes += 1; } };
-  var result = await sql.moveData(source, target, {
+  var spec = {
     source: { statement: 'select one' },
     target: { table: 'users', columns: ['id'] }
-  }, { dryRun: true });
+  };
+  var result = await sql.moveData(source, target, spec, { dryRun: true });
   assert.strictEqual(result.status, 'dry-run');
   assert.strictEqual(result.rowsWritten, 1);
+  assert.strictEqual(result.checkpoint.dryRun, true);
   assert.strictEqual(writes, 0);
+  await assert.rejects(function () {
+    return sql.resumeDataMovement(source, target, spec, result.checkpoint);
+  }, /dry-run checkpoint/);
+  assert.strictEqual(writes, 0, 'a dry-run checkpoint must not skip unwritten rows');
 }
 
 Promise.resolve()
