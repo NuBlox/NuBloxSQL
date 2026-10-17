@@ -1,6 +1,17 @@
 # Roadmap — gated, not date-driven
 
-**The objective is to make NuBloxSQL the database technology platform of choice, not to maximise file count or confuse the first demo with the entire product.** Build progressively with explicit gates. [PRODUCT.md](PRODUCT.md) is the fixed strategic authority; stages are delivery sequencing, not permission to redefine scope.
+**Immediate objective: make NuBloxSQL Driver a genuinely advanced universal DBMS client, supported by reproducible real-engine evidence.** Treat surrounding platform applications as deferred strategic work, not the present delivery target. Build progressively with explicit gates. [PRODUCT.md](PRODUCT.md) is the fixed strategic authority; stages are delivery sequencing, not permission to redefine scope.
+
+## Active Driver-first engineering sequence
+
+1. **One real public native client:** independently consumable SQL session already unifies a narrow PostgreSQL wire implementation with embedded SQLite, including parameter binding, native result differences and explicit unsupported-vendor refusals (PR #347).
+2. **Third relational vendor — MySQL:** selectively extract and qualify the existing archive's first-party MySQL packet/auth/prepared source behind the same public contract on disposable MySQL instances. Never delegate to `mysql2` or an external database client.
+3. **Make native capability depth exceptional:** authentication variations, types/precision, safe session lifecycle, transaction semantics, pooling, cancellation, streaming/backpressure, protocol resilience and failure isolation, native metadata and native administrative features.
+4. **Expand data models:** first-party Redis RESP and other non-SQL interfaces with their actual model semantics; continue SQL Server TDS and further SQL vendors with version-specific tests.
+5. **Deployment, cloud and competitiveness:** real managed/cloud auth/TLS/private connectivity qualification and reproducible workload comparisons, rather than static catalogue counts.
+6. **Defer peripheral products:** keep Shell, Workbench, ORM, designer and migration tooling in the strategic product definition, without prioritising them over native driver quality.
+
+**Capability and vendor support must always be stated by engine/version/protocol/auth/security/feature evidence.** Two SQL engines are the beginning, not the finished universal driver.
 
 ## Source reuse is mandatory before replacement engineering
 
