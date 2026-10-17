@@ -38,14 +38,14 @@ jobs:
       - name: Build strict TypeScript Driver and Shell
         run: npm run build
       - name: Test contracts, boundaries and CLI
-        run: node --test tests/inventory-contract.test.mjs tests/shell-interface.test.mjs
+        run: npm run check:structure && node --test tests/unit/*.test.mjs
       - name: Launch disposable PostgreSQL TLS fixture
         shell: bash
-        run: bash tests/fixtures/start-postgresql-tls.sh
+        run: bash tests/fixtures/postgresql/start-tls.sh
       - name: Live PostgreSQL TLS certificate and downgrade protection
         env:
           NUBLOXSQL_CI_ADMIN_PASSWORD: ci-fixture-admin-only
-        run: node --test tests/live-postgres-tls.test.mjs
+        run: node --test tests/integration/postgresql/verified-tls.test.mjs
       - name: Stop disposable PostgreSQL TLS fixture
         if: always()
         shell: bash
@@ -53,4 +53,4 @@ jobs:
       - name: Live PostgreSQL 17 discovery and privilege filtering
         env:
           NUBLOXSQL_CI_ADMIN_PASSWORD: ci-fixture-admin-only
-        run: node --test tests/live-postgres.test.mjs tests/live-postgres-governance.test.mjs
+        run: node --test tests/integration/postgresql/inventory.test.mjs tests/integration/postgresql/resource-governance.test.mjs

@@ -4,8 +4,8 @@ import {readFile, mkdtemp, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {NativePgClient} from '../packages/driver/dist/postgresql/wire.js';
-import {inspectDatabase, InspectionError} from '../packages/driver/dist/index.js';
+import {NativePgClient} from '../../../packages/driver/dist/adapters/postgresql/wire.js';
+import {inspectDatabase, InspectionError} from '../../../packages/driver/dist/index.js';
 
 const caPath=process.env.NUBLOXSQL_CI_TLS_CA_FILE;
 const wrongCaPath=process.env.NUBLOXSQL_CI_TLS_UNTRUSTED_CA_FILE;

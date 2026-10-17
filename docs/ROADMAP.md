@@ -38,6 +38,17 @@ The preserved [legacy archive](ARCHIVE.md) contains materially broader first-par
 
 **Exit:** reviewed requirements, schema examples, native conformance matrix and end-to-end acceptance scenarios. **No implementation code until this is approved.**
 
+## Current repository consolidation
+
+- [x] Inspect protected `main` and archived source; retain npm `packages/*` and `apps/*` as the correct top-level separation.
+- [x] Isolate actual PostgreSQL wire/metadata implementation under `packages/driver/src/adapters/postgresql/` and the public database-inspection operation under `src/operations/` (PR #346).
+- [x] Separate unit and PostgreSQL integration tests/fixtures, updating the build and live CI paths (PR #346).
+- [x] Add executable source architecture checks, with the actual [folder ownership reference](REPOSITORY-STRUCTURE.md), to prevent vendor SQL in professional workflows or Shell reaching into Driver internals (PR #346).
+- [ ] Implement the first complete Workbench task and independent query-builder/ORM prototypes only with real feature acceptance; no empty scaffolding or asserted vendor coverage.
+- [ ] Finish the owner-only main ruleset update requiring `Node 24 — Driver and Shell` (issue #328).
+
+This is a **behaviour-preserving refactor**, not a claim that NuBloxSQL is already a universal multi-vendor Driver, ORM or Workbench.
+
 ## Stage 2 — establish a small reproducible development toolchain
 
 - Choose monorepo/workspace packaging and TypeScript build standards.

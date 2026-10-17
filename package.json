@@ -12,8 +12,9 @@
   },
   "scripts": {
     "build": "tsc -p packages/driver/tsconfig.json && tsc -p apps/shell/tsconfig.json",
-    "test:unit": "npm run build && node --test tests/inventory-contract.test.mjs tests/shell-interface.test.mjs",
-    "test:live": "npm run build && node --test tests/live-postgres.test.mjs",
+    "check:structure": "node scripts/check-structure.mjs",
+    "test:unit": "npm run check:structure && npm run build && node --test tests/unit/*.test.mjs",
+    "test:live": "npm run build && node --test tests/integration/postgresql/inventory.test.mjs",
     "test": "npm run test:unit",
     "verify": "npm run test:unit"
   },
