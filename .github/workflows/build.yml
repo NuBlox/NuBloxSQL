@@ -49,7 +49,7 @@ jobs:
       - name: Stop disposable PostgreSQL TLS fixture
         if: always()
         shell: bash
-        run: docker rm -f nubloxsql-pg-verified-tls || true
+        run: docker rm -f nubloxsql-pg-verified-tls nubloxsql-pg-wrong-name || true
       - name: Live PostgreSQL 17 discovery and privilege filtering
         env:
           NUBLOXSQL_CI_ADMIN_PASSWORD: ci-fixture-admin-only
