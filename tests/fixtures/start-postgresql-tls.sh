@@ -29,14 +29,30 @@ openssl x509 -req -in "$cert_dir/server.csr" \
   -CAcreateserial -days 2 -sha256 \
   -extfile "$cert_dir/server.ext" -out "$cert_dir/server.crt"
 
+# An independently CA-signed but wrong-name leaf exercises hostname rejection,
+# rather than rejection merely caused by invalid/unknown trust roots.
+openssl req -new -newkey rsa:2048 -nodes -sha256 \
+  -subj '/CN=wrong-host.internal' \
+  -keyout "$cert_dir/wrong-server.key" -out "$cert_dir/wrong-server.csr"
+cat > "$cert_dir/wrong-server.ext" <<'EOF'
+subjectAltName=DNS:wrong-host.internal
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth
+EOF
+openssl x509 -req -in "$cert_dir/wrong-server.csr" \
+  -CA "$cert_dir/ca.crt" -CAkey "$cert_dir/ca.key" \
+  -CAserial "$cert_dir/ca.srl" -days 2 -sha256 \
+  -extfile "$cert_dir/wrong-server.ext" -out "$cert_dir/wrong-server.crt"
+
 openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 2 \
   -subj '/CN=NuBloxSQL Untrusted Test CA' \
   -keyout "$cert_dir/untrusted.key" -out "$cert_dir/untrusted.crt"
 
-chmod 644 "$cert_dir/ca.crt" "$cert_dir/server.crt" "$cert_dir/untrusted.crt"
-chmod 600 "$cert_dir/server.key"
+chmod 644 "$cert_dir/ca.crt" "$cert_dir/server.crt" "$cert_dir/wrong-server.crt" "$cert_dir/untrusted.crt"
+chmod 600 "$cert_dir/server.key" "$cert_dir/wrong-server.key"
 # The official Debian-based PostgreSQL image uses postgres UID/GID 999.
-sudo chown 999:999 "$cert_dir/server.key"
+sudo chown 999:999 "$cert_dir/server.key" "$cert_dir/wrong-server.key"
 
 image='postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3'
 docker run --rm -d --name nubloxsql-pg-verified-tls \
@@ -45,6 +61,13 @@ docker run --rm -d --name nubloxsql-pg-verified-tls \
   -e POSTGRES_PASSWORD=ci-fixture-admin-only \
   "$image" \
   -c ssl=on -c ssl_cert_file=/certs/server.crt -c ssl_key_file=/certs/server.key
+
+docker run --rm -d --name nubloxsql-pg-wrong-name \
+  -p 127.0.0.1:5434:5432 \
+  -v "$cert_dir:/certs:ro" \
+  -e POSTGRES_PASSWORD=ci-fixture-admin-only \
+  "$image" \
+  -c ssl=on -c ssl_cert_file=/certs/wrong-server.crt -c ssl_key_file=/certs/wrong-server.key
 
 ready=0
 for attempt in $(seq 1 45); do
@@ -57,6 +80,19 @@ for attempt in $(seq 1 45); do
 done
 if [[ "$ready" != 1 ]]; then
   docker logs --tail 40 nubloxsql-pg-verified-tls
+  exit 1
+fi
+ready=0
+for attempt in $(seq 1 45); do
+  if docker exec nubloxsql-pg-wrong-name \
+      pg_isready -h 127.0.0.1 -p 5432 -U postgres >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$ready" != 1 ]]; then
+  docker logs --tail 40 nubloxsql-pg-wrong-name
   exit 1
 fi
 
