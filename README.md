@@ -22,6 +22,7 @@ This is a deliberately clean restart. The previous implementation is preserved o
 4. [TASK-001: inspect a database](docs/TASK-001.md) — proposed first complete Driver/Shell/Workbench workflow and work-product schema.
 5. [Requirements](docs/REQUIREMENTS.md) — what must be demonstrated and accepted.
 6. [Architecture](docs/ARCHITECTURE.md) — native infrastructure, composable technologies and application boundaries.
+   [Implemented repository structure](docs/REPOSITORY-STRUCTURE.md) — real directories, ownership and automated boundary checks.
 7. [Support and qualification](docs/SUPPORT-AND-QUALIFICATION.md) — truthful vendor and cloud support.
 8. [Roadmap](docs/ROADMAP.md) — gated delivery order.
 9. [Decision log](docs/DECISIONS.md) — agreed decisions versus open questions.
