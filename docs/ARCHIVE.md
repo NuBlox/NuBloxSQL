@@ -37,10 +37,22 @@ The first consolidation increment compares archived `lib/dialects/postgresql/lib
 - **Adopted behaviour:** independent authentication vs query deadlines; an explicit single-operation session lock; per-row (2 MiB), per-query aggregate result (8 MiB) and row-count (1,001) hard limits; fatal disconnect and session invalidation after PostgreSQL ErrorResponse, oversized results or timeout.
 - **Reason:** the archive already distinguished result governance and operation timing. The initial native inventory proof had only a row count and a startup timer that accidentally continued throughout the session. An ErrorResponse could otherwise leave unread ReadyForQuery bytes on a seemingly usable session.
 - **Proof:** six additional disposable PostgreSQL 17 live acceptance tests exercise idle session survival, query timeout, stale response isolation, same-connection concurrent-call refusal and per-row/aggregate budgets, alongside the existing Driver/Shell tests.
-- **Not adopted yet:** archived auxiliary CancelRequest, cancellation recovery state machine, pooling, streaming, Unicode SCRAM/SASLprep or remote TLS. For now an operation timeout **disconnects** instead of promising graceful query cancellation. No archival source tree was mass-imported.
+- **Not adopted yet:** archived auxiliary CancelRequest, cancellation recovery state machine, pooling, streaming, Unicode SCRAM/SASLprep or managed-cloud/remote environment qualification. For now an operation timeout **disconnects** instead of promising graceful query cancellation. No archival source tree was mass-imported.
 - **Future direction:** compare those advanced archive implementations and integrate one capability at a time under current public API and security tests. These budgets are temporary private-inventory constraints, not universal driver API limits.
 
 This is a **behavioural consolidation of NuBloxSQL-owned concepts**, not a new PostgreSQL implementation or production qualification.
+
+## Second selective consolidation — mandatory verified PostgreSQL TLS
+
+The first-party current `packages/driver/src/postgresql/wire.ts` now incorporates the archived SSLRequest/TlsPolicy **design principles**: a PostgreSQL SSLRequest exchange, exactly-one-byte server response handling, a fail-closed refusal when the server says `N` (or responds with malformed/extra bytes), and mandatory certificate-chain **and hostname/IP identity validation** using Node built-in TLS.
+
+- A disposable real PostgreSQL 17 service with an **ephemerally generated CA and server certificate** verifies native TLS + SCRAM + Driver/Shell inventory.
+- CI separately refuses an untrusted CA, a **trusted CA-signed certificate with a mismatched hostname**, and a PostgreSQL server that does not negotiate TLS.
+- The standalone Shell supports a PEM trust-anchor path via `NUBLOXSQL_PG_CA_FILE`, only with `verified-tls`; no secrets are placed in command arguments or output.
+- This is **transport implementation evidence on disposable fixtures**, not proof of managed-cloud authentication, remote-provider deployment, channel binding or full production readiness. No third-party database client was introduced.
+- For direct non-TLS usage, the previously accepted exception remains **isolated loopback only**.
+
+The next native driver consolidation target is graceful auxiliary cancellation and recovery, using the archived CancelRequest logic with actual PostgreSQL 17 cancellation/security tests.
 
 ## Reproducible, read-only reference tests
 
