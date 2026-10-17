@@ -24,6 +24,12 @@
   governed by native capability evidence and semantic-loss disclosure.
 ~~~
 
+## Active Driver architecture boundary
+
+The active implementation target is an independently usable native client: `connectDatabase(target)` yields an explicitly **relational** SQL session with engine, verified transport choice and declared capabilities. PostgreSQL uses NuBloxSQL-owned wire framing/authentication; SQLite uses the Node built-in SQLite engine interface. Both live under `packages/driver/src/adapters/<vendor>/` and are consumed through the public Driver API. Neither the Shell nor an ORM is a dependency.
+
+This common relational contract does **not** imply equal type fidelity (PostgreSQL's current values are text; SQLite exposes native BigInt), a common SQL dialect or relational operations on document/graph/key-value engines. Future non-relational native adapters must justify separate model-specific APIs. Unsupported vendors fail without alternate-driver fallback.
+
 ## Separate axes — never conflate
 
 1. **Data/query model:** relational SQL, document, key-value, graph, wide-column, time-series, search, vector, multimodel.

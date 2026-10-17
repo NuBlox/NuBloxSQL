@@ -37,6 +37,11 @@
 | PRD-029 | P2 | Offer integrated professional administration, performance, data movement, security and automation tooling | Independently tested work products spanning the eleven phases and relevant profession roles |
 | PRD-030 | P2 | Investigate cross-vendor terminology and capability interoperability | Explicit compatibility matrix, semantic-difference diagnostics and round-trip tests with loss/refusal signals; no unsupported-equivalence claim |
 | PRD-031 | P2 | Benchmark competitiveness against established tools in each capability category | Publicly explainable like-for-like test tasks for correctness, speed, resource usage, security and developer/professional productivity |
+| PRD-032 | P0 | Independently consumable Driver client interface performs operations on multiple real engines | Same public `connectDatabase`/SQL session executes parameter-bound reads and writes on PostgreSQL 17 and embedded SQLite, without a Shell/Workbench or third-party database client |
+| PRD-033 | P0 | Strict native model, vendor, transport and capability identity | Unsupported vendors/models fail without network fallback; supported clients report only evidenced native capabilities |
+| PRD-034 | P0 | Preserve safe native type and database privilege behaviour | SQLite 64-bit integer fidelity, read-only database enforcement and bounded result tests; PostgreSQL text-type limitation declared |
+| PRD-035 | P1 | Qualify archived first-party MySQL protocol as third relational engine | Live MySQL version/auth/prepared parameter/conformance evidence through the same public API; no `mysql2` runtime |
+| PRD-036 | P1 | Demonstrate broad native Driver quality and competitiveness | Engine/version/security capability matrix plus reproducible correctness, performance, failure and security benchmarks |
 
 ## Quality constraints
 

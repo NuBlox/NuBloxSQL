@@ -6,6 +6,10 @@
 
 The preserved 635-file [implementation archive](ARCHIVE.md) includes broader PostgreSQL/MySQL/SQL Server/Redis and query/migration source than the new `main` build. Archived test suites may be executed in a separate, read-only CI checkout to identify **reuse candidates**. Their results do not add those engines to today's release support matrix. The archived MongoDB adapter uses the third-party `mongodb` client, so it cannot be claimed as NuBloxSQL-owned wire connectivity without redesign.
 
+## Driver-first qualification truth
+
+The active product engineering target is the **universal native Driver/client**. The first public `connectDatabase` SQL contract runs through the existing first-party PostgreSQL protocol and embedded SQLite. **This is two real relational technologies, not proof of a universal production Driver or leadership over other clients.** PostgreSQL currently returns text-decoded values whereas SQLite returns native BigInt and other embedded scalar types. Non-relational vendor support is not claimed.
+
 ## Platform-wide support truth
 
 The product vision extends to ORM, query builder, modelling, migrations, administration, professional automation and future cross-vendor interoperability. **None of those capabilities is qualified merely because the first-party PostgreSQL inventory Driver and Shell work in one CI fixture.** Independently record API, qualified vendors/versions, evidence and limitations for each released platform technology. No current claim of market or performance superiority is established.
@@ -28,7 +32,7 @@ A support claim must be recorded at the intersection of:
 | --- | --- | --- | --- |
 | PostgreSQL | First native SQL vertical slice | Experimental first-party PostgreSQL 17 wire/SCRAM and verified-TLS inventory adapter; no production qualification | Local loopback plaintext exception or SSLRequest + certificate chain and hostname verification (ephemeral CA fixture only); no downgrade; catalog CONNECT filtering, bounded query limits, fatal query deadline, single-active-query guard; **remote/cloud deployments**, SCRAM-PLUS, Unicode/SASLprep, graceful cancellation, pooling and broader SQL remain unqualified |
 | MySQL | Subsequent SQL adapter | Not implemented | MySQL native authentication/TLS and pooling |
-| SQLite | Embedded SQL adapter | Not implemented | File modes, locks, changes, transaction and corruption behaviour |
+| SQLite | Embedded SQL adapter | Experimental multi-engine public API over Node `node:sqlite`; not production qualified | Real in-memory/file read-write/read-only behaviour, prepared scalar binding, native 64-bit ints and bounded rows tested; extended locking, backup, changesets, corruption resilience, resource benchmarking and further Node/OS qualification pending |
 | SQL Server | Native TDS adapter | Not implemented | TDS versions, login/TLS, metadata, type fidelity |
 | MongoDB | First document candidate | Not implemented | Document operations, topology, credentials and bounded cursors |
 | Redis | First key-value candidate | Not implemented | Native RESP, credentials/TLS, standalone vs cluster |

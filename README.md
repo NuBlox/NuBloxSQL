@@ -2,7 +2,7 @@
 
 **Status: proprietary, ground-up native-driver implementation underway. Private PostgreSQL protocol v3 Driver and independent Shell now include first-party certificate-verified TLS tested against a disposable PostgreSQL 17 endpoint. Managed-cloud/remote environments, Workbench and a complete TASK-001 release remain unqualified or unimplemented. Nothing in the reboot is published.**
 
-**Mission: NuBloxSQL aims to become the database technology platform of choice.**
+**Immediate focus: make NuBloxSQL Driver the most capable universal native DBMS client we can prove through real-engine tests.** The broader platform remains a long-term vision, but Driver development now takes precedence over Shell, Workbench, ORM and unrelated tooling.
 
 NuBloxSQL is a **proprietary, independently engineered universal database technology platform**, not just a driver accompanied by two tools. It aims to cover first-party native drivers, ORM and model-native mapping, type-safe query builders, parsing/compilation, schema/migration tools, database design and development, security, administration, data operations and complete professional lifecycle workflows. A further ambition is genuine cross-vendor interoperability: for example, giving MySQL-oriented users a familiar way to access supported PostgreSQL capabilities without pretending the engines are equivalent.
 
@@ -39,6 +39,27 @@ The [administrator ruleset procedure](docs/admin/README.md) defines the required
 The [immutable archived implementation assessment](docs/ARCHIVE.md) identifies substantial first-party PostgreSQL, MySQL, SQL Server and Redis protocol code and schema/migration/query compiler assets. **These are candidates for comparison and qualification, not current release support.** The archived MongoDB adapter wraps the third-party `mongodb` client and therefore does not satisfy our first-party native protocol rule.
 
 Development must investigate the relevant archived source and tests before implementing replacements. An isolated [archive reference CI job](.github/workflows/archive-assessment.yml) runs selected historic unit suites without modifying the archive.
+
+## Public multi-engine native client — experimental
+
+The Driver now exports `connectDatabase()` from `@nubloxsql/driver`. A typed relational `SqlDatabaseSession` performs real parameter-bound queries through **two** explicitly distinguished native adapters: the **NuBloxSQL-owned PostgreSQL wire protocol**, and **embedded SQLite via Node's built-in `node:sqlite` interface** (as the archived NuBloxSQL SQLite implementation did). SQLite uses the platform-provided database engine; we do not claim to have authored its storage engine.
+
+```ts
+import {connectDatabase} from '@nubloxsql/driver';
+
+const session = await connectDatabase({engine:'sqlite', mode:'memory'});
+try {
+  await session.query('CREATE TABLE demo(id INTEGER PRIMARY KEY, label TEXT NOT NULL)');
+  await session.query('INSERT INTO demo(label) VALUES (?)', ['NuBloxSQL']);
+  console.log((await session.query('SELECT id, label FROM demo')).rows);
+} finally {
+  await session.close();
+}
+```
+
+The API exposes the actual relational model, engine, transport and narrowly evidenced capabilities, refusing unsupported vendors and other data models rather than routing them through misleading SQL compatibility. SQLite returns native BigInt integers; the current limited PostgreSQL client returns text-decoded values. Query execution respects real database privileges and does **not** impose a universal read-only guarantee.
+
+**Next Driver milestone:** selectively qualify and reuse the archived **first-party MySQL protocol**, enabling the same public API with a third real SQL engine. Then add deeper native types, transactions, cancellation, streaming/pooling, non-SQL model-native adapters, cloud identities and measurable performance. Shell, Workbench and ORM development are deferred, not deleted.
 
 ## First executable slice — not a released product
 

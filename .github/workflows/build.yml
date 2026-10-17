@@ -45,7 +45,7 @@ jobs:
       - name: Live PostgreSQL TLS certificate and downgrade protection
         env:
           NUBLOXSQL_CI_ADMIN_PASSWORD: ci-fixture-admin-only
-        run: node --test tests/integration/postgresql/verified-tls.test.mjs
+        run: node --test tests/integration/postgresql/verified-tls.test.mjs tests/integration/postgresql/public-client-tls.test.mjs
       - name: Stop disposable PostgreSQL TLS fixture
         if: always()
         shell: bash
@@ -53,4 +53,4 @@ jobs:
       - name: Live PostgreSQL 17 discovery and privilege filtering
         env:
           NUBLOXSQL_CI_ADMIN_PASSWORD: ci-fixture-admin-only
-        run: node --test tests/integration/postgresql/inventory.test.mjs tests/integration/postgresql/resource-governance.test.mjs
+        run: node --test tests/integration/postgresql/inventory.test.mjs tests/integration/postgresql/resource-governance.test.mjs tests/integration/postgresql/public-client.test.mjs

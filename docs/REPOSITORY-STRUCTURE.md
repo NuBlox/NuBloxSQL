@@ -14,13 +14,16 @@ NuBloxSQL/
 │   └── driver/                         First-party programmable foundation
 │       ├── package.json                Public export is dist/index.js only
 │       └── src/
-│           ├── index.ts                Stable public API surface
+│           ├── index.ts                Audited public API surface
+│           ├── client.ts               First public model-aware multi-DBMS client
 │           ├── operations/
 │           │   └── inspect-database.ts Inspection API, safe errors and evidence
 │           └── adapters/
 │               └── postgresql/
 │                   ├── wire.ts         First-party protocol/SCRAM/verified TLS
 │                   └── catalog.ts      PostgreSQL-specific introspection SQL
+│               └── sqlite/
+│                   └── connection.ts   Embedded Node SQLite native interface
 ├── tests/
 │   ├── unit/                           Driver/Shell contracts, no database needed
 │   ├── integration/postgresql/         Real PostgreSQL inventory, limits and TLS
@@ -48,6 +51,12 @@ Generated dist/ and node_modules/ remain ignored. The protected archival branch 
 | tests/fixtures/<vendor>/ | Disposable test infrastructure | Committed credentials and production deployments |
 
 Current inventory is still **PostgreSQL-specific**, so operations/inspect-database.ts imports its private PostgreSQL adapter. Moving the SQL into adapters/postgresql/catalog.ts makes that boundary concrete. Multi-vendor dispatch comes with a real second adapter and shared public contract, not an invented registry.
+
+## Current multi-vendor Driver proof
+
+The Driver now exposes `connectDatabase` without requiring any application. PostgreSQL (owned wire protocol) and SQLite (Node embedded SQLite interface) share a deliberately narrow relational SQL session. Each preserves its native type/transport differences. Native SQLite SQL is **not** an authored database storage engine, and this is **not** evidence of full SQL vendor or non-SQL support.
+
+The next source expansion should be the qualified existing first-party **MySQL protocol**, not another workspace layout rewrite. Native type depth, streaming, transactions and model-specific extensions belong in the Driver before adding new product frameworks.
 
 ## Why not dozens of packages?
 

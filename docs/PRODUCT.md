@@ -2,6 +2,8 @@
 
 **Mission: NuBloxSQL aims to become the database technology platform of choice.**
 
+**Active development mandate (17 October 2026): make the independently usable universal native NuBloxSQL Driver/client the flagship and immediate engineering priority.** The broader ecosystem remains strategic vision, but Shell, Workbench, ORM, visual tooling and future cross-vendor translation are **deferred**, not active reasons to divert native Driver development. "Most advanced" is an objective requiring comparative evidence, **not a current ranking**.
+
 **Owner:** Stephen J T Spittal.
 **Status:** Accepted long-term vision, 16 October 2026. This is a strategic destination **not** a statement of currently implemented or superior software.
 **Authority:** Product scope lives here; decisions in [DECISIONS.md](DECISIONS.md) must record any deliberate change. Neither a specific feature, architecture diagram nor an experimental implementation may silently redefine the platform.
@@ -76,6 +78,14 @@ Do not assume we will immediately exceed every specialist incumbent in every cat
 - **Not automatically a NuBloxSQL database server/storage engine:** building a new DBMS is not presently an accepted requirement; it would need explicit separate scope and proof.
 - **Not an unrelated ERP, BI, AI training or infrastructure platform:** NuBloxSQL remains **database technology first**, while integrating with other tools and cloud providers through explicit contracts.
 - **Not universal vendor support today:** catalogued engines are not qualified implementations. Every advertised engine/version/auth/TLS/cloud/capability combination requires evidence.
+
+## First-priority native Driver requirements
+
+NuBloxSQL Driver must become a coherent multi-vendor, multi-model native client. Its primary responsibilities are protocol and embedded connectivity, encryption/authentication, resource lifecycle, secure parameter binding, native data-type fidelity, transactions, cancellation, streaming/pooling, structured errors, native metadata and truthful capability negotiation. Local, remote, distributed, cloud-managed and cloud-native endpoints require distinct verified identity/network qualifications.
+
+Shared operations may be portable only when database semantics truly match; relational SQL must never be silently forced onto document, graph or key-value interfaces. Native vendor capabilities must remain accessible instead of being flattened to a lowest common denominator. Real-instance conformance, performance and security benchmarks determine the maturity of each vendor/version/feature combination.
+
+**The Driver must be independently consumable.** It must not depend on Shell, Workbench, ORM or other NuBlox products. The current two-engine SQL client is an architecture proof, not universality, full feature parity or a production release.
 
 ## Delivery discipline and current status
 
