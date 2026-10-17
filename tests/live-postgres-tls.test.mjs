@@ -50,7 +50,12 @@ test('TLS certificate signed by unknown CA is refused without plaintext fallback
     e=>e instanceof InspectionError&&e.code==='TLS_UNVERIFIED'&&!e.message.includes(adminPassword));
 });
 
-test('native client rejects mismatched certificate identity even with trusted issuer',async()=>{
+test('a trusted CA-signed certificate with the wrong hostname is refused',async()=>{
+  await assert.rejects(inspectDatabase({...base,port:5434},{timeoutMs:8000}),
+    e=>e instanceof InspectionError&&e.code==='TLS_UNVERIFIED'&&!e.message.includes(adminPassword));
+});
+
+test('internal native client refuses to override the requested target identity',async()=>{
   await assert.rejects(client({servername:'wrong-host.internal'}).connect(),
     e=>e.code==='NUBLOX_TLS_REQUIRED');
 });
