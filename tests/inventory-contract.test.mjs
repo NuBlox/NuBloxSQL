@@ -31,7 +31,7 @@ test('native protocol refuses remote cleartext even if internal adapter is invok
  const cfg={host:'example.org',port:5432,user:'test',database:'postgres',password:'ascii-only',
   ssl:false,connectionTimeoutMillis:1000,query_timeout:1000,statement_timeout:1000,application_name:'test'};
  const client=new NativePgClient(cfg);
- await assert.rejects(client.connect(),e=>e.code==='ERR_TLS_CERT_ALTNAME_INVALID');
+ await assert.rejects(client.connect(),e=>e.code==='NUBLOX_TLS_REQUIRED');
 });
 test('native protocol binds the verified TLS identity to the requested target host',async()=>{
  const {NativePgClient}=await import('../packages/driver/dist/postgresql/wire.js');
