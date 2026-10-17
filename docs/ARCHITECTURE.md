@@ -57,20 +57,13 @@ The current private PostgreSQL read-only inventory Driver and Shell are the firs
 - **Providers:** constrained external mechanisms for identity, connection or database installation; no arbitrary cloud/host management inside the Driver.
 - **Durable jobs:** shared application service for authorised database-specific work; job state is not a new database model or an excuse to embed orchestration in every adapter.
 
-## Proposed structure after specification approval
+## Repository structure — actual and prospective
 
-~~~text
-packages/
-  driver/               Public JS/TS API and model-neutral contracts
-  adapters/             Explicitly qualified native vendor adapters
-apps/
-  shell/                Independent CLI client
-  workbench/            SvelteKit graphical client
-docs/                   Authoritative specification and qualification
-tests/                  Contracts + real DBMS integration/live matrices
-~~~
+The [implemented folder structure](REPOSITORY-STRUCTURE.md) is the **single authoritative file/folder ownership reference** for the current repository. Today, `packages/driver/src/adapters/postgresql/` contains the **private** first-party PostgreSQL wire protocol and vendor catalogue SQL; `packages/driver/src/operations/inspect-database.ts` owns the exported TASK-001 operation. The `packages/driver/src/index.ts` facade is the only public Driver export. `apps/shell/` is independently packaged and imports only the public Driver API. Tests are divided into `tests/unit/`, `tests/integration/postgresql/` and `tests/fixtures/postgresql/`.
 
-The initial implementation contains `packages/driver` and `apps/shell` as **private TypeScript npm workspaces**, each compiled separately and connected through the Driver's public export. `apps/workbench` is planned, not present yet. The complete layout remains a **target architecture**, not an instruction to create empty directories. The former `pg` wrapper was a temporary implementation shortcut inconsistent with the accepted proprietary-first-party requirement. The active PostgreSQL adapter uses **NuBloxSQL-owned protocol 3.0 framing, SSLRequest negotiation, SCRAM challenge/response and extended query encoding** built on Node core networking/TLS/crypto. A disposable PostgreSQL 17 CI fixture proves verified TLS with chain and hostname checks (plus downgrade/hostname/CA negatives); remote and cloud environments require their own qualification. The archive is not imported wholesale.
+There is **no** separate `packages/adapters/` workspace at present. Vendor adapters remain private inside the Driver until independent vendor package contracts/versioning are justified. A future separately consumable query builder/ORM/migration tool may become a `packages/<capability>/` workspace only when it is implemented and tested. A future graphical Workbench will be added under `apps/workbench/` once a real SvelteKit workflow is delivered. There are no empty speculative product placeholders.
+
+`npm run check:structure` enforces public API, package and source dependency boundaries in CI; the implementation is still private and not release-qualified. The former `pg` wrapper was a temporary implementation shortcut inconsistent with the accepted proprietary-first-party requirement. The active PostgreSQL adapter uses **NuBloxSQL-owned protocol 3.0 framing, SSLRequest negotiation, SCRAM challenge/response and extended query encoding** built on Node core networking/TLS/crypto. A disposable PostgreSQL 17 CI fixture proves verified TLS with chain and hostname checks (plus downgrade/hostname/CA negatives); remote and cloud environments require their own qualification. The archive is not imported wholesale.
 
 ## Intellectual-property and dependency boundaries
 
