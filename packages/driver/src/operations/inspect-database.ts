@@ -1,4 +1,6 @@
-import {NativePgClient, type NativePgConfig} from './wire.js';
+/** Public database-inspection operation; PostgreSQL protocol and catalog SQL remain adapter-private. */
+import {NativePgClient, type NativePgConfig} from '../adapters/postgresql/wire.js';
+import {queryPostgresqlIdentity, queryConnectableDatabases} from '../adapters/postgresql/catalog.js';
 
 export type InventoryStatus = 'completed' | 'partial';
 export type InventoryV1 = {
@@ -65,18 +67,6 @@ export type InspectOptions = {
   maxDatabases?: number;
   timeoutMs?: number;
 };
-
-const IDENTITY = `SELECT current_database() AS current_database,
-  current_user AS current_principal,
-  current_setting('server_version') AS engine_version,
-  current_setting('server_version_num')::integer AS server_version_number`;
-
-const PERMITTED = `SELECT datname::text AS name
-  FROM pg_catalog.pg_database
-  WHERE datallowconn IS TRUE
-    AND has_database_privilege(oid, 'CONNECT') IS TRUE
-  ORDER BY datname::text COLLATE "C"
-  LIMIT $1`;
 
 function assertProfile(profile: PostgresProfile): void {
   if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
@@ -151,14 +141,14 @@ export async function inspectDatabase(profile: PostgresProfile, options: Inspect
   try {
     await client.connect();
     connected = true;
-    const identity = await client.query(IDENTITY);
+    const identity = await queryPostgresqlIdentity(client);
     const row = identity.rows[0] as Record<string, unknown> | undefined;
     if (!row || !Number.isInteger(Number(row.server_version_number)) ||
         typeof row.current_database !== 'string' || typeof row.current_principal !== 'string' ||
         typeof row.engine_version !== 'string') {
       throw new InspectionError('DISCOVERY_FAILED', 'Database identity could not be verified.');
     }
-    const data = await client.query(PERMITTED, [limit + 1]);
+    const data = await queryConnectableDatabases(client, limit);
     if (data.rows.some(item => typeof item.name !== 'string')) {
       throw new InspectionError('DISCOVERY_FAILED', 'Database inventory contains invalid metadata.');
     }

@@ -1,11 +1,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {NativePgClient} from '../packages/driver/dist/postgresql/wire.js';
+import {NativePgClient} from '../../../packages/driver/dist/adapters/postgresql/wire.js';
 import {spawnSync} from 'node:child_process';
 import {mkdtemp, readFile, stat, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {inspectDatabase,InspectionError} from '../packages/driver/dist/index.js';
+import {inspectDatabase,InspectionError} from '../../../packages/driver/dist/index.js';
 
 const adminPassword=process.env.NUBLOXSQL_CI_ADMIN_PASSWORD;
 if(!adminPassword) throw new Error('Live tests require a disposable PostgreSQL CI service.');

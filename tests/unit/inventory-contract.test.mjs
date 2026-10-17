@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {inspectDatabase, InspectionError} from '../packages/driver/dist/index.js';
+import {inspectDatabase, InspectionError} from '../../packages/driver/dist/index.js';
 
 const local={alias:'local-test',engineId:'postgresql',host:'127.0.0.1',
  port:5432,user:'nobody',database:'postgres',password:'disposable-only',security:'isolated-local'};
@@ -27,14 +27,14 @@ test('safe structured errors do not serialize native secrets',()=>{
 });
 
 test('native protocol refuses remote cleartext even if internal adapter is invoked directly',async()=>{
- const {NativePgClient}=await import('../packages/driver/dist/postgresql/wire.js');
+ const {NativePgClient}=await import('../../packages/driver/dist/adapters/postgresql/wire.js');
  const cfg={host:'example.org',port:5432,user:'test',database:'postgres',password:'ascii-only',
   ssl:false,connectionTimeoutMillis:1000,query_timeout:1000,statement_timeout:1000,application_name:'test'};
  const client=new NativePgClient(cfg);
  await assert.rejects(client.connect(),e=>e.code==='NUBLOX_TLS_REQUIRED');
 });
 test('native protocol binds the verified TLS identity to the requested target host',async()=>{
- const {NativePgClient}=await import('../packages/driver/dist/postgresql/wire.js');
+ const {NativePgClient}=await import('../../packages/driver/dist/adapters/postgresql/wire.js');
  const cfg={host:'127.0.0.1',port:5432,user:'test',database:'postgres',password:'ascii-only',
   ssl:{rejectUnauthorized:true,servername:'wrong.internal'},connectionTimeoutMillis:1000,query_timeout:1000,
   statement_timeout:1000,application_name:'test'};
@@ -42,7 +42,7 @@ test('native protocol binds the verified TLS identity to the requested target ho
 });
 test('native runtime has no third-party DB driver imports',async()=>{
  const {readFile}=await import('node:fs/promises');
- const source=await readFile('packages/driver/src/postgresql/wire.ts','utf8');
+ const source=await readFile('packages/driver/src/adapters/postgresql/wire.ts','utf8');
  const pkg=JSON.parse(await readFile('packages/driver/package.json','utf8'));
  assert.equal(Object.keys(pkg.dependencies??{}).length,0);
  assert.doesNotMatch(source,/from ['"](pg|mysql2|tedious)['"]/);
@@ -50,7 +50,7 @@ test('native runtime has no third-party DB driver imports',async()=>{
 
 test('PostgreSQL SSLRequest rejects response-byte stuffing before handing the socket to TLS',async()=>{
  const {createServer}=await import('node:net');
- const {NativePgClient}=await import('../packages/driver/dist/postgresql/wire.js');
+ const {NativePgClient}=await import('../../packages/driver/dist/adapters/postgresql/wire.js');
  const server=createServer(socket=>{
    socket.once('data',data=>{
      if(data.length===8&&data.readInt32BE(4)===80877103)

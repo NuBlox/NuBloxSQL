@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {setTimeout as delay} from 'node:timers/promises';
-import {NativePgClient} from '../packages/driver/dist/postgresql/wire.js';
+import {NativePgClient} from '../../../packages/driver/dist/adapters/postgresql/wire.js';
 
 const password=process.env.NUBLOXSQL_CI_ADMIN_PASSWORD;
 if(!password) throw Error('Governance integration tests require isolated disposable PostgreSQL CI.');
