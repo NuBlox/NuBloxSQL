@@ -44,7 +44,7 @@ test('an embedded SQLite file can be reopened read-only, with native privileges 
 test('SQLite aggregate result resource budget fails with stable redacted error',async()=>{
  const db=await connectDatabase({engine:'sqlite',mode:'memory'});
  try{
-  await assert.rejects(db.query("SELECT hex(zeroblob(500000)) AS huge"),
+  await assert.rejects(db.query("SELECT hex(zeroblob(1200000)) AS huge"),
     e=>e instanceof DriverError&&e.code==='RESOURCE_LIMIT'&&e.nativeCode==='NUBLOX_SQLITE_MAX_ROW_BYTES');
   await assert.rejects(db.query('WITH RECURSIVE seq(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM seq WHERE x<1002) SELECT x FROM seq'),
     e=>e instanceof DriverError&&e.code==='RESOURCE_LIMIT'&&e.nativeCode==='NUBLOX_SQLITE_MAX_ROWS');
