@@ -1,5 +1,6 @@
 /** NuBloxSQL first-party PostgreSQL v3.0 wire client: bounded single-session G1 slice. */
-import {createConnection, type Socket} from 'node:net';
+import {createConnection, isIP, type Socket} from 'node:net';
+import {connect as connectTls, checkServerIdentity} from 'node:tls';
 import {createHash, createHmac, pbkdf2Sync, randomBytes, timingSafeEqual} from 'node:crypto';
 
 export type NativePgConfig = {
@@ -81,6 +82,79 @@ class FramedPeer {
   }
   send(b:Buffer):void {if(this.failed||this.socket.destroyed)throw new Error('Connection unavailable');this.socket.write(b);}
 }
+/**
+ * PostgreSQL 3.0 SSLRequest: wait for exactly one 'S' byte before starting
+ * TLS on the SAME socket; never downgrade to cleartext or accept injected
+ * trailing bytes (PostgreSQL CVE-2021-23222 protocol guidance).
+ *
+ * Derived from the archived NuBloxSQL SSLRequest/TlsPolicy concept; the
+ * current implementation intentionally requires chain + peer-name validation.
+ */
+async function verifiedTransport(
+  plain: Socket, ssl: {rejectUnauthorized: true; servername: string; ca?: string}
+): Promise<Socket> {
+  if(ssl.rejectUnauthorized!==true||!ssl.servername||ssl.servername.includes('\0')||
+     (ssl.ca!==undefined&&(!ssl.ca||typeof ssl.ca!=='string')))
+    throw nativeFailure('NUBLOX_TLS_REQUIRED','Verified TLS configuration is required');
+
+  // 'readable' rather than 'data' lets us consume precisely one response
+  // byte without accidentally feeding attacker-supplied data to the TLS engine.
+  const response=await new Promise<string>((resolve,reject)=>{
+    const cleanup=()=>{
+      plain.off('readable',onReadable);
+      plain.off('error',onError);
+      plain.off('close',onClose);
+    };
+    const onError=(error:Error)=>{cleanup();reject(error);};
+    const onClose=()=>{cleanup();reject(nativeFailure('NUBLOX_TLS_REQUIRED','Server closed TLS negotiation'));};
+    const onReadable=()=>{
+      const value=plain.read(1) as Buffer|null;
+      if(value===null)return;
+      cleanup();
+      if(plain.readableLength!==0){
+        reject(nativeFailure('NUBLOX_TLS_REQUIRED','Unexpected data during PostgreSQL TLS negotiation'));
+        return;
+      }
+      resolve(String.fromCharCode(value[0]!));
+    };
+    plain.on('readable',onReadable);
+    plain.once('error',onError);
+    plain.once('close',onClose);
+    plain.write(Buffer.concat([int32(8),int32(80877103)]));
+  });
+  if(response!=='S')
+    throw nativeFailure('NUBLOX_TLS_REQUIRED','PostgreSQL server did not accept verified TLS');
+
+  const name=ssl.servername;
+  const secured=connectTls({
+    socket:plain,
+    ...(isIP(name) ? {} : {servername:name}),
+    rejectUnauthorized:true,
+    ...(ssl.ca ? {ca:ssl.ca} : {}),
+    checkServerIdentity:(_received,certificate)=>checkServerIdentity(name,certificate)
+  });
+  try {
+    await new Promise<void>((resolve,reject)=>{
+      const success=()=>{cleanup();resolve();};
+      const failure=(err:Error)=>{cleanup();reject(err);};
+      const closed=()=>{cleanup();reject(nativeFailure('NUBLOX_TLS_REQUIRED','TLS connection closed'));};
+      const cleanup=()=>{
+        secured.off('secureConnect',success);
+        secured.off('error',failure);
+        secured.off('close',closed);
+      };
+      secured.once('secureConnect',success);
+      secured.once('error',failure);
+      secured.once('close',closed);
+    });
+    if(!secured.authorized || !secured.getPeerCertificate().raw)
+      throw nativeFailure('NUBLOX_TLS_REQUIRED','PostgreSQL peer identity was not verified');
+    return secured;
+  } catch(error) {
+    secured.destroy();
+    throw error;
+  }
+}
 function scramFields(text:string):Map<string,string> {
   const map=new Map<string,string>();
   for(const field of text.split(',')) {
@@ -100,22 +174,24 @@ export class NativePgClient {
   async connect():Promise<void> {
     if(this.socket)throw new Error('Cannot connect twice');
     const c=this.config;
-    if(c.ssl || (c.host !== '127.0.0.1' && c.host !== '::1')) {
-      const e:Error & {code?:string}=new Error('The native adapter is currently qualified for isolated loopback only');
-      e.code='ERR_TLS_CERT_ALTNAME_INVALID';throw e;
-    }
+    if(!c.ssl && c.host !== '127.0.0.1' && c.host !== '::1')
+      throw nativeFailure('NUBLOX_TLS_REQUIRED','Plaintext database transport requires isolated loopback');
+    if(c.ssl && (c.ssl.rejectUnauthorized!==true || c.ssl.servername!==c.host))
+      throw nativeFailure('NUBLOX_TLS_REQUIRED','TLS verification must be bound to the target host');
     if(!/^[\x20-\x7e]+$/.test(c.password)||[c.user,c.database,c.application_name].some(x=>x.includes('\0')))
       throw new Error('Unsupported credential encoding');
     const socket=createConnection({host:c.host,port:c.port});this.socket=socket;
     const timeout:Error & {code?:string}=new Error('Database request timed out');timeout.code='ETIMEDOUT';
-    this.timer=setTimeout(()=>socket.destroy(timeout),c.connectionTimeoutMillis);
+    this.timer=setTimeout(()=>{this.socket?.destroy(timeout);socket.destroy(timeout);},c.connectionTimeoutMillis);
     try {
       await new Promise<void>((resolve,reject)=>{
         const ok=()=>{socket.off('error',fail);resolve();};
         const fail=(e:Error)=>{socket.off('connect',ok);reject(e);};
         socket.once('connect',ok);socket.once('error',fail);
       });
-      this.peer=new FramedPeer(socket);
+      const transport=c.ssl ? await verifiedTransport(socket,c.ssl) : socket;
+      this.socket=transport;
+      this.peer=new FramedPeer(transport);
       const body=Buffer.concat([int32(196608),str('user'),str(c.user),
         str('database'),str(c.database),str('application_name'),str(c.application_name),
         str('client_encoding'),str('UTF8'),Buffer.from([0])]);
