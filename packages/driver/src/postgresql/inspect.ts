@@ -116,7 +116,7 @@ function cleanFailure(error: unknown): InspectionError {
   if (code === '28P01' || code === '28000') return new InspectionError('AUTH_FAILED', 'Database authentication failed.');
   if (code === '42501') return new InspectionError('PERMISSION_DENIED', 'Database metadata access was denied.');
   if (code === '57014' || code === 'ETIMEDOUT') return new InspectionError('TIMEOUT', 'The database inspection timed out.', true);
-  if (['ERR_TLS_CERT_ALTNAME_INVALID','SELF_SIGNED_CERT_IN_CHAIN','DEPTH_ZERO_SELF_SIGNED_CERT','UNABLE_TO_VERIFY_LEAF_SIGNATURE','CERT_HAS_EXPIRED'].includes(code)) {
+  if (['NUBLOX_TLS_REQUIRED','ERR_TLS_CERT_ALTNAME_INVALID','SELF_SIGNED_CERT_IN_CHAIN','DEPTH_ZERO_SELF_SIGNED_CERT','UNABLE_TO_VERIFY_LEAF_SIGNATURE','UNABLE_TO_GET_ISSUER_CERT_LOCALLY','CERT_HAS_EXPIRED','ERR_TLS_CERT_ALTNAME_INVALID'].includes(code)) {
     return new InspectionError('TLS_UNVERIFIED', 'Database TLS certificate verification failed.');
   }
   if (['ECONNREFUSED','ENOTFOUND','EHOSTUNREACH','ECONNRESET'].includes(code)) {

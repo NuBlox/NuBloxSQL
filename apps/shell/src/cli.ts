@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import {inspectDatabase, InspectionError} from '@nubloxsql/driver';
-import {writeFile, link, unlink} from 'node:fs/promises';
+import {writeFile, link, unlink, readFile} from 'node:fs/promises';
 import {dirname, join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 
@@ -35,6 +35,15 @@ async function main(args: string[]): Promise<void> {
     throw new InspectionError('TLS_UNVERIFIED', 'An explicit secure transport policy is required.');
   }
   const security: 'isolated-local' | 'verified-tls' = candidateSecurity;
+  const caFile = process.env.NUBLOXSQL_PG_CA_FILE;
+  if (caFile && security !== 'verified-tls') {
+    throw new InspectionError('INVALID_INPUT', 'A custom CA is only valid with verified TLS.');
+  }
+  let caCertificate: string | undefined;
+  if (caFile) {
+    try {caCertificate = await readFile(caFile,'utf8');}
+    catch {throw new InspectionError('INVALID_INPUT','The certificate trust file could not be read.');}
+  }
   const profile = {
     alias, engineId: 'postgresql' as const,
     host: process.env.NUBLOXSQL_PG_HOST ?? '127.0.0.1',
@@ -42,7 +51,8 @@ async function main(args: string[]): Promise<void> {
     user: process.env.NUBLOXSQL_PG_USER ?? '',
     database: process.env.NUBLOXSQL_PG_DATABASE ?? '',
     password,
-    security
+    security,
+    ...(caCertificate ? {caCertificate} : {})
   };
   const inventory = await inspectDatabase(profile);
   const temporary = join(dirname(destination), '.nubloxsql-' + randomUUID() + '.tmp');
