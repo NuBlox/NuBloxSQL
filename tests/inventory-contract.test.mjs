@@ -31,14 +31,14 @@ test('native protocol refuses remote cleartext even if internal adapter is invok
  const cfg={host:'example.org',port:5432,user:'test',database:'postgres',password:'ascii-only',
   ssl:false,connectionTimeoutMillis:1000,query_timeout:1000,statement_timeout:1000,application_name:'test'};
  const client=new NativePgClient(cfg);
- await assert.rejects(client.connect(),e=>e.code==='ERR_TLS_CERT_ALTNAME_INVALID');
+ await assert.rejects(client.connect(),e=>e.code==='NUBLOX_TLS_REQUIRED');
 });
-test('native protocol refuses remote TLS until its own SSLRequest flow is qualified',async()=>{
+test('native protocol binds the verified TLS identity to the requested target host',async()=>{
  const {NativePgClient}=await import('../packages/driver/dist/postgresql/wire.js');
  const cfg={host:'127.0.0.1',port:5432,user:'test',database:'postgres',password:'ascii-only',
-  ssl:{rejectUnauthorized:true,servername:'localhost'},connectionTimeoutMillis:1000,query_timeout:1000,
+  ssl:{rejectUnauthorized:true,servername:'wrong.internal'},connectionTimeoutMillis:1000,query_timeout:1000,
   statement_timeout:1000,application_name:'test'};
- await assert.rejects(new NativePgClient(cfg).connect(),e=>e.code==='ERR_TLS_CERT_ALTNAME_INVALID');
+ await assert.rejects(new NativePgClient(cfg).connect(),e=>e.code==='NUBLOX_TLS_REQUIRED');
 });
 test('native runtime has no third-party DB driver imports',async()=>{
  const {readFile}=await import('node:fs/promises');
@@ -46,4 +46,31 @@ test('native runtime has no third-party DB driver imports',async()=>{
  const pkg=JSON.parse(await readFile('packages/driver/package.json','utf8'));
  assert.equal(Object.keys(pkg.dependencies??{}).length,0);
  assert.doesNotMatch(source,/from ['"](pg|mysql2|tedious)['"]/);
+});
+
+test('PostgreSQL SSLRequest rejects response-byte stuffing before handing the socket to TLS',async()=>{
+ const {createServer}=await import('node:net');
+ const {NativePgClient}=await import('../packages/driver/dist/postgresql/wire.js');
+ const server=createServer(socket=>{
+   socket.once('data',data=>{
+     if(data.length===8&&data.readInt32BE(4)===80877103)
+       socket.write(Buffer.from('SX'));
+     else socket.destroy();
+   });
+ });
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const address=server.address();
+ if(!address||typeof address==='string')throw Error('Fixture did not bind an IP port');
+ const client=new NativePgClient({
+   host:'127.0.0.1',port:address.port,user:'test',database:'postgres',password:'ascii-only',
+   ssl:{rejectUnauthorized:true,servername:'127.0.0.1'},
+   connectionTimeoutMillis:3000,query_timeout:3000,
+   statement_timeout:3000,application_name:'nubloxsql-ssl-stuffing-regression'
+ });
+ try {
+   await assert.rejects(client.connect(),e=>e.code==='NUBLOX_TLS_REQUIRED');
+ } finally {
+   await client.end();
+   await new Promise(resolve=>server.close(resolve));
+ }
 });

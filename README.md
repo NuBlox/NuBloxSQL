@@ -1,6 +1,6 @@
 # NuBloxSQL
 
-**Status: proprietary, ground-up native-driver implementation underway. The first private PostgreSQL protocol v3 Driver and independent Shell are undergoing live CI qualification. Workbench, remote TLS and a complete TASK-001 release are not yet implemented. Nothing in this repository is published from the reboot.**
+**Status: proprietary, ground-up native-driver implementation underway. Private PostgreSQL protocol v3 Driver and independent Shell now include first-party certificate-verified TLS tested against a disposable PostgreSQL 17 endpoint. Managed-cloud/remote environments, Workbench and a complete TASK-001 release remain unqualified or unimplemented. Nothing in the reboot is published.**
 
 **Mission: NuBloxSQL aims to become the database technology platform of choice.**
 
@@ -43,7 +43,7 @@ Development must investigate the relevant archived source and tests before imple
 
 The `@nubloxsql/driver` private TypeScript package implements **read-only PostgreSQL 17 inventory using NuBloxSQL-owned wire framing, SCRAM authentication and native query flow**, not a third-party PostgreSQL driver. It returns scoped catalog metadata, safe error codes, explicit transport policy, finite limits and redacted output. The independent `@nubloxsql/shell` package calls its **public API** to write a protected JSON work product. Both are experimental; Workbench is not yet implemented.
 
-The initial native wire client supports explicitly isolated PostgreSQL loopback only, with SCRAM-SHA-256 using currently ASCII-only password input. Remote TLS/cloud, channel binding and other authentication schemes have **not** passed qualification and must be refused rather than silently delegated to another driver. Source API and work-product details are defined in [TASK-001](docs/TASK-001.md).
+The first-party PostgreSQL wire client permits either explicit **isolated loopback plaintext** or mandatory **verified TLS** (PostgreSQL SSLRequest, certificate-chain validation and exact target identity). The Driver and Shell TLS paths are tested with an ephemeral CA-signed PostgreSQL 17 fixture, including unknown-CA and trusted-but-wrong-hostname failures and downgrade refusal. For Shell custom trust anchors, set `NUBLOXSQL_PG_SECURITY=verified-tls` and `NUBLOXSQL_PG_CA_FILE` to a trusted PEM CA file; credentials remain environment-sourced. **SCRAM-SHA-256 is currently limited to ASCII passwords; SCRAM-PLUS/channel binding, cloud IAM, proxy/private endpoints and non-local server combinations remain unqualified.** Source API and work-product details are in [TASK-001](docs/TASK-001.md).
 
 On Node.js 24, run `npm ci`, `npm run build` and `npm run test:unit`. Live tests run against a digest-pinned PostgreSQL 17 CI service. The Shell requires an explicit `NUBLOXSQL_PG_SECURITY` value (`isolated-local` or `verified-tls`) and an environment-based secret; it does not accept a password on the command line. **Do not publish** the private package or claim production support.
 

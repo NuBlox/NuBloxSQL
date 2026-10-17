@@ -39,6 +39,17 @@ jobs:
         run: npm run build
       - name: Test contracts, boundaries and CLI
         run: node --test tests/inventory-contract.test.mjs tests/shell-interface.test.mjs
+      - name: Launch disposable PostgreSQL TLS fixture
+        shell: bash
+        run: bash tests/fixtures/start-postgresql-tls.sh
+      - name: Live PostgreSQL TLS certificate and downgrade protection
+        env:
+          NUBLOXSQL_CI_ADMIN_PASSWORD: ci-fixture-admin-only
+        run: node --test tests/live-postgres-tls.test.mjs
+      - name: Stop disposable PostgreSQL TLS fixture
+        if: always()
+        shell: bash
+        run: docker rm -f nubloxsql-pg-verified-tls nubloxsql-pg-wrong-name || true
       - name: Live PostgreSQL 17 discovery and privilege filtering
         env:
           NUBLOXSQL_CI_ADMIN_PASSWORD: ci-fixture-admin-only
