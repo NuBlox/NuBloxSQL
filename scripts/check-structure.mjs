@@ -14,6 +14,8 @@ const required=[
  'packages/driver/src/operations/inspect-database.ts',
  'packages/driver/src/adapters/postgresql/wire.ts',
  'packages/driver/src/adapters/postgresql/catalog.ts',
+ 'packages/driver/src/adapters/sqlite/connection.ts',
+ 'packages/driver/src/client.ts',
  'apps/shell/package.json','apps/shell/src/cli.ts',
  'tests/unit/inventory-contract.test.mjs','tests/unit/shell-interface.test.mjs',
  'tests/integration/postgresql/inventory.test.mjs',
