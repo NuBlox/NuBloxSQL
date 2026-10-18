@@ -10,140 +10,44 @@ permissions:
 
 jobs:
   docs:
+    name: docs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify documentation-first foundation
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate product-definition reset
         shell: bash
         run: |
           set -euo pipefail
-          bash -n docs/admin/protect-repository.sh
-          # Regression: GitHub omits parameters for a default-false archive update rule.
-          test "$(printf '%s' '{"rules":[{"type":"update"}]}' | jq -r '.rules[]|select(.type=="update")|(.parameters.update_allows_fetch_and_merge // false)')" = false
-          test "$(printf '%s' '{"rules":[{"type":"update","parameters":{"update_allows_fetch_and_merge":false}}]}' | jq -r '.rules[]|select(.type=="update")|(.parameters.update_allows_fetch_and_merge // false)')" = false
+          test -f README.md
           test -f LICENSE
           test -f NOTICE
-          test -f README.md
-          test -f package.json
-          test -f packages/driver/package.json
-          test -f apps/shell/package.json
-          test -f packages/driver/src/index.ts
-          test -f apps/shell/src/cli.ts
-          test ! -e index.js
-          test ! -d lib
-          python3 - <<'PY'
-          from pathlib import Path
-          import json
-          import re
-          docs = [
-              'docs/PRODUCT.md',
-              'docs/USERS-AND-LIFECYCLE.md',
-              'docs/CAREERS.md',
-              'docs/TASK-001.md',
-              'docs/REQUIREMENTS.md',
-              'docs/ARCHITECTURE.md',
-              'docs/WORK-REGISTER.md',
-              'docs/SUPPORT-AND-QUALIFICATION.md',
-              'docs/ROADMAP.md',
-              'docs/DECISIONS.md',
-              'docs/ARCHIVE.md',
-          ]
-          for doc in docs:
-              assert Path(doc).is_file(), f'Missing authority: {doc}'
-          vision = Path('docs/PRODUCT.md').read_text()
-          assert 'database technology platform of choice' in vision
-          for core_term in ('ORM', 'query builder', 'native', 'Workbench', 'Shell', 'interoperability'):
-              assert core_term.lower() in vision.lower(), f'Missing platform pillar: {core_term}'
-          assert 'not yet implemented or qualified' in vision.lower()
-          for md in [Path('README.md'), *Path('docs').glob('*.md')]:
-              for link in re.findall(r'\]\(([^)]+)\)', md.read_text()):
-                  if link.startswith(('https://','http://','mailto:','#')):
-                      continue
-                  target = link.split('#', 1)[0]
-                  if not target:
-                      continue
-                  assert (md.parent / target).exists(), f'Broken local link: {md}: {link}'
-          careers = json.loads(Path('docs/data/database-careers.json').read_text())
-          assert careers['schemaVersion'] == 1
-          assert careers['kind'] == 'database-careers-and-technology-specialisations'
-          tracks = careers['tracks']
-          families = careers['families']
-          specialties = careers['technologySpecializations']
-          assert len(tracks) == 6 and len({t['id'] for t in tracks}) == 6
-          assert len(families) == 18 and len({f['id'] for f in families}) == 18
-          assert {f['track'] for f in families}.issubset({t['id'] for t in tracks})
-          roles = [role for family in families for role in family['jobTitles']]
-          assert len(roles) == 240 and len(set(roles)) == 239
-          assert roles.count('Data Warehouse Architect') == 2
-          assert len(specialties) == 18
-          assert len({s['id'] for s in specialties}) == 18
-          assert all(s['technology'] and s['exampleRole'] for s in specialties)
-          assert careers['workAuthority'] == 'docs/WORK-REGISTER.md'
-          work = json.loads(Path('docs/data/database-work-activities.json').read_text())
-          assert work['schemaVersion'] == 1
-          assert work['kind'] == 'database-professional-activity-requirements'
-          assert len(work['activities']) == 64
-          items = work['activities']
-          assert [x['id'] for x in items] == [f'ACT-{i:03}' for i in range(1,65)]
-          assert sum(x['source']['kind'] == 'archived-candidate' for x in items) == 40
-          assert sum(x['source']['kind'] == 'gap-analysis-2026-10-16' for x in items) == 24
-          assert [x['source']['legacyActivityId'] for x in items[:40]] == [f'a{i:02}' for i in range(1,41)]
-          assert all(x['source']['legacyActivityId'] is None for x in items[40:])
-          families = {f['id'] for f in careers['families']}
-          phases = set(work['lifecyclePhases'])
-          domains = set(work['productDomains'])
-          all_families = set()
-          for item in items:
-              assert item['reviewStatus'] == 'unreviewed-candidate'
-              assert item['workstream'] in ('governance','delivery')
-              assert item['scope'] in ('database-scoped','database-adjacent','out-of-product')
-              assert item['lifecyclePhases'] and set(item['lifecyclePhases']) <= phases
-              assert item['careerFamilyIds'] and set(item['careerFamilyIds']) <= families
-              assert item['productDomains'] and set(item['productDomains']) <= domains
-              assert item['workProducts'] and all(item['workProducts'])
-              assert item['capabilityNeeds'] and all(item['capabilityNeeds'])
-              assert item['acceptanceEvidence']
-              assert all(re.fullmatch(r'TASK-0(?:0[1-9]|1[0-2])', t) for t in item['relatedTaskIds'])
-              all_families.update(item['careerFamilyIds'])
-          assert all_families == families
-          assert len(items) == 64 and sum(x['workstream'] == 'governance' for x in items) == 27
-          assert sum(x['workstream'] == 'delivery' for x in items) == 37
-          assert sum(x['scope'] == 'database-scoped' for x in items) == 57
-          assert sum(x['scope'] == 'database-adjacent' for x in items) == 6
-          assert sum(x['scope'] == 'out-of-product' for x in items) == 1
-          assert all(any(p in x['lifecyclePhases'] and x['workstream'] == 'governance' for x in items) and
-                     any(p in x['lifecyclePhases'] and x['workstream'] == 'delivery' for x in items) for p in phases)
-          output = json.loads(Path('docs/contracts/database-inventory-v1.schema.json').read_text())
-          assert output['$schema'].endswith('2020-12/schema')
-          assert output['type'] == 'object' and output['additionalProperties'] is False
-          assert output['properties']['schemaVersion']['const'] == '1.0.0'
-          assert output['properties']['operation']['const'] == 'database.inspect'
-          assert set(output['required']) == {'schemaVersion','operation','status','target','transportSecurity','capture','capabilities','databases','warnings'}
-          assert output['properties']['target']['additionalProperties'] is False
-          assert output['properties']['target']['properties']['engineId']['const'] == 'postgresql'
-          assert output['properties']['capture']['properties']['completeness']['const'] == 'observed-only'
-          assert all(x not in output['properties'] for x in ('password','token','connectionString','host','dsn'))
-          for key in ('capabilities','databases','warnings'):
-              assert output['properties'][key]['type'] == 'array'
-              assert output['properties'][key]['items']['additionalProperties'] is False
-          main_rules = json.loads(Path('docs/admin/ruleset-main.json').read_text())
-          archive_rules = json.loads(Path('docs/admin/ruleset-archive.json').read_text())
-          assert main_rules['target'] == archive_rules['target'] == 'branch'
-          assert main_rules['enforcement'] == archive_rules['enforcement'] == 'active'
-          assert not main_rules['bypass_actors'] and not archive_rules['bypass_actors']
-          assert main_rules['conditions']['ref_name']['include'] == ['refs/heads/main']
-          assert archive_rules['conditions']['ref_name']['include'] == ['refs/heads/archive/legacy-implementation-2026-10-16']
-          assert {r['type'] for r in main_rules['rules']} == {'deletion','non_fast_forward','pull_request','required_status_checks'}
-          assert {r['type'] for r in archive_rules['rules']} == {'deletion','non_fast_forward','update'}
-          assert next(r for r in main_rules['rules'] if r['type']=='pull_request')['parameters']['required_approving_review_count'] == 0
-          assert next(r for r in main_rules['rules'] if r['type']=='required_status_checks')['parameters']['required_status_checks'] == [{'context':'docs'}, {'context':'Node 24 — Driver and Shell'}]
-          assert next(r for r in archive_rules['rules'] if r['type']=='update')['parameters']['update_allows_fetch_and_merge'] is False
-          print('NuBloxSQL docs baseline, TASK-001 and branch-protection payloads: PASS')
-          PY
-      - name: Validate TASK-001 JSON Schema contracts and negative fixtures
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -m venv .contracts-venv
-          .contracts-venv/bin/python -m pip install --disable-pip-version-check jsonschema==4.26.0
-          .contracts-venv/bin/python docs/contracts/test_task_001.py
+          test -f docs/PRODUCT.md
+          test -f docs/ARCHIVES.md
+          test ! -e package.json
+          test ! -d packages
+          test ! -d apps
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync,existsSync} from 'node:fs';
+          import {resolve,dirname} from 'node:path';
+          const content=readFileSync('docs/PRODUCT.md','utf8').toLowerCase();
+          for(const term of ['nubloxsql driver','nubloxsql shell','nubloxsql workbench','entire database lifecycle','non-sql','select','retire']){
+            assert.ok(content.includes(term),'Missing product term: '+term);
+          }
+          const archive=readFileSync('docs/ARCHIVES.md','utf8');
+          for(const sha of ['4ed0e35fbfe71ac110c9ec41cf62ba3355e9d56c','8beb6cc9920494d9bfbf8756bddece3a8492018f'])
+            assert.ok(archive.includes(sha),'Missing archive: '+sha);
+          for(const file of ['README.md','docs/PRODUCT.md','docs/ARCHIVES.md']){
+            const links=readFileSync(file,'utf8').matchAll(/\]\(([^)]+)\)/g);
+            for(const match of links){
+              const dest=match[1];
+              if(/^(https?:|mailto:|#)/.test(dest))continue;
+              const local=dest.split('#')[0];
+              if(local)assert.ok(existsSync(resolve(dirname(file),local)),file+' missing '+local);
+            }
+          }
+          NODE
+          echo 'Product definition baseline: PASS'
