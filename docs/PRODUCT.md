@@ -63,6 +63,39 @@ The Shell and Workbench are designed to serve these eleven connected stages. A c
 
 First-party native means NuBloxSQL authors its protocol/client behaviour, not a thin wrapper rebranding third-party database drivers. Runtime networking, operating-system crypto and embedded database engines may be used, with accurate attribution.
 
+## SQL standards baseline — ISO/IEC 9075:2023
+
+**Design intent:** For relational SQL capabilities, NuBloxSQL shall use the **ISO/IEC 9075:2023** series (SQL:2023) as its principal published language reference. This is a **founder-review design baseline**, not an assertion of current or future blanket compliance.
+
+This 2023 series contains **eleven published parts**. An [ANSI blog overview](https://blog.ansi.org/ansi/sql-standard-iso-iec-9075-2023-ansi-x3-135/) enumerates only nine; ISO separately confirms **Part 15 (SQL/MDA)** and **Part 16 (SQL/PGQ)**, which must not be omitted.
+
+| Part | Published specification | Proposed NuBloxSQL design concern |
+| --- | --- | --- |
+| **9075-1** | Framework (SQL/Framework) | SQL terminology, language framework, optional-feature and conformance concepts |
+| **9075-2** | Foundation (SQL/Foundation) | SQL types, expressions, DDL/DML, queries, integrity and transaction semantics |
+| **9075-3** | Call-Level Interface (SQL/CLI) | Reference for standard SQL client invocation contracts, diagnostics and interface behaviour (not a mandate that NuBloxSQL's TypeScript API directly implements SQL/CLI) |
+| **9075-4** | Persistent Stored Modules (SQL/PSM) | Stored routines and procedural operations where available |
+| **9075-9** | Management of External Data (SQL/MED) | External/foreign data capabilities and semantics |
+| **9075-10** | Object Language Bindings (SQL/OLB) | Relevant SQL embedding and language binding concepts |
+| **9075-11** | Information and Definition Schemas (SQL/Schemata) | Standards-oriented metadata and schema discovery |
+| **9075-13** | SQL Routines and Types Using Java (SQL/JRT) | Java routine/type interoperability where supported |
+| **9075-14** | XML-Related Specifications (SQL/XML) | XML data operations and types |
+| **9075-15** | Multidimensional Arrays (SQL/MDA) | Array-related SQL features, distinct from generic driver value arrays |
+| **9075-16** | Property Graph Queries (SQL/PGQ) | SQL-defined property graphs, distinct from claiming all graph databases implement SQL |
+
+**Authoritative references:** [ISO Part 1](https://www.iso.org/standard/76583.html), [Part 2](https://www.iso.org/standard/76584.html), [Part 3](https://www.iso.org/standard/84803.html), [Part 15](https://www.iso.org/standard/84807.html) and [Part 16](https://www.iso.org/standard/79473.html). ISO also publishes 2026 technical corrigenda affecting individual parts, including [Foundation](https://www.iso.org/standard/93691.html) and [Property Graph Queries](https://www.iso.org/standard/93698.html). Record the **specific edition, part and applicable corrigenda** when making any conformance claim.
+
+### Engineering interpretation
+
+- **Standards and vendor dialects are separate axes.** For each qualified SQL DBMS/version, distinguish standard-defined features, vendor extensions, partial implementations, incompatible semantics and unsupported features. Preserve direct access to vendor-native SQL and APIs.
+- **Do not silently translate SQL.** A portable operation is available only if tested for equivalent semantics; otherwise report a precise limitation or require explicit, documented translation/emulation.
+- **Do not equate SQL/CLI with a working universal wire driver.** ISO/IEC 9075 describes SQL language and interfaces; real native PostgreSQL, MySQL, SQL Server or other database connections still require their own protocol, auth, security, type and live-engine qualification.
+- **Do not apply SQL:2023 to non-SQL models by default.** Document, key-value and graph-native interfaces require separate, model-appropriate specifications and evidence. SQL/PGQ does not make an arbitrary graph database SQL-compliant.
+- **Evidence-driven conformance:** Track features against an identified 9075 part/feature (where applicable), vendor/version, intended semantics, test fixtures, result and exceptions. Never advertise "SQL:2023 compliant" from a parser, catalogue entry or unsupported assumption.
+- **Copyright and access:** Use officially licensed standards where complete normative detail is needed; record references and original requirements rather than copying protected standard text into the repository.
+
+This baseline guides future detailed requirement and test design. It does **not** lock in an architecture, pretend all optional SQL features are universal or change the current documentation-only state.
+
 ## What NuBloxSQL is NOT
 
 - Not a database server or storage engine unless deliberately scoped separately.
