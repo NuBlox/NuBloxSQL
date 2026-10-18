@@ -25,6 +25,7 @@ jobs:
           test -f LICENSE
           test -f NOTICE
           test -f docs/PRODUCT.md
+          test -f docs/DRIVER.md
           test -f docs/ARCHIVES.md
           test ! -e package.json
           test ! -d packages
@@ -37,10 +38,14 @@ jobs:
           for(const term of ['nubloxsql driver','nubloxsql shell','nubloxsql workbench','entire database lifecycle','non-sql','select','retire']){
             assert.ok(content.includes(term),'Missing product term: '+term);
           }
+          const blueprint=readFileSync('docs/DRIVER.md','utf8').toLowerCase();
+          for(const term of ['vendor adapter','native','first complete vertical slice','end-to-end acceptance gates','non-sql','mysql 8.4']){
+            assert.ok(blueprint.includes(term),'Missing blueprint requirement: '+term);
+          }
           const archive=readFileSync('docs/ARCHIVES.md','utf8');
           for(const sha of ['4ed0e35fbfe71ac110c9ec41cf62ba3355e9d56c','8beb6cc9920494d9bfbf8756bddece3a8492018f'])
             assert.ok(archive.includes(sha),'Missing archive: '+sha);
-          for(const file of ['README.md','docs/PRODUCT.md','docs/ARCHIVES.md']){
+          for(const file of ['README.md','docs/PRODUCT.md','docs/DRIVER.md','docs/ARCHIVES.md']){
             const links=readFileSync(file,'utf8').matchAll(/\]\(([^)]+)\)/g);
             for(const match of links){
               const dest=match[1];
