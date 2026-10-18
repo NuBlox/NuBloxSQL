@@ -54,6 +54,12 @@ The first-party current `packages/driver/src/postgresql/wire.ts` now incorporate
 
 The next native driver consolidation target is graceful auxiliary cancellation and recovery, using the archived CancelRequest logic with actual PostgreSQL 17 cancellation/security tests.
 
+## First MySQL foundation consolidation — still not a connected engine
+
+The private `packages/driver/src/adapters/mysql/protocol.ts` ports the **behavioural design** of archived `PacketFramer.js`, `HandshakeV10.js`, `Auth.js` and `ClientPackets.js` into strict TypeScript with intentionally smaller limits. The new `tests/unit/mysql-protocol.test.mjs` verifies fragmented and sequenced packets, poison-on-invalid framing, handshake plugin/nonce/capability validation, the explicit TLS negotiation request, prohibited LOCAL INFILE/multi-statement flags, supported password challenge algorithms and refusal of cleartext full-authentication without verified TLS.
+
+This is **not yet a live MySQL client**. Limitations are intentional: no large multi-packet result continuation, socket/session management, TLS upgrade and certificate verification, auth switch/full authentication exchange, COM_STMT_PREPARE/EXECUTE or native type decoding. The next increments must reuse and qualify the archive's `PreparedPackets.js`, `StreamingConnection.js` and security policies against disposable actual MySQL servers before adding `mysql` to the public Driver target union.
+
 ## Reproducible, read-only reference tests
 
 The [archive assessment workflow](../.github/workflows/archive-assessment.yml) checks out the exact immutable archive commit in a **separate directory** under Node.js 24 and runs selected old PostgreSQL, MySQL, SQL Server, Redis, schema-diff and migration unit suites.
