@@ -15,6 +15,8 @@ import {readMetadata} from './metadata.js';
 import {DriverError,fail} from '../../core/errors.js';
 import {MAX_RESULT_ROWS,MAX_PARAMETERS,MAX_COLUMNS} from '../../core/resources.js';
 export class MysqlSession {
+ readonly info: import('../../core/contracts.js').SessionInfo;
+ closed: boolean;
  constructor(stream,socket,target,hello){this._stream=stream;this._socket=socket;this._target=target;this._tail=Promise.resolve();this.closed=false;this.info=Object.freeze({engine:'mysql',model:'relational',version:hello.version,transport:target.security,authPlugin:hello.plugin,capabilities:mysqlCapabilities});}
  _destroy(){this.closed=true;this._stream.destroy();this._socket.destroy();}
  async _serial(fn){const before=this._tail;let release;this._tail=new Promise(resolve=>{release=resolve});await before;if(this.closed){release();throw fail('CONNECTION_CLOSED','Session is closed');}let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>{this._destroy();reject(fail('TIMEOUT','MySQL operation timed out'));},this._target.timeoutMs);});try{return await Promise.race([fn(),timeout]);}catch(e){if(!(e instanceof DriverError&&e.code==='DATABASE_ERROR')&&!(e instanceof DriverError&&e.code==='INVALID_INPUT'))this._destroy();throw e;}finally{clearTimeout(timer);release();}}
