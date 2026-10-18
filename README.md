@@ -59,7 +59,7 @@ try {
 
 The API exposes the actual relational model, engine, transport and narrowly evidenced capabilities, refusing unsupported vendors and other data models rather than routing them through misleading SQL compatibility. SQLite returns native BigInt integers; the current limited PostgreSQL client returns text-decoded values. Query execution respects real database privileges and does **not** impose a universal read-only guarantee.
 
-**Next Driver milestone:** selectively qualify and reuse the archived **first-party MySQL protocol**, enabling the same public API with a third real SQL engine. Then add deeper native types, transactions, cancellation, streaming/pooling, non-SQL model-native adapters, cloud identities and measurable performance. Shell, Workbench and ORM development are deferred, not deleted.
+**Next Driver milestone:** complete the archived **first-party MySQL protocol** requalification and prove the same public API with a third real SQL engine. A private, unit-tested MySQL packet/handshake/auth/TLS-request foundation now exists, but **cannot yet connect or query MySQL**; production claims and public routing remain blocked until live native TLS/auth/prepared-query tests pass. Then add deeper native types, transactions, cancellation, streaming/pooling, non-SQL model-native adapters, cloud identities and measurable performance. Shell, Workbench and ORM development are deferred, not deleted.
 
 ## First executable slice — not a released product
 
