@@ -1,4 +1,5 @@
-import {Cursor,T} from './codec.js';
+// @ts-nocheck
+import {Cursor,T} from './protocol/primitives.js';
 const pad=(x,n=2)=>String(x).padStart(n,'0');
 function temporal(c,type){const length=c.byte();if(!length)return type===T.TIME?'00:00:00':type===T.DATE?'0000-00-00':'0000-00-00 00:00:00';if(type===T.TIME){if(length!==8&&length!==12)throw Error('Invalid TIME length');const sign=c.byte(),days=c.four(),h=c.byte(),m=c.byte(),s=c.byte(),micro=length===12?c.four():0;return (sign?'-':'')+pad(days*24+h)+':'+pad(m)+':'+pad(s)+(micro?'.'+pad(micro,6):'');}if(![4,7,11].includes(length))throw Error('Invalid DATE/TIMESTAMP length');let result=pad(c.two(),4)+'-'+pad(c.byte())+'-'+pad(c.byte());if(length>=7)result+=' '+pad(c.byte())+':'+pad(c.byte())+':'+pad(c.byte());if(length===11)result+='.'+pad(c.four(),6);return result;}
 export function binaryRow(buf,cols){const c=new Cursor(buf);if(c.byte()!==0)throw Error('Invalid binary row');const bitmap=c.take(Math.ceil((cols.length+2)/8));const row=Object.create(null);for(let i=0;i<cols.length;i++){const col=cols[i];if(bitmap[(i+2)>>3]&(1<<((i+2)%8))){row[col.name]=null;continue;}const t=col.type;let v;

@@ -29,7 +29,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Test real MySQL 8.4 connection, prepared operations and transaction
+      - name: Install build dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build TypeScript and test real MySQL 8.4
         run: npm test
         env:
           NUBLOX_LIVE_MYSQL: '1'

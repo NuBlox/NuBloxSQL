@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {connectDatabase} from '../src/index.js';
+import {connectDatabase} from '../dist/index.js';
 const live=process.env.NUBLOX_LIVE_MYSQL==='1'?test:test.skip;
 const target={engine:'mysql',host:'127.0.0.1',port:Number(process.env.MYSQL_PORT||3306),user:process.env.MYSQL_USER||'root',password:process.env.MYSQL_PASSWORD||'test-password',database:'nublox_test',security:'isolated-local',timeoutMs:15000};
 

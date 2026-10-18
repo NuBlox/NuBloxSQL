@@ -1,4 +1,5 @@
-import {LIMIT} from './codec.js';
+// @ts-nocheck
+import {LIMIT} from './primitives.js';
 // The sequence number spans client and server packet exchange, resetting per command.
 export class PacketStream {
  constructor(socket){this.socket=null;this.buffer=Buffer.alloc(0);this.queue=[];this.waiters=[];this.sequence=0;this.failure=null;this._onData=c=>this._feed(c);this._onError=e=>this.abort(e);this._onEnd=()=>this.abort(Error('Database connection closed'));this.attach(socket);}

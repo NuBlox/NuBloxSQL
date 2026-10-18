@@ -1,1 +1,23 @@
-{"name":"@nublox/driver","version":"0.1.0-dev.0","type":"module","license":"SEE LICENSE IN ../../LICENSE","engines":{"node":">=22"},"exports":{".":{"types":"./src/index.d.ts","default":"./src/index.js"}},"files":["src","README.md"]}
+{
+  "name": "@nublox/driver",
+  "version": "0.1.0-dev.0",
+  "type": "module",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "^22.0.0"
+  }
+}

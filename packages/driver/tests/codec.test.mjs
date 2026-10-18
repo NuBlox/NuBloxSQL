@@ -1,9 +1,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {T,sized,token,execute,valuePacket,LIMIT} from '../src/internal/codec.js';
-import {binaryRow} from '../src/internal/rows.js';
-import {connectDatabase} from '../src/index.js';
-import {PacketStream} from '../src/internal/transport.js';
+import {T,sized,LIMIT} from '../dist/vendors/mysql/protocol/primitives.js';
+import {token} from '../dist/vendors/mysql/auth/plugins.js';
+import {execute,valuePacket} from '../dist/vendors/mysql/protocol/commands.js';
+import {binaryRow} from '../dist/vendors/mysql/types.js';
+import {connectDatabase} from '../dist/index.js';
+import {PacketStream} from '../dist/vendors/mysql/protocol/framing.js';
 import {PassThrough} from 'node:stream';
 
 test('reject unknown engine and unsafe plaintext outside loopback',async()=>{

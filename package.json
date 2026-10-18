@@ -1,1 +1,16 @@
-{"name":"nubloxsql-driver-workspace","private":true,"type":"module","workspaces":["packages/*"],"engines":{"node":">=22"},"scripts":{"test":"node --test packages/driver/test/*.test.js","verify":"npm test"}}
+{
+  "name": "nubloxsql-driver-workspace",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p packages/driver/tsconfig.json",
+    "test": "npm run build && node --test packages/driver/tests/*.test.mjs",
+    "verify": "npm test"
+  }
+}

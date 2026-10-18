@@ -33,9 +33,20 @@ Supported experimental authentication plugins: `caching_sha2_password` (default 
 ## Verify
 
 ```sh
+npm install
 npm test
 NUBLOX_LIVE_MYSQL=1 MYSQL_PASSWORD=test-password npm test
 npm pack --dry-run --workspace @nublox/driver
 ```
 
 Live tests require an isolated MySQL 8.4 server with `nublox_test` database and matching credentials. See the repository's pinned MySQL 8.4.11 GitHub Actions fixture. The initial MySQL integration fixture uses **isolated-local**; verified TLS still requires a separate real-server positive/negative qualification before any production claims.
+
+## Ownership
+
+- `src/index.ts` is the only public export surface; the npm package exports compiled `dist/` files.
+- `src/core/` owns public contracts, connection routing, errors, capability vocabulary and resource ceilings.
+- `src/models/relational.ts` defines the relational session/transaction contract; other models are not created until implemented.
+- `src/vendors/mysql/` owns authentication, the MySQL native protocol, metadata, types, capability evidence and adapter implementation.
+- `tests/` contains unit and pinned-live-server conformance checks.
+
+**Known architecture gaps:** pooling, transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. Existing MySQL protocol modules are a first relocation and still require full TypeScript type-hardening before a stable production release.

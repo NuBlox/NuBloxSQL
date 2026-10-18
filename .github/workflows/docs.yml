@@ -29,8 +29,6 @@ jobs:
           test -f docs/ARCHIVES.md
           test -f package.json
           test -f packages/driver/package.json
-          test -f packages/driver/src/index.js
-          test -f packages/driver/src/client.js
           test ! -d apps
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
@@ -57,5 +55,10 @@ jobs:
             }
           }
           NODE
+          test -f packages/driver/src/index.ts
+          test -f packages/driver/src/core/connection.ts
+          test -f packages/driver/src/models/relational.ts
+          test -f packages/driver/src/vendors/mysql/adapter.ts
+          npm install --no-audit --no-fund
           npm test
           echo 'Definition and experimental driver baseline: PASS'
