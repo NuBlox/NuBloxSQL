@@ -56,7 +56,7 @@ Current inventory is still **PostgreSQL-specific**, so operations/inspect-databa
 
 The Driver now exposes `connectDatabase` without requiring any application. PostgreSQL (owned wire protocol) and SQLite (Node embedded SQLite interface) share a deliberately narrow relational SQL session. Each preserves its native type/transport differences. Native SQLite SQL is **not** an authored database storage engine, and this is **not** evidence of full SQL vendor or non-SQL support.
 
-The next source expansion should be the qualified existing first-party **MySQL protocol**, not another workspace layout rewrite. Native type depth, streaming, transactions and model-specific extensions belong in the Driver before adding new product frameworks.
+The archived first-party **MySQL protocol** is being requalified incrementally: bounded packet framing, v10 greeting, supported authentication challenge tokens and TLS request/response construction are now private primitives under `adapters/mysql/protocol.ts`. There is **no MySQL session or public engine support yet**; real MySQL live TLS/auth/prepared-statement tests must precede `connectDatabase({engine:'mysql'})`. Native type depth, streaming, transactions and model-specific extensions belong in the Driver before adding new product frameworks.
 
 ## Why not dozens of packages?
 
