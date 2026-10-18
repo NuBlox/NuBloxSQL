@@ -57,5 +57,10 @@ jobs:
             }
           }
           NODE
+          test -f packages/driver/src/index.ts
+          test -f packages/driver/src/core/connection.ts
+          test -f packages/driver/src/models/relational.ts
+          test -f packages/driver/src/vendors/mysql/adapter.ts
+          npm install --no-audit --no-fund
           npm test
           echo 'Definition and experimental driver baseline: PASS'
