@@ -7,6 +7,7 @@
 This active branch is deliberately **documentation-only**. The previous implementation and first restart are preserved as archived Git branches rather than carried into an undefined new product.
 
 - [NuBloxSQL product definition — founder review draft](docs/PRODUCT.md)
+- [Universal native Driver blueprint — design proposal](docs/DRIVER.md)
 - [Implementation archives](docs/ARCHIVES.md)
 - [Proprietary software licence](LICENSE)
 
