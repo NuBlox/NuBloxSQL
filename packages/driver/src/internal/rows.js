@@ -9,7 +9,7 @@ else if(t===T.LONGLONG){const b=c.take(8);v=col.unsigned?b.readBigUInt64LE():b.r
 else if(t===T.FLOAT)v=c.take(4).readFloatLE();
 else if(t===T.DOUBLE)v=c.take(8).readDoubleLE();
 else if([T.DATE,T.DATETIME,T.TIMESTAMP,T.TIME].includes(t))v=temporal(c,t);
-else if([T.TINY_BLOB,T.MEDIUM_BLOB,T.LONG_BLOB,T.BLOB,T.BIT,T.GEOMETRY].includes(t)||col.charset===63)v=c.lbytes();
+else if([T.TINY_BLOB,T.MEDIUM_BLOB,T.LONG_BLOB,T.BLOB,T.BIT,T.GEOMETRY].includes(t)||(col.charset===63&&![0,T.NEWDECIMAL,T.JSON,T.ENUM,T.SET].includes(t)))v=c.lbytes();
 else {const b=c.lbytes();v=b===null?null:b.toString('utf8');}
 row[col.name]=v;
 }if(c.remaining())throw Error('Trailing binary row bytes');return row;}
