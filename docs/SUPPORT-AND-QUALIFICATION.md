@@ -31,7 +31,7 @@ A support claim must be recorded at the intersection of:
 | Engine family | Target evaluation | Release status on new main | Special qualification |
 | --- | --- | --- | --- |
 | PostgreSQL | First native SQL vertical slice | Experimental first-party PostgreSQL 17 wire/SCRAM and verified-TLS inventory adapter; no production qualification | Local loopback plaintext exception or SSLRequest + certificate chain and hostname verification (ephemeral CA fixture only); no downgrade; catalog CONNECT filtering, bounded query limits, fatal query deadline, single-active-query guard; **remote/cloud deployments**, SCRAM-PLUS, Unicode/SASLprep, graceful cancellation, pooling and broader SQL remain unqualified |
-| MySQL | Subsequent SQL adapter | Not implemented | MySQL native authentication/TLS and pooling |
+| MySQL | Subsequent SQL adapter | **Private protocol primitives only; no connectable MySQL adapter**. Bounded packet framing, v10 handshake parsing, SHA challenge tokens and TLS request encoding have deterministic unit tests. | Real MySQL 8.4/9.x TLS/auth, server prepared statements, timeout/cancel, type fidelity, pooling and negative live qualification outstanding |
 | SQLite | Embedded SQL adapter | Experimental multi-engine public API over Node `node:sqlite`; not production qualified | Real in-memory/file read-write/read-only behaviour, prepared scalar binding, native 64-bit ints and bounded rows tested; extended locking, backup, changesets, corruption resilience, resource benchmarking and further Node/OS qualification pending |
 | SQL Server | Native TDS adapter | Not implemented | TDS versions, login/TLS, metadata, type fidelity |
 | MongoDB | First document candidate | Not implemented | Document operations, topology, credentials and bounded cursors |
