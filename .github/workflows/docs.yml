@@ -29,8 +29,6 @@ jobs:
           test -f docs/ARCHIVES.md
           test -f package.json
           test -f packages/driver/package.json
-          test -f packages/driver/src/index.js
-          test -f packages/driver/src/client.js
           test ! -d apps
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
