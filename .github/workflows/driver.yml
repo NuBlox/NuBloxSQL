@@ -39,3 +39,30 @@ jobs:
           MYSQL_PASSWORD: test-password
       - name: Validate standalone package contents
         run: npm pack --dry-run --workspace @nublox/driver
+
+  native-mysql-tls:
+    name: verified-tls-mysql
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Start pinned TLS-only MySQL 8.4 server with temporary test CA
+        shell: bash
+        run: bash packages/driver/tests/fixtures/start-mysql-tls.sh
+      - name: Install build dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run live TLS identity, authentication and prepared-query tests
+        run: npm test
+        env:
+          NUBLOX_LIVE_MYSQL_TLS: '1'
+          MYSQL_TLS_PORT: '3307'
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test-password
+      - name: TLS fixture logs on failure
+        if: failure()
+        run: docker logs nubloxsql-mysql-tls 2>&1 | tail -100 || true
+      - name: Remove TLS test container
+        if: always()
+        run: docker rm -f nubloxsql-mysql-tls >/dev/null 2>&1 || true
