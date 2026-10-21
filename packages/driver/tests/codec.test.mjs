@@ -43,3 +43,28 @@ test('inbound packet buffer has an upper bound',async()=>{
  const socket=new PassThrough(),reader=new PacketStream(socket);
  socket.write(Buffer.alloc(LIMIT+5));await assert.rejects(reader.read(),/limit/);reader.destroy();
 });
+
+test('packet stream accepts coalesced messages but rejects unsafe queued traffic',async()=>{
+ const socket=new PassThrough(),stream=new PacketStream(socket);
+ // Two valid frames in one TCP write have distinct sequence numbers.
+ socket.write(Buffer.from([1,0,0,0,65,1,0,0,1,66]));
+ assert.deepEqual(await stream.read(),Buffer.from('A'));
+ assert.deepEqual(await stream.read(),Buffer.from('B'));
+ stream.reset();
+
+ // A queued response must be consumed before a command boundary is reset.
+ socket.write(Buffer.from([1,0,0,0,67]));
+ assert.throws(()=>stream.reset(),/unread/);
+ assert.deepEqual(await stream.read(),Buffer.from('C'));
+ stream.reset();
+
+ // Many individually valid frames may still exceed the aggregate input budget.
+ const half=Buffer.alloc(4*1024*1024);
+ const encode=(body,seq)=>Buffer.concat([Buffer.from([body.length&255,(body.length>>8)&255,(body.length>>16)&255,seq]),body]);
+ socket.write(encode(half,0));
+ socket.write(encode(half,1));
+ socket.write(encode(Buffer.from([42]),2));
+ await assert.rejects(stream.read(),/limit/);
+ await assert.rejects(stream.read(),/limit/);
+ stream.destroy();
+});
