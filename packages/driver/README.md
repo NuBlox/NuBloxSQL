@@ -41,7 +41,7 @@ npm pack --dry-run --workspace @nublox/driver
 
 `npm test` also packs the compiled Driver into a `.tgz`, installs it offline in a separate temporary application, and exercises only the documented public package exports. When `NUBLOX_LIVE_MYSQL=1`, that independent consumer additionally executes a parameterised query against the real MySQL fixture and closes its connection. This guards against a package that passes source-tree tests but cannot be used by another application.
 
-Live tests require an isolated MySQL 8.4 server with `nublox_test` database and matching credentials. See the repository's pinned MySQL 8.4.11 GitHub Actions fixture. The initial MySQL integration fixture uses **isolated-local**; verified TLS still requires a separate real-server positive/negative qualification before any production claims.
+Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary database is isolated on the runner's loopback interface. A second **TLS-required** MySQL instance uses ephemeral runner-generated CA/server certificates with a real hostname identity. Its tests verify a non-empty negotiated session TLS cipher, CA and hostname verification, prepared-query execution, authentication rejection, plaintext rejection and recovery from failed handshakes. All generated private keys are removed after CI. These tests establish **this specific target and deployment**, not unrestricted cloud, certificate lifecycle, or cross-vendor production support.
 
 ## Ownership
 
@@ -51,4 +51,4 @@ Live tests require an isolated MySQL 8.4 server with `nublox_test` database and 
 - `src/vendors/mysql/` owns authentication, the MySQL native protocol, metadata, types, capability evidence and adapter implementation.
 - `tests/` contains unit and pinned-live-server conformance checks.
 
-**Known architecture gaps:** pooling, transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: verified TLS, cancellation, pooling, comprehensive native type support, and operational conformance remain incomplete.
+**Known architecture gaps:** pooling, transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, cancellation, pooling, comprehensive native type support, and operational conformance remain incomplete.
