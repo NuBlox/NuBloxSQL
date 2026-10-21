@@ -63,6 +63,9 @@ jobs:
       - name: TLS fixture logs on failure
         if: failure()
         run: docker logs nubloxsql-mysql-tls 2>&1 | tail -100 || true
-      - name: Remove TLS test container
+      - name: Remove TLS test container and ephemeral certificates
         if: always()
-        run: docker rm -f nubloxsql-mysql-tls >/dev/null 2>&1 || true
+        shell: bash
+        run: |
+          docker rm -f nubloxsql-mysql-tls >/dev/null 2>&1 || true
+          rm -rf "${RUNNER_TEMP}/nubloxsql-mysql-tls"
