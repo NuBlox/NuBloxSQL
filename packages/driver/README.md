@@ -39,6 +39,8 @@ NUBLOX_LIVE_MYSQL=1 MYSQL_PASSWORD=test-password npm test
 npm pack --dry-run --workspace @nublox/driver
 ```
 
+`npm test` also packs the compiled Driver into a `.tgz`, installs it offline in a separate temporary application, and exercises only the documented public package exports. When `NUBLOX_LIVE_MYSQL=1`, that independent consumer additionally executes a parameterised query against the real MySQL fixture and closes its connection. This guards against a package that passes source-tree tests but cannot be used by another application.
+
 Live tests require an isolated MySQL 8.4 server with `nublox_test` database and matching credentials. See the repository's pinned MySQL 8.4.11 GitHub Actions fixture. The initial MySQL integration fixture uses **isolated-local**; verified TLS still requires a separate real-server positive/negative qualification before any production claims.
 
 ## Ownership
