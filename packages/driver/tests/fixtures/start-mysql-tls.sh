@@ -63,25 +63,7 @@ for i in $(seq 1 90); do
   if docker exec nubloxsql-mysql-tls mysql --protocol=socket \
       --user=root --password=test-password --batch --skip-column-names \
       -e "SELECT @@global.require_secure_transport, @@global.have_ssl;" 2>/dev/null \
-      | grep -Eq '^1[[:space:]]+YES; then
-    if (echo > /dev/tcp/127.0.0.1/3307) 2>/dev/null; then
-      ready=1
-      break
-    fi
-  fi
-  sleep 2
-done
-
-if [[ "${ready}" != 1 ]]; then
-  docker logs nubloxsql-mysql-tls
-  echo 'MySQL 8.4 TLS fixture did not become ready' >&2
-  exit 1
-fi
-
-echo "NUBLOX_TLS_CA_FILE=${TLS_DIR}/ca.pem" >> "${GITHUB_ENV}"
-echo "NUBLOX_TLS_OTHER_CA_FILE=${TLS_DIR}/unrelated-ca.pem" >> "${GITHUB_ENV}"
-echo 'MySQL 8.4 TLS-required fixture is ready'
-; then
+      | grep -Eq '^1[[:space:]]+YES$'; then
     if (echo > /dev/tcp/127.0.0.1/3307) 2>/dev/null; then
       ready=1
       break
