@@ -1,14 +1,106 @@
-// @ts-nocheck
+import type {Socket} from 'node:net';
 import {LIMIT} from './primitives.js';
-// The sequence number spans client and server packet exchange, resetting per command.
+
+type Packet = {seq:number;body:Buffer};
+type Waiter = {resolve:(packet:Packet)=>void;reject:(error:Error)=>void};
+
+/**
+ * Incremental MySQL Classic packet framing.
+ * Packet sequence numbers span both sides of an exchange and reset between commands.
+ * Only one native command may be active on this stream at once.
+ */
 export class PacketStream {
- constructor(socket){this.socket=null;this.buffer=Buffer.alloc(0);this.queue=[];this.waiters=[];this.sequence=0;this.failure=null;this._onData=c=>this._feed(c);this._onError=e=>this.abort(e);this._onEnd=()=>this.abort(Error('Database connection closed'));this.attach(socket);}
- attach(socket){if(this.socket){this.socket.off('data',this._onData);this.socket.off('error',this._onError);this.socket.off('close',this._onEnd);}this.socket=socket;socket.on('data',this._onData);socket.on('error',this._onError);socket.on('close',this._onEnd);}
- reset(){if(this.queue.length||this.buffer.length)throw Error('Unexpected unread MySQL traffic');this.sequence=0;}
- _feed(chunk){try{if(this.failure)return;this.buffer=Buffer.concat([this.buffer,chunk]);if(this.buffer.length>LIMIT+4)throw Error('MySQL incoming buffer exceeded limit');while(this.buffer.length>=4){const length=this.buffer[0]|(this.buffer[1]<<8)|(this.buffer[2]<<16);if(length>LIMIT)throw Error('Oversized MySQL frame');if(this.buffer.length<length+4)break;const seq=this.buffer[3],body=this.buffer.subarray(4,4+length);this.buffer=this.buffer.subarray(4+length);if(this.waiters.length)this.waiters.shift().resolve({seq,body});else this.queue.push({seq,body});if(this.queue.length>1024)throw Error('Too many queued MySQL packets');}}catch(e){this.abort(e);}}
- abort(error){if(this.failure)return;this.failure=error;for(const w of this.waiters.splice(0))w.reject(error);}
- async read(){if(this.failure)throw this.failure;const next=this.queue.length?this.queue.shift():await new Promise((resolve,reject)=>this.waiters.push({resolve,reject}));if(next.seq!==this.sequence){this.abort(Error('MySQL packet sequence mismatch'));throw this.failure;}this.sequence=(this.sequence+1)&255;return next.body;}
- async send(body){if(this.failure)throw this.failure;if(body.length>LIMIT)throw RangeError('MySQL outbound packet too large');const head=Buffer.allocUnsafe(4);head[0]=body.length&255;head[1]=(body.length>>8)&255;head[2]=(body.length>>16)&255;head[3]=this.sequence;this.sequence=(this.sequence+1)&255;await new Promise((resolve,reject)=>this.socket.write(Buffer.concat([head,body]),err=>err?reject(err):resolve()));}
- detach(){if(!this.socket)return;this.socket.off('data',this._onData);this.socket.off('error',this._onError);this.socket.off('close',this._onEnd);this.socket=null;}
- destroy(){const socket=this.socket;this.abort(Error('Connection closed'));this.detach();socket?.destroy();}
+  private socket:Socket|null=null;
+  private buffer:Buffer=Buffer.alloc(0);
+  private readonly queue:Packet[]=[];
+  private readonly waiters:Waiter[]=[];
+  private queuedBytes=0;
+  private sequence=0;
+  private failure:Error|null=null;
+
+  private readonly onData=(chunk:Buffer):void=>this.feed(chunk);
+  private readonly onError=(error:Error):void=>this.abort(error);
+  private readonly onEnd=():void=>this.abort(new Error('Database connection closed'));
+
+  constructor(socket:Socket){this.attach(socket);}
+
+  /** Used for upgrading the existing TCP transport to verified TLS. */
+  attach(socket:Socket):void {
+    this.detach();
+    if(this.failure)throw this.failure;
+    this.socket=socket;
+    socket.on('data',this.onData);
+    socket.on('error',this.onError);
+    socket.on('close',this.onEnd);
+  }
+  detach():void {
+    if(!this.socket)return;
+    this.socket.off('data',this.onData);
+    this.socket.off('error',this.onError);
+    this.socket.off('close',this.onEnd);
+    this.socket=null;
+  }
+  reset():void {
+    if(this.failure)throw this.failure;
+    if(this.queue.length||this.buffer.length)throw new Error('Unexpected unread MySQL traffic');
+    this.sequence=0;
+  }
+  private feed(chunk:Buffer):void {
+    if(this.failure)return;
+    try {
+      // Bound the complete outstanding input, not just the current TCP fragment.
+      if(this.queuedBytes+this.buffer.length+chunk.length>LIMIT+4)
+        throw new Error('MySQL incoming buffer exceeded limit');
+      this.buffer=Buffer.concat([this.buffer,chunk]);
+      while(this.buffer.length>=4){
+        const length=this.buffer[0]|(this.buffer[1]<<8)|(this.buffer[2]<<16);
+        if(length>LIMIT)throw new Error('Oversized MySQL frame');
+        if(this.buffer.length<length+4)break;
+        const packet:Packet={seq:this.buffer[3],body:this.buffer.subarray(4,4+length)};
+        this.buffer=this.buffer.subarray(length+4);
+        if(this.waiters.length)this.waiters.shift()!.resolve(packet);
+        else {this.queue.push(packet);this.queuedBytes+=packet.body.length+4;}
+        if(this.queue.length>1024)throw new Error('Too many queued MySQL packets');
+      }
+    } catch(error){this.abort(error instanceof Error?error:new Error('Invalid MySQL packet'));}
+  }
+  abort(error:Error):void {
+    if(this.failure)return;
+    this.failure=error;
+    this.buffer=Buffer.alloc(0);
+    this.queue.length=0;
+    this.queuedBytes=0;
+    for(const waiter of this.waiters.splice(0))waiter.reject(error);
+  }
+  async read():Promise<Buffer> {
+    if(this.failure)throw this.failure;
+    let packet:Packet;
+    if(this.queue.length){
+      packet=this.queue.shift()!;
+      this.queuedBytes-=packet.body.length+4;
+    } else packet=await new Promise<Packet>((resolve,reject)=>this.waiters.push({resolve,reject}));
+    if(packet.seq!==this.sequence){
+      this.abort(new Error('MySQL packet sequence mismatch'));
+      throw this.failure;
+    }
+    this.sequence=(this.sequence+1)&255;
+    return packet.body;
+  }
+  async send(body:Buffer):Promise<void> {
+    if(this.failure)throw this.failure;
+    if(body.length>LIMIT)throw new RangeError('MySQL outbound packet too large');
+    const socket=this.socket;
+    if(!socket)throw new Error('MySQL packet stream has no attached socket');
+    const header=Buffer.allocUnsafe(4);
+    header[0]=body.length&255;header[1]=(body.length>>8)&255;
+    header[2]=(body.length>>16)&255;header[3]=this.sequence;
+    this.sequence=(this.sequence+1)&255;
+    await new Promise<void>((resolve,reject)=>socket.write(Buffer.concat([header,body]),error=>error?reject(error):resolve()));
+  }
+  destroy():void {
+    const socket=this.socket;
+    this.abort(new Error('Connection closed'));
+    this.detach();
+    socket?.destroy();
+  }
 }

@@ -59,6 +59,10 @@ jobs:
           test -f packages/driver/src/core/connection.ts
           test -f packages/driver/src/models/relational.ts
           test -f packages/driver/src/vendors/mysql/adapter.ts
+          if grep -R -n --include='*.ts' '@ts-nocheck' packages/driver/src; then
+            echo 'All Driver TypeScript modules must be checked by the compiler' >&2
+            exit 1
+          fi
           npm install --no-audit --no-fund
           npm test
           echo 'Definition and experimental driver baseline: PASS'

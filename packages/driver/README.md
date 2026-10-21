@@ -51,4 +51,4 @@ Live tests require an isolated MySQL 8.4 server with `nublox_test` database and 
 - `src/vendors/mysql/` owns authentication, the MySQL native protocol, metadata, types, capability evidence and adapter implementation.
 - `tests/` contains unit and pinned-live-server conformance checks.
 
-**Known architecture gaps:** pooling, transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. Existing MySQL protocol modules are a first relocation and still require full TypeScript type-hardening before a stable production release.
+**Known architecture gaps:** pooling, transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: verified TLS, cancellation, pooling, comprehensive native type support, and operational conformance remain incomplete.
