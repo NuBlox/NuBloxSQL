@@ -144,7 +144,7 @@ export class MysqlSession implements RelationalSession {
       let finished=false;
       try {
         const transaction:RelationalTransaction=Object.freeze({
-          query:(sql,values=[])=>this.execute(sql,values)
+          query:(sql:string,values:readonly BindValue[]=[])=>this.execute(sql,values)
         });
         let value:T;
         try {
