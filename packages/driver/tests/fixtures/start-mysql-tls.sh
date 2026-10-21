@@ -62,8 +62,8 @@ ready=0
 for i in $(seq 1 90); do
   if docker exec nubloxsql-mysql-tls mysql --protocol=socket \
       --user=root --password=test-password --batch --skip-column-names \
-      -e "SELECT @@global.require_secure_transport, @@global.have_ssl;" 2>/dev/null \
-      | grep -Eq '^1[[:space:]]+YES$'; then
+      -e "SELECT @@global.require_secure_transport;" 2>/dev/null \
+      | grep -Eq '^1$'; then
     if (echo > /dev/tcp/127.0.0.1/3307) 2>/dev/null; then
       ready=1
       break
