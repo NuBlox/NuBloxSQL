@@ -186,6 +186,9 @@ export async function connectMysql(input:MysqlTarget):Promise<MysqlSession>{
   const socket=net.createConnection({host:target.host,port:target.port});
   socket.setNoDelay(true);
   const stream=new PacketStream(socket);
+  // Retain the TLS wrapper so failed handshakes cannot leak sockets.
+  let active:Socket=socket;
+  let negotiatingTls=false;
   const timer=setTimeout(()=>{
     socket.destroy(fail('TIMEOUT','MySQL connection timeout'));
   },target.timeoutMs);
@@ -197,21 +200,30 @@ export async function connectMysql(input:MysqlTarget):Promise<MysqlSession>{
     const hello=greeting(await stream.read());
     const secure=target.security==='verified-tls';
     const selectedFlags=flags(hello.flags,secure,target.database);
-    let active:Socket=socket;
     if(secure){
+      // The server expects an unencrypted SSLRequest before TLS negotiation.
       await stream.send(sslRequest(selectedFlags));
       stream.detach();
-      active=await new Promise<tls.TLSSocket>((resolve,reject)=>{
-        const secureSocket=tls.connect({
-          socket,servername:target.serverName??target.host,
-          ca:target.ca,minVersion:'TLSv1.2',rejectUnauthorized:true
-        });
-        secureSocket.once('secureConnect',()=>{
-          if(secureSocket.authorized)resolve(secureSocket);
-          else reject(fail('TLS_FAILED','Database identity verification failed'));
-        });
-        secureSocket.once('error',reject);
+      negotiatingTls=true;
+      const secureSocket=tls.connect({
+        socket,servername:target.serverName??target.host,
+        ca:target.ca,minVersion:'TLSv1.2',rejectUnauthorized:true
       });
+      active=secureSocket;
+      await new Promise<void>((resolve,reject)=>{
+        const onError=():void=>{
+          secureSocket.off('secureConnect',onSecure);
+          reject(fail('TLS_FAILED','Database TLS negotiation or identity verification failed'));
+        };
+        const onSecure=():void=>{
+          secureSocket.off('error',onError);
+          if(secureSocket.authorized)resolve();
+          else reject(fail('TLS_FAILED','Database identity verification failed'));
+        };
+        secureSocket.once('secureConnect',onSecure);
+        secureSocket.once('error',onError);
+      });
+      negotiatingTls=false;
       stream.attach(active);
     }
     await stream.send(login({
@@ -248,8 +260,10 @@ export async function connectMysql(input:MysqlTarget):Promise<MysqlSession>{
     throw fail('AUTH_UNSUPPORTED','Authentication negotiation exceeded step limit');
   }catch(error){
     stream.destroy();
+    active.destroy();
     socket.destroy();
     if(error instanceof DriverError)throw error;
+    if(negotiatingTls)throw fail('TLS_FAILED','Database TLS negotiation or identity verification failed');
     throw new DriverError('CONNECTION_FAILED',error instanceof Error?error.message:'MySQL connection failed');
   }finally{clearTimeout(timer);}
 }
