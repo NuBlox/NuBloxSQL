@@ -23,6 +23,14 @@ if(process.env.NUBLOX_LIVE_MYSQL==='1'){
   try{
     const result=await session.query('SELECT ? AS consumer_value',[41]);
     assert.equal(result.rows[0].consumer_value,41n);
+    const cancelled=new AbortController();
+    cancelled.abort();
+    await assert.rejects(
+      session.query('SELECT 1',[],{signal:cancelled.signal}),
+      error=>error.code==='CANCELLED'
+    );
+    assert.equal(session.closed,false);
+    assert.equal((await session.query('SELECT ? AS still_connected',[42])).rows[0].still_connected,42n);
   }finally{await session.close();}
   assert.equal(session.closed,true);
 }

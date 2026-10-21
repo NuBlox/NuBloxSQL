@@ -12,17 +12,20 @@ import {validate} from './configuration.js';
 import {mysqlCapabilities} from './capabilities.js';
 import {readMetadata} from './metadata.js';
 import {DriverError,fail} from '../../core/errors.js';
-import {MAX_RESULT_ROWS,MAX_PARAMETERS,MAX_COLUMNS} from '../../core/resources.js';
+import {MAX_RESULT_ROWS,MAX_PARAMETERS,MAX_COLUMNS,operationOptions,OperationGuard,type OperationOptions} from '../../core/resources.js';
 import type {BindValue,MysqlTarget,QueryResult,SessionInfo} from '../../core/contracts.js';
 import type {RelationalSession,RelationalTransaction} from '../../models/relational.js';
 
 type ValidMysqlTarget=MysqlTarget&{timeoutMs:number};
 type TransactionOutcome<T>={success:true;value:T}|{success:false;error:unknown};
+type QueuedJob={start:()=>void;reject:(error:DriverError)=>void};
 
 export class MysqlSession implements RelationalSession {
   readonly info:Readonly<SessionInfo>;
   closed=false;
-  private tail:Promise<void>=Promise.resolve();
+  private readonly queue:QueuedJob[]=[];
+  private busy=false;
+  private activeGuard:OperationGuard|null=null;
 
   constructor(
     private readonly stream:PacketStream,
@@ -37,42 +40,90 @@ export class MysqlSession implements RelationalSession {
   }
 
   private destroy():void {
+    if(this.closed)return;
     this.closed=true;
+    const queued=this.queue.splice(0);
+    for(const job of queued)
+      job.reject(fail('CONNECTION_CLOSED','Database connection is closed'));
     this.stream.destroy();
     this.socket.destroy();
   }
 
-  /** Serialize all commands on the connection and apply a per-operation deadline. */
-  private async serial<T>(fn:()=>Promise<T>):Promise<T>{
-    const before=this.tail;
-    let release!:()=>void;
-    this.tail=new Promise<void>(resolve=>{release=resolve;});
-    await before;
-    if(this.closed){release();throw fail('CONNECTION_CLOSED','Session is closed');}
-    let timer:NodeJS.Timeout|undefined;
-    const deadline=new Promise<never>((_,reject)=>{
-      timer=setTimeout(()=>{
-        this.destroy();
-        reject(fail('TIMEOUT','MySQL operation timed out'));
-      },this.target.timeoutMs);
-    });
-    try {
-      return await Promise.race([fn(),deadline]);
-    }catch(error){
-      if(!(error instanceof DriverError&&
-        (error.code==='DATABASE_ERROR'||error.code==='INVALID_INPUT')))this.destroy();
-      throw error;
-    }finally{
-      if(timer)clearTimeout(timer);
-      release();
-    }
+  private assertOpen():void {
+    if(this.closed)throw fail('CONNECTION_CLOSED','Database connection is closed');
   }
 
-  private async send(body:Buffer):Promise<void>{await this.stream.send(body);}
+  private drain():void {
+    if(this.closed||this.busy)return;
+    this.queue.shift()?.start();
+  }
+
+  /** One active command per native connection; pending aborts never damage it. */
+  private serial<T>(fn:()=>Promise<T>,options:OperationOptions={}):Promise<T>{
+    const {signal,timeoutMs}=operationOptions(options,this.target.timeoutMs);
+    if(this.closed)return Promise.reject(fail('CONNECTION_CLOSED','Session is closed'));
+    if(signal?.aborted)return Promise.reject(fail('CANCELLED','Database operation cancelled'));
+    return new Promise<T>((resolve,reject)=>{
+      let state:'queued'|'active'|'done'='queued';
+      const cancelQueued=():void=>{
+        if(state!=='queued')return;
+        const i=this.queue.indexOf(job);
+        if(i>=0)this.queue.splice(i,1);
+        state='done';
+        signal?.removeEventListener('abort',cancelQueued);
+        reject(fail('CANCELLED','Queued database operation cancelled'));
+      };
+      const job:QueuedJob={
+        reject:(error)=>{
+          if(state!=='queued')return;
+          state='done';
+          signal?.removeEventListener('abort',cancelQueued);
+          reject(error);
+        },
+        start:()=>{
+          signal?.removeEventListener('abort',cancelQueued);
+          if(this.closed){job.reject(fail('CONNECTION_CLOSED','Session is closed'));return;}
+          if(signal?.aborted){job.reject(fail('CANCELLED','Queued database operation cancelled'));this.drain();return;}
+          state='active';
+          this.busy=true;
+          const guard=new OperationGuard(timeoutMs,signal,()=>this.destroy());
+          this.activeGuard=guard;
+          Promise.race([Promise.resolve().then(()=>{
+            this.assertOpen();
+            return fn();
+          }),guard.interrupted]).then(
+            value=>resolve(value),
+            error=>{
+              if(!(error instanceof DriverError&&
+                (error.code==='DATABASE_ERROR'||error.code==='INVALID_INPUT'||
+                 error.code==='CANCELLED'||error.code==='TIMEOUT'||
+                 error.code==='CONNECTION_CLOSED')))
+                this.destroy();
+              reject(error);
+            }
+          ).finally(()=>{
+            guard.dispose();
+            this.activeGuard=null;
+            state='done';
+            this.busy=false;
+            this.drain();
+          });
+        }
+      };
+      this.queue.push(job);
+      signal?.addEventListener('abort',cancelQueued,{once:true});
+      // In case the signal was aborted between preflight and registration.
+      if(signal?.aborted)cancelQueued();
+      else this.drain();
+    });
+  }
+
+  private async send(body:Buffer):Promise<void>{this.assertOpen();await this.stream.send(body);}
   private async get():Promise<Buffer>{return serverPacket(await this.stream.read());}
   private async metadata(count:number){return readMetadata(()=>this.get(),count);}
 
   private async execute(sql:string,params:readonly BindValue[]):Promise<QueryResult>{
+    this.assertOpen();
     if(typeof sql!=='string'||!sql.trim()||Buffer.byteLength(sql,'utf8')>LIMIT||
       !Array.isArray(params)||params.length>MAX_PARAMETERS)
       throw fail('INVALID_INPUT','Invalid SQL query or parameter list');
@@ -125,11 +176,12 @@ export class MysqlSession implements RelationalSession {
     }
   }
 
-  async query(sql:string,parameters:readonly BindValue[]=[]):Promise<QueryResult>{
-    return this.serial(()=>this.execute(sql,parameters));
+  async query(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={}):Promise<QueryResult>{
+    return this.serial(()=>this.execute(sql,parameters),options);
   }
 
   private async control(command:'START TRANSACTION'|'COMMIT'|'ROLLBACK'):Promise<QueryResult>{
+    this.assertOpen();
     this.stream.reset();
     await this.send(Buffer.concat([Buffer.from([3]),Buffer.from(command,'ascii')]));
     const response=await this.get();
@@ -137,7 +189,7 @@ export class MysqlSession implements RelationalSession {
     return ok(response);
   }
 
-  async transaction<T>(work:(transaction:RelationalTransaction)=>Promise<T>):Promise<T>{
+  async transaction<T>(work:(transaction:RelationalTransaction)=>Promise<T>,options:OperationOptions={}):Promise<T>{
     if(typeof work!=='function')throw fail('INVALID_INPUT','Transaction callback is required');
     const outcome=await this.serial(async():Promise<TransactionOutcome<T>>=>{
       await this.control('START TRANSACTION');
@@ -162,21 +214,17 @@ export class MysqlSession implements RelationalSession {
           try {await this.control('ROLLBACK');}catch{this.destroy();}
         }
       }
-    });
+    },options);
     if(!outcome.success)throw outcome.error;
     return outcome.value;
   }
 
   async close():Promise<void>{
-    await this.tail;
     if(this.closed)return;
-    this.closed=true;
-    try{
-      this.stream.reset();
-      await this.send(Buffer.from([1]));
-    }catch{
-      // The socket is still destroyed below even when QUIT cannot be delivered.
-    }finally{this.destroy();}
+    // Closing never waits for a blocked server request or application callback.
+    // In-flight operations receive CONNECTION_CLOSED and the socket is discarded.
+    this.activeGuard?.interrupt(fail('CONNECTION_CLOSED','Session closed during an operation'));
+    this.destroy();
   }
 }
 
