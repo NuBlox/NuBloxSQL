@@ -63,6 +63,8 @@ jobs:
             echo 'All Driver TypeScript modules must be checked by the compiler' >&2
             exit 1
           fi
+          test -f packages/driver/tests/mysql-tls-live.test.mjs
+          bash -n packages/driver/tests/fixtures/start-mysql-tls.sh
           npm install --no-audit --no-fund
           npm test
           echo 'Definition and experimental driver baseline: PASS'
