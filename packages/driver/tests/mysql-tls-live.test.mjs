@@ -88,3 +88,21 @@ live('TLS connections recover after rejected certificate and authentication atte
     }finally{await session.close();}
   }
 });
+
+
+live('verified TLS cancellation drops affected socket; a new secured session succeeds',async()=>{
+  const target=trustedTarget();
+  const db=await connectDatabase(target);
+  const controller=new AbortController();
+  const pending=db.query('SELECT SLEEP(3) AS slept',[],{signal:controller.signal});
+  setTimeout(()=>controller.abort(),120);
+  await assert.rejects(pending,error=>error?.code==='CANCELLED');
+  assert.equal(db.closed,true);
+  await db.close();
+
+  const fresh=await connectDatabase(target);
+  try{
+    assert.equal(fresh.info.transport,'verified-tls');
+    assert.equal((await fresh.query('SELECT ? AS recovered',[73])).rows[0].recovered,73n);
+  }finally{await fresh.close();}
+});
