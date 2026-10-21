@@ -40,9 +40,12 @@ openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 2 \
 # The image starts mysqld as its mysql account. Only that account may read
 # the test server's private key; avoid world-readable credentials.
 MYSQL_UID="$(docker run --rm --entrypoint id mysql:8.4.11 -u mysql)"
-sudo chown "${MYSQL_UID}" server.key
 chmod 600 server.key
+sudo chown "${MYSQL_UID}" server.key
 chmod 644 ca.pem server.pem unrelated-ca.pem
+# The container's mysql user must traverse the bind-mounted certificate directory.
+# CA private keys remain owner-only inside this ephemeral runner directory.
+chmod 755 "${TLS_DIR}"
 
 docker run --detach --name nubloxsql-mysql-tls \
   --publish 127.0.0.1:3307:3306 \
