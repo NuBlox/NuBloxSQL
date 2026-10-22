@@ -148,3 +148,26 @@ live('closing a pool rejects waiting callers and closes active native sessions',
  }
  assert.equal(pool.stats.size,0);
 });
+
+
+live('completed transaction scope cannot issue commands after pool reuse',async()=>{
+ const pool=createDatabasePool(target,{maxConnections:1});
+ let escapedTransaction;
+ try{
+  const original=await pool.withConnection(async lease=>{
+   await lease.transaction(async tx=>{
+    escapedTransaction=tx;
+    await tx.query('SELECT ? AS inside',[55]);
+   });
+   return idOf(lease);
+  });
+  await assert.rejects(
+   escapedTransaction.query('SELECT 1'),e=>e.code==='CONNECTION_CLOSED'
+  );
+  const again=await pool.withConnection(async lease=>{
+   assert.equal((await lease.query('SELECT ? AS value',[56])).rows[0].value,56n);
+   return idOf(lease);
+  });
+  assert.equal(again,original,'late transaction queries must not invalidate healthy reused connections');
+ }finally{await pool.close();}
+});
