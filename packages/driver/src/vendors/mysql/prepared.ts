@@ -17,8 +17,8 @@ export class MysqlPreparedStatement implements RelationalPreparedStatement {
 
   get closed():boolean{return this.invalid;}
 
-  execute(params:readonly BindValue[]=[],options:OperationOptions={}):Promise<QueryResult>{
-    if(this.invalid)return Promise.reject(fail('CONNECTION_CLOSED','Prepared statement is closed'));
+  async execute(params:readonly BindValue[]=[],options:OperationOptions={}):Promise<QueryResult>{
+    if(this.invalid)throw fail('CONNECTION_CLOSED','Prepared statement is closed');
     return this.run(params,options);
   }
 
