@@ -10,3 +10,4 @@ npm-debug.log*
 .contracts-venv/
 *.tsbuildinfo
 artifacts/qualification/
+artifacts/release/

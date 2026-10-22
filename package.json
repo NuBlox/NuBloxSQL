@@ -10,9 +10,10 @@
   },
   "scripts": {
     "build": "tsc -p packages/driver/tsconfig.json",
-    "test": "npm run build && node --test packages/driver/tests/*.test.mjs tools/qualification/*.test.mjs",
+    "test": "npm run build && node --test packages/driver/tests/*.test.mjs tools/qualification/*.test.mjs tools/release/*.test.mjs",
     "verify": "npm test",
     "qualify:mysql": "npm run build && node tools/qualification/run.mjs benchmark",
-    "soak:mysql": "npm run build && node tools/qualification/run.mjs soak"
+    "soak:mysql": "npm run build && node tools/qualification/run.mjs soak",
+    "release:verify": "npm run build && node tools/release/verify.mjs"
   }
 }

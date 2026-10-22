@@ -1,0 +1,20 @@
+NuBloxSQL Proprietary Software Licence
+Copyright (c) 2026 Stephen J T Spittal. All rights reserved.
+
+NuBloxSQL, including its source code, object code, documentation, package contents, interfaces authored by the copyright owner, tests, and related materials (collectively, the "Software"), is proprietary software owned by Stephen J T Spittal.
+
+No licence or other right to use, copy, modify, adapt, merge, publish, distribute, sublicense, sell, rent, lease, host as a service, create derivative works from, or otherwise exploit the Software is granted by possession of, access to, or availability of the Software or its source code.
+
+Any use, reproduction, modification, distribution, commercial exploitation, or other exercise of copyright or related rights in the Software requires prior written permission or a separate written licence agreement from the copyright owner, except to the limited extent that applicable law expressly permits an activity that cannot lawfully be restricted by contract or copyright notice.
+
+Public availability of a repository or package does not grant an open-source licence. Rights that a hosting or package-distribution platform must receive solely to store, display, transmit, or make the Software available through that platform are limited to the platform terms accepted by the copyright owner and do not grant downstream users any additional licence to the Software.
+
+No trademark, trade name, branding, patent, database right, design right, confidential-information right, or other intellectual-property right is granted except as expressly stated in a separate written agreement.
+
+THE SOFTWARE IS PROVIDED "AS IS" TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW. NO WARRANTY, CONDITION, REPRESENTATION, OR UNDERTAKING IS GIVEN, WHETHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, INCLUDING AS TO MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, ACCURACY, AVAILABILITY, OR PERFORMANCE.
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE COPYRIGHT OWNER SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE, OR CONSEQUENTIAL LOSS OR DAMAGE, OR FOR LOSS OF PROFITS, REVENUE, BUSINESS, DATA, GOODWILL, OR ANTICIPATED SAVINGS, ARISING FROM OR RELATING TO THE SOFTWARE OR ITS USE.
+
+A separate commercial, evaluation, development, redistribution, hosting, or support licence may be granted only in writing by the copyright owner or an expressly authorised licensor.
+
+Historical versions or commits that were previously distributed under another licence remain governed by the licence terms validly granted for those historical copies. This licence governs the NuBloxSQL v1 proprietary release line and subsequent copies expressly distributed under these terms.

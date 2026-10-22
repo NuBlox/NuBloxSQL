@@ -1,0 +1,40 @@
+name: Driver package security and runtime assurance
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  package-security:
+    name: package-security-node-${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22','24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Resolve build dependencies
+        run: npm install --no-audit --no-fund
+      - name: Block high and critical dependency advisories
+        run: npm audit --audit-level=high
+      - name: Compile and verify actual published package inventory
+        run: npm run release:verify
+      - name: Run independent consumer and core regression tests
+        run: npm test
+      - name: Retain non-sensitive package preflight summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-preflight-node-${{ matrix.node }}-${{ github.run_id }}
+          path: artifacts/release/preflight.json
+          if-no-files-found: warn
+          retention-days: 30
