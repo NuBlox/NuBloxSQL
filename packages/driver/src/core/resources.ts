@@ -9,6 +9,8 @@ export const MAX_PACKET_BYTES=8*1024*1024;
 export const MAX_RESULT_ROWS=10_000;
 export const MAX_COLUMNS=4096;
 export const MAX_PARAMETERS=64;
+/** Per-connection cap, independent of the server-wide prepared statement limit. */
+export const MAX_PREPARED_STATEMENTS=128;
 export function validDeadline(ms:number):boolean {
   return Number.isSafeInteger(ms)&&ms>=100&&ms<=120_000;
 }
