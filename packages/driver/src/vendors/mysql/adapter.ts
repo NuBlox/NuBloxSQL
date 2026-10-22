@@ -295,6 +295,17 @@ export class MysqlSession implements RelationalSession {
     return outcome.value;
   }
 
+  /** Native COM_PING checks protocol synchronization on the exact borrowed socket.
+   * No application statement is replayed if the probe fails. */
+  async healthCheckForPool(timeoutMs:number):Promise<void>{
+    await this.serial(async()=>{
+      this.stream.reset();
+      await this.send(Buffer.from([0x0e])); // COM_PING
+      const response=await this.get();
+      if(!isOk(response))throw Error('Invalid MySQL ping response');
+    },{timeoutMs});
+  }
+
   /** Native MySQL COM_RESET_CONNECTION: discard transaction, variables and
    * server-side statements before an exclusive lease returns to the pool. */
   async resetForPool():Promise<void>{
