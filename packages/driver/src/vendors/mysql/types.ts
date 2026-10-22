@@ -69,15 +69,15 @@ function temporal(c:Cursor,column:MysqlColumn):string{
 /** MySQL binary prepared-statement row. Integer/bit/decimal/temporal fidelity
  * is deliberate: exact decimals => string, 64-bit integers => bigint, binary
  * bytes => Buffer, and dates/times => timezone-free strings. */
-export function binaryRow(buf:Buffer,cols:readonly MysqlColumn[]):Record<string,unknown>{
+export function binaryValues(buf:Buffer,cols:readonly MysqlColumn[]):unknown[]{
   const cursor=new Cursor(buf);
   if(cursor.byte()!==0)throw Error('Invalid MySQL binary result row');
   const bitmap=cursor.take(Math.ceil((cols.length+2)/8));
-  const row:Record<string,unknown>=Object.create(null);
+  const values:unknown[]=[];
   for(let i=0;i<cols.length;i++){
     const column=cols[i];
     if(bitmap[(i+2)>>3]&(1<<((i+2)%8))){
-      row[column.name]=null;
+      values.push(null);
       continue;
     }
     const type=column.type;
@@ -116,8 +116,44 @@ export function binaryRow(buf:Buffer,cols:readonly MysqlColumn[]):Record<string,
     }else{
       throw Error('Unsupported MySQL binary result type '+type);
     }
-    row[column.name]=value;
+    values.push(value);
   }
   if(cursor.remaining()!==0)throw Error('Trailing MySQL binary row bytes');
-  return row;
+  return values;
+}
+
+/**
+ * Create unique row-object keys while preserving the server's original column
+ * names in QueryResult.columns. Existing unique aliases are reserved first;
+ * a duplicate "a" becomes "a#2", "a#3" and so on unless already occupied.
+ * This is deterministic and cannot overwrite an existing SQL alias.
+ */
+export function columnKeys(columns:readonly Pick<MysqlColumn,'name'>[]):string[]{
+  const originals=new Set(columns.map(c=>c.name));
+  const used=new Set<string>();
+  return columns.map(col=>{
+    const name=col.name;
+    if(!used.has(name)){
+      used.add(name);
+      return name;
+    }
+    let suffix=2;
+    let key=name+'#'+suffix;
+    while(used.has(key)||originals.has(key)){
+      suffix++;
+      key=name+'#'+suffix;
+    }
+    used.add(key);
+    return key;
+  });
+}
+export function objectRow(values:readonly unknown[],keys:readonly string[]):Record<string,unknown>{
+  if(values.length!==keys.length)throw Error('Binary row / column count mismatch');
+  const record:Record<string,unknown>=Object.create(null);
+  for(let i=0;i<keys.length;i++)record[keys[i]]=values[i];
+  return record;
+}
+/** Backward-compatible single-row decoder for callers using unique names. */
+export function binaryRow(buf:Buffer,cols:readonly MysqlColumn[]):Record<string,unknown>{
+  return objectRow(binaryValues(buf,cols),columnKeys(cols));
 }
