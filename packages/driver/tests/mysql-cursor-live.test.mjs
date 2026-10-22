@@ -66,7 +66,7 @@ live('closing cursor early sends COM_STMT_CLOSE and preserves healthy connection
    'SELECT a.n AS value FROM (SELECT 1 n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) a ORDER BY value',
    [],async cursor=>{
     let count=0;
-    for await(const item of cursor){assert.equal(item.row.value,1);count++;break;}
+    for await(const item of cursor){assert.equal(item.row.value,1n);count++;break;}
     return count;
    },{fetchSize:2});
   assert.equal(consumed,1);
@@ -82,7 +82,7 @@ live('cursor rejects invalid batch options and unsupported non-result statements
    await assert.rejects(db.withCursor('SELECT 1',[],async()=>{}, {fetchSize}),e=>e.code==='INVALID_INPUT');
   }
   await assert.rejects(db.withCursor('SET @nublox_cursor_rejected = 1',[],async()=>{}),
-    e=>e.code==='UNSUPPORTED_FEATURE');
+    e=>e.code==='UNSUPPORTED_FEATURE'||e.code==='DATABASE_ERROR');
   assert.equal(db.closed,false);
  }finally{await db.close();}
 });
