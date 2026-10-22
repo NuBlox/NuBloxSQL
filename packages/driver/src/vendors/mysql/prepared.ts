@@ -24,11 +24,11 @@ export class MysqlPreparedStatement implements RelationalPreparedStatement {
   }
 
   async close():Promise<void>{
+    // This must precede *all* early returns: awaiting a close that was
+    // previously queued by another caller can itself cause re-entrant deadlock.
+    this.assertNotNested();
     if(this.closing)return this.closing;
     if(this.invalid)return;
-    // Check *before* marking closed; a rejected re-entrant close must not
-    // orphan the server-side statement or permanently invalidate its handle.
-    this.assertNotNested();
     this.invalid=true;
     this.closing=this.dispose();
     await this.closing;
