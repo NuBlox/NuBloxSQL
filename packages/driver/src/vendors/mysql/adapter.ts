@@ -5,6 +5,7 @@ import {Cursor,cstr,LIMIT,u32} from './protocol/primitives.js';
 import {greeting,flags,login,sslRequest,type MysqlGreeting} from './protocol/handshake.js';
 import {token} from './auth/plugins.js';
 import {execute} from './protocol/commands.js';
+import {MysqlPreparedStatement} from './prepared.js';
 import {ok} from './protocol/results.js';
 import {binaryRow} from './types.js';
 import {serverPacket,eof,isOk} from './errors.js';
@@ -12,7 +13,7 @@ import {validate} from './configuration.js';
 import {mysqlCapabilities} from './capabilities.js';
 import {readMetadata} from './metadata.js';
 import {DriverError,fail} from '../../core/errors.js';
-import {MAX_RESULT_ROWS,MAX_PARAMETERS,MAX_COLUMNS,operationOptions,OperationGuard,type OperationOptions} from '../../core/resources.js';
+import {MAX_RESULT_ROWS,MAX_PARAMETERS,MAX_COLUMNS,MAX_PREPARED_STATEMENTS,operationOptions,OperationGuard,type OperationOptions} from '../../core/resources.js';
 import type {BindValue,MysqlTarget,QueryResult,SessionInfo} from '../../core/contracts.js';
 import type {RelationalSession,RelationalTransaction} from '../../models/relational.js';
 
@@ -26,6 +27,8 @@ export class MysqlSession implements RelationalSession {
   private readonly queue:QueuedJob[]=[];
   private busy=false;
   private activeGuard:OperationGuard|null=null;
+  private readonly statements=new Set<MysqlPreparedStatement>();
+  private preparing=0;
 
   constructor(
     private readonly stream:PacketStream,
@@ -42,6 +45,8 @@ export class MysqlSession implements RelationalSession {
   private destroy():void {
     if(this.closed)return;
     this.closed=true;
+    for(const statement of this.statements)statement.invalidate();
+    this.statements.clear();
     const queued=this.queue.splice(0);
     for(const job of queued)
       job.reject(fail('CONNECTION_CLOSED','Database connection is closed'));
@@ -122,62 +127,102 @@ export class MysqlSession implements RelationalSession {
   private async get():Promise<Buffer>{return serverPacket(await this.stream.read());}
   private async metadata(count:number){return readMetadata(()=>this.get(),count);}
 
-  private async execute(sql:string,params:readonly BindValue[]):Promise<QueryResult>{
+  /** COM_STMT_PREPARE assigns one server statement ID; metadata is consumed
+   * completely before the next command can enter the MySQL packet stream. */
+  private async prepareNative(sql:string):Promise<{id:number;parameterCount:number}>{
     this.assertOpen();
-    if(typeof sql!=='string'||!sql.trim()||Buffer.byteLength(sql,'utf8')>LIMIT||
-      !Array.isArray(params)||params.length>MAX_PARAMETERS)
-      throw fail('INVALID_INPUT','Invalid SQL query or parameter list');
-
-    // Actual server-side preparation; user parameters never become SQL text.
+    if(typeof sql!=='string'||!sql.trim()||Buffer.byteLength(sql,'utf8')>LIMIT)
+      throw fail('INVALID_INPUT','Invalid SQL statement');
     this.stream.reset();
     await this.send(Buffer.concat([Buffer.from([0x16]),Buffer.from(sql,'utf8')]));
     const header=await this.get();
     if(!isOk(header)||header.length<12)throw Error('Malformed statement preparation');
-    const prepared=new Cursor(header);
-    prepared.byte();
-    const id=prepared.four();
-    const columnCount=prepared.two(),paramCount=prepared.two();
-    prepared.byte();
-    prepared.two();
+    const cursor=new Cursor(header);
+    cursor.byte();
+    const id=cursor.four();
+    const columnCount=cursor.two();
+    const parameterCount=cursor.two();
+    cursor.byte();
+    cursor.two();
+    if(parameterCount>MAX_PARAMETERS||columnCount>MAX_COLUMNS)
+      throw fail('RESOURCE_LIMIT','Prepared statement metadata exceeds supported limits');
+    if(parameterCount)await this.metadata(parameterCount);
+    if(columnCount)await this.metadata(columnCount);
+    return {id,parameterCount};
+  }
 
-    try {
-      if(paramCount)await this.metadata(paramCount);
-      if(columnCount)await this.metadata(columnCount);
-      if(paramCount!==params.length)
-        throw fail('INVALID_INPUT','Prepared statement parameter count mismatch');
+  /** Repeated COM_STMT_EXECUTE uses the existing server-side ID and does not
+   * issue another prepare. Calls are serialized by the owning session. */
+  private async executeNative(id:number,expected:number,params:readonly BindValue[]):Promise<QueryResult>{
+    this.assertOpen();
+    if(!Array.isArray(params)||params.length!==expected)
+      throw fail('INVALID_INPUT','Prepared statement parameter count mismatch');
+    this.stream.reset();
+    await this.send(execute(id,params));
+    const first=await this.get();
+    if(isOk(first))return ok(first);
 
-      this.stream.reset();
-      await this.send(execute(id,params));
-      const result=await this.get();
-      if(isOk(result))return ok(result);
-
-      const raw=new Cursor(result),count=raw.len();
-      if(count===null||count>MAX_COLUMNS)throw Error('Invalid result column count');
-      const columns=await this.metadata(count);
-      const rows:Array<Record<string,unknown>>=[];
-      let bytes=0;
-      for(;;){
-        const packet=await this.get();
-        if(eof(packet)){
-          if(packet.length>=5&&((packet[3]|(packet[4]<<8))&8))
-            throw fail('UNSUPPORTED_FEATURE','Multiple result sets are not supported');
-          return {rows,columns,affectedRows:0,insertId:0};
-        }
-        bytes+=packet.length;
-        if(rows.length>=MAX_RESULT_ROWS||bytes>LIMIT)
-          throw fail('RESOURCE_LIMIT','Result exceeds configured safety limit');
-        rows.push(binaryRow(packet,columns));
+    const raw=new Cursor(first),count=raw.len();
+    if(count===null||count>MAX_COLUMNS)throw Error('Invalid result column count');
+    const columns=await this.metadata(count);
+    const rows:Array<Record<string,unknown>>=[];
+    let bytes=0;
+    for(;;){
+      const packet=await this.get();
+      if(eof(packet)){
+        if(packet.length>=5&&((packet[3]|(packet[4]<<8))&8))
+          throw fail('UNSUPPORTED_FEATURE','Multiple result sets are not supported');
+        return {rows,columns,affectedRows:0,insertId:0};
       }
-    }finally{
-      if(!this.closed){
-        this.stream.reset();
-        await this.send(Buffer.concat([Buffer.from([0x19]),u32(id)]));
-      }
+      bytes+=packet.length;
+      if(rows.length>=MAX_RESULT_ROWS||bytes>LIMIT)
+        throw fail('RESOURCE_LIMIT','Result exceeds configured safety limit');
+      rows.push(binaryRow(packet,columns));
     }
   }
 
-  async query(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={}):Promise<QueryResult>{
+  /** COM_STMT_CLOSE has no response packet; the ID is invalid thereafter. */
+  private async closeNative(id:number):Promise<void>{
+    this.assertOpen();
+    this.stream.reset();
+    await this.send(Buffer.concat([Buffer.from([0x19]),u32(id)]));
+  }
+
+  /** One-shot query remains a complete prepare, execute and close lifecycle. */
+  private async execute(sql:string,params:readonly BindValue[]):Promise<QueryResult>{
+    const prepared=await this.prepareNative(sql);
+    try{
+      return await this.executeNative(prepared.id,prepared.parameterCount,params);
+    }finally{
+      if(!this.closed)await this.closeNative(prepared.id);
+    }
+  }
+
+  query(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={}):Promise<QueryResult>{
     return this.serial(()=>this.execute(sql,parameters),options);
+  }
+
+  /** Create an explicitly owned reusable statement for this session alone. */
+  prepare(sql:string,options:OperationOptions={}):Promise<MysqlPreparedStatement>{
+    if(this.closed)return Promise.reject(fail('CONNECTION_CLOSED','Session is closed'));
+    if(this.statements.size+this.preparing>=MAX_PREPARED_STATEMENTS)
+      return Promise.reject(fail('RESOURCE_LIMIT','Too many open prepared statements'));
+    this.preparing++;
+    return this.serial(async()=>{
+      const {id,parameterCount}=await this.prepareNative(sql);
+      let statement!:MysqlPreparedStatement;
+      statement=new MysqlPreparedStatement(
+        parameterCount,
+        (params,opts)=>this.serial(()=>this.executeNative(id,parameterCount,params),opts),
+        async()=>{
+          try{
+            if(!this.closed)await this.serial(()=>this.closeNative(id));
+          }finally{this.statements.delete(statement);}
+        }
+      );
+      this.statements.add(statement);
+      return statement;
+    },options).finally(()=>{this.preparing--;});
   }
 
   private async control(command:'START TRANSACTION'|'COMMIT'|'ROLLBACK'):Promise<QueryResult>{
@@ -247,6 +292,8 @@ export class MysqlSession implements RelationalSession {
       await this.send(Buffer.from([0x1f])); // COM_RESET_CONNECTION
       const response=await this.get();
       if(!isOk(response))throw Error('Invalid MySQL session reset response');
+      for(const statement of this.statements)statement.invalidate();
+      this.statements.clear();
     });
   }
 
