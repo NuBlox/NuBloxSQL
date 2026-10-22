@@ -38,6 +38,14 @@ if(process.env.NUBLOX_LIVE_MYSQL==='1'){
     );
     assert.equal(session.closed,false);
     assert.equal((await session.query('SELECT ? AS still_connected',[42])).rows[0].still_connected,42n);
+    const streamed=await session.withCursor(
+      'SELECT ? AS id UNION ALL SELECT ?',[1,2],async cursor=>{
+        const values=[];
+        for await(const item of cursor)values.push(item.row.id);
+        return values;
+      },{fetchSize:1});
+    assert.deepEqual(streamed,[1n,2n]);
+
     const statement=await session.prepare('SELECT ? AS packaged_statement');
     try{
       assert.equal(statement.parameterCount,1);
