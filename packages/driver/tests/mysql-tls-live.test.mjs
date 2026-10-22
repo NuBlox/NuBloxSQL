@@ -267,3 +267,35 @@ live('verified TLS pooled cursor exits early without leaking server statement',a
   assert.equal(again,first);
  }finally{await pool.close();}
 });
+
+
+live('verified TLS transactions reject reentrant parent work and preserve healthy socket',async()=>{
+ const db=await connectDatabase(trustedTarget());
+ try{
+  await assert.rejects(db.transaction(async tx=>{
+   assert.equal((await tx.query('SELECT ? AS before',[9])).rows[0].before,9n);
+   await db.query('SELECT 1');
+  }),e=>e.code==='INVALID_INPUT');
+  const results=await db.transaction(async tx=>Promise.all([
+    tx.query('SELECT ? AS value',[1]),
+    tx.query('SELECT ? AS value',[2]),
+    tx.query('SELECT ? AS value',[3])
+  ]));
+  assert.deepEqual(results.map(x=>x.rows[0].value),[1n,2n,3n]);
+  assert.equal((await db.query('SELECT ? AS recovered',[91])).rows[0].recovered,91n);
+ }finally{await db.close();}
+});
+
+live('verified TLS cursor callbacks cannot self-deadlock through parent session',async()=>{
+ const db=await connectDatabase(trustedTarget());
+ try{
+  const values=await db.withCursor('SELECT ? AS n UNION ALL SELECT ?',[8,9],async cursor=>{
+   await assert.rejects(db.query('SELECT 100'),e=>e.code==='INVALID_INPUT');
+   const results=[];
+   for await(const {row} of cursor)results.push(row.n);
+   return results;
+  },{fetchSize:1});
+  assert.deepEqual(values,[8n,9n]);
+  assert.equal((await db.query('SELECT ? AS alive',[10])).rows[0].alive,10n);
+ }finally{await db.close();}
+});
