@@ -1,6 +1,6 @@
 import {fail} from './errors.js';
 import {validDeadline,type OperationOptions} from './resources.js';
-import type {RelationalSession,RelationalTransaction,RelationalPreparedStatement} from '../models/relational.js';
+import type {RelationalSession,RelationalTransaction,RelationalPreparedStatement,RelationalCursor,CursorOptions} from '../models/relational.js';
 import type {BindValue,QueryResult,SessionInfo} from './contracts.js';
 
 export interface PoolOptions {
@@ -18,6 +18,11 @@ export interface PooledRelationalSession {
   readonly closed:boolean;
   query(sql:string,parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult>;
   prepare(sql:string,options?:OperationOptions):Promise<RelationalPreparedStatement>;
+  withCursor<T>(
+    sql:string,parameters:readonly BindValue[],
+    work:(cursor:RelationalCursor)=>Promise<T>,
+    options?:CursorOptions
+  ):Promise<T>;
   transaction<T>(work:(transaction:RelationalTransaction)=>Promise<T>,options?:OperationOptions):Promise<T>;
 }
 export interface PoolStats {
@@ -261,6 +266,10 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
         });
         return handle;
       }),
+      withCursor:<R>(
+        sql:string,params:readonly BindValue[],
+        callback:(cursor:RelationalCursor)=>Promise<R>,options:CursorOptions={}
+      )=>track(()=>activeSession.withCursor(sql,params,callback,options)),
       transaction:<R>(callback:(transaction:RelationalTransaction)=>Promise<R>,options:OperationOptions={})=>
         track(()=>activeSession.transaction<R>(callback,options))
     });

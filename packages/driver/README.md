@@ -33,7 +33,7 @@ Native bound parameters: null, boolean, UTF-8 string, binary Uint8Array, finite 
 - MySQL's 4-byte physical-frame header has a 24-bit payload length, capped at **16,777,215 bytes**. Native commands and result rows can span multiple frames; the Driver sends/reassembles these fragments while validating a monotonically incrementing (wrapping) sequence number.
 - A logical message whose length is an **exact multiple of 16,777,215 bytes** includes the required final **empty frame**. The fragmentation codec never merges independent result rows.
 - Incoming framing uses incremental, bounded subarray accumulation rather than repeatedly concatenating the entire growing receive buffer. Both inbound and outbound logical messages are limited to **32 MiB** for predictable resource use. Over-limit incoming messages cause a fail-closed connection; outbound oversized commands are rejected before writing.
-- This is **bounded large-packet support**, **not cursor streaming**. `query()` still materialises results in memory and caps rows/aggregate row bytes. Large enterprise exports need a separately qualified streaming/cursor API. Server-side `max_allowed_packet` may impose a lower limit.
+- This is bounded large-packet transport support; the separate native read-only cursor API below provides bounded row-fetching. `query()` still materialises results in memory and caps rows/aggregate row bytes. Large enterprise exports need a separately qualified streaming/cursor API. Server-side `max_allowed_packet` may impose a lower limit.
 
 ### Lossless result shape and duplicate SQL aliases
 
@@ -93,6 +93,34 @@ try {await pending;}catch(error) {
 
 The CI suite verifies these states using real MySQL 8.4.11 instances, including TLS-connected cancellation and a fresh authenticated reconnection. Advanced pooling policies, server-side kill/cancel, and independent per-query cancellation inside transactions are outside the current release scope.
 
+## Bounded native read-only cursors (experimental)
+
+`withCursor(sql, params, callback, options?)` uses the MySQL Classic
+`COM_STMT_EXECUTE` read-only cursor flag followed by `COM_STMT_FETCH`, not
+client-side pagination or `LIMIT/OFFSET`. Each fetch holds at most 1–256
+decoded rows in memory (default: 64), and the overall cursor is forward-only.
+
+```js
+await db.withCursor(
+  'SELECT id, name FROM customers ORDER BY id',[],
+  async cursor=>{
+    for await(const {row,values} of cursor){
+      console.log(row.id,row.name); // values preserves duplicate-name ordinals
+      if(row.id===100n)break;       // early exit closes the server statement
+    }
+  },
+  {fetchSize:64,timeoutMs:30000}
+);
+```
+
+- Callback lifetime is **exclusive**: no other command on the same native connection runs until the callback exits and the statement closes. Always `await` cursor fetches; calling `session.query()` or `session.close()` within a cursor callback is not a supported nested workflow. The former would deadlock waiting for the cursor lock.
+- The cursor exposes `columns`, collision-free `columnKeys`, `closed`, and `AsyncIterableIterator<{row,values}>`. The iterator's `values` remains aligned with `columns`, even for duplicate aliases.
+- Each `COM_STMT_FETCH` response is bounded to the requested fetch size and a 32 MiB message budget. The callback returns before the next fetch; there is no unbounded application-side queue. A single individual row may still use up to the configured message limit.
+- At the end of iteration, early `break`, callback error or completion, NuBloxSQL sends `COM_STMT_CLOSE` to release the server cursor. Unawaited fetches cause the connection to be discarded to prevent reuse of an uncertain protocol state.
+- `AbortSignal` and `timeoutMs` apply to the **entire cursor callback**, not per fetch, using the existing session cancellation contract. An active cancellation or timeout discards the connection; there is no automatic retry or claim of completed transaction rollback.
+- Pool callers use `pool.withConnection(async session => session.withCursor(...))`: the callback-scoped lease remains owned until the cursor is closed and the session is reset for reuse.
+- Only simple forward-only read-only MySQL prepared cursor result sets are qualified. MySQL may decline to open a cursor for some SQL; NuBloxSQL reports `UNSUPPORTED_FEATURE` and does not silently materialise that result as a fallback. More comprehensive performance benchmarks, multi-results, resumability and transaction-integrated cursor orchestration remain future work.
+
 ## Reusable server-prepared statements (experimental)
 
 ```js
@@ -109,7 +137,7 @@ try{
 - `prepare(sql, options?)` uses MySQL's native `COM_STMT_PREPARE` exactly once, exposing `parameterCount` and returning a connection-owned `RelationalPreparedStatement`. Every `execute(parameters?, options?)` sends a native `COM_STMT_EXECUTE` with fresh bound values and supports the same cancellation/deadline rules as `query()`.
 - `close()` sends native `COM_STMT_CLOSE` and is idempotent. A closed statement cannot execute. Closing a connection or resetting it for pooled reuse invalidates **all** outstanding statement handles. Statement handles cannot be transported to another connection.
 - `query()` remains the one-shot convenience API and prepares/executes/closes on every call. Use `prepare()` when you intend to execute the same statement repeatedly.
-- Each connection permits at most **128 simultaneously open reusable statements**. Explicitly close them to reclaim server resources; there is no implicit LRU cache, cross-connection cache, streaming cursor or stored-procedure multi-result support.
+- Each connection permits at most **128 simultaneously open reusable statements**. Explicitly close them to reclaim server resources; there is no implicit LRU cache, cross-connection cache or stored-procedure multi-result support.
 - In `pool.withConnection()`, a borrowed statement must be prepared, used and (where practical) closed **inside its callback**. Escaped statement wrappers are revoked when the lease ends. The MySQL pool reset also frees server-side prepared state before lending the connection again.
 - Invalid parameter counts and unsupported bound values are rejected without sending SQL. Server-side query errors retain their typed native error metadata. During an interrupted execution the connection and all its statements are invalidated; there is no automatic replay.
 

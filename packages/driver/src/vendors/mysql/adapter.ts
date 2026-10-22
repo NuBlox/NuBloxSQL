@@ -4,18 +4,19 @@ import {PacketStream} from './protocol/framing.js';
 import {Cursor,cstr,LIMIT,u32} from './protocol/primitives.js';
 import {greeting,flags,login,sslRequest,type MysqlGreeting} from './protocol/handshake.js';
 import {token} from './auth/plugins.js';
-import {execute} from './protocol/commands.js';
+import {execute,fetchRows} from './protocol/commands.js';
+import {MysqlCursor} from './cursor.js';
 import {MysqlPreparedStatement} from './prepared.js';
 import {ok,eofStatus,assertSingleResult} from './protocol/results.js';
 import {binaryValues,columnKeys,objectRow} from './types.js';
 import {serverPacket,eof,isOk} from './errors.js';
 import {validate} from './configuration.js';
 import {mysqlCapabilities} from './capabilities.js';
-import {readMetadata} from './metadata.js';
+import {readMetadata,readMetadataWithStatus} from './metadata.js';
 import {DriverError,fail} from '../../core/errors.js';
 import {MAX_RESULT_ROWS,MAX_PARAMETERS,MAX_COLUMNS,MAX_PREPARED_STATEMENTS,operationOptions,OperationGuard,type OperationOptions} from '../../core/resources.js';
 import type {BindValue,MysqlTarget,QueryResult,SessionInfo} from '../../core/contracts.js';
-import type {RelationalSession,RelationalTransaction} from '../../models/relational.js';
+import type {RelationalSession,RelationalTransaction,RelationalCursorRow,CursorOptions} from '../../models/relational.js';
 
 type ValidMysqlTarget=MysqlTarget&{timeoutMs:number};
 type TransactionOutcome<T>={success:true;value:T}|{success:false;error:unknown};
@@ -214,6 +215,84 @@ export class MysqlSession implements RelationalSession {
 
   async query(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={}):Promise<QueryResult>{
     return this.serial(()=>this.execute(sql,parameters),options);
+  }
+
+  /** Native, forward-only server cursor. Keeps the session's exclusive command
+   * lock for the entire callback so no other SQL can corrupt fetch state. */
+  async withCursor<T>(
+    sql:string,params:readonly BindValue[],
+    work:(cursor:MysqlCursor)=>Promise<T>,
+    options:CursorOptions={}
+  ):Promise<T>{
+    if(typeof work!=='function')throw fail('INVALID_INPUT','Cursor callback is required');
+    if(!options||typeof options!=='object')
+      throw fail('INVALID_INPUT','Invalid cursor options');
+    const {fetchSize=64,...operation}=options;
+    if(!Number.isSafeInteger(fetchSize)||fetchSize<1||fetchSize>256)
+      throw fail('INVALID_INPUT','Cursor fetchSize must be 1–256');
+    return this.serial(async()=>{
+      const {id,parameterCount}=await this.prepareNative(sql);
+      let cursor:MysqlCursor|undefined;
+      try{
+        if(!Array.isArray(params)||params.length!==parameterCount)
+          throw fail('INVALID_INPUT','Cursor prepared statement parameter count mismatch');
+        let command:Buffer;
+        try{command=execute(id,params,true);}
+        catch(error){
+          if(error instanceof TypeError||error instanceof RangeError)
+            throw fail('INVALID_INPUT','Invalid cursor bound parameter');
+          throw error;
+        }
+        this.stream.reset();
+        await this.send(command);
+        const first=await this.get();
+        if(isOk(first)){
+          ok(first);
+          throw fail('UNSUPPORTED_FEATURE','Cursor requires a row-producing SELECT statement');
+        }
+        const raw=new Cursor(first),count=raw.len();
+        if(count===null||count<1||count>MAX_COLUMNS)
+          throw Error('Invalid cursor result column count');
+        const {columns,status}=await readMetadataWithStatus(()=>this.get(),count);
+        if(!(status&0x40))
+          throw fail('UNSUPPORTED_FEATURE','MySQL did not open a native server-side cursor');
+        const keys=columnKeys(columns);
+        cursor=new MysqlCursor(columns,keys,async()=>{
+          this.assertOpen();
+          this.stream.reset();
+          await this.send(fetchRows(id,fetchSize));
+          const rows:RelationalCursorRow[]=[];
+          let bytes=0;
+          for(;;){
+            const packet=await this.get();
+            if(eof(packet)){
+              const end=eofStatus(packet);
+              assertSingleResult(end.status);
+              const done=!!(end.status&0x80);
+              if(!done&&!(end.status&0x40))
+                throw Error('MySQL fetch response lost cursor state');
+              return {rows,done};
+            }
+            bytes+=packet.length;
+            if(rows.length>=fetchSize||bytes>LIMIT)
+              throw fail('RESOURCE_LIMIT','Cursor fetch batch exceeded safety limit');
+            const values=binaryValues(packet,columns);
+            rows.push({row:objectRow(values,keys),values});
+          }
+        });
+        const value=await work(cursor);
+        // Unawaited fetches cannot continue after the connection is reused.
+        if(cursor.inFlight){
+          this.destroy();
+          throw fail('CONNECTION_CLOSED','Cursor callback returned with an unfinished fetch');
+        }
+        return value;
+      }finally{
+        cursor?.invalidate();
+        // COM_STMT_CLOSE releases any server-side cursor, including early exits.
+        if(!this.closed)await this.closeNative(id);
+      }
+    },operation);
   }
 
   /** Create an explicitly owned reusable statement for this session alone. */
