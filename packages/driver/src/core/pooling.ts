@@ -1,3 +1,4 @@
+import {AsyncLocalStorage} from 'node:async_hooks';
 import {fail} from './errors.js';
 import {validDeadline,type OperationOptions} from './resources.js';
 import type {RelationalSession,RelationalTransaction,RelationalPreparedStatement,RelationalCursor,CursorOptions} from '../models/relational.js';
@@ -61,6 +62,7 @@ type IdleEntry<S>={session:S;expiresAt:number;timer:NodeJS.Timeout};
  */
 export class ConnectionPool<S extends PoolSession> implements DatabasePool {
   private readonly idle:IdleEntry<S>[]=[];
+  private readonly leaseContext=new AsyncLocalStorage<{active:boolean}>();
   private readonly sessions=new Set<S>();
   private readonly pending:Waiter<S>[]=[];
   private sizeCount=0;
@@ -215,6 +217,8 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
   }
 
   async withConnection<T>(work:(session:PooledRelationalSession)=>Promise<T>):Promise<T>{
+    if(this.leaseContext.getStore()?.active)
+      throw fail('INVALID_INPUT','Nested connection checkout from this pool callback is not supported');
     if(typeof work!=='function')throw fail('INVALID_INPUT','Pool callback must be a function');
     let session:S|undefined;
     // A health check is never an application query. Retry only checkout once;
@@ -274,11 +278,13 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
         track(()=>activeSession.transaction<R>(callback,options))
     });
     let succeeded=false;
+    const scope={active:true};
     try{
-      const result=await work(lease);
+      const result=await this.leaseContext.run(scope,()=>work(lease));
       succeeded=true;
       return result;
     }finally{
+      scope.active=false;
       valid=false;
       const reusable=succeeded&&pending.size===0&&!activeSession.closed;
       await this.release(activeSession,reusable);
