@@ -118,3 +118,25 @@ test('closing during an in-progress dial disposes late session without leaked sl
   assert.equal(pool.stats.size,0);
   assert.equal(pool.stats.active,0);
 });
+
+
+test('nested callback acquire rejects before waiting; escaped child async scope is inactive',async()=>{
+ let connections=0,late;
+ const pool=new ConnectionPool(async()=>fake(++connections),{
+  maxConnections:1,acquireTimeoutMs:150
+ });
+ try{
+  const id=await pool.withConnection(async lease=>{
+   await assert.rejects(pool.withConnection(async()=> 'never'),error=>
+     error.code==='INVALID_INPUT');
+   late=new Promise((resolve,reject)=>setTimeout(()=>{
+     pool.withConnection(async next=>(await next.query('after')).rows[0].id)
+       .then(resolve,reject);
+   },20));
+   return (await lease.query('before')).rows[0].id;
+  });
+  assert.equal(await late,id);
+  assert.equal(pool.stats.created,1);
+  assert.equal(pool.stats.acquireTimeouts,0);
+ }finally{await pool.close();}
+});
