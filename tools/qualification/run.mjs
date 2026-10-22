@@ -140,9 +140,8 @@ async function poolRun(durationBounded){
     }
   })());
   await Promise.all(workers);
-  report.workloads.pool=summarize(samples,performance.now()-start);
-  report.workloads.pool.workerCount=config.concurrency;
-  report.workloads.pool.completed=samples.length;
+  report.workloads.pool={...summarize(samples,performance.now()-start),
+    workerCount:config.concurrency,completed:samples.length};
   report.resources.poolBeforeClose=pool.stats;
   if(pool.stats.size>config.concurrency||pool.stats.pending!==0||failures.length){
     report.errors.unexpected+=failures.length||1;
