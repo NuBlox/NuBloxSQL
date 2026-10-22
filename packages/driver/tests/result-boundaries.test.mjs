@@ -8,7 +8,7 @@ import {readMetadata} from '../dist/vendors/mysql/metadata.js';
 const column=name=>({name,type:T.LONGLONG,charset:63,unsigned:false,
  schema:'test',table:'t',length:20,flags:0,decimals:0});
 const int=n=>{const b=Buffer.alloc(8);b.writeBigInt64LE(BigInt(n));return b;};
-const wire=(...values)=>Buffer.concat([Buffer.from([0,0]),...values.map(int)]);
+const wire=(...values)=>Buffer.concat([Buffer.from([0]),Buffer.alloc(Math.ceil((values.length+2)/8)),...values.map(int)]);
 const definition=(name,originalName=name,table='alias',originalTable='real_table')=>Buffer.concat([
  sized(Buffer.from('def')),sized(Buffer.from('test')),
  sized(Buffer.from(table)),sized(Buffer.from(originalTable)),
