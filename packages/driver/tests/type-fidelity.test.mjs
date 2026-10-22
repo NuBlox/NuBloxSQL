@@ -102,5 +102,5 @@ test('binary decoder fails closed on invalid lengths, invalid utf8 and unknown t
  assert.throws(()=>decode([col('str',T.VAR_STRING,{charset:999})],[bytes('x')]),/character-set collation/);
  assert.throws(()=>decode([col('mystery',242)],[bytes('x')]),/Unsupported MySQL binary result type/);
  assert.throws(()=>decode([col('value',T.BLOB,{charset:45})],[Buffer.from([251])]),/NULL bitmap/);
- assert.throws(()=>binaryRow(Buffer.from([0,0,1]),[col('x',T.TINY)]),/Trailing/);
+ assert.throws(()=>binaryRow(Buffer.from([0,0,1,2]),[col('x',T.TINY)]),/Trailing/);
 });
