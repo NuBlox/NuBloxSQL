@@ -33,7 +33,7 @@ jobs:
       - name: Install build dependencies
         run: npm install --no-audit --no-fund
       - name: Sustained pooled reads, session recovery and resource qualification
-        run: npm run soak:mysql -- --durationMs=120000 --concurrency=4 --iterations=50000
+        run: npm run soak:mysql -- --durationMs=120000 --concurrency=4 --iterations=1000000
         env:
           NUBLOX_LIVE_MYSQL: '1'
           MYSQL_USER: root
