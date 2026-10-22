@@ -26,7 +26,14 @@ try {
 
 The `ca` option is a PEM certificate **string**, not a file path. `serverName` specifies the expected certificate identity when it differs from the TCP address. Verified TLS requires a valid certificate and matching server identity. Unencrypted `isolated-local` is restricted to literal `127.0.0.1` or `::1` endpoints and is **not** an appropriate production remote deployment.
 
-Native bound parameters: null, boolean, UTF-8 string, binary Uint8Array, finite number (safe integer or double) and 64-bit bigint. Values are never interpolated into user SQL. Results are limited to 10,000 rows or 8 MiB. Transactions use the callback-scoped `tx.query` method, not the parent session.
+Native bound parameters: null, boolean, UTF-8 string, binary Uint8Array, finite number (safe integer or double) and 64-bit bigint. Values are never interpolated into user SQL. Results are limited to 10,000 rows or 32 MiB of serialized row packets; a single logical MySQL message is capped at 32 MiB. Transactions use the callback-scoped `tx.query` method, not the parent session.
+
+### Native Classic protocol fragmentation (experimental)
+
+- MySQL's 4-byte physical-frame header has a 24-bit payload length, capped at **16,777,215 bytes**. Native commands and result rows can span multiple frames; the Driver sends/reassembles these fragments while validating a monotonically incrementing (wrapping) sequence number.
+- A logical message whose length is an **exact multiple of 16,777,215 bytes** includes the required final **empty frame**. The fragmentation codec never merges independent result rows.
+- Incoming framing uses incremental, bounded subarray accumulation rather than repeatedly concatenating the entire growing receive buffer. Both inbound and outbound logical messages are limited to **32 MiB** for predictable resource use. Over-limit incoming messages cause a fail-closed connection; outbound oversized commands are rejected before writing.
+- This is **bounded large-packet support**, **not cursor streaming**. `query()` still materialises results in memory and caps rows/aggregate row bytes. Large enterprise exports need a separately qualified streaming/cursor API. Server-side `max_allowed_packet` may impose a lower limit.
 
 ### Lossless result shape and duplicate SQL aliases
 
