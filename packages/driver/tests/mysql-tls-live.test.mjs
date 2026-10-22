@@ -273,7 +273,7 @@ live('verified TLS transactions reject reentrant parent work and preserve health
  const db=await connectDatabase(trustedTarget());
  try{
   await assert.rejects(db.transaction(async tx=>{
-   assert.equal((await tx.query('SELECT ? AS before',[9])).rows[0].before,9n);
+   assert.equal((await tx.query('SELECT ? AS initial_value',[9])).rows[0].initial_value,9n);
    await db.query('SELECT 1');
   }),e=>e.code==='INVALID_INPUT');
   const results=await db.transaction(async tx=>Promise.all([
