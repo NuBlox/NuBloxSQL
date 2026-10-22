@@ -207,7 +207,7 @@ export class MysqlSession implements RelationalSession {
     }
   }
 
-  query(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={}):Promise<QueryResult>{
+  async query(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={}):Promise<QueryResult>{
     return this.serial(()=>this.execute(sql,parameters),options);
   }
 
