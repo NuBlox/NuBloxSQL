@@ -194,6 +194,9 @@ try{
     await poolRun(true);
     // A soak is meaningful only when it actually executes workload cycles.
     check(report.workloads.pool.completed>=config.concurrency);
+    // A soak must consume its requested time budget, not merely reach a
+    // low operation cap. Otherwise it cannot substantiate its duration.
+    check(report.workloads.pool.elapsedMs>=config.durationMs);
     await reconnectRun();
   }
   check(report.errors.unexpected===0);
