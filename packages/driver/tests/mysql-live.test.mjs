@@ -174,7 +174,7 @@ live('native large text row remains intact and bounded, oversized result fails c
  const bounded=await connectDatabase(target);
  try{
   await assert.rejects(
-    bounded.query('SELECT REPEAT(?,?) AS payload',['a',9_000_000]),
+    bounded.query('SELECT REPEAT(?,?) AS payload',['a',36_000_000]),
     error=>error instanceof Error
   );
   assert.equal(bounded.closed,true,'Oversized incoming result must destroy session');
