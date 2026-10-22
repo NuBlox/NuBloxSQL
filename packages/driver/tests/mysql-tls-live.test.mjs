@@ -233,3 +233,37 @@ live('verified TLS preserves fragmented 17 MB MySQL Classic commands and result 
    assert.equal((await db.query('SELECT ? AS usable',[18])).rows[0].usable,18n);
  }finally{await db.close();}
 });
+
+
+live('verified TLS cursor iterates bounded native fetch batches and closes cleanly',async()=>{
+ const db=await connectDatabase(trustedTarget());
+ try{
+  const seen=await db.withCursor(`SELECT ? AS number
+    UNION ALL SELECT ? UNION ALL SELECT ? UNION ALL SELECT ? UNION ALL SELECT ?`,
+    [1,2,3,4,5],async cursor=>{
+      const values=[];
+      for await(const item of cursor)values.push(item.row.number);
+      return values;
+    },{fetchSize:2,timeoutMs:12000});
+  assert.deepEqual(seen,[1n,2n,3n,4n,5n]);
+  assert.equal(db.closed,false);
+  assert.equal((await db.query('SELECT ? AS secure',[6])).rows[0].secure,6n);
+ }finally{await db.close();}
+});
+
+live('verified TLS pooled cursor exits early without leaking server statement',async()=>{
+ const {createDatabasePool}=await import('../dist/index.js');
+ const pool=createDatabasePool(trustedTarget(),{maxConnections:1});
+ try{
+  const first=await pool.withConnection(async session=>{
+   const id=(await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+   await session.withCursor('SELECT ? AS n UNION ALL SELECT ?',[12,13],async cursor=>{
+    assert.equal((await cursor.next()).value.row.n,12n);
+   },{fetchSize:1});
+   return id;
+  });
+  const again=await pool.withConnection(async session=>
+   (await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id);
+  assert.equal(again,first);
+ }finally{await pool.close();}
+});
