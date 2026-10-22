@@ -144,9 +144,11 @@ live('joined duplicate field names preserve physical origin metadata and positio
  const db=await connectDatabase(target);
  try{
   await db.query('CREATE TEMPORARY TABLE nublox_join_columns (id INT PRIMARY KEY, value VARCHAR(12))');
+  await db.query('CREATE TEMPORARY TABLE nublox_join_columns_b (id INT PRIMARY KEY, value VARCHAR(12))');
   await db.query('INSERT INTO nublox_join_columns (id,value) VALUES (?,?)',[7,'first']);
+  await db.query('INSERT INTO nublox_join_columns_b (id,value) VALUES (?,?)',[7,'first']);
   const result=await db.query(`SELECT a.id, b.id, a.value, b.value
-    FROM nublox_join_columns AS a JOIN nublox_join_columns AS b ON a.id=b.id`);
+    FROM nublox_join_columns AS a JOIN nublox_join_columns_b AS b ON a.id=b.id`);
   assert.deepEqual(result.columns.map(c=>c.name),['id','id','value','value']);
   assert.deepEqual(result.columns.map(c=>c.originalName),['id','id','value','value']);
   assert.deepEqual(result.columns.map(c=>c.table),['a','b','a','b']);
