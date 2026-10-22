@@ -11,6 +11,7 @@ The product definition remains under founder review. The repository now includes
 - [Experimental MySQL Driver package](packages/driver/README.md)
 - [Performance and soak qualification](tools/qualification/README.md)
 - [Commercial release readiness register](docs/RELEASE.md)
+- [Security reporting and support status](SECURITY.md)
 - [Implementation archives](docs/ARCHIVES.md)
 - [Proprietary software licence](LICENSE)
 
