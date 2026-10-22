@@ -9,6 +9,8 @@ The product definition remains under founder review. The repository now includes
 - [NuBloxSQL product definition — founder review draft](docs/PRODUCT.md)
 - [Universal native Driver blueprint — design proposal](docs/DRIVER.md)
 - [Experimental MySQL Driver package](packages/driver/README.md)
+- [Performance and soak qualification](tools/qualification/README.md)
+- [Commercial release readiness register](docs/RELEASE.md)
 - [Implementation archives](docs/ARCHIVES.md)
 - [Proprietary software licence](LICENSE)
 
