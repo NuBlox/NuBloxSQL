@@ -219,6 +219,17 @@ export class MysqlSession implements RelationalSession {
     return outcome.value;
   }
 
+  /** Native MySQL COM_RESET_CONNECTION: discard transaction, variables and
+   * server-side statements before an exclusive lease returns to the pool. */
+  async resetForPool():Promise<void>{
+    return this.serial(async()=>{
+      this.stream.reset();
+      await this.send(Buffer.from([0x1f])); // COM_RESET_CONNECTION
+      const response=await this.get();
+      if(!isOk(response))throw Error('Invalid MySQL session reset response');
+    });
+  }
+
   async close():Promise<void>{
     if(this.closed)return;
     // Closing never waits for a blocked server request or application callback.
