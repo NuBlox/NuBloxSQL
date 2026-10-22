@@ -169,3 +169,19 @@ live('closing a native session invalidates every open prepared statement',async(
  await first.close();
  await second.close();
 });
+
+live('invalid operation options never consume prepared slots or poison connection',async()=>{
+ const db=await connectDatabase(target);
+ try{
+  for(let i=0;i<3;i++)
+   await assert.rejects(db.prepare('SELECT ? AS valid',{timeoutMs:0}),e=>e.code==='INVALID_INPUT');
+  const statement=await db.prepare('SELECT ? AS valid');
+  try{
+   await assert.rejects(statement.execute([1],{timeoutMs:0}),e=>e.code==='INVALID_INPUT');
+   await assert.rejects(statement.execute([2],{signal:{aborted:0}}),e=>e.code==='INVALID_INPUT');
+   assert.equal(statement.closed,false);
+   assert.equal(db.closed,false);
+   assert.equal((await statement.execute([3])).rows[0].valid,3n);
+  }finally{await statement.close();}
+ }finally{await db.close();}
+});
