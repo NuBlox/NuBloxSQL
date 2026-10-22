@@ -32,6 +32,13 @@ if(process.env.NUBLOX_LIVE_MYSQL==='1'){
     );
     assert.equal(session.closed,false);
     assert.equal((await session.query('SELECT ? AS still_connected',[42])).rows[0].still_connected,42n);
+    const statement=await session.prepare('SELECT ? AS packaged_statement');
+    try{
+      assert.equal(statement.parameterCount,1);
+      assert.equal((await statement.execute([43])).rows[0].packaged_statement,43n);
+      assert.equal((await statement.execute([44])).rows[0].packaged_statement,44n);
+    }finally{await statement.close();}
+    await assert.rejects(statement.execute([45]),e=>e.code==='CONNECTION_CLOSED');
   }finally{await session.close();}
   assert.equal(session.closed,true);
   const pool=createDatabasePool({
@@ -47,6 +54,11 @@ if(process.env.NUBLOX_LIVE_MYSQL==='1'){
     await pool.withConnection(async borrowed=>{
       assert.equal((await borrowed.query('SELECT @nublox_consumer_pool AS marker')).rows[0].marker,null);
       assert.equal((await borrowed.query('SELECT CONNECTION_ID() AS id')).rows[0].id,first);
+      const statement=await borrowed.prepare('SELECT ? AS pooled_statement');
+      try {
+        assert.equal((await statement.execute([46])).rows[0].pooled_statement,46n);
+      }finally {await statement.close();}
+
     });
   }finally{await pool.close();}
   assert.equal(pool.closed,true);
