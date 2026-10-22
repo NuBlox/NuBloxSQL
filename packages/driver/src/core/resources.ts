@@ -5,7 +5,8 @@ export interface OperationOptions {
   readonly signal?:AbortSignal;
   readonly timeoutMs?:number;
 }
-export const MAX_PACKET_BYTES=8*1024*1024;
+/** Bounded logical MySQL message, not the 24-bit frame size. */
+export const MAX_PACKET_BYTES=32*1024*1024;
 export const MAX_RESULT_ROWS=10_000;
 export const MAX_COLUMNS=4096;
 export const MAX_PARAMETERS=64;

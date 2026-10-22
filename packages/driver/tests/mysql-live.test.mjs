@@ -174,9 +174,27 @@ live('native large text row remains intact and bounded, oversized result fails c
  const bounded=await connectDatabase(target);
  try{
   await assert.rejects(
-    bounded.query('SELECT REPEAT(?,?) AS payload',['a',9_000_000]),
+    bounded.query('SELECT REPEAT(?,?) AS payload',['a',36_000_000]),
     error=>error instanceof Error
   );
   assert.equal(bounded.closed,true,'Oversized incoming result must destroy session');
  }finally{await bounded.close();}
+});
+
+
+live('native MySQL 8.4 round trips inbound and outbound logical messages beyond one frame',async()=>{
+ const db=await connectDatabase({...target,timeoutMs:30000});
+ const length=17_000_000;
+ try{
+   const value='m'.repeat(length);
+   const upload=await db.query('SELECT OCTET_LENGTH(?) AS bytes_received',[value]);
+   assert.equal(upload.rows[0].bytes_received,BigInt(length),
+     'COM_STMT_EXECUTE must fragment the outbound 17 MB parameter');
+   const download=await db.query('SELECT REPEAT(?,?) AS large_value',['r',length]);
+   assert.equal(download.rows[0].large_value.length,length);
+   assert.equal(download.rows[0].large_value[0],'r');
+   assert.equal(download.rows[0].large_value.at(-1),'r');
+   assert.equal(db.closed,false,'a fragmented result must not desynchronise the session');
+   assert.equal((await db.query('SELECT ? AS followup',[77])).rows[0].followup,77n);
+ }finally{await db.close();}
 });

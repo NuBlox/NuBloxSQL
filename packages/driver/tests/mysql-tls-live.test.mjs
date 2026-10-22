@@ -218,3 +218,18 @@ live('verified TLS preserves duplicate aliases and positional rows over encrypte
    assert.equal(result.rows[0].flag,null);
  }finally{await db.close();}
 });
+
+
+live('verified TLS preserves fragmented 17 MB MySQL Classic commands and result rows',async()=>{
+ const db=await connectDatabase({...trustedTarget(),timeoutMs:30000});
+ const size=17_000_000;
+ try{
+   const sent=await db.query('SELECT OCTET_LENGTH(?) AS sent',[Buffer.alloc(size,0x78)]);
+   assert.equal(sent.rows[0].sent,BigInt(size));
+   const received=await db.query('SELECT REPEAT(?,?) AS encrypted_payload',['z',size]);
+   assert.equal(received.rows[0].encrypted_payload.length,size);
+   assert.equal(received.rows[0].encrypted_payload.slice(0,2),'zz');
+   assert.equal(received.rows[0].encrypted_payload.slice(-2),'zz');
+   assert.equal((await db.query('SELECT ? AS usable',[18])).rows[0].usable,18n);
+ }finally{await db.close();}
+});

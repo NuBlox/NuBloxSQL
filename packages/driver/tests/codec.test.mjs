@@ -39,9 +39,18 @@ test('packet reader supports fragmented frames and detects sequence mismatch',as
  assert.deepEqual(await p,Buffer.from('AB'));
  reader.reset();socket.write(Buffer.from([1,0,0,3,89]));await assert.rejects(reader.read(),/sequence mismatch/);reader.destroy();
 });
-test('inbound packet buffer has an upper bound',async()=>{
+test('inbound logical messages enforce an aggregate byte cap across frames',async()=>{
  const socket=new PassThrough(),reader=new PacketStream(socket);
- socket.write(Buffer.alloc(LIMIT+5));await assert.rejects(reader.read(),/limit/);reader.destroy();
+ const max=0xffffff;
+ const header=(size,seq)=>Buffer.from([size&255,(size>>>8)&255,(size>>>16)&255,seq]);
+ socket.write(header(max,0));
+ socket.write(Buffer.alloc(max));
+ socket.write(header(max,1));
+ socket.write(Buffer.alloc(max));
+ socket.write(header(10,2));
+ socket.write(Buffer.alloc(10));
+ await assert.rejects(reader.read(),/limit/);
+ reader.destroy();
 });
 
 test('packet stream accepts coalesced messages but rejects unsafe queued traffic',async()=>{
@@ -59,11 +68,12 @@ test('packet stream accepts coalesced messages but rejects unsafe queued traffic
  stream.reset();
 
  // Many individually valid frames may still exceed the aggregate input budget.
- const half=Buffer.alloc(4*1024*1024);
+ const chunk=Buffer.alloc(11*1024*1024);
  const encode=(body,seq)=>Buffer.concat([Buffer.from([body.length&255,(body.length>>8)&255,(body.length>>16)&255,seq]),body]);
- socket.write(encode(half,0));
- socket.write(encode(half,1));
- socket.write(encode(Buffer.from([42]),2));
+ socket.write(encode(chunk,0));
+ socket.write(encode(chunk,1));
+ socket.write(encode(chunk,2));
+ socket.write(encode(Buffer.from([42]),3));
  await assert.rejects(stream.read(),/limit/);
  await assert.rejects(stream.read(),/limit/);
  stream.destroy();
