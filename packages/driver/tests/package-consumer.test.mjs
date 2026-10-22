@@ -62,6 +62,9 @@ if(process.env.NUBLOX_LIVE_MYSQL==='1'){
     });
   }finally{await pool.close();}
   assert.equal(pool.closed,true);
+  assert.ok(pool.stats.healthChecks>=2);
+  assert.equal(pool.stats.healthFailures,0);
+  assert.equal(pool.stats.size,0);
 }
 `;
 
