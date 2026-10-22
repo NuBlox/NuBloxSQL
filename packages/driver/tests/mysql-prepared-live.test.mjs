@@ -32,23 +32,26 @@ live('one native prepared statement supports repeated bound execution, strict pa
  }finally{await db.close();}
 });
 
-live('prepared statement is server side and does not re-prepare on execute',async()=>{
+live('native statement remains allocated once across repeated execution and is released on close',async()=>{
  const db=await connectDatabase(target);
- const sql="SELECT VARIABLE_VALUE AS statements_prepared FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Com_stmt_prepare'";
- const count=async()=>BigInt((await db.query(sql)).rows[0].statements_prepared);
+ const sql='SELECT ? AS repeated';
+ const inventory=async()=>{
+  const result=await db.query(
+   'SELECT COUNT(*) AS n FROM performance_schema.prepared_statements_instances WHERE SQL_TEXT = ?',
+   [sql]
+  );
+  return result.rows[0].n;
+ };
  try{
-  const before=await count();
-  const statement=await db.prepare('SELECT ? AS repeated');
-  try{
-   const after=await count();
-   // One explicit COM_STMT_PREPARE plus one for the count query.
-   assert.equal(after,before+2n);
-   for(let i=0;i<4;i++)
-    assert.equal((await statement.execute([i])).rows[0].repeated,BigInt(i));
-   const afterRuns=await count();
-   // Only the diagnostic query was prepared; no extra prepare for execute().
-   assert.equal(afterRuns,after+1n);
-  }finally{await statement.close();}
+  assert.equal(await inventory(),0n);
+  const statement=await db.prepare(sql);
+  assert.equal(await inventory(),1n);
+  for(let i=0;i<4;i++){
+   assert.equal((await statement.execute([i])).rows[0].repeated,BigInt(i));
+   assert.equal(await inventory(),1n,'repeat execution must keep the same native statement');
+  }
+  await statement.close();
+  assert.equal(await inventory(),0n,'explicit close must release server statement');
  }finally{await db.close();}
 });
 
@@ -125,7 +128,7 @@ live('unawaited prepared statement execution prevents returning pooled connectio
  try{
   first=await pool.withConnection(async session=>{
    const id=(await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
-   const statement=await session.prepare('SELECT SLEEP(?) AS delayed');
+   const statement=await session.prepare('SELECT SLEEP(?) AS nap');
    background=statement.execute([0.4]);
    void background.catch(()=>{});
    return id;
