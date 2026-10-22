@@ -1,4 +1,5 @@
 import net, {type Socket} from 'node:net';
+import {AsyncLocalStorage} from 'node:async_hooks';
 import tls from 'node:tls';
 import {PacketStream} from './protocol/framing.js';
 import {Cursor,cstr,LIMIT,u32} from './protocol/primitives.js';
@@ -30,6 +31,9 @@ export class MysqlSession implements RelationalSession {
   private activeGuard:OperationGuard|null=null;
   private readonly statements=new Set<MysqlPreparedStatement>();
   private preparing=0;
+  /** Distinguishes a nested call in an exclusive callback from independent
+   * concurrent callers, which must continue to queue normally. */
+  private readonly scope=new AsyncLocalStorage<{active:boolean;kind:'transaction'|'cursor'}>();
 
   constructor(
     private readonly stream:PacketStream,
@@ -64,8 +68,18 @@ export class MysqlSession implements RelationalSession {
     this.queue.shift()?.start();
   }
 
+  /** Reject re-entrant parent-session I/O instead of queuing it behind the
+   * transaction/cursor callback which is waiting for that very I/O. */
+  private assertNotInsideExclusiveCallback():void {
+    const context=this.scope.getStore();
+    if(context?.active)
+      throw fail('INVALID_INPUT',
+        'Parent session commands are not allowed in an active '+context.kind+' callback');
+  }
+
   /** One active command per native connection; pending aborts never damage it. */
   private serial<T>(fn:()=>Promise<T>,options:OperationOptions={}):Promise<T>{
+    this.assertNotInsideExclusiveCallback();
     const {signal,timeoutMs}=operationOptions(options,this.target.timeoutMs);
     if(this.closed)return Promise.reject(fail('CONNECTION_CLOSED','Session is closed'));
     if(signal?.aborted)return Promise.reject(fail('CANCELLED','Database operation cancelled'));
@@ -280,13 +294,19 @@ export class MysqlSession implements RelationalSession {
             rows.push({row:objectRow(values,keys),values});
           }
         });
-        const value=await work(cursor);
-        // Unawaited fetches cannot continue after the connection is reused.
-        if(cursor.inFlight){
-          this.destroy();
-          throw fail('CONNECTION_CLOSED','Cursor callback returned with an unfinished fetch');
+        const context={active:true,kind:'cursor' as const};
+        try {
+          const value=await this.scope.run(context,()=>work(cursor!));
+          // Unawaited fetches cannot continue after the connection is reused.
+          if(cursor.inFlight){
+            this.destroy();
+            throw fail('CONNECTION_CLOSED','Cursor callback returned with an unfinished fetch');
+          }
+          return value;
+        }finally {
+          // A detached task inherits context but must not retain the lock.
+          context.active=false;
         }
-        return value;
       }finally{
         cursor?.invalidate();
         // COM_STMT_CLOSE releases any server-side cursor, including early exits.
@@ -312,7 +332,8 @@ export class MysqlSession implements RelationalSession {
             try{
               if(!this.closed)await this.serial(()=>this.closeNative(id));
             }finally{this.statements.delete(statement);}
-          }
+          },
+          ()=>this.assertNotInsideExclusiveCallback()
         );
         this.statements.add(statement);
         return statement;
@@ -348,15 +369,18 @@ export class MysqlSession implements RelationalSession {
           }
         });
         let value:T;
+        const context={active:true,kind:'transaction' as const};
         try {
-          value=await work(transaction);
+          value=await this.scope.run(context,()=>work(transaction));
           transactionActive=false;
+          context.active=false;
           if(pending.size){
             this.destroy();
             throw fail('CONNECTION_CLOSED','Transaction callback returned with unfinished operations');
           }
         }catch(error){
           transactionActive=false;
+          context.active=false;
           if(pending.size){
             this.destroy();
             throw fail('CONNECTION_CLOSED','Transaction callback failed with unfinished operations');
