@@ -195,13 +195,33 @@ export class MysqlSession implements RelationalSession {
       await this.control('START TRANSACTION');
       let finished=false;
       try {
+        let transactionActive=true;
+        const pending=new Set<Promise<QueryResult>>();
         const transaction:RelationalTransaction=Object.freeze({
-          query:(sql:string,values:readonly BindValue[]=[])=>this.execute(sql,values)
+          query:(sql:string,values:readonly BindValue[]=[])=>{
+            if(!transactionActive||this.closed)
+              return Promise.reject(fail('CONNECTION_CLOSED','Transaction scope has ended'));
+            const request=this.execute(sql,values);
+            pending.add(request);
+            void request.then(()=>{pending.delete(request);},()=>{pending.delete(request);});
+            return request;
+          }
         });
         let value:T;
         try {
           value=await work(transaction);
+          transactionActive=false;
+          if(pending.size){
+            this.destroy();
+            throw fail('CONNECTION_CLOSED','Transaction callback returned with unfinished operations');
+          }
         }catch(error){
+          transactionActive=false;
+          if(pending.size){
+            this.destroy();
+            throw fail('CONNECTION_CLOSED','Transaction callback failed with unfinished operations');
+          }
+          if(this.closed)throw error;
           await this.control('ROLLBACK');
           finished=true;
           return {success:false,error};
@@ -217,6 +237,17 @@ export class MysqlSession implements RelationalSession {
     },options);
     if(!outcome.success)throw outcome.error;
     return outcome.value;
+  }
+
+  /** Native MySQL COM_RESET_CONNECTION: discard transaction, variables and
+   * server-side statements before an exclusive lease returns to the pool. */
+  async resetForPool():Promise<void>{
+    return this.serial(async()=>{
+      this.stream.reset();
+      await this.send(Buffer.from([0x1f])); // COM_RESET_CONNECTION
+      const response=await this.get();
+      if(!isOk(response))throw Error('Invalid MySQL session reset response');
+    });
   }
 
   async close():Promise<void>{

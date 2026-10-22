@@ -106,3 +106,26 @@ live('verified TLS cancellation drops affected socket; a new secured session suc
     assert.equal((await fresh.query('SELECT ? AS recovered',[73])).rows[0].recovered,73n);
   }finally{await fresh.close();}
 });
+
+
+live('verified-TLS pooled connections retain encryption and clear session state',async()=>{
+ const {createDatabasePool}=await import('../dist/index.js');
+ const pool=createDatabasePool(trustedTarget(),{maxConnections:1});
+ try{
+  const first=await pool.withConnection(async lease=>{
+   assert.equal(lease.info.transport,'verified-tls');
+   const id=(await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+   await lease.query('SET @nublox_tls_pool_marker = 9');
+   return id;
+  });
+  const second=await pool.withConnection(async lease=>{
+   assert.equal((await lease.query('SELECT @nublox_tls_pool_marker AS marker')).rows[0].marker,null);
+   const status=await lease.query(
+    "SELECT VARIABLE_VALUE AS cipher FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_cipher'"
+   );
+   assert.ok(status.rows[0].cipher.length>0);
+   return (await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+  });
+  assert.equal(first,second,'verified TLS socket should be reused, not silently downgraded');
+ }finally{await pool.close();}
+});
