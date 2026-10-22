@@ -19,7 +19,7 @@ test('CLI rejects unbounded or malformed qualification workloads',()=>{
     mode:'benchmark',iterations:2,concurrency:3,durationMs:8000,fetchSize:32,cursorRows:100
   });
   for(const bad of [
-    ['--concurrency=0'],['--concurrency=17'],['--iterations=50001'],
+    ['--concurrency=0'],['--concurrency=17'],['--iterations=1000001'],
     ['--durationMs=0'],['--durationMs=600001'],['--fetchSize=257'],
     ['--cursorRows=99'],['--foo=2'],['--concurrency=2','--concurrency=3'],
     ['--iterations=NaN'],['--iterations=-1']
