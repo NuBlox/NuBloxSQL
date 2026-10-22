@@ -33,7 +33,7 @@ identical hardware, driver versions, MySQL configuration, network and workload**
 CI's ordinary PR job runs a short qualification smoke with strict **zero errors
 and state/capacity checks**, not numeric performance thresholds (shared-host
 noise makes thresholds misleading). Nightly and manual GitHub workflows run
-longer soak and attach the JSON evidence. The timer ends *between* operations;
+longer soak and attach the JSON evidence. The one-million-operation safety ceiling is designed not to truncate an ordinary two-minute run; reports record the **actual** elapsed duration, and a run hitting the ceiling early is not evidence of a full-duration soak. The timer ends *between* operations;
 outstanding work completes, so actual duration may be slightly longer.
 
 The current benchmark compares **NuBloxSQL to itself across commits**; it does
