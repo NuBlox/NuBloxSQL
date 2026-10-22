@@ -164,3 +164,26 @@ live('verified TLS pooled prepared handles are revoked before another borrow',as
     assert.equal(again,id);
   }finally{await pool.close();}
 });
+
+
+live('verified TLS pool health checks keep the same encrypted MySQL connection',async()=>{
+ const {createDatabasePool}=await import('../dist/index.js');
+ const pool=createDatabasePool(trustedTarget(),{
+  maxConnections:1,healthCheckTimeoutMs:1200,idleTimeoutMs:3000
+ });
+ try{
+  const first=await pool.withConnection(async session=>{
+    const cipher=await session.query(
+      "SELECT VARIABLE_VALUE AS cipher FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_cipher'"
+    );
+    assert.ok(cipher.rows[0].cipher.length>0);
+    return (await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+  });
+  const second=await pool.withConnection(async session=>
+    (await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id);
+  assert.equal(first,second);
+  assert.equal(pool.stats.healthChecks,2);
+  assert.equal(pool.stats.healthFailures,0);
+  assert.equal(pool.stats.created,1);
+ }finally{await pool.close();}
+});
