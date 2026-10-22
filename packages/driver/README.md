@@ -28,7 +28,7 @@ The `ca` option is a PEM certificate **string**, not a file path. `serverName` s
 
 Native bound parameters: null, boolean, UTF-8 string, binary Uint8Array, finite number (safe integer or double) and 64-bit bigint. Values are never interpolated into user SQL. Results preserve DECIMAL as string, LONGLONG as bigint, binary as Buffer and dates/times as formatted strings with no implicit timezone coercion. Results are limited to 10,000 rows or 8 MiB. Transactions use the callback-scoped `tx.query` method, not the parent session.
 
-Supported experimental authentication plugins: `caching_sha2_password` (default MySQL 8.4) and `mysql_native_password` where the server enables it. Unencrypted RSA password exchange, reusable statements, compression, multiple results, cursor streaming, cloud IAM, cancellation **without closing the connection**, automated reconnect and non-SQL operations **are not supported**.
+Supported experimental authentication plugins: `caching_sha2_password` (default MySQL 8.4) and `mysql_native_password` where the server enables it. Unencrypted RSA password exchange, compression, multiple results, cursor streaming, cloud IAM, cancellation **without closing the connection**, automated reconnect and non-SQL operations **are not supported**.
 
 ## Cancellation, deadlines and resource ownership
 
@@ -52,6 +52,26 @@ try {await pending;}catch(error) {
 - **Scope:** AbortSignal stops database I/O; it cannot forcibly terminate unrelated user JavaScript already running inside a transaction callback.
 
 The CI suite verifies these states using real MySQL 8.4.11 instances, including TLS-connected cancellation and a fresh authenticated reconnection. Advanced pooling policies, server-side kill/cancel, and independent per-query cancellation inside transactions are outside the current release scope.
+
+## Reusable server-prepared statements (experimental)
+
+```js
+const statement=await db.prepare('SELECT ? AS value');
+try{
+  const first=await statement.execute([10]);
+  const second=await statement.execute([20]);
+  console.log(first.rows,second.rows);
+} finally {
+  await statement.close();
+}
+```
+
+- `prepare(sql, options?)` uses MySQL's native `COM_STMT_PREPARE` exactly once, exposing `parameterCount` and returning a connection-owned `RelationalPreparedStatement`. Every `execute(parameters?, options?)` sends a native `COM_STMT_EXECUTE` with fresh bound values and supports the same cancellation/deadline rules as `query()`.
+- `close()` sends native `COM_STMT_CLOSE` and is idempotent. A closed statement cannot execute. Closing a connection or resetting it for pooled reuse invalidates **all** outstanding statement handles. Statement handles cannot be transported to another connection.
+- `query()` remains the one-shot convenience API and prepares/executes/closes on every call. Use `prepare()` when you intend to execute the same statement repeatedly.
+- Each connection permits at most **128 simultaneously open reusable statements**. Explicitly close them to reclaim server resources; there is no implicit LRU cache, cross-connection cache, streaming cursor or stored-procedure multi-result support.
+- In `pool.withConnection()`, a borrowed statement must be prepared, used and (where practical) closed **inside its callback**. Escaped statement wrappers are revoked when the lease ends. The MySQL pool reset also frees server-side prepared state before lending the connection again.
+- Invalid parameter counts and unsupported bound values are rejected without sending SQL. Server-side query errors retain their typed native error metadata. During an interrupted execution the connection and all its statements are invalidated; there is no automatic replay.
 
 ## Bounded native connection pools (experimental)
 
