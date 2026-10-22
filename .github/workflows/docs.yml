@@ -67,4 +67,5 @@ jobs:
           bash -n packages/driver/tests/fixtures/start-mysql-tls.sh
           npm install --no-audit --no-fund
           npm test
+          npm run release:verify
           echo 'Definition and experimental driver baseline: PASS'
