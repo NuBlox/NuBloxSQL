@@ -212,26 +212,28 @@ export class MysqlSession implements RelationalSession {
   }
 
   /** Create an explicitly owned reusable statement for this session alone. */
-  prepare(sql:string,options:OperationOptions={}):Promise<MysqlPreparedStatement>{
-    if(this.closed)return Promise.reject(fail('CONNECTION_CLOSED','Session is closed'));
+  async prepare(sql:string,options:OperationOptions={}):Promise<MysqlPreparedStatement>{
+    if(this.closed)throw fail('CONNECTION_CLOSED','Session is closed');
     if(this.statements.size+this.preparing>=MAX_PREPARED_STATEMENTS)
-      return Promise.reject(fail('RESOURCE_LIMIT','Too many open prepared statements'));
+      throw fail('RESOURCE_LIMIT','Too many open prepared statements');
     this.preparing++;
-    return this.serial(async()=>{
-      const {id,parameterCount}=await this.prepareNative(sql);
-      let statement!:MysqlPreparedStatement;
-      statement=new MysqlPreparedStatement(
-        parameterCount,
-        (params,opts)=>this.serial(()=>this.executeNative(id,parameterCount,params),opts),
-        async()=>{
-          try{
-            if(!this.closed)await this.serial(()=>this.closeNative(id));
-          }finally{this.statements.delete(statement);}
-        }
-      );
-      this.statements.add(statement);
-      return statement;
-    },options).finally(()=>{this.preparing--;});
+    try{
+      return await this.serial(async()=>{
+        const {id,parameterCount}=await this.prepareNative(sql);
+        let statement!:MysqlPreparedStatement;
+        statement=new MysqlPreparedStatement(
+          parameterCount,
+          (params,opts)=>this.serial(()=>this.executeNative(id,parameterCount,params),opts),
+          async()=>{
+            try{
+              if(!this.closed)await this.serial(()=>this.closeNative(id));
+            }finally{this.statements.delete(statement);}
+          }
+        );
+        this.statements.add(statement);
+        return statement;
+      },options);
+    }finally{this.preparing--;}
   }
 
   private async control(command:'START TRANSACTION'|'COMMIT'|'ROLLBACK'):Promise<QueryResult>{
