@@ -12,7 +12,8 @@ export class MysqlPreparedStatement implements RelationalPreparedStatement {
   constructor(
     readonly parameterCount:number,
     private readonly run:(params:readonly BindValue[],options:OperationOptions)=>Promise<QueryResult>,
-    private readonly dispose:()=>Promise<void>
+    private readonly dispose:()=>Promise<void>,
+    private readonly assertNotNested:()=>void=()=>{}
   ){}
 
   get closed():boolean{return this.invalid;}
@@ -22,12 +23,15 @@ export class MysqlPreparedStatement implements RelationalPreparedStatement {
     return this.run(params,options);
   }
 
-  close():Promise<void>{
+  async close():Promise<void>{
     if(this.closing)return this.closing;
-    if(this.invalid)return Promise.resolve();
-    this.invalid=true; // prevent any future execute from entering the scheduler
+    if(this.invalid)return;
+    // Check *before* marking closed; a rejected re-entrant close must not
+    // orphan the server-side statement or permanently invalidate its handle.
+    this.assertNotNested();
+    this.invalid=true;
     this.closing=this.dispose();
-    return this.closing;
+    await this.closing;
   }
 
   /** A reset or terminated native session revokes all outstanding handles. */
