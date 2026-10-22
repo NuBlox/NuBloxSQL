@@ -1,6 +1,6 @@
 import {fail} from './errors.js';
 import {validDeadline,type OperationOptions} from './resources.js';
-import type {RelationalSession} from '../models/relational.js';
+import type {RelationalSession,RelationalTransaction} from '../models/relational.js';
 import type {BindValue,QueryResult,SessionInfo} from './contracts.js';
 
 export interface PoolOptions {
@@ -15,7 +15,7 @@ export interface PooledRelationalSession {
   readonly info:Readonly<SessionInfo>;
   readonly closed:boolean;
   query(sql:string,parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult>;
-  transaction<T>(work:Parameters<RelationalSession['transaction']>[0],options?:OperationOptions):Promise<T>;
+  transaction<T>(work:(transaction:RelationalTransaction)=>Promise<T>,options?:OperationOptions):Promise<T>;
 }
 export interface PoolStats {
   readonly size:number;
@@ -158,7 +158,7 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
       get closed(){return !valid||session.closed;},
       query:(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={})=>
         track(()=>session.query(sql,parameters,options)),
-      transaction:<R>(callback:Parameters<RelationalSession['transaction']>[0],options:OperationOptions={})=>
+      transaction:<R>(callback:(transaction:RelationalTransaction)=>Promise<R>,options:OperationOptions={})=>
         track(()=>session.transaction<R>(callback,options))
     });
 
@@ -186,7 +186,7 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
     this.idle.length=0;
     const live=[...this.sessions];
     this.sessions.clear();
-    this.sizeCount=0;
+    this.sizeCount-=live.length; // connecting slots remain until their connect promise settles
     // close() interrupts native operations instead of awaiting arbitrary app callbacks.
     await Promise.all(live.map(session=>session.close()));
   }
