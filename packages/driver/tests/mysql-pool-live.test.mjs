@@ -171,3 +171,50 @@ live('completed transaction scope cannot issue commands after pool reuse',async(
   assert.equal(again,original,'late transaction queries must not invalidate healthy reused connections');
  }finally{await pool.close();}
 });
+
+
+live('native COM_PING verifies a reused MySQL session before every borrow',async()=>{
+ const pool=createDatabasePool(target,{maxConnections:1,healthCheckTimeoutMs:1200});
+ try{
+  const id1=await pool.withConnection(async session=>
+    (await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id);
+  const id2=await pool.withConnection(async session=>
+    (await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id);
+  assert.equal(id1,id2);
+  assert.equal(pool.stats.created,1);
+  assert.equal(pool.stats.healthChecks,2);
+  assert.equal(pool.stats.healthFailures,0);
+  assert.equal(pool.stats.idle,1);
+  assert.equal(pool.stats.active,0);
+ }finally{await pool.close();}
+});
+
+live('idle expiry retires native connection and next borrow opens a fresh one',async()=>{
+ const pool=createDatabasePool(target,{maxConnections:1,idleTimeoutMs:120});
+ try{
+  const id1=await pool.withConnection(async session=>
+    (await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id);
+  const deadline=Date.now()+4000;
+  while(pool.stats.expired===0&&Date.now()<deadline)
+    await new Promise(resolve=>setTimeout(resolve,25));
+  assert.equal(pool.stats.expired,1,'idle session must be retired promptly');
+  assert.equal(pool.stats.size,0);
+  assert.equal(pool.stats.idle,0);
+  const id2=await pool.withConnection(async session=>
+    (await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id);
+  assert.notEqual(id1,id2);
+  assert.equal(pool.stats.created,2);
+  assert.equal(pool.stats.healthFailures,0);
+ }finally{await pool.close();}
+});
+
+live('pool rejects unsafe lifecycle options before opening sockets',async()=>{
+ for(const options of [
+  {maxConnections:0},{maxConnections:33},
+  {maxConnections:1,idleTimeoutMs:99},
+  {maxConnections:1,idleTimeoutMs:3600001},
+  {maxConnections:1,healthCheckTimeoutMs:0}
+ ]){
+  assert.throws(()=>createDatabasePool(target,options),e=>e.code==='INVALID_INPUT');
+ }
+});
