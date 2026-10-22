@@ -22,11 +22,11 @@ licence; there is **no general downstream commercial grant**.
 | --- | --- | --- |
 | G1. Repeatable functional integration | Pinned MySQL 8.4.11 and verified-TLS CI, installed-package consumer tests | **Partial**; extend versions and installation targets |
 | G2. Protocol/types/correctness | Native packet tests, result/type regression fixtures, protocol malformed-input tests | **Partial**; broader fuzz coverage, recovery conditions and capability matrix |
-| G3. Secure authentication and transport | Negative CA, hostname, credentials, loopback-only plaintext checks | **Partial**; formal threat model, dependency and secret review, least-privilege server users |
+| G3. Secure authentication and transport | Negative CA, hostname, credentials, loopback-only plaintext, dependency audit and package preflight checks | **Partial**; formal threat model, independent penetration test, threat-driven fuzzing and least-privilege server users |
 | G4. Cancellation and transaction safety | Abort/deadline, session reset, pooled/cursor resource-ownership tests | **Partial**; failure injection during writes and ambiguous commit, severe outages |
 | G5. Reproducible performance | Workload scripts, latency/memory diagnostics and machine-readable evidence | **In progress**; quantitative baseline, competitor parity and stable hardware |
 | G6. Sustained stability | Timed pooled soak and reconnect workloads in CI | **In progress**; overnight/multi-day tests, heap profiles, database restarts and chaos matrix |
-| G7. Public API and package stability | Strict TypeScript, independent package-consumer tarball tests | **Partial**; versioning guarantees, semantic compatibility tests, Node LTS matrix |
+| G7. Public API and package stability | Strict TypeScript, independently installed tarball tests, and automated publish-content/licence/import integrity validation | **Partial**; versioning guarantees, semantic compatibility tests and multi-Node qualification |
 | G8. Version/deployment matrix | MySQL 8.4.11 local/TLS pinned qualification | **Not met**; qualify other MySQL versions, OS/architectures, TLS deployments |
 | G9. Support operations | No published response-time or escalation commitment | **Not met**; support contact, release policy, CVE/security process, change logs |
 | G10. Commercial licence and delivery | Proprietary ownership stated in LICENSE | **Not met**; legal review and explicit customer evaluation/production terms, billing, invoicing and redistribution |
