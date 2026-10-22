@@ -83,7 +83,7 @@ const pool=createDatabasePool({
   user:'myuser',password:process.env.MYSQL_PASSWORD,
   database:'mydb',security:'verified-tls',
   ca:process.env.MYSQL_CA_PEM,serverName:'localhost'
-},{maxConnections:4,acquireTimeoutMs:5000});
+},{maxConnections:4,acquireTimeoutMs:5000,idleTimeoutMs:60000,healthCheckTimeoutMs:1500});
 
 try {
   const rows=await pool.withConnection(async session=>{
@@ -100,8 +100,10 @@ try {
 - `withConnection` is an **exclusive callback lease**, not a raw connection checkout. A lease must not escape the callback; using it after completion throws `CONNECTION_CLOSED`. The callback **must await all started operations**. Unfinished operations or callback failure cause the native session to be discarded rather than reused.
 - Before handing a healthy connection to another borrower, the MySQL adapter sends native `COM_RESET_CONNECTION` and requires an OK response. This resets active transactions, session/user variables, temporary tables, locks and server-prepared statements without repeating authentication. It is **not** equivalent to issuing only `ROLLBACK`. The default selected database remains the configured one. See [MySQL 8.4 reset semantics](https://dev.mysql.com/doc/c-api/8.4/en/mysql-reset-connection.html).
 - If an operation is cancelled during execution, times out, or otherwise closes the connection, the pool **discards** it and establishes a new authenticated connection for a subsequent acquisition. Pool shutdown rejects pending checkouts, closes idle and active sessions and is idempotent.
-- `pool.stats` reports current `size` (open/connecting slots), `idle` and `pending` counts for diagnostics; these are instantaneous values, not durable metrics. The pool has a bounded queue of 1,024 waiters.
-- This is an **initial safe bounded pool**, not yet a production workload manager: no minimum warm pool, idle eviction or keepalive, dynamic resize, priority scheduling, per-tenant quotas, cloud IAM re-authentication or cross-vendor qualification. The implementation is shared; **only MySQL 8.4 is currently tested**.
+- The shared pool schedules automatic **idle expiry**: idle sockets unused for `idleTimeoutMs` (100–3,600,000 ms; default 60,000 ms) are retired. The timer never interrupts a borrowed session; expiry only applies after a successful native reset.
+- Before **every checkout**, MySQL's native `COM_PING` must succeed within `healthCheckTimeoutMs` (100–120,000 ms; default 1,500 ms). If the probe fails, the native session is discarded and another authenticated session may be established. The pool makes **at most one replacement attempt** for the current lease, and it never retries, duplicates or replays caller SQL.
+- `pool.stats` is a frozen point-in-time snapshot: `size`, `idle`, `active`, `connecting`, `pending` and cumulative `created`, `discarded`, `expired`, `healthChecks`, `healthFailures` and `acquireTimeouts` counters. This is local, aggregate telemetry with no credentials, query text or row data. The pool has a bounded queue of 1,024 waiters.
+- This is an **initial safe bounded pool**, not yet a production workload manager: no minimum warm pool, background keepalive, dynamic resize, priority scheduling, per-tenant quotas, cloud IAM re-authentication or cross-vendor qualification. The implementation is shared; **only MySQL 8.4 is currently tested**.
 
 ## Verify
 
@@ -124,4 +126,4 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 - `src/vendors/mysql/` owns authentication, the MySQL native protocol, metadata, types, capability evidence and adapter implementation.
 - `tests/` contains unit and pinned-live-server conformance checks.
 
-**Known architecture gaps:** advanced pool lifecycle policies, transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
+**Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
