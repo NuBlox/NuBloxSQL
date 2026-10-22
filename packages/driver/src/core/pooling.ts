@@ -1,6 +1,6 @@
 import {fail} from './errors.js';
 import {validDeadline,type OperationOptions} from './resources.js';
-import type {RelationalSession,RelationalTransaction} from '../models/relational.js';
+import type {RelationalSession,RelationalTransaction,RelationalPreparedStatement} from '../models/relational.js';
 import type {BindValue,QueryResult,SessionInfo} from './contracts.js';
 
 export interface PoolOptions {
@@ -15,6 +15,7 @@ export interface PooledRelationalSession {
   readonly info:Readonly<SessionInfo>;
   readonly closed:boolean;
   query(sql:string,parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult>;
+  prepare(sql:string,options?:OperationOptions):Promise<RelationalPreparedStatement>;
   transaction<T>(work:(transaction:RelationalTransaction)=>Promise<T>,options?:OperationOptions):Promise<T>;
 }
 export interface PoolStats {
@@ -158,6 +159,17 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
       get closed(){return !valid||session.closed;},
       query:(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={})=>
         track(()=>session.query(sql,parameters,options)),
+      prepare:(sql:string,options:OperationOptions={})=>track(async()=>{
+        const raw=await session.prepare(sql,options);
+        const handle:RelationalPreparedStatement=Object.freeze({
+          get parameterCount(){return raw.parameterCount;},
+          get closed(){return !valid||raw.closed;},
+          execute:(params:readonly BindValue[]=[],opts:OperationOptions={})=>
+            track(()=>raw.execute(params,opts)),
+          close:()=>track(()=>raw.close())
+        });
+        return handle;
+      }),
       transaction:<R>(callback:(transaction:RelationalTransaction)=>Promise<R>,options:OperationOptions={})=>
         track(()=>session.transaction<R>(callback,options))
     });

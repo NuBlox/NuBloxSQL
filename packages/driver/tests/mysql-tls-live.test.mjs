@@ -129,3 +129,38 @@ live('verified-TLS pooled connections retain encryption and clear session state'
   assert.equal(first,second,'verified TLS socket should be reused, not silently downgraded');
  }finally{await pool.close();}
 });
+
+
+live('verified TLS reusable native statement survives repeated execution and closes safely',async()=>{
+  const db=await connectDatabase(trustedTarget());
+  try{
+    const statement=await db.prepare('SELECT ? AS secure_value');
+    try{
+      assert.equal(statement.parameterCount,1);
+      for(let i=0;i<3;i++)
+        assert.equal((await statement.execute([i])).rows[0].secure_value,BigInt(i));
+    }finally{await statement.close();}
+    assert.equal(statement.closed,true);
+    await assert.rejects(statement.execute([4]),e=>e.code==='CONNECTION_CLOSED');
+    assert.equal((await db.query('SELECT ? AS still_secure',[9])).rows[0].still_secure,9n);
+  }finally{await db.close();}
+});
+
+live('verified TLS pooled prepared handles are revoked before another borrow',async()=>{
+  const {createDatabasePool}=await import('../dist/index.js');
+  const pool=createDatabasePool(trustedTarget(),{maxConnections:1});
+  let escaped;
+  let id;
+  try{
+    id=await pool.withConnection(async session=>{
+      escaped=await session.prepare('SELECT ? AS encrypted_parameter');
+      assert.equal((await escaped.execute(['yes'])).rows[0].encrypted_parameter,'yes');
+      return (await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+    });
+    assert.equal(escaped.closed,true);
+    await assert.rejects(escaped.execute(['no']),e=>e.code==='CONNECTION_CLOSED');
+    const again=await pool.withConnection(async session=>
+      (await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id);
+    assert.equal(again,id);
+  }finally{await pool.close();}
+});
