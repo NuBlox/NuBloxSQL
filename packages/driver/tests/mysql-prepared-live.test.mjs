@@ -34,8 +34,8 @@ live('one native prepared statement supports repeated bound execution, strict pa
 
 live('prepared statement is server side and does not re-prepare on execute',async()=>{
  const db=await connectDatabase(target);
- const sql="SELECT VARIABLE_VALUE AS count FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Com_stmt_prepare'";
- const count=async()=>BigInt((await db.query(sql)).rows[0].count);
+ const sql="SELECT VARIABLE_VALUE AS statements_prepared FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Com_stmt_prepare'";
+ const count=async()=>BigInt((await db.query(sql)).rows[0].statements_prepared);
  try{
   const before=await count();
   const statement=await db.prepare('SELECT ? AS repeated');
@@ -127,6 +127,7 @@ live('unawaited prepared statement execution prevents returning pooled connectio
    const id=(await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
    const statement=await session.prepare('SELECT SLEEP(?) AS delayed');
    background=statement.execute([0.4]);
+   void background.catch(()=>{});
    return id;
   });
   await assert.rejects(background,e=>e instanceof Error);
@@ -134,4 +135,34 @@ live('unawaited prepared statement execution prevents returning pooled connectio
     (await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id);
   assert.notEqual(next,first,'pool must discard connection with unawaited work');
  }finally{await pool.close();}
+});
+
+live('native statement handle count is bounded without poisoning session',async()=>{
+ const db=await connectDatabase(target);
+ const handles=[];
+ try{
+  for(let i=0;i<128;i++)handles.push(await db.prepare('SELECT ? AS value'));
+  await assert.rejects(db.prepare('SELECT ? AS extra'),e=>e.code==='RESOURCE_LIMIT');
+  assert.equal(db.closed,false);
+  assert.equal((await handles[0].execute([88])).rows[0].value,88n);
+  await handles[0].close();
+  const replacement=await db.prepare('SELECT ? AS replacement');
+  handles.push(replacement);
+  assert.equal((await replacement.execute([89])).rows[0].replacement,89n);
+ }finally{
+  await Promise.all(handles.map(h=>h.close()));
+  await db.close();
+ }
+});
+
+live('closing a native session invalidates every open prepared statement',async()=>{
+ const db=await connectDatabase(target);
+ const first=await db.prepare('SELECT ? AS a');
+ const second=await db.prepare('SELECT ? AS b');
+ await db.close();
+ assert.equal(first.closed,true);
+ assert.equal(second.closed,true);
+ await assert.rejects(first.execute([1]),e=>e.code==='CONNECTION_CLOSED');
+ await first.close();
+ await second.close();
 });
