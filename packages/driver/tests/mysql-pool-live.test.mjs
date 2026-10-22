@@ -48,13 +48,15 @@ live('pool reset rolls back a manually started uncommitted transaction',async()=
   });
   try{
    await pool.withConnection(async session=>{
-    await session.query('START TRANSACTION');
+    await session.query('SET autocommit = 0');
     await session.query('INSERT INTO nublox_pool_rollback (id) VALUES (?)',[771]);
    });
    const count=await pool.withConnection(async session=>
     (await session.query('SELECT COUNT(*) AS n FROM nublox_pool_rollback')).rows[0].n
    );
    assert.equal(count,0n,'reset must roll back an open transaction');
+   const autocommit=await pool.withConnection(async session=>(await session.query('SELECT @@autocommit AS mode')).rows[0].mode);
+   assert.equal(autocommit,1n,'reset must restore autocommit');
   }finally{
    await pool.withConnection(session=>session.query('DROP TABLE IF EXISTS nublox_pool_rollback'));
   }
