@@ -24,6 +24,12 @@ if(process.env.NUBLOX_LIVE_MYSQL==='1'){
   try{
     const result=await session.query('SELECT ? AS consumer_value',[41]);
     assert.equal(result.rows[0].consumer_value,41n);
+    const duplicate=await session.query('SELECT ? AS dupe, ? AS dupe',[1,2]);
+    assert.deepEqual(duplicate.columnKeys,['dupe','dupe#2']);
+    assert.deepEqual(duplicate.rowValues,[[1n,2n]]);
+    assert.equal(duplicate.rows[0].dupe,1n);
+    assert.equal(duplicate.rows[0]['dupe#2'],2n);
+
     const cancelled=new AbortController();
     cancelled.abort();
     await assert.rejects(
