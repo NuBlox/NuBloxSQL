@@ -157,8 +157,17 @@ export class MysqlSession implements RelationalSession {
     this.assertOpen();
     if(!Array.isArray(params)||params.length!==expected)
       throw fail('INVALID_INPUT','Prepared statement parameter count mismatch');
+    // Reject invalid parameter encodings before sending any protocol bytes;
+    // a local binding error must not poison a healthy connection.
+    let command:Buffer;
+    try{command=execute(id,params);}
+    catch(error){
+      if(error instanceof TypeError||error instanceof RangeError)
+        throw fail('INVALID_INPUT','Invalid prepared statement bound parameter');
+      throw error;
+    }
     this.stream.reset();
-    await this.send(execute(id,params));
+    await this.send(command);
     const first=await this.get();
     if(isOk(first))return ok(first);
 
