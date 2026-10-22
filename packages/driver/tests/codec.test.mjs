@@ -68,11 +68,12 @@ test('packet stream accepts coalesced messages but rejects unsafe queued traffic
  stream.reset();
 
  // Many individually valid frames may still exceed the aggregate input budget.
- const half=Buffer.alloc(4*1024*1024);
+ const chunk=Buffer.alloc(11*1024*1024);
  const encode=(body,seq)=>Buffer.concat([Buffer.from([body.length&255,(body.length>>8)&255,(body.length>>16)&255,seq]),body]);
- socket.write(encode(half,0));
- socket.write(encode(half,1));
- socket.write(encode(Buffer.from([42]),2));
+ socket.write(encode(chunk,0));
+ socket.write(encode(chunk,1));
+ socket.write(encode(chunk,2));
+ socket.write(encode(Buffer.from([42]),3));
  await assert.rejects(stream.read(),/limit/);
  await assert.rejects(stream.read(),/limit/);
  stream.destroy();
