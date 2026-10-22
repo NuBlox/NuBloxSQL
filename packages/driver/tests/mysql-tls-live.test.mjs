@@ -187,3 +187,19 @@ live('verified TLS pool health checks keep the same encrypted MySQL connection',
   assert.equal(pool.stats.created,1);
  }finally{await pool.close();}
 });
+
+
+live('TLS-protected MySQL 8.4 text and binary conversions preserve result types',async()=>{
+ const db=await connectDatabase(trustedTarget());
+ try{
+   const payload=Buffer.from([0,255,128,0]);
+   const value='café 🚀 Zürich';
+   const result=await db.query(
+     'SELECT CAST(? AS CHAR CHARACTER SET utf8mb4) AS text_value, CAST(? AS BINARY(4)) AS binary_value, CAST(? AS DECIMAL(20,6)) AS amount',
+     [value,payload,'123456789.000001']
+   );
+   assert.equal(result.rows[0].text_value,value);
+   assert.deepEqual(result.rows[0].binary_value,payload);
+   assert.equal(result.rows[0].amount,'123456789.000001');
+ }finally{await db.close();}
+});
