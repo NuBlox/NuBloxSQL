@@ -26,7 +26,19 @@ try {
 
 The `ca` option is a PEM certificate **string**, not a file path. `serverName` specifies the expected certificate identity when it differs from the TCP address. Verified TLS requires a valid certificate and matching server identity. Unencrypted `isolated-local` is restricted to literal `127.0.0.1` or `::1` endpoints and is **not** an appropriate production remote deployment.
 
-Native bound parameters: null, boolean, UTF-8 string, binary Uint8Array, finite number (safe integer or double) and 64-bit bigint. Values are never interpolated into user SQL. Results preserve DECIMAL as string, LONGLONG as bigint, binary as Buffer and dates/times as formatted strings with no implicit timezone coercion. Results are limited to 10,000 rows or 8 MiB. Transactions use the callback-scoped `tx.query` method, not the parent session.
+Native bound parameters: null, boolean, UTF-8 string, binary Uint8Array, finite number (safe integer or double) and 64-bit bigint. Values are never interpolated into user SQL. Results are limited to 10,000 rows or 8 MiB. Transactions use the callback-scoped `tx.query` method, not the parent session.
+
+### Binary result data fidelity
+
+- Signed/unsigned TINYINT, SMALLINT, INT and BIGINT respect native width. BIGINT values are returned as **bigint**, not lossy JavaScript numbers.
+- DECIMAL/NEWDECIMAL retain exact digits and scale as **strings**, including negative and very large values. FLOAT/DOUBLE use JavaScript numbers.
+- TEXT and BLOB can share MySQL type codes: the native output collation (63 means binary) differentiates **string** from **Buffer**. VARCHAR/VARBINARY and CHAR/BINARY follow the same rule. BIT and GEOMETRY are raw **Buffer** bytes.
+- JSON is returned as a **serialized JSON string**, not implicitly parsed into a JavaScript object, so consumers control number precision and validation.
+- DATE, DATETIME, TIMESTAMP and TIME remain **strings** and preserve six-digit fractional seconds where declared. TIME durations may be negative or exceed 24 hours; DATETIME is not assigned an artificial timezone. TIMESTAMP reflects the server session's configured timezone; consumers should set it explicitly when reproducible UTC representation is required. Zero dates remain representable as strings.
+- UTF-8 MySQL collations, ASCII and known MySQL latin1/Windows-1252 collations are supported. Other collation IDs **fail closed** rather than silently misdecode bytes. Comprehensive international character-set support, duplicate-name result columns and future vendor types remain unqualified.
+- Invalid native type codes, unexpected NULL markers, malformed binary rows and invalid temporal lengths are rejected rather than silently converted. This may terminate the affected session to avoid protocol desynchronisation.
+
+Live MySQL 8.4.11 tests cover exact decimals, signed and unsigned extremes, TEXT/BLOB, JSON, BIT, Unicode text, leap-day dates, negative TIME(6), DATETIME(6) and TIMESTAMP(6), plus text/binary/decimal results over verified TLS.
 
 Supported experimental authentication plugins: `caching_sha2_password` (default MySQL 8.4) and `mysql_native_password` where the server enables it. Unencrypted RSA password exchange, compression, multiple results, cursor streaming, cloud IAM, cancellation **without closing the connection**, automated reconnect and non-SQL operations **are not supported**.
 
