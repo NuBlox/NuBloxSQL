@@ -357,19 +357,30 @@ export class MysqlSession implements RelationalSession {
       let finished=false;
       try {
         let transactionActive=true;
+        const context={active:true,kind:'transaction' as const};
         const pending=new Set<Promise<QueryResult>>();
+        // Commands issued concurrently through tx.query must execute in order
+        // on the same MySQL socket. They cannot enter the parent serial queue,
+        // which is exclusively held by the transaction callback.
+        let transactionTail:Promise<void>=Promise.resolve();
         const transaction:RelationalTransaction=Object.freeze({
           query:(sql:string,values:readonly BindValue[]=[])=>{
-            if(!transactionActive||this.closed)
-              return Promise.reject(fail('CONNECTION_CLOSED','Transaction scope has ended'));
-            const request=this.execute(sql,values);
+            if(!transactionActive||this.closed||this.scope.getStore()!==context)
+              return Promise.reject(fail('CONNECTION_CLOSED','Transaction scope is not active'));
+            const request=transactionTail.then(()=>{
+              if(!transactionActive||this.closed)
+                throw fail('CONNECTION_CLOSED','Transaction scope has ended');
+              return this.execute(sql,values);
+            });
+            // Advance even after ordinary SQL errors, allowing callers to
+            // handle one failure and continue or roll back deterministically.
+            transactionTail=request.then(()=>{},()=>{});
             pending.add(request);
             void request.then(()=>{pending.delete(request);},()=>{pending.delete(request);});
             return request;
           }
         });
         let value:T;
-        const context={active:true,kind:'transaction' as const};
         try {
           value=await this.scope.run(context,()=>work(transaction));
           transactionActive=false;
