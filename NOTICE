@@ -2,7 +2,7 @@ NuBloxSQL
 Copyright (c) 2026 Stephen J T Spittal. All rights reserved.
 
 NuBloxSQL is proprietary software. See LICENSE.
-This is a documentation-only product-definition reset.
+The current release line includes experimental native MySQL Driver code. Commercial use requires an express written licence from the owner; see LICENSE. The project is not yet offered as a production-supported release.
 
 Preserved code archives:
 archive/legacy-implementation-2026-10-16
