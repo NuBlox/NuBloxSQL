@@ -10,8 +10,9 @@ const root=fileURLToPath(new URL('../../../',import.meta.url));
 const npm=process.platform==='win32'?'npm.cmd':'npm';
 const consumer=`
 import assert from 'node:assert/strict';
-import {connectDatabase,DriverError} from '@nublox/driver';
+import {connectDatabase,createDatabasePool,DriverError} from '@nublox/driver';
 assert.equal(typeof connectDatabase,'function');
+assert.equal(typeof createDatabasePool,'function');
 assert.equal(typeof DriverError,'function');
 await assert.rejects(connectDatabase({engine:'unknown'}),error=>error.code==='UNSUPPORTED_ENGINE');
 if(process.env.NUBLOX_LIVE_MYSQL==='1'){
@@ -33,6 +34,22 @@ if(process.env.NUBLOX_LIVE_MYSQL==='1'){
     assert.equal((await session.query('SELECT ? AS still_connected',[42])).rows[0].still_connected,42n);
   }finally{await session.close();}
   assert.equal(session.closed,true);
+  const pool=createDatabasePool({
+    engine:'mysql',host:'127.0.0.1',port:Number(process.env.MYSQL_PORT||3306),
+    user:process.env.MYSQL_USER||'root',password:process.env.MYSQL_PASSWORD||'test-password',
+    database:'nublox_test',security:'isolated-local'
+  },{maxConnections:1});
+  try{
+    const first=await pool.withConnection(async borrowed=>{
+      await borrowed.query('SET @nublox_consumer_pool = 246');
+      return (await borrowed.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+    });
+    await pool.withConnection(async borrowed=>{
+      assert.equal((await borrowed.query('SELECT @nublox_consumer_pool AS marker')).rows[0].marker,null);
+      assert.equal((await borrowed.query('SELECT CONNECTION_ID() AS id')).rows[0].id,first);
+    });
+  }finally{await pool.close();}
+  assert.equal(pool.closed,true);
 }
 `;
 
