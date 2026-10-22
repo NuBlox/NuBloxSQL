@@ -6,8 +6,8 @@ import {greeting,flags,login,sslRequest,type MysqlGreeting} from './protocol/han
 import {token} from './auth/plugins.js';
 import {execute} from './protocol/commands.js';
 import {MysqlPreparedStatement} from './prepared.js';
-import {ok} from './protocol/results.js';
-import {binaryRow} from './types.js';
+import {ok,eofStatus,assertSingleResult} from './protocol/results.js';
+import {binaryValues,columnKeys,objectRow} from './types.js';
 import {serverPacket,eof,isOk} from './errors.js';
 import {validate} from './configuration.js';
 import {mysqlCapabilities} from './capabilities.js';
@@ -174,19 +174,24 @@ export class MysqlSession implements RelationalSession {
     const raw=new Cursor(first),count=raw.len();
     if(count===null||count>MAX_COLUMNS)throw Error('Invalid result column count');
     const columns=await this.metadata(count);
+    const keys=columnKeys(columns);
     const rows:Array<Record<string,unknown>>=[];
+    const rowValues:unknown[][]=[];
     let bytes=0;
     for(;;){
       const packet=await this.get();
       if(eof(packet)){
-        if(packet.length>=5&&((packet[3]|(packet[4]<<8))&8))
-          throw fail('UNSUPPORTED_FEATURE','Multiple result sets are not supported');
-        return {rows,columns,affectedRows:0,insertId:0};
+        const last=eofStatus(packet);
+        assertSingleResult(last.status);
+        return {rows,columns,columnKeys:keys,rowValues,affectedRows:0,insertId:0,
+                status:last.status,warnings:last.warnings};
       }
       bytes+=packet.length;
       if(rows.length>=MAX_RESULT_ROWS||bytes>LIMIT)
         throw fail('RESOURCE_LIMIT','Result exceeds configured safety limit');
-      rows.push(binaryRow(packet,columns));
+      const values=binaryValues(packet,columns);
+      rowValues.push(values);
+      rows.push(objectRow(values,keys));
     }
   }
 

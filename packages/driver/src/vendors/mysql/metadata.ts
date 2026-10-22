@@ -1,7 +1,15 @@
-import {field} from './protocol/results.js';
+import {field,eofStatus,assertSingleResult} from './protocol/results.js';
 import type {MysqlColumn} from '../../core/contracts.js';
-import {eof} from './errors.js';
 import {fail} from '../../core/errors.js';
 import {MAX_COLUMNS} from '../../core/resources.js';
-/** Read field definitions and the legacy EOF boundary from the native MySQL stream. */
-export async function readMetadata(getPacket:()=>Promise<Buffer>,count:number):Promise<MysqlColumn[]>{if(!Number.isSafeInteger(count)||count>MAX_COLUMNS)throw fail('RESOURCE_LIMIT','Too many columns');const cols=[];for(let i=0;i<count;i++)cols.push(field(await getPacket()));const end=await getPacket();if(!eof(end))throw Error('Missing MySQL metadata terminator');return cols;}
+
+/** Consume each native ColumnDefinition41 packet and validate the EOF boundary. */
+export async function readMetadata(getPacket:()=>Promise<Buffer>,count:number):Promise<MysqlColumn[]>{
+  if(!Number.isSafeInteger(count)||count<0||count>MAX_COLUMNS)
+    throw fail('RESOURCE_LIMIT','Invalid MySQL result column count');
+  const columns:MysqlColumn[]=[];
+  for(let i=0;i<count;i++)columns.push(field(await getPacket()));
+  const end=eofStatus(await getPacket());
+  assertSingleResult(end.status);
+  return columns;
+}

@@ -119,3 +119,64 @@ live('ordinary transaction callback error rolls back and keeps session healthy',
   assert.equal((await db.query('SELECT ? AS value',[8])).rows[0].value,8n);
  }finally{await db.close();}
 });
+
+
+live('duplicate MySQL aliases return every value in order without silent overwrites',async()=>{
+ const db=await connectDatabase(target);
+ try{
+  const result=await db.query(
+    'SELECT ? AS item, ? AS item, ? AS `item#2`, ? AS item, ? AS `__proto__`, ? AS `__proto__`',
+    [11,22,33,44,55,66]
+  );
+  assert.deepEqual(result.columns.map(col=>col.name),
+    ['item','item','item#2','item','__proto__','__proto__']);
+  assert.deepEqual(result.columnKeys,
+    ['item','item#3','item#2','item#4','__proto__','__proto__#2']);
+  assert.deepEqual(result.rowValues,[[11n,22n,33n,44n,55n,66n]]);
+  assert.deepEqual(result.columnKeys.map(k=>result.rows[0][k]),result.rowValues[0]);
+  assert.equal(Object.getPrototypeOf(result.rows[0]),null);
+  assert.equal(db.closed,false);
+  assert.equal((await db.query('SELECT ? AS fine',[7])).rows[0].fine,7n);
+ }finally{await db.close();}
+});
+
+live('joined duplicate field names preserve physical origin metadata and position',async()=>{
+ const db=await connectDatabase(target);
+ try{
+  await db.query('CREATE TEMPORARY TABLE nublox_join_columns (id INT PRIMARY KEY, value VARCHAR(12))');
+  await db.query('CREATE TEMPORARY TABLE nublox_join_columns_b (id INT PRIMARY KEY, value VARCHAR(12))');
+  await db.query('INSERT INTO nublox_join_columns (id,value) VALUES (?,?)',[7,'first']);
+  await db.query('INSERT INTO nublox_join_columns_b (id,value) VALUES (?,?)',[7,'first']);
+  const result=await db.query(`SELECT a.id, b.id, a.value, b.value
+    FROM nublox_join_columns AS a JOIN nublox_join_columns_b AS b ON a.id=b.id`);
+  assert.deepEqual(result.columns.map(c=>c.name),['id','id','value','value']);
+  assert.deepEqual(result.columns.map(c=>c.originalName),['id','id','value','value']);
+  assert.deepEqual(result.columns.map(c=>c.table),['a','b','a','b']);
+  assert.deepEqual(result.columnKeys,['id','id#2','value','value#2']);
+  assert.deepEqual(result.rowValues,[[7,7,'first','first']]);
+  assert.equal(result.rows[0]['id#2'],7);
+  assert.equal(result.rows[0]['value#2'],'first');
+  const empty=await db.query('SELECT id, id FROM nublox_join_columns WHERE id = ?',[999]);
+  assert.deepEqual(empty.rowValues,[]);
+  assert.deepEqual(empty.columnKeys,['id','id#2']);
+ }finally{await db.close();}
+});
+
+live('native large text row remains intact and bounded, oversized result fails closed',async()=>{
+ const db=await connectDatabase(target);
+ try{
+  const text='Ωé🚀'.repeat(180000);
+  const result=await db.query('SELECT ? AS payload',[text]);
+  assert.equal(result.rowValues[0][0],text);
+  assert.equal(result.rows[0].payload,text);
+  assert.equal(db.closed,false);
+ }finally{await db.close();}
+ const bounded=await connectDatabase(target);
+ try{
+  await assert.rejects(
+    bounded.query('SELECT REPEAT(?,?) AS payload',['a',9_000_000]),
+    error=>error instanceof Error
+  );
+  assert.equal(bounded.closed,true,'Oversized incoming result must destroy session');
+ }finally{await bounded.close();}
+});

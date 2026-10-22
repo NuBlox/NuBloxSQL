@@ -28,6 +28,27 @@ The `ca` option is a PEM certificate **string**, not a file path. `serverName` s
 
 Native bound parameters: null, boolean, UTF-8 string, binary Uint8Array, finite number (safe integer or double) and 64-bit bigint. Values are never interpolated into user SQL. Results are limited to 10,000 rows or 8 MiB. Transactions use the callback-scoped `tx.query` method, not the parent session.
 
+### Lossless result shape and duplicate SQL aliases
+
+MySQL permits multiple projected expressions with the same name, including joins
+that return two `id` columns. JavaScript object keys alone cannot represent
+this faithfully. For row-producing queries, NuBloxSQL now exposes:
+
+```js
+const result=await db.query('SELECT ? AS id, ? AS id',[12,34]);
+result.columns.map(c=>c.name);    // ['id','id'] — original server names
+result.columnKeys;                // ['id','id#2'] — unique stable object keys
+result.rowValues;                 // [[12n,34n]] — full positional rows
+result.rows[0].id;                // 12n
+result.rows[0]['id#2'];           // 34n
+```
+
+- `columns[i]` and `rowValues[row][i]` always refer to the **same ordinal**; this is the canonical lossless representation. Column metadata also preserves `originalName` and `originalTable`, which are distinct from query aliases.
+- `rows` remains a convenient dictionary of values. For duplicate names, the first keeps the original name and later names use `#2`, `#3` etc. Existing aliases (including `id#2`) are reserved so generated names never overwrite them. `columnKeys` gives the exact keys, in column order.
+- Every row object has a null prototype. Literal column names such as `__proto__` cannot manipulate object prototypes.
+- For statements without row sets (DML/DDL), `rowValues` and `columnKeys` are not present. Existing callers that use unique column names and `result.rows` remain source-compatible.
+- The parser validates MySQL ColumnDefinition41 and EOF packets and rejects unsupported `SERVER_MORE_RESULTS_EXISTS` and stored-procedure OUT-parameter result boundaries. A failed protocol boundary closes the native session rather than returning an incomplete result.
+
 ### Binary result data fidelity
 
 - Signed/unsigned TINYINT, SMALLINT, INT and BIGINT respect native width. BIGINT values are returned as **bigint**, not lossy JavaScript numbers.
@@ -35,7 +56,7 @@ Native bound parameters: null, boolean, UTF-8 string, binary Uint8Array, finite 
 - TEXT and BLOB can share MySQL type codes: the native output collation (63 means binary) differentiates **string** from **Buffer**. VARCHAR/VARBINARY and CHAR/BINARY follow the same rule. BIT and GEOMETRY are raw **Buffer** bytes.
 - JSON is returned as a **serialized JSON string**, not implicitly parsed into a JavaScript object, so consumers control number precision and validation.
 - DATE, DATETIME, TIMESTAMP and TIME remain **strings** and preserve six-digit fractional seconds where declared. TIME durations may be negative or exceed 24 hours; DATETIME is not assigned an artificial timezone. TIMESTAMP reflects the server session's configured timezone; consumers should set it explicitly when reproducible UTC representation is required. Zero dates remain representable as strings.
-- UTF-8 MySQL collations, ASCII and known MySQL latin1/Windows-1252 collations are supported. Other collation IDs **fail closed** rather than silently misdecode bytes. Comprehensive international character-set support, duplicate-name result columns and future vendor types remain unqualified.
+- UTF-8 MySQL collations, ASCII and known MySQL latin1/Windows-1252 collations are supported. Other collation IDs **fail closed** rather than silently misdecode bytes. Comprehensive international character-set support and future vendor types remain unqualified.
 - Invalid native type codes, unexpected NULL markers, malformed binary rows and invalid temporal lengths are rejected rather than silently converted. This may terminate the affected session to avoid protocol desynchronisation.
 
 Live MySQL 8.4.11 tests cover exact decimals, signed and unsigned extremes, TEXT/BLOB, JSON, BIT, Unicode text, leap-day dates, negative TIME(6), DATETIME(6) and TIMESTAMP(6), plus text/binary/decimal results over verified TLS.

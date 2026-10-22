@@ -203,3 +203,18 @@ live('TLS-protected MySQL 8.4 text and binary conversions preserve result types'
    assert.equal(result.rows[0].amount,'123456789.000001');
  }finally{await db.close();}
 });
+
+
+live('verified TLS preserves duplicate aliases and positional rows over encrypted MySQL',async()=>{
+ const db=await connectDatabase(trustedTarget());
+ try{
+   const result=await db.query('SELECT ? AS duplicate, ? AS duplicate, ? AS flag',
+     [101,202,null]);
+   assert.deepEqual(result.columns.map(c=>c.name),['duplicate','duplicate','flag']);
+   assert.deepEqual(result.columnKeys,['duplicate','duplicate#2','flag']);
+   assert.deepEqual(result.rowValues,[[101n,202n,null]]);
+   assert.equal(result.rows[0].duplicate,101n);
+   assert.equal(result.rows[0]['duplicate#2'],202n);
+   assert.equal(result.rows[0].flag,null);
+ }finally{await db.close();}
+});
