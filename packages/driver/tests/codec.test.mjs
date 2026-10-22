@@ -39,9 +39,18 @@ test('packet reader supports fragmented frames and detects sequence mismatch',as
  assert.deepEqual(await p,Buffer.from('AB'));
  reader.reset();socket.write(Buffer.from([1,0,0,3,89]));await assert.rejects(reader.read(),/sequence mismatch/);reader.destroy();
 });
-test('inbound packet buffer has an upper bound',async()=>{
+test('inbound logical messages enforce an aggregate byte cap across frames',async()=>{
  const socket=new PassThrough(),reader=new PacketStream(socket);
- socket.write(Buffer.alloc(LIMIT+5));await assert.rejects(reader.read(),/limit/);reader.destroy();
+ const max=0xffffff;
+ const header=(size,seq)=>Buffer.from([size&255,(size>>>8)&255,(size>>>16)&255,seq]);
+ socket.write(header(max,0));
+ socket.write(Buffer.alloc(max));
+ socket.write(header(max,1));
+ socket.write(Buffer.alloc(max));
+ socket.write(header(10,2));
+ socket.write(Buffer.alloc(10));
+ await assert.rejects(reader.read(),/limit/);
+ reader.destroy();
 });
 
 test('packet stream accepts coalesced messages but rejects unsafe queued traffic',async()=>{
