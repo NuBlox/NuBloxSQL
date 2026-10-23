@@ -215,7 +215,9 @@ export class MysqlSession implements RelationalSession {
           };
           if(metadataStatus&0x1000)result.outParameters=true;
           results.push(result);
-          if(!(last.status&0x0008))return results;
+          if(!(last.status&0x0008)&&!(metadataStatus&0x1000))return results;
+          // MySQL's prepared OUT-parameter EOF can omit MORE_RESULTS even
+          // though the trailing CALL status packet is still on the wire.
           next=await this.get();
           break;
         }
@@ -254,6 +256,14 @@ export class MysqlSession implements RelationalSession {
     const prepared=await this.prepareNative(sql);
     try{
       return await this.executeNativeResults(prepared.id,prepared.parameterCount,params);
+    }catch(error){
+      // A partially consumed result can never be returned to the pool.
+      // Preserve the original RESOURCE_LIMIT / protocol error instead of
+      // replacing it with a later COM_STMT_CLOSE stream-reset failure.
+      if(!(error instanceof DriverError&&
+           (error.code==='DATABASE_ERROR'||error.code==='INVALID_INPUT')))
+        this.destroy();
+      throw error;
     }finally{
       if(!this.closed)await this.closeNative(prepared.id);
     }
@@ -268,7 +278,12 @@ export class MysqlSession implements RelationalSession {
   }
 
   async query(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={}):Promise<QueryResult>{
-    return this.serial(()=>this.execute(sql,parameters),options);
+    // Check cardinality AFTER leaving the serial command boundary.
+    // The completed protocol exchange is safe to reuse.
+    const sets=await this.serial(()=>this.executeResults(sql,parameters),options);
+    if(sets.length!==1)
+      throw fail('UNSUPPORTED_FEATURE','Statement returned multiple results; use queryResults');
+    return sets[0];
   }
 
   async queryResults(
@@ -373,7 +388,14 @@ export class MysqlSession implements RelationalSession {
         let statement!:MysqlPreparedStatement;
         statement=new MysqlPreparedStatement(
           parameterCount,
-          (params,opts)=>this.serial(()=>this.executeNative(id,parameterCount,params),opts),
+          async(params,opts)=>{
+            const sets=await this.serial(
+              ()=>this.executeNativeResults(id,parameterCount,params),opts
+            );
+            if(sets.length!==1)
+              throw fail('UNSUPPORTED_FEATURE','Statement returned multiple results; use executeResults');
+            return sets[0];
+          },
           async()=>{
             try{
               if(!this.closed)await this.serial(()=>this.closeNative(id));
