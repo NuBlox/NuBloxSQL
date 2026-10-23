@@ -379,7 +379,8 @@ export class MysqlSession implements RelationalSession {
               if(!this.closed)await this.serial(()=>this.closeNative(id));
             }finally{this.statements.delete(statement);}
           },
-          ()=>this.assertNotInsideExclusiveCallback()
+          ()=>this.assertNotInsideExclusiveCallback(),
+          (params,opts)=>this.serial(()=>this.executeNativeResults(id,parameterCount,params),opts)
         );
         this.statements.add(statement);
         return statement;
@@ -404,27 +405,27 @@ export class MysqlSession implements RelationalSession {
       try {
         let transactionActive=true;
         const context={active:true,kind:'transaction' as const};
-        const pending=new Set<Promise<QueryResult>>();
+        const pending=new Set<Promise<unknown>>();
         // Commands issued concurrently through tx.query must execute in order
         // on the same MySQL socket. They cannot enter the parent serial queue,
         // which is exclusively held by the transaction callback.
         let transactionTail:Promise<void>=Promise.resolve();
+        const schedule=<R>(run:()=>Promise<R>):Promise<R>=>{
+          if(!transactionActive||this.closed||this.scope.getStore()!==context)
+            return Promise.reject(fail('CONNECTION_CLOSED','Transaction scope is not active'));
+          const request=transactionTail.then(()=>{
+            if(!transactionActive||this.closed)
+              throw fail('CONNECTION_CLOSED','Transaction scope has ended');
+            return run();
+          });
+          transactionTail=request.then(()=>{},()=>{});
+          pending.add(request);
+          void request.then(()=>{pending.delete(request);},()=>{pending.delete(request);});
+          return request;
+        };
         const transaction:RelationalTransaction=Object.freeze({
-          query:(sql:string,values:readonly BindValue[]=[])=>{
-            if(!transactionActive||this.closed||this.scope.getStore()!==context)
-              return Promise.reject(fail('CONNECTION_CLOSED','Transaction scope is not active'));
-            const request=transactionTail.then(()=>{
-              if(!transactionActive||this.closed)
-                throw fail('CONNECTION_CLOSED','Transaction scope has ended');
-              return this.execute(sql,values);
-            });
-            // Advance even after ordinary SQL errors, allowing callers to
-            // handle one failure and continue or roll back deterministically.
-            transactionTail=request.then(()=>{},()=>{});
-            pending.add(request);
-            void request.then(()=>{pending.delete(request);},()=>{pending.delete(request);});
-            return request;
-          }
+          query:(sql:string,values:readonly BindValue[]=[])=>schedule(()=>this.execute(sql,values)),
+          queryResults:(sql:string,values:readonly BindValue[]=[])=>schedule(()=>this.executeResults(sql,values))
         });
         let value:T;
         try {
