@@ -119,6 +119,21 @@ recovering after a single injected failure. Raw SQL and credentials are not
 logged by the fault proxy. Verified TLS remains qualified independently via
 real authenticated transport interruption and transaction-outcome tests.
 
+## Deterministic fault-matrix qualification
+
+The native transport tests now exercise incomplete frame headers, truncated
+payloads, missing exact-frame terminators, and aggregate receive queue
+pressure. A queue of individually valid messages is capped at **32 MiB in
+total** while unread, not merely 32 MiB per message. Excess queued bytes
+raise `RESOURCE_LIMIT`, invalidate the stream and release buffered fragments.
+
+Live MySQL 8.4 exercises a paused large-result read that loses its physical
+socket and then verifies a separate connection succeeds, plus 36 concurrent
+pool callbacks with deliberate application failures. The tests prove bounded
+recovery and no callback replay in those conditions; they do not yet prove
+server-process crash recovery, adversarial network partitions or overnight
+fault-soak reliability.
+
 ## Transport fault handling and uncertain commit outcomes (experimental)
 
 Native transport failures are terminal for a physical MySQL session. A TCP
