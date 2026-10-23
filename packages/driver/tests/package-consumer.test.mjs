@@ -26,7 +26,7 @@ if(process.env.NUBLOX_LIVE_MYSQL==='1'){
     assert.equal(result.rows[0].consumer_value,41n);
     const multi=await session.queryResults('CALL nublox_multi_result(?)',[55]);
     assert.equal(multi.length,3);
-    assert.equal(multi[0].rows[0].first_value,55n);
+    assert.equal(multi[0].rows[0].initial_value,55n);
     assert.equal(multi[1].rows[0].second_value,56n);
     assert.deepEqual(multi[2].rows,[]);
 
