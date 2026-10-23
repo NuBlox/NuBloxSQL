@@ -114,3 +114,34 @@ live('pooled multi-result session remains reset, and escaped leases reject furth
   assert.equal(pool.stats.healthFailures,0);
  }finally{await pool.close();}
 });
+
+
+live('multi-result negotiation never enables semicolon-separated multi-statement SQL',async()=>{
+ const db=await connectDatabase(target);
+ try{
+  await assert.rejects(
+    db.queryResults('SELECT 1 AS unsafe; SELECT 2 AS second'),
+    error=>error.code==='DATABASE_ERROR'
+  );
+  assert.equal(db.closed,false);
+  const safe=await db.queryResults('SELECT ? AS still_single',[90]);
+  assert.equal(safe.length,1);
+  assert.equal(safe[0].rows[0].still_single,90n);
+ }finally{await db.close();}
+});
+
+live('pooled prepared statement executeResults is lease-bound and reusable',async()=>{
+ const pool=createDatabasePool(target,{maxConnections:1});
+ let escaped;
+ try{
+  await pool.withConnection(async session=>{
+    escaped=await session.prepare('CALL nublox_multi_result(?)');
+    inspectProcedureResults(await escaped.executeResults([25]),25);
+    inspectProcedureResults(await escaped.executeResults([26]),26);
+    await escaped.close();
+  });
+  await assert.rejects(escaped.executeResults([30]),
+    error=>error.code==='CONNECTION_CLOSED');
+  assert.equal(pool.stats.idle,1);
+ }finally{await pool.close();}
+});
