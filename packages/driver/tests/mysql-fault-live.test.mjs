@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
+import {randomUUID} from 'node:crypto';
 import {connectDatabase} from '../dist/index.js';
 import {ConnectionPool} from '../dist/core/pooling.js';
 
@@ -10,15 +11,12 @@ const target={
  user:process.env.MYSQL_USER||'root',password:process.env.MYSQL_PASSWORD||'test-password',
  database:'nublox_test',security:'isolated-local',timeoutMs:6000
 };
-const waitForClose=async socket=>{
- if(socket.destroyed)return;
- await once(socket,'close');
-};
 const breakTransport=async session=>{
  // Explicit, test-only fault injection at the real authenticated transport.
  // The production Driver exposes no socket access in its public contract.
+ const close=once(session.socket,'close');
  session.socket.destroy();
- await waitForClose(session.socket);
+ await close;
 };
 
 live('unexpected idle server transport loss invalidates session and outstanding prepared handles',async()=>{
@@ -49,10 +47,10 @@ live('active query disconnect rejects immediately and also rejects queued operat
 
 live('a lost COMMIT acknowledgement returns unknown outcome and never retries the write',async()=>{
  const db=await connectDatabase(target);
+ const table='nublox_fault_'+randomUUID().replaceAll('-','').slice(0,20);
  let commitCommands=0;
  try{
-  await db.query('CREATE TABLE IF NOT EXISTS nublox_fault_commit (id INT PRIMARY KEY, value INT) ENGINE=InnoDB');
-  await db.query('DELETE FROM nublox_fault_commit WHERE id = ?',[214]);
+  await db.query(`CREATE TABLE \`${table}\` (id INT PRIMARY KEY, value INT) ENGINE=InnoDB`);
   const wire=db.stream;
   const originalSend=wire.send.bind(wire);
   wire.send=async body=>{
@@ -62,18 +60,23 @@ live('a lost COMMIT acknowledgement returns unknown outcome and never retries th
    if(committing)db.socket.destroy(); // block any trustworthy COMMIT response
   };
   await assert.rejects(db.transaction(async tx=>{
-   await tx.query('INSERT INTO nublox_fault_commit (id,value) VALUES (?,?)',[214,22]);
+   await tx.query(`INSERT INTO \`${table}\` (id,value) VALUES (?,?)`,[214,22]);
   }),e=>e.code==='TRANSACTION_OUTCOME_UNKNOWN'&&/unknown/.test(e.message));
   assert.equal(commitCommands,1,'the Driver must never resend COMMIT');
   assert.equal(db.closed,true,'unknown outcome session cannot be reused');
   const verifier=await connectDatabase(target);
   try{
-   const row=await verifier.query('SELECT COUNT(*) AS n FROM nublox_fault_commit WHERE id = ?',[214]);
+   const row=await verifier.query(`SELECT COUNT(*) AS n FROM \`${table}\` WHERE id = ?`,[214]);
    assert.ok(row.rows[0].n===0n||row.rows[0].n===1n,
      'a lost acknowledgement cannot prove whether the commit happened');
-   await verifier.query('DELETE FROM nublox_fault_commit WHERE id = ?',[214]);
   }finally{await verifier.close();}
- }finally{await db.close();}
+ }finally{
+  await db.close();
+  // Always clean up test-owned DDL with a new healthy session.
+  const cleanup=await connectDatabase(target);
+  try{await cleanup.query(`DROP TABLE IF EXISTS \`${table}\``);}
+  finally{await cleanup.close();}
+ }
 });
 
 live('pooled idle disconnect is discarded and only a fresh connection is borrowed',async()=>{
