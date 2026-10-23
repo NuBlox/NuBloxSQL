@@ -1,5 +1,6 @@
 import type {Socket} from 'node:net';
 import {LIMIT} from './primitives.js';
+import {fail} from '../../../core/errors.js';
 
 export const MAX_FRAME_PAYLOAD=0xffffff;
 const MAX_QUEUED_MESSAGES=1024;
@@ -118,7 +119,7 @@ export class PacketStream {
           if(this.currentFrameLength<MAX_FRAME_PAYLOAD)this.finish();
         }
       }
-    }catch(error){this.abort(error instanceof Error?error:new Error('Invalid MySQL packet'));}
+    }catch{this.abort(fail('PROTOCOL_ERROR','Malformed MySQL Classic packet framing'));}
   }
 
   // Tracks the 24-bit length across multiple TCP data events.
