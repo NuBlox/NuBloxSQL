@@ -118,14 +118,16 @@ live('normal acknowledged transaction still commits and leaves session healthy',
 });
 
 
-live('large native MySQL result interrupted mid-transfer fails closed, next connection recovers',async()=>{
+live('large MySQL result interrupted while receive is paused fails closed, next connection recovers',async()=>{
  const db=await connectDatabase({...target,timeoutMs:12000});
  let pending;
  try{
   // MySQL returns a result larger than one 24-bit physical frame.
+  db.socket.pause();
   pending=db.query('SELECT REPEAT(?,?) AS payload',['x',20_000_000]);
   void pending.catch(()=>{});
-  // Destroy after the result command is sent and the peer starts transmitting.
+  // Stalling inbound reads removes scheduling races on fast CI hosts.
+  // The server still receives the large-result command.
   await new Promise(resolve=>setTimeout(resolve,20));
   await breakTransport(db);
   await assert.rejects(pending,e=>e.code==='CONNECTION_CLOSED');
