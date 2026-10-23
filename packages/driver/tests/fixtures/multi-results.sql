@@ -5,7 +5,7 @@ DROP PROCEDURE IF EXISTS nublox_test.nublox_out_result;
 DELIMITER $$
 CREATE PROCEDURE nublox_test.nublox_multi_result(IN p BIGINT)
 BEGIN
-  SELECT p AS first_value, 'first' AS label;
+  SELECT p AS initial_value, 'first' AS label;
   SELECT p + 1 AS second_value;
 END$$
 CREATE PROCEDURE nublox_test.nublox_many_result()
