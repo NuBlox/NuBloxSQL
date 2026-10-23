@@ -8,13 +8,13 @@ export async function readMetadata(getPacket:()=>Promise<Buffer>,count:number):P
   return (await readMetadataWithStatus(getPacket,count)).columns;
 }
 export async function readMetadataWithStatus(
-  getPacket:()=>Promise<Buffer>,count:number
+  getPacket:()=>Promise<Buffer>,count:number,allowMultiple=false
 ):Promise<{columns:MysqlColumn[];status:number;warnings:number}>{
   if(!Number.isSafeInteger(count)||count<0||count>MAX_COLUMNS)
     throw fail('RESOURCE_LIMIT','Invalid MySQL result column count');
   const columns:MysqlColumn[]=[];
   for(let i=0;i<count;i++)columns.push(field(await getPacket()));
   const end=eofStatus(await getPacket());
-  assertSingleResult(end.status);
+  if(!allowMultiple)assertSingleResult(end.status);
   return {columns,status:end.status,warnings:end.warnings};
 }
