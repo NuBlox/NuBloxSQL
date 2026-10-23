@@ -83,7 +83,7 @@ export class PacketStream {
     if(this.failure)return;
     try {
       let offset=0;
-      while(offset<chunk.length){
+      while(offset<chunk.length||this.frameRemaining===0){
         if(this.frameRemaining===-1){
           const take=Math.min(4-this.headerRead,chunk.length-offset);
           chunk.copy(this.header,this.headerRead,offset,offset+take);
