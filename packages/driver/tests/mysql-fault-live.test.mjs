@@ -35,8 +35,11 @@ live('unexpected idle server transport loss invalidates session and outstanding 
 live('active query disconnect rejects immediately and also rejects queued operations',async()=>{
  const db=await connectDatabase(target);
  try{
-  const slow=db.query('SELECT SLEEP(?) AS delayed',[3]);
+  const slow=db.query('SELECT SLEEP(?) AS sleep_result',[3]);
   const queued=db.query('SELECT ? AS should_not_run',[4]);
+  // Register rejection observers immediately; the fault can surface before assertions.
+  void slow.catch(()=>{});
+  void queued.catch(()=>{});
   await new Promise(resolve=>setTimeout(resolve,100));
   await breakTransport(db);
   await assert.rejects(slow,e=>e.code==='CONNECTION_CLOSED');
@@ -55,7 +58,7 @@ live('a lost COMMIT acknowledgement returns unknown outcome and never retries th
   const originalSend=wire.send.bind(wire);
   wire.send=async body=>{
    const committing=body[0]===0x03&&body.subarray(1).toString('ascii')==='COMMIT';
-   if(committing)commitCommands++;
+   if(committing){commitCommands++;db.socket.pause();}
    await originalSend(body);
    if(committing)db.socket.destroy(); // block any trustworthy COMMIT response
   };
