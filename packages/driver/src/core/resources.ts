@@ -8,6 +8,8 @@ export interface OperationOptions {
 /** Bounded logical MySQL message, not the 24-bit frame size. */
 export const MAX_PACKET_BYTES=32*1024*1024;
 export const MAX_RESULT_ROWS=10_000;
+/** Total result sets from one prepared execution (including final OK). */
+export const MAX_RESULT_SETS=32;
 export const MAX_COLUMNS=4096;
 export const MAX_PARAMETERS=64;
 /** Per-connection cap, independent of the server-wide prepared statement limit. */
