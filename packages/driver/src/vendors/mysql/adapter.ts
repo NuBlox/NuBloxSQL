@@ -15,7 +15,7 @@ import {validate} from './configuration.js';
 import {mysqlCapabilities} from './capabilities.js';
 import {readMetadata,readMetadataWithStatus} from './metadata.js';
 import {DriverError,fail} from '../../core/errors.js';
-import {MAX_RESULT_ROWS,MAX_PARAMETERS,MAX_COLUMNS,MAX_PREPARED_STATEMENTS,operationOptions,OperationGuard,type OperationOptions} from '../../core/resources.js';
+import {MAX_RESULT_ROWS,MAX_RESULT_SETS,MAX_PARAMETERS,MAX_COLUMNS,MAX_PREPARED_STATEMENTS,operationOptions,OperationGuard,type OperationOptions} from '../../core/resources.js';
 import type {BindValue,MysqlTarget,QueryResult,SessionInfo} from '../../core/contracts.js';
 import type {RelationalSession,RelationalTransaction,RelationalCursorRow,CursorOptions} from '../../models/relational.js';
 
@@ -166,14 +166,14 @@ export class MysqlSession implements RelationalSession {
     return {id,parameterCount};
   }
 
-  /** Repeated COM_STMT_EXECUTE uses the existing server-side ID and does not
-   * issue another prepare. Calls are serialized by the owning session. */
-  private async executeNative(id:number,expected:number,params:readonly BindValue[]):Promise<QueryResult>{
+  /** One COM_STMT_EXECUTE can return multiple binary result sets and a final
+   * stored-procedure OK. Always drain each result to preserve packet framing. */
+  private async executeNativeResults(
+    id:number,expected:number,params:readonly BindValue[]
+  ):Promise<QueryResult[]>{
     this.assertOpen();
     if(!Array.isArray(params)||params.length!==expected)
       throw fail('INVALID_INPUT','Prepared statement parameter count mismatch');
-    // Reject invalid parameter encodings before sending any protocol bytes;
-    // a local binding error must not poison a healthy connection.
     let command:Buffer;
     try{command=execute(id,params);}
     catch(error){
@@ -183,31 +183,62 @@ export class MysqlSession implements RelationalSession {
     }
     this.stream.reset();
     await this.send(command);
-    const first=await this.get();
-    if(isOk(first))return ok(first);
-
-    const raw=new Cursor(first),count=raw.len();
-    if(count===null||count>MAX_COLUMNS)throw Error('Invalid result column count');
-    const columns=await this.metadata(count);
-    const keys=columnKeys(columns);
-    const rows:Array<Record<string,unknown>>=[];
-    const rowValues:unknown[][]=[];
-    let bytes=0;
+    const results:QueryResult[]=[];
+    let totalRows=0,totalBytes=0;
+    let next=await this.get();
     for(;;){
-      const packet=await this.get();
-      if(eof(packet)){
-        const last=eofStatus(packet);
-        assertSingleResult(last.status);
-        return {rows,columns,columnKeys:keys,rowValues,affectedRows:0,insertId:0,
-                status:last.status,warnings:last.warnings};
+      if(results.length>=MAX_RESULT_SETS)
+        throw fail('RESOURCE_LIMIT','Stored procedure exceeded the result-set limit');
+      if(isOk(next)){
+        const result=ok(next,true);
+        results.push(result);
+        if((result.status??0)&0x0008)return results;
+        next=await this.get();
+        continue;
       }
-      bytes+=packet.length;
-      if(rows.length>=MAX_RESULT_ROWS||bytes>LIMIT)
-        throw fail('RESOURCE_LIMIT','Result exceeds configured safety limit');
-      const values=binaryValues(packet,columns);
-      rowValues.push(values);
-      rows.push(objectRow(values,keys));
+      const raw=new Cursor(next),count=raw.len();
+      if(count===null||count<1||count>MAX_COLUMNS)
+        throw Error('Invalid prepared result column count');
+      const {columns,status:metadataStatus}=await readMetadataWithStatus(
+        ()=>this.get(),count,true
+      );
+      const keys=columnKeys(columns);
+      const rows:Array<Record<string,unknown>>=[];
+      const rowValues:unknown[][]=[];
+      for(;;){
+        const packet=await this.get();
+        if(eof(packet)){
+          const last=eofStatus(packet);
+          const result:QueryResult={
+            rows,columns,columnKeys:keys,rowValues,affectedRows:0,insertId:0,
+            status:last.status,warnings:last.warnings
+          };
+          if(metadataStatus&0x1000)result.outParameters=true;
+          results.push(result);
+          if(!(last.status&0x0008))return results;
+          next=await this.get();
+          break;
+        }
+        totalBytes+=packet.length;
+        if(++totalRows>MAX_RESULT_ROWS||totalBytes>LIMIT)
+          throw fail('RESOURCE_LIMIT','Combined result sets exceed safety limits');
+        const values=binaryValues(packet,columns);
+        rowValues.push(values);
+        rows.push(objectRow(values,keys));
+      }
     }
+  }
+
+  /** Existing single-result API stays strict, but drains server results first,
+   * so an unsupported multi-result call cannot desynchronise the connection. */
+  private async executeNative(
+    id:number,expected:number,params:readonly BindValue[]
+  ):Promise<QueryResult>{
+    const results=await this.executeNativeResults(id,expected,params);
+    if(results.length!==1)
+      throw fail('UNSUPPORTED_FEATURE',
+        'Statement returned multiple results; use queryResults or executeResults');
+    return results[0];
   }
 
   /** COM_STMT_CLOSE has no response packet; the ID is invalid thereafter. */
@@ -217,18 +248,33 @@ export class MysqlSession implements RelationalSession {
     await this.send(Buffer.concat([Buffer.from([0x19]),u32(id)]));
   }
 
-  /** One-shot query remains a complete prepare, execute and close lifecycle. */
-  private async execute(sql:string,params:readonly BindValue[]):Promise<QueryResult>{
+  private async executeResults(
+    sql:string,params:readonly BindValue[]
+  ):Promise<QueryResult[]>{
     const prepared=await this.prepareNative(sql);
     try{
-      return await this.executeNative(prepared.id,prepared.parameterCount,params);
+      return await this.executeNativeResults(prepared.id,prepared.parameterCount,params);
     }finally{
       if(!this.closed)await this.closeNative(prepared.id);
     }
   }
 
+  private async execute(sql:string,params:readonly BindValue[]):Promise<QueryResult>{
+    const results=await this.executeResults(sql,params);
+    if(results.length!==1)
+      throw fail('UNSUPPORTED_FEATURE',
+        'Statement returned multiple results; use queryResults or executeResults');
+    return results[0];
+  }
+
   async query(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={}):Promise<QueryResult>{
     return this.serial(()=>this.execute(sql,parameters),options);
+  }
+
+  async queryResults(
+    sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={}
+  ):Promise<QueryResult[]>{
+    return this.serial(()=>this.executeResults(sql,parameters),options);
   }
 
   /** Native, forward-only server cursor. Keeps the session's exclusive command
