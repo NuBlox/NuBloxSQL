@@ -192,7 +192,7 @@ export class MysqlSession implements RelationalSession {
       if(isOk(next)){
         const result=ok(next,true);
         results.push(result);
-        if((result.status??0)&0x0008)return results;
+        if(!((result.status??0)&0x0008))return results;
         next=await this.get();
         continue;
       }
