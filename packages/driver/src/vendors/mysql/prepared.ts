@@ -13,7 +13,7 @@ export class MysqlPreparedStatement implements RelationalPreparedStatement {
     readonly parameterCount:number,
     private readonly run:(params:readonly BindValue[],options:OperationOptions)=>Promise<QueryResult>,
     private readonly dispose:()=>Promise<void>,
-    private readonly assertNotNested:()=>void=()=>{},
+    private readonly assertNotNested:()=>void,
     private readonly runResults:(params:readonly BindValue[],options:OperationOptions)=>Promise<QueryResult[]>
   ){}
 
