@@ -81,8 +81,8 @@ test('a wrong continuation sequence fails closed even when first frame is valid'
   const pending=packets.read();
   incoming(socket,MAX_FRAME_PAYLOAD,0,0x31);
   socket.write(header(1,3));
-  await assert.rejects(pending,/sequence mismatch/);
-  await assert.rejects(packets.read(),/sequence mismatch/);
+  await assert.rejects(pending,error=>error.code==='PROTOCOL_ERROR');
+  await assert.rejects(packets.read(),error=>error.code==='PROTOCOL_ERROR');
   packets.destroy();
 });
 test('a partial fragmented message prevents resetting the command sequence',async()=>{

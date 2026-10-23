@@ -37,7 +37,7 @@ test('packet reader supports fragmented frames and detects sequence mismatch',as
  const socket=new PassThrough(),reader=new PacketStream(socket);
  const p=reader.read();const frame=Buffer.from([2,0,0,0,65,66]);socket.write(frame.subarray(0,2));socket.write(frame.subarray(2));
  assert.deepEqual(await p,Buffer.from('AB'));
- reader.reset();socket.write(Buffer.from([1,0,0,3,89]));await assert.rejects(reader.read(),/sequence mismatch/);reader.destroy();
+ reader.reset();socket.write(Buffer.from([1,0,0,3,89]));await assert.rejects(reader.read(),error=>error.code==='PROTOCOL_ERROR');reader.destroy();
 });
 test('inbound logical messages enforce an aggregate byte cap across frames',async()=>{
  const socket=new PassThrough(),reader=new PacketStream(socket);

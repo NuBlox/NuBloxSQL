@@ -93,6 +93,32 @@ try {await pending;}catch(error) {
 
 The CI suite verifies these states using real MySQL 8.4.11 instances, including TLS-connected cancellation and a fresh authenticated reconnection. Advanced pooling policies, server-side kill/cancel, and independent per-query cancellation inside transactions are outside the current release scope.
 
+## Deterministic native protocol fault injection
+
+MySQL Classic frame corruption and network termination are distinct outcomes:
+
+- An unexpected physical-frame sequence or malformed Classic packet framing
+  reports `PROTOCOL_ERROR` and closes the physical connection. Incoming
+  logical-message or queued-message safety limits continue to report
+  `RESOURCE_LIMIT`. Both are terminal for the affected socket: queued work
+  is rejected, prepared handles are invalidated and the pool discards it.
+- A transport that ends halfway through a header, payload, prepared response,
+  or large bound-parameter upload reports `CONNECTION_CLOSED`. There is no
+  assumption that a non-idempotent command failed to execute, and **no
+  automatic SQL replay**. The existing uncertain-commit rules below still
+  take precedence for a lost `COMMIT` acknowledgement.
+- `RESOURCE_LIMIT`, `CANCELLED` and `TIMEOUT` retain their specific codes;
+  the connection can still be discarded independently of error reporting.
+
+`packages/driver/tests/fixtures/mysql-fault-proxy.mjs` is a **test-only**
+loopback TCP proxy that damages a selected authenticated MySQL reply or cuts
+a large outbound command. It is not a production proxy or public API.
+The pinned MySQL 8.4.11 tests verify corrupted frame sequences, partial
+headers and bodies, interrupted 17 MB uploads and 24 pooled borrowers
+recovering after a single injected failure. Raw SQL and credentials are not
+logged by the fault proxy. Verified TLS remains qualified independently via
+real authenticated transport interruption and transaction-outcome tests.
+
 ## Transport fault handling and uncertain commit outcomes (experimental)
 
 Native transport failures are terminal for a physical MySQL session. A TCP
