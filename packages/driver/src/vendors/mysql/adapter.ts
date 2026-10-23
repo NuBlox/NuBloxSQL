@@ -126,9 +126,11 @@ export class MysqlSession implements RelationalSession {
               const mapped=ambiguous
                 ?fail('TRANSACTION_OUTCOME_UNKNOWN',
                   'COMMIT acknowledgement was not confirmed; transaction outcome is unknown')
-                :this.closed
-                  ?fail('CONNECTION_CLOSED','Native MySQL connection terminated during operation')
-                  :error;
+                :error instanceof DriverError
+                  ?error // preserve RESOURCE_LIMIT, CANCELLED, TIMEOUT, server codes
+                  :this.closed
+                    ?fail('CONNECTION_CLOSED','Native MySQL connection terminated during operation')
+                    :error;
               if(ambiguous||!(mapped instanceof DriverError&&
                 (mapped.code==='DATABASE_ERROR'||mapped.code==='INVALID_INPUT'||
                  mapped.code==='CANCELLED'||mapped.code==='TIMEOUT'||
