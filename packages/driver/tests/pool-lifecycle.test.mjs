@@ -99,6 +99,55 @@ test('bounded FIFO pool reports waiting, timeout and active state',async()=>{
   assert.equal(pool.stats.size,0);
 });
 
+test('acquisition deadline includes in-flight connection establishment',{timeout:3000},async()=>{
+  let accept,attempts=0,entered=false;
+  const dial=new Promise(resolve=>{accept=resolve;});
+  const pool=new ConnectionPool(()=>{
+    attempts++;
+    return attempts===1?dial:Promise.resolve(fake(attempts));
+  },{maxConnections:1,acquireTimeoutMs:120});
+  try{
+    const request=pool.withConnection(async()=>{entered=true;});
+    await sleep(10);
+    assert.equal(pool.stats.connecting,1);
+    await assert.rejects(request,e=>e.code==='TIMEOUT');
+    assert.equal(entered,false);
+    assert.equal(pool.stats.acquireTimeouts,1);
+    assert.equal(pool.stats.size,1,'unresolved physical dial still reserves capacity');
+    assert.equal(pool.stats.connecting,1);
+    assert.equal(pool.stats.pending,0);
+    const late=fake(1);
+    accept(late);
+    await sleep(15);
+    assert.equal(late.closed,true,'late session must never be leased');
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.stats.connecting,0);
+    assert.equal(pool.stats.discarded,1);
+    const id=await pool.withConnection(async session=>(await session.query('id')).rows[0].id);
+    assert.equal(id,2);
+    assert.equal(pool.stats.created,1);
+  }finally{await pool.close();}
+});
+
+test('a late failed dial after deadline settles only once',{timeout:3000},async()=>{
+  let rejectDial,attempts=0;
+  const dial=new Promise((_,reject)=>{rejectDial=reject;});
+  const pool=new ConnectionPool(()=>{
+    attempts++;
+    return attempts===1?dial:Promise.resolve(fake(attempts));
+  },{maxConnections:1,acquireTimeoutMs:110});
+  try{
+    await assert.rejects(pool.withConnection(async()=> 'never'),e=>e.code==='TIMEOUT');
+    assert.equal(pool.stats.size,1);
+    rejectDial(Error('delayed connection failure'));
+    await sleep(15);
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.stats.connecting,0);
+    assert.equal(pool.stats.acquireTimeouts,1);
+    assert.equal(await pool.withConnection(async s=>(await s.query('id')).rows[0].id),2);
+  }finally{await pool.close();}
+});
+
 test('closing during an in-progress dial disposes late session without leaked slot',async()=>{
   let accept;
   const dial=new Promise(resolve=>{accept=resolve;});
@@ -109,6 +158,8 @@ test('closing during an in-progress dial disposes late session without leaked sl
   assert.equal(pool.stats.connecting,1);
   await pool.close();
   assert.equal(pool.closed,true);
+  await assert.rejects(request,e=>e.code==='CONNECTION_CLOSED');
+  assert.equal(pool.stats.connecting,1,'in-flight dial remains accounted for');
   const late=fake(99);
   accept(late);
   await assert.rejects(request,e=>e.code==='CONNECTION_CLOSED');

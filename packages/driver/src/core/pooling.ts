@@ -7,7 +7,7 @@ import type {BindValue,QueryResult,SessionInfo} from './contracts.js';
 export interface PoolOptions {
   /** Maximum open or connecting sessions, from 1 to 32. */
   readonly maxConnections:number;
-  /** Wait for a free slot, from 100 to 120000 milliseconds. */
+  /** Deadline for queuing and establishing a connection, 100–120000 ms. */
   readonly acquireTimeoutMs?:number;
   /** Close unused native sessions after 100–3600000 ms (default: 60000). */
   readonly idleTimeoutMs?:number;
@@ -54,7 +54,7 @@ export interface PoolSession extends RelationalSession {
   /** Vendor-owned reset of transactions, variables and prepared statements. */
   resetForPool():Promise<void>;
 }
-type Waiter<S>={resolve:(session:S)=>void;reject:(reason:unknown)=>void;timer:NodeJS.Timeout};
+type Waiter<S>={resolve:(session:S)=>void;reject:(reason:unknown)=>void;timer:NodeJS.Timeout;state:'queued'|'connecting'|'settled'};
 type IdleEntry<S>={session:S;expiresAt:number;timer:NodeJS.Timeout};
 
 /**
@@ -66,6 +66,8 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
   private readonly leaseContext=new AsyncLocalStorage<{active:boolean}>();
   private readonly sessions=new Set<S>();
   private readonly pending:Waiter<S>[]=[];
+  /** In-flight dials retain a slot until their eventual outcome is cleaned up. */
+  private readonly dialing=new Set<Waiter<S>>();
   private sizeCount=0;
   private connectingCount=0;
   private stopped=false;
@@ -143,30 +145,48 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
       const idle=this.takeIdle();
       if(idle){
         const waiter=this.pending.shift()!;
+        waiter.state='settled';
         clearTimeout(waiter.timer);
         waiter.resolve(idle);
         continue;
       }
       if(this.sizeCount>=this.max)break;
       const waiter=this.pending.shift()!;
-      clearTimeout(waiter.timer);
+      waiter.state='connecting';
+      this.dialing.add(waiter);
       this.sizeCount++;
       this.connectingCount++;
-      void Promise.resolve().then(()=>this.connect()).then(session=>{
+      void Promise.resolve().then(()=>{
+        if(this.stopped||waiter.state==='settled')
+          throw fail('CONNECTION_CLOSED','Pool acquisition is no longer active');
+        return this.connect();
+      }).then(session=>{
+        this.dialing.delete(waiter);
         this.connectingCount--;
-        if(this.stopped){
-          this.sizeCount--;
-          void session.close();
-          waiter.reject(fail('CONNECTION_CLOSED','Pool is closed'));
+        if(this.stopped||waiter.state==='settled'){
+          // An abandoned dial may still succeed. Keep its slot reserved until
+          // the late native connection has been closed, so max remains strict.
+          void Promise.resolve().then(()=>session.close()).catch(()=>{}).finally(()=>{
+            this.sizeCount--;
+            this.discarded++;
+            this.dispatch();
+          });
           return;
         }
+        waiter.state='settled';
+        clearTimeout(waiter.timer);
         this.sessions.add(session);
         this.created++;
         waiter.resolve(session);
       },error=>{
+        this.dialing.delete(waiter);
         this.connectingCount--;
         this.sizeCount--;
-        waiter.reject(error);
+        if(waiter.state!=='settled'){
+          waiter.state='settled';
+          clearTimeout(waiter.timer);
+          waiter.reject(error);
+        }
         this.dispatch();
       });
     }
@@ -177,13 +197,20 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
       return Promise.reject(fail('RESOURCE_LIMIT','Too many pending pool acquisitions'));
     return new Promise<S>((resolve,reject)=>{
       const waiter:Waiter<S>={
-        resolve,reject,
+        resolve,reject,state:'queued',
         timer:setTimeout(()=>{
-          const index=this.pending.indexOf(waiter);
-          if(index<0)return;
-          this.pending.splice(index,1);
+          if(waiter.state==='settled')return;
+          if(waiter.state==='queued'){
+            const index=this.pending.indexOf(waiter);
+            if(index<0)return;
+            this.pending.splice(index,1);
+          }
+          // Connecting dials cannot be safely forgotten: their reserved slot
+          // is released after completion and disposal of any late socket.
+          waiter.state='settled';
           this.acquireTimeouts++;
           reject(fail('TIMEOUT','Pool acquisition timed out'));
+          this.dispatch();
         },this.acquireMs)
       };
       this.pending.push(waiter);
@@ -300,8 +327,18 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
     if(this.stopped)return;
     this.stopped=true;
     for(const waiter of this.pending.splice(0)){
+      waiter.state='settled';
       clearTimeout(waiter.timer);
       waiter.reject(fail('CONNECTION_CLOSED','Pool is closed'));
+    }
+    // Callers must not hang on a slow dial after shutdown. Physical dial
+    // cleanup remains owned by its completion handler.
+    for(const waiter of this.dialing){
+      if(waiter.state!=='settled'){
+        waiter.state='settled';
+        clearTimeout(waiter.timer);
+        waiter.reject(fail('CONNECTION_CLOSED','Pool is closed'));
+      }
     }
     for(const entry of this.idle)clearTimeout(entry.timer);
     this.idle.length=0;
