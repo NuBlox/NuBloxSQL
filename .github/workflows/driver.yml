@@ -31,6 +31,13 @@ jobs:
           node-version: '22'
       - name: Install build dependencies
         run: npm install --no-audit --no-fund
+      - name: Install pinned MySQL stored-procedure conformance fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          container="$(docker ps --filter 'ancestor=mysql:8.4.11' -q | head -n1)"
+          test -n "$container"
+          docker exec -i -e MYSQL_PWD=test-password "$container" mysql -uroot nublox_test < packages/driver/tests/fixtures/multi-results.sql
       - name: Build TypeScript and test real MySQL 8.4
         run: npm test
         env:
@@ -73,6 +80,11 @@ jobs:
         run: bash packages/driver/tests/fixtures/start-mysql-tls.sh
       - name: Install build dependencies
         run: npm install --no-audit --no-fund
+      - name: Install pinned TLS MySQL stored-procedure fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i -e MYSQL_PWD=test-password nubloxsql-mysql-tls mysql -uroot nublox_test < packages/driver/tests/fixtures/multi-results.sql
       - name: Run live TLS identity, authentication and prepared-query tests
         run: npm test
         env:
