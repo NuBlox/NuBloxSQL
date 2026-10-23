@@ -31,6 +31,8 @@ export class MysqlSession implements RelationalSession {
   private activeGuard:OperationGuard|null=null;
   private readonly statements=new Set<MysqlPreparedStatement>();
   private preparing=0;
+  /** Set before writing COMMIT, cleared only after receiving its valid OK. */
+  private commitAwaitingAck=false;
   /** Distinguishes a nested call in an exclusive callback from independent
    * concurrent callers, which must continue to queue normally. */
   private readonly scope=new AsyncLocalStorage<{active:boolean;kind:'transaction'|'cursor'}>();
@@ -45,6 +47,9 @@ export class MysqlSession implements RelationalSession {
       engine:'mysql',model:'relational',version:hello.version,
       transport:target.security,authPlugin:hello.plugin,capabilities:mysqlCapabilities
     });
+    // Remote closes can happen between operations when no read is pending.
+    // Immediately revoke prepared handles and remove the stale pool session.
+    this.stream.onFatal(()=>this.destroy());
   }
 
   private destroy():void {
@@ -114,12 +119,22 @@ export class MysqlSession implements RelationalSession {
           }),guard.interrupted]).then(
             value=>resolve(value),
             error=>{
-              if(!(error instanceof DriverError&&
-                (error.code==='DATABASE_ERROR'||error.code==='INVALID_INPUT'||
-                 error.code==='CANCELLED'||error.code==='TIMEOUT'||
-                 error.code==='CONNECTION_CLOSED')))
+              // A COMMIT may already be durable even if its acknowledgement
+              // never arrives. Never transform this into a definite rollback
+              // or retry the command on another socket.
+              const ambiguous=this.commitAwaitingAck;
+              const mapped=ambiguous
+                ?fail('TRANSACTION_OUTCOME_UNKNOWN',
+                  'COMMIT acknowledgement was not confirmed; transaction outcome is unknown')
+                :this.closed
+                  ?fail('CONNECTION_CLOSED','Native MySQL connection terminated during operation')
+                  :error;
+              if(ambiguous||!(mapped instanceof DriverError&&
+                (mapped.code==='DATABASE_ERROR'||mapped.code==='INVALID_INPUT'||
+                 mapped.code==='CANCELLED'||mapped.code==='TIMEOUT'||
+                 mapped.code==='CONNECTION_CLOSED')))
                 this.destroy();
-              reject(error);
+              reject(mapped);
             }
           ).finally(()=>{
             guard.dispose();
@@ -413,10 +428,13 @@ export class MysqlSession implements RelationalSession {
   private async control(command:'START TRANSACTION'|'COMMIT'|'ROLLBACK'):Promise<QueryResult>{
     this.assertOpen();
     this.stream.reset();
+    if(command==='COMMIT')this.commitAwaitingAck=true;
     await this.send(Buffer.concat([Buffer.from([3]),Buffer.from(command,'ascii')]));
     const response=await this.get();
     if(!isOk(response))throw Error('Expected transaction OK');
-    return ok(response);
+    const result=ok(response);
+    if(command==='COMMIT')this.commitAwaitingAck=false;
+    return result;
   }
 
   async transaction<T>(work:(transaction:RelationalTransaction)=>Promise<T>,options:OperationOptions={}):Promise<T>{
@@ -470,9 +488,17 @@ export class MysqlSession implements RelationalSession {
           finished=true;
           return {success:false,error};
         }
-        await this.control('COMMIT');
-        finished=true;
-        return {success:true,value};
+        try {
+          await this.control('COMMIT');
+          finished=true;
+          return {success:true,value};
+        }catch{
+          // Once COMMIT was issued, even an active server-side disconnect
+          // cannot establish whether the transaction became durable.
+          this.destroy();
+          throw fail('TRANSACTION_OUTCOME_UNKNOWN',
+            'COMMIT acknowledgement was not confirmed; transaction outcome is unknown');
+        }
       }finally{
         if(!finished&&!this.closed){
           try {await this.control('ROLLBACK');}catch{this.destroy();}
