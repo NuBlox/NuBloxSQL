@@ -18,5 +18,7 @@ export interface QueryResult {
   insertId:number;
   status?:number;
   warnings?:number;
+  /** True if this result set is the stored-procedure OUT parameter result. */
+  outParameters?:boolean;
 }
 export interface SessionInfo {engine:'mysql';model:'relational';version:string;transport:MysqlSecurity;authPlugin:string;capabilities:readonly string[];}
