@@ -10,8 +10,8 @@ const target={
 };
 function inspectProcedureResults(results,base){
   assert.equal(results.length,3,'two SELECT result sets plus final CALL status');
-  assert.deepEqual(results[0].columns.map(c=>c.name),['first_value','label']);
-  assert.equal(results[0].rows[0].first_value,BigInt(base));
+  assert.deepEqual(results[0].columns.map(c=>c.name),['initial_value','label']);
+  assert.equal(results[0].rows[0].initial_value,BigInt(base));
   assert.equal(results[0].rows[0].label,'first');
   assert.deepEqual(results[1].columns.map(c=>c.name),['second_value']);
   assert.equal(results[1].rows[0].second_value,BigInt(base+1));
