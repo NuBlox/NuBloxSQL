@@ -72,7 +72,7 @@ export class PacketStream {
     else {
       this.queue.push(body);
       this.queuedBytes+=body.length;
-      if(this.queue.length>MAX_QUEUED_MESSAGES)
+      if(this.queue.length>MAX_QUEUED_MESSAGES||this.queuedBytes>LIMIT)
         throw fail('RESOURCE_LIMIT','Queued MySQL messages exceeded limit');
     }
   }

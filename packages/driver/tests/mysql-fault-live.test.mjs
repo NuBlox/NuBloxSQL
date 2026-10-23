@@ -116,3 +116,47 @@ live('normal acknowledged transaction still commits and leaves session healthy',
   assert.equal((await db.query('SELECT ? AS next',[46])).rows[0].next,46n);
  }finally{await db.close();}
 });
+
+
+live('large MySQL result interrupted while receive is paused fails closed, next connection recovers',async()=>{
+ const db=await connectDatabase({...target,timeoutMs:12000});
+ let pending;
+ try{
+  // MySQL returns a result larger than one 24-bit physical frame.
+  db.socket.pause();
+  pending=db.query('SELECT REPEAT(?,?) AS payload',['x',20_000_000]);
+  void pending.catch(()=>{});
+  // Stalling inbound reads removes scheduling races on fast CI hosts.
+  // The server still receives the large-result command.
+  await new Promise(resolve=>setTimeout(resolve,20));
+  await breakTransport(db);
+  await assert.rejects(pending,e=>e.code==='CONNECTION_CLOSED');
+  assert.equal(db.closed,true);
+  const replacement=await connectDatabase(target);
+  try{
+   assert.equal((await replacement.query('SELECT ? AS recovered',[123])).rows[0].recovered,123n);
+  }finally{await replacement.close();}
+ }finally{await db.close();}
+});
+
+live('many pooled requests survive deliberate callback errors and retain bounded capacity',async()=>{
+ const {createDatabasePool}=await import('../dist/index.js');
+ const pool=createDatabasePool(target,{maxConnections:3,acquireTimeoutMs:6000});
+ let callbacks=0;
+ try{
+  const attempts=await Promise.all(Array.from({length:36},(_,i)=>
+   pool.withConnection(async db=>{
+     callbacks++;
+     assert.equal((await db.query('SELECT ? AS value',[i])).rows[0].value,BigInt(i));
+     if(i%6===0)throw Error('expected-application-failure');
+   }).then(()=> 'ok',error=>error.message==='expected-application-failure'?'expected':'unexpected')
+  ));
+  assert.equal(attempts.filter(x=>x==='expected').length,6);
+  assert.equal(attempts.filter(x=>x==='unexpected').length,0);
+  assert.equal(callbacks,36);
+  assert.equal(pool.stats.pending,0);
+  assert.ok(pool.stats.size<=3);
+  assert.ok(pool.stats.discarded>=6);
+ }finally{await pool.close();}
+ assert.equal(pool.stats.size,0);
+});
