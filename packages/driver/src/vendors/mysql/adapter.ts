@@ -22,6 +22,7 @@ import type {RelationalSession,RelationalTransaction,RelationalCursorRow,CursorO
 type ValidMysqlTarget=MysqlTarget&{timeoutMs:number};
 type TransactionOutcome<T>={success:true;value:T}|{success:false;error:unknown};
 type QueuedJob={start:()=>void;reject:(error:DriverError)=>void};
+const MAX_PENDING_COMMANDS=1024;
 
 export class MysqlSession implements RelationalSession {
   readonly info:Readonly<SessionInfo>;
@@ -88,6 +89,8 @@ export class MysqlSession implements RelationalSession {
     const {signal,timeoutMs}=operationOptions(options,this.target.timeoutMs);
     if(this.closed)return Promise.reject(fail('CONNECTION_CLOSED','Session is closed'));
     if(signal?.aborted)return Promise.reject(fail('CANCELLED','Database operation cancelled'));
+    if(this.queue.length>=MAX_PENDING_COMMANDS)
+      return Promise.reject(fail('RESOURCE_LIMIT','Too many pending MySQL commands'));
     return new Promise<T>((resolve,reject)=>{
       let state:'queued'|'active'|'done'='queued';
       const cancelQueued=():void=>{
