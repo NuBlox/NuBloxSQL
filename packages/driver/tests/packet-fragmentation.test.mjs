@@ -46,6 +46,24 @@ test('zero-length logical MySQL messages still have a 4-byte frame header',async
   assert.deepEqual(socket.writes,[header(0,0)]);
   packets.destroy();
 });
+test('inbound empty message completes when the header ends exactly at a chunk boundary',{timeout:2000},async()=>{
+  const socket=new PassThrough(),packets=new PacketStream(socket);
+  const pending=packets.read();
+  socket.write(header(0,0));
+  assert.deepEqual(await pending,Buffer.alloc(0));
+  packets.reset();
+  packets.destroy();
+});
+test('inbound empty message completes when the header arrives in separate chunks',{timeout:2000},async()=>{
+  const socket=new PassThrough(),packets=new PacketStream(socket);
+  const pending=packets.read();
+  const h=header(0,0);
+  socket.write(h.subarray(0,2));
+  socket.write(h.subarray(2));
+  assert.deepEqual(await pending,Buffer.alloc(0));
+  packets.reset();
+  packets.destroy();
+});
 test('inbound reassembly supports 24-bit maximum frame plus follow-on frame',async()=>{
   const socket=new PassThrough(),packets=new PacketStream(socket);
   const pending=packets.read();
