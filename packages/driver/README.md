@@ -93,6 +93,42 @@ try {await pending;}catch(error) {
 
 The CI suite verifies these states using real MySQL 8.4.11 instances, including TLS-connected cancellation and a fresh authenticated reconnection. Advanced pooling policies, server-side kill/cancel, and independent per-query cancellation inside transactions are outside the current release scope.
 
+## Transport fault handling and uncertain commit outcomes (experimental)
+
+Native transport failures are terminal for a physical MySQL session. A TCP
+`error`, half-close (`end`) or full `close`, including while **idle**,
+immediately closes the session, invalidates its native prepared statement
+handles and rejects queued commands. Pool borrowing never reuses a stale
+physical connection. An active read interrupted by a lost transport rejects
+with `CONNECTION_CLOSED`, not an arbitrary unhandled low-level socket error.
+
+An interrupted transaction has two materially different outcomes:
+
+- A regular application error while a valid transaction is active triggers
+  an explicit `ROLLBACK` and leaves the session usable if the server
+  acknowledges it. Loss of the connection **before a COMMIT request** cannot
+  establish that any prior **non-transactional** statement was undone.
+- After the driver begins sending `COMMIT`, a lost or invalid acknowledgement
+  produces `TRANSACTION_OUTCOME_UNKNOWN`, destroys the socket and forbids
+  automatic replay. The database might have made the transaction durable,
+  rolled it back, or be recovering. The application must reconcile using
+  business identifiers/idempotency keys and authoritative database state
+  before making any retry decision. This error is intentionally conservative
+  even if the connection was explicitly closed while the commit was pending.
+
+The active-operation cancellation and deadline machinery still uses
+`CANCELLED` and `TIMEOUT` before the COMMIT phase. Once COMMIT starts,
+the specific outcome-unknown code takes precedence, including when the socket
+is closed or a deadline fires before acknowledgement. No transparent retry
+of SQL, committed writes, procedures, or transaction callbacks is performed.
+
+Live MySQL 8.4.11 fault tests destroy authenticated TCP sockets while idle
+and during reads, drop the transport immediately after a real `COMMIT` frame,
+and verify pool replacement and prepared-handle invalidation. Verified TLS
+tests exercise the same state transitions. Fault injection is confined to
+tests; raw sockets are not part of the public API. This is not a substitute
+for full process-crash, failover, partition, or durability certification.
+
 ## Native prepared stored-procedure result sets (experimental)
 
 MySQL 8.4 stored procedures may return multiple result sets plus a final status,
