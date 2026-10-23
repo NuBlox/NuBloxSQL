@@ -68,7 +68,7 @@ result.rows[0]['id#2'];           // 34n
 
 Live MySQL 8.4.11 tests cover exact decimals, signed and unsigned extremes, TEXT/BLOB, JSON, BIT, Unicode text, leap-day dates, negative TIME(6), DATETIME(6) and TIMESTAMP(6), plus text/binary/decimal results over verified TLS.
 
-Supported experimental authentication plugins: `caching_sha2_password` (default MySQL 8.4) and `mysql_native_password` where the server enables it. Unencrypted RSA password exchange, compression, multiple results, cursor streaming, cloud IAM, cancellation **without closing the connection**, automated reconnect and non-SQL operations **are not supported**.
+Supported experimental authentication plugins: `caching_sha2_password` (default MySQL 8.4) and `mysql_native_password` where the server enables it. Unencrypted RSA password exchange, compression, semicolon-delimited multi-statements, cloud IAM, cancellation **without closing the connection**, automated reconnect and non-SQL operations **are not supported**.
 
 ## Cancellation, deadlines and resource ownership
 
@@ -92,6 +92,51 @@ try {await pending;}catch(error) {
 - **Scope:** AbortSignal stops database I/O; it cannot forcibly terminate unrelated user JavaScript already running inside a transaction callback.
 
 The CI suite verifies these states using real MySQL 8.4.11 instances, including TLS-connected cancellation and a fresh authenticated reconnection. Advanced pooling policies, server-side kill/cancel, and independent per-query cancellation inside transactions are outside the current release scope.
+
+## Native prepared stored-procedure result sets (experimental)
+
+MySQL 8.4 stored procedures may return multiple result sets plus a final status,
+and prepared `CALL` can additionally return an OUT-parameter set. NuBloxSQL
+negotiates `CLIENT_MULTI_RESULTS` and `CLIENT_PS_MULTI_RESULTS` but **never
+enables CLIENT_MULTI_STATEMENTS**. This means semicolon-separated SQL
+statements are not implicitly enabled.
+
+```js
+const sets=await db.queryResults('CALL nublox_multi_result(?)',[41]);
+for(const result of sets){
+  console.log(result.rows,result.columns,result.status,result.outParameters);
+}
+
+const statement=await db.prepare('CALL nublox_multi_result(?)');
+try{
+  const again=await statement.executeResults([42]);
+}finally{await statement.close();}
+```
+
+- `queryResults(sql, params?, options?)` returns an ordered `QueryResult[]`,
+  including the **final status-only OK result** from a stored procedure.
+  A normal SELECT or DML produces an array with one result.
+- `prepared.executeResults(params?, options?)` preserves reusable server-side
+  prepared-statement ownership. `tx.queryResults(...)` serializes in order
+  with `tx.query(...)`; pooled leases provide `queryResults(...)` and
+  prepared `executeResults(...)` while active.
+- Each result preserves its original ordered `columns`, collision-free
+  `columnKeys`, `rows`, `rowValues`, `status` and `warnings`.
+  `outParameters===true` identifies a set MySQL marks with
+  `SERVER_PS_OUT_PARAMS`.
+- The existing `query()` and `prepared.execute()` intentionally remain
+  **single-result** APIs. When used for a multi-result CALL, they **drain every
+  result before rejecting with `UNSUPPORTED_FEATURE`**, preserving protocol
+  synchronisation. Use the explicit plural methods for procedures.
+- **Hard limits** apply across the complete execution: at most **32 result
+  sets** (including status), **10,000 combined rows**, and **32 MiB combined
+  row packet bytes**. An over-limit or malformed stream destroys the
+  connection rather than returning incomplete results or reusing an
+  unsynchronised socket. These APIs materialize bounded results in memory;
+  server-cursor streaming remains a separate read-only API.
+- Stored-procedure tests use the fixed SQL fixtures in
+  `tests/fixtures/multi-results.sql`. The MySQL 8.4.11 CI jobs install them
+  for normal and verified-TLS protocol qualification.
 
 ## Bounded native read-only cursors (experimental)
 
@@ -137,7 +182,7 @@ try{
 - `prepare(sql, options?)` uses MySQL's native `COM_STMT_PREPARE` exactly once, exposing `parameterCount` and returning a connection-owned `RelationalPreparedStatement`. Every `execute(parameters?, options?)` sends a native `COM_STMT_EXECUTE` with fresh bound values and supports the same cancellation/deadline rules as `query()`.
 - `close()` sends native `COM_STMT_CLOSE` and is idempotent. A closed statement cannot execute. Closing a connection or resetting it for pooled reuse invalidates **all** outstanding statement handles. Statement handles cannot be transported to another connection.
 - `query()` remains the one-shot convenience API and prepares/executes/closes on every call. Use `prepare()` when you intend to execute the same statement repeatedly.
-- Each connection permits at most **128 simultaneously open reusable statements**. Explicitly close them to reclaim server resources; there is no implicit LRU cache, cross-connection cache or stored-procedure multi-result support.
+- Each connection permits at most **128 simultaneously open reusable statements**. Explicitly close them to reclaim server resources; there is no implicit LRU cache, cross-connection cache or cross-connection prepared statement reuse.
 - In `pool.withConnection()`, a borrowed statement must be prepared, used and (where practical) closed **inside its callback**. Escaped statement wrappers are revoked when the lease ends. The MySQL pool reset also frees server-side prepared state before lending the connection again.
 - Invalid parameter counts and unsupported bound values are rejected without sending SQL. Server-side query errors retain their typed native error metadata. During an interrupted execution the connection and all its statements are invalidated; there is no automatic replay.
 
