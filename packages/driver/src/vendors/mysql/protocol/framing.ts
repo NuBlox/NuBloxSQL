@@ -1,6 +1,6 @@
 import type {Socket} from 'node:net';
 import {LIMIT} from './primitives.js';
-import {fail} from '../../../core/errors.js';
+import {DriverError,fail} from '../../../core/errors.js';
 
 export const MAX_FRAME_PAYLOAD=0xffffff;
 const MAX_QUEUED_MESSAGES=1024;
@@ -73,7 +73,7 @@ export class PacketStream {
       this.queue.push(body);
       this.queuedBytes+=body.length;
       if(this.queue.length>MAX_QUEUED_MESSAGES)
-        throw new Error('Too many queued MySQL packets');
+        throw fail('RESOURCE_LIMIT','Queued MySQL messages exceeded limit');
     }
   }
 
@@ -106,7 +106,7 @@ export class PacketStream {
         const take=Math.min(this.frameRemaining,chunk.length-offset);
         if(take){
           if(this.queuedBytes+this.logicalBytes+take>LIMIT)
-            throw Error('MySQL incoming logical packet exceeded limit');
+            throw fail('RESOURCE_LIMIT','MySQL incoming logical packet exceeded limit');
           this.fragments.push(chunk.subarray(offset,offset+take));
           this.logicalBytes+=take;
           this.frameRemaining-=take;
@@ -119,7 +119,10 @@ export class PacketStream {
           if(this.currentFrameLength<MAX_FRAME_PAYLOAD)this.finish();
         }
       }
-    }catch{this.abort(fail('PROTOCOL_ERROR','Malformed MySQL Classic packet framing'));}
+    }catch(error){
+      this.abort(error instanceof DriverError?error:
+        fail('PROTOCOL_ERROR','Malformed MySQL Classic packet framing'));
+    }
   }
 
   // Tracks the 24-bit length across multiple TCP data events.
