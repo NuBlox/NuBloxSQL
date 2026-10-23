@@ -327,3 +327,38 @@ live('verified TLS multi-result over-limit fails closed',async()=>{
   assert.equal(db.closed,true);
  }finally{await db.close();}
 });
+
+
+live('verified TLS idle transport loss immediately revokes prepared statement handles',async()=>{
+ const {once}=await import('node:events');
+ const db=await connectDatabase(trustedTarget());
+ const statement=await db.prepare('SELECT ? AS secure_value');
+ try{
+  const closed=once(db.socket,'close');
+  db.socket.destroy();
+  await closed;
+  assert.equal(db.closed,true);
+  assert.equal(statement.closed,true);
+  await assert.rejects(db.query('SELECT 1'),e=>e.code==='CONNECTION_CLOSED');
+ }finally{await db.close();}
+});
+
+live('verified TLS loss after COMMIT send reports an unknown transaction outcome without retry',async()=>{
+ const db=await connectDatabase(trustedTarget());
+ const stream=db.stream;
+ const send=stream.send.bind(stream);
+ let commits=0;
+ stream.send=async bytes=>{
+  const isCommit=bytes[0]===3&&bytes.subarray(1).toString('ascii')==='COMMIT';
+  if(isCommit){commits++;db.socket.pause();}
+  await send(bytes);
+  if(isCommit)db.socket.destroy();
+ };
+ try{
+  await assert.rejects(db.transaction(async tx=>{
+   assert.equal((await tx.query('SELECT ? AS before_commit',[61])).rows[0].before_commit,61n);
+  }),e=>e.code==='TRANSACTION_OUTCOME_UNKNOWN');
+  assert.equal(commits,1);
+  assert.equal(db.closed,true);
+ }finally{await db.close();}
+});
