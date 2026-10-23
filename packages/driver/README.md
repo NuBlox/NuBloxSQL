@@ -97,9 +97,10 @@ The CI suite verifies these states using real MySQL 8.4.11 instances, including 
 
 MySQL Classic frame corruption and network termination are distinct outcomes:
 
-- A malformed 24-bit packet header, unexpected sequence number or over-limit
-  incoming logical message reports `PROTOCOL_ERROR` and closes the physical
-  connection. This is a **terminal** protocol integrity failure: queued work
+- An unexpected physical-frame sequence or malformed Classic packet framing
+  reports `PROTOCOL_ERROR` and closes the physical connection. Incoming
+  logical-message or queued-message safety limits continue to report
+  `RESOURCE_LIMIT`. Both are terminal for the affected socket: queued work
   is rejected, prepared handles are invalidated and the pool discards it.
 - A transport that ends halfway through a header, payload, prepared response,
   or large bound-parameter upload reports `CONNECTION_CLOSED`. There is no
