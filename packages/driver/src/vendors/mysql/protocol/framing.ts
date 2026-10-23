@@ -16,6 +16,7 @@ export class PacketStream {
   private queuedBytes=0;
   private sequence=0;
   private failure:Error|null=null;
+  private fatalListener:((error:Error)=>void)|null=null;
 
   private readonly header=Buffer.alloc(4);
   private headerRead=0;
@@ -29,6 +30,13 @@ export class PacketStream {
 
   constructor(socket:Socket){this.attach(socket);}
 
+  /** The authenticated owner must be invalidated immediately on loss of its
+   * transport, including idle disconnects with no pending read waiter. */
+  onFatal(listener:(error:Error)=>void):void {
+    this.fatalListener=listener;
+    if(this.failure)listener(this.failure);
+  }
+
   /** Detach during STARTTLS, then attach the authenticated TLS socket. */
   attach(socket:Socket):void {
     this.detach();
@@ -36,12 +44,14 @@ export class PacketStream {
     this.socket=socket;
     socket.on('data',this.onData);
     socket.on('error',this.onError);
+    socket.on('end',this.onEnd);
     socket.on('close',this.onEnd);
   }
   detach():void {
     if(!this.socket)return;
     this.socket.off('data',this.onData);
     this.socket.off('error',this.onError);
+    this.socket.off('end',this.onEnd);
     this.socket.off('close',this.onEnd);
     this.socket=null;
   }
@@ -122,6 +132,7 @@ export class PacketStream {
     this.queue.length=0;
     this.queuedBytes=0;
     for(const waiter of this.waiters.splice(0))waiter.reject(error);
+    this.fatalListener?.(error);
   }
   async read():Promise<Buffer> {
     if(this.failure)throw this.failure;
