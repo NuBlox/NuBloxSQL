@@ -41,10 +41,10 @@ test('wrong packet sequence invalidates read and later operations without reuse'
  stream.onFatal(()=>fatal++);
  const waiting=stream.read();
  socket.write(Buffer.from([1,0,0,5,0x11]));
- await assert.rejects(waiting,/sequence mismatch/);
+ await assert.rejects(waiting,error=>error.code==='PROTOCOL_ERROR');
  assert.equal(fatal,1);
- await assert.rejects(stream.send(Buffer.from([1])),/sequence mismatch/);
- await assert.rejects(stream.read(),/sequence mismatch/);
+ await assert.rejects(stream.send(Buffer.from([1])),error=>error.code==='PROTOCOL_ERROR');
+ await assert.rejects(stream.read(),error=>error.code==='PROTOCOL_ERROR');
  stream.destroy();
 });
 
