@@ -176,3 +176,33 @@ live('detached tasks do not inherit a permanently active exclusive scope',async(
   assert.equal(db.closed,false);
  }finally{await db.close();}
 });
+
+live('per-session command queue rejects overload without destroying an active transaction',async()=>{
+ const db=await connectDatabase(target);
+ let release,entered;
+ const gate=new Promise(resolve=>{release=resolve;});
+ const started=new Promise(resolve=>{entered=resolve;});
+ const controller=new AbortController();
+ try{
+  const active=db.transaction(async tx=>{
+   entered();
+   await gate;
+   assert.equal((await tx.query('SELECT 1 AS healthy')).rows[0].healthy,1n);
+  });
+  await started;
+  const queued=Array.from({length:1024},()=>db.query('SELECT 1',[],{signal:controller.signal}));
+  const settled=Promise.allSettled(queued);
+  await assert.rejects(db.query('SELECT 2'),e=>e.code==='RESOURCE_LIMIT');
+  controller.abort();
+  const results=await settled;
+  assert.ok(results.every(x=>x.status==='rejected'&&x.reason.code==='CANCELLED'));
+  release();
+  await active;
+  assert.equal((await db.query('SELECT 3 AS usable')).rows[0].usable,3n);
+  assert.equal(db.closed,false);
+ }finally{
+  controller.abort();
+  release?.();
+  await db.close();
+ }
+});
