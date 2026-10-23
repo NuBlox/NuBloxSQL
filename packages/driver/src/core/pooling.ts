@@ -18,6 +18,7 @@ export interface PooledRelationalSession {
   readonly info:Readonly<SessionInfo>;
   readonly closed:boolean;
   query(sql:string,parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult>;
+  queryResults(sql:string,parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult[]>;
   prepare(sql:string,options?:OperationOptions):Promise<RelationalPreparedStatement>;
   withCursor<T>(
     sql:string,parameters:readonly BindValue[],
@@ -259,6 +260,8 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
       get closed(){return !valid||activeSession.closed;},
       query:(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={})=>
         track(()=>activeSession.query(sql,parameters,options)),
+      queryResults:(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={})=>
+        track(()=>activeSession.queryResults(sql,parameters,options)),
       prepare:(sql:string,options:OperationOptions={})=>track(async()=>{
         const raw=await activeSession.prepare(sql,options);
         const handle:RelationalPreparedStatement=Object.freeze({
@@ -266,6 +269,8 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
           get closed(){return !valid||raw.closed;},
           execute:(params:readonly BindValue[]=[],opts:OperationOptions={})=>
             track(()=>raw.execute(params,opts)),
+          executeResults:(params:readonly BindValue[]=[],opts:OperationOptions={})=>
+            track(()=>raw.executeResults(params,opts)),
           close:()=>track(()=>raw.close())
         });
         return handle;

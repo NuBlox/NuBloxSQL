@@ -299,3 +299,31 @@ live('verified TLS cursor callbacks cannot self-deadlock through parent session'
   assert.equal((await db.query('SELECT ? AS alive',[10])).rows[0].alive,10n);
  }finally{await db.close();}
 });
+
+
+live('verified TLS prepared stored procedure returns every result and preserves encrypted session',async()=>{
+ const db=await connectDatabase(trustedTarget());
+ try{
+  const sets=await db.queryResults('CALL nublox_multi_result(?)',[100]);
+  assert.equal(sets.length,3);
+  assert.equal(sets[0].rows[0].initial_value,100n);
+  assert.equal(sets[1].rows[0].second_value,101n);
+  assert.equal(sets[2].rows.length,0);
+  const stmt=await db.prepare('CALL nublox_multi_result(?)');
+  try{
+   const repeated=await stmt.executeResults([200]);
+   assert.equal(repeated[0].rows[0].initial_value,200n);
+   assert.equal(repeated[1].rows[0].second_value,201n);
+  }finally{await stmt.close();}
+  assert.equal((await db.query('SELECT ? AS secure',[77])).rows[0].secure,77n);
+ }finally{await db.close();}
+});
+
+live('verified TLS multi-result over-limit fails closed',async()=>{
+ const db=await connectDatabase(trustedTarget());
+ try{
+  await assert.rejects(db.queryResults('CALL nublox_many_result()'),
+    e=>e.code==='RESOURCE_LIMIT');
+  assert.equal(db.closed,true);
+ }finally{await db.close();}
+});

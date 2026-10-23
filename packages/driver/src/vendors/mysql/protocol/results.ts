@@ -18,7 +18,7 @@ export function field(buf:Buffer):MysqlColumn{
   if(c.remaining()!==0)throw Error('Trailing MySQL column definition bytes');
   return {name,schema,table,originalName,originalTable,charset,length,type,flags,decimals,unsigned:!!(flags&32)};
 }
-export function ok(buf:Buffer):QueryResult{const c=new Cursor(buf);if(c.byte()!==0)throw Error('Not an OK packet');const affectedRows=c.len(),insertId=c.len(),status=c.remaining()>=2?c.two():0,warnings=c.remaining()>=2?c.two():0;if(affectedRows===null||insertId===null)throw Error('Invalid OK counts');assertSingleResult(status);return {rows:[],columns:[],affectedRows,insertId,status,warnings};}
+export function ok(buf:Buffer,allowMultiple=false):QueryResult{const c=new Cursor(buf);if(c.byte()!==0)throw Error('Not an OK packet');const affectedRows=c.len(),insertId=c.len(),status=c.remaining()>=2?c.two():0,warnings=c.remaining()>=2?c.two():0;if(affectedRows===null||insertId===null)throw Error('Invalid OK counts');if(!allowMultiple)assertSingleResult(status);return {rows:[],columns:[],affectedRows,insertId,status,warnings};}
 
 /** With CLIENT_PROTOCOL_41 and without CLIENT_DEPRECATE_EOF, a server EOF
  * packet is exactly five bytes: FE, warning count LE16, status flags LE16. */

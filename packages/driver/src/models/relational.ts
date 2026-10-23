@@ -5,6 +5,7 @@ export interface RelationalPreparedStatement {
   readonly parameterCount:number;
   readonly closed:boolean;
   execute(parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult>;
+  executeResults(parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult[]>;
   close():Promise<void>;
 }
 
@@ -26,11 +27,13 @@ export interface CursorOptions extends OperationOptions {
 }
 export interface RelationalTransaction {
   query(sql:string,parameters?:readonly BindValue[]):Promise<QueryResult>;
+  queryResults(sql:string,parameters?:readonly BindValue[]):Promise<QueryResult[]>;
 }
 export interface RelationalSession {
   readonly info:Readonly<SessionInfo>;
   readonly closed:boolean;
   query(sql:string,parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult>;
+  queryResults(sql:string,parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult[]>;
   prepare(sql:string,options?:OperationOptions):Promise<RelationalPreparedStatement>;
   withCursor<T>(
     sql:string,parameters:readonly BindValue[],
