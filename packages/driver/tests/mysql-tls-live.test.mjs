@@ -306,13 +306,13 @@ live('verified TLS prepared stored procedure returns every result and preserves 
  try{
   const sets=await db.queryResults('CALL nublox_multi_result(?)',[100]);
   assert.equal(sets.length,3);
-  assert.equal(sets[0].rows[0].first_value,100n);
+  assert.equal(sets[0].rows[0].initial_value,100n);
   assert.equal(sets[1].rows[0].second_value,101n);
   assert.equal(sets[2].rows.length,0);
   const stmt=await db.prepare('CALL nublox_multi_result(?)');
   try{
    const repeated=await stmt.executeResults([200]);
-   assert.equal(repeated[0].rows[0].first_value,200n);
+   assert.equal(repeated[0].rows[0].initial_value,200n);
    assert.equal(repeated[1].rows[0].second_value,201n);
   }finally{await stmt.close();}
   assert.equal((await db.query('SELECT ? AS secure',[77])).rows[0].secure,77n);
