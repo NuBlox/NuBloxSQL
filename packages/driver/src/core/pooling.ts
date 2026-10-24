@@ -71,6 +71,8 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
   private sizeCount=0;
   private connectingCount=0;
   private stopped=false;
+  /** All shutdown callers join the same native disposal barrier. */
+  private closePromise:Promise<void>|null=null;
   private readonly max:number;
   private readonly acquireMs:number;
   private readonly idleMs:number;
@@ -233,19 +235,33 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
   }
   private async release(session:S,reusable:boolean):Promise<void>{
     if(!this.sessions.has(session))return;
-    if(this.stopped||!reusable||session.closed){
+    if(this.stopped){
+      await this.close();
+      return;
+    }
+    if(!reusable||session.closed){
       await this.discardSession(session);
       return;
     }
     try{
       await session.resetForPool();
-      if(this.stopped||session.closed){
+      if(this.stopped){
+        await this.close();
+        return;
+      }
+      if(session.closed){
         await this.discardSession(session);
         return;
       }
       this.park(session);
       this.dispatch();
     }catch{
+      // A concurrent pool shutdown owns disposal; it must not turn a
+      // completed application callback into a spurious reset failure.
+      if(this.stopped){
+        await this.close();
+        return;
+      }
       await this.discardSession(session);
       throw fail('CONNECTION_FAILED','Pooled connection reset failed; connection discarded');
     }
@@ -330,8 +346,8 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
     }
   }
 
-  async close():Promise<void>{
-    if(this.stopped)return;
+  close():Promise<void>{
+    if(this.closePromise)return this.closePromise;
     this.stopped=true;
     for(const waiter of this.pending.splice(0)){
       waiter.state='settled';
@@ -354,6 +370,11 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
     this.sessions.clear();
     this.sizeCount-=live.length; // outstanding connects decrement when they settle
     this.discarded+=live.length;
-    await Promise.all(live.map(session=>session.close()));
+    // Closing may be asynchronous. The shared promise ensures a second
+    // caller never observes completion before transport disposal finishes.
+    this.closePromise=Promise.all(live.map(session=>
+      Promise.resolve().then(()=>session.close())
+    )).then(()=>undefined);
+    return this.closePromise;
   }
 }
