@@ -185,3 +185,71 @@ live('invalid operation options never consume prepared slots or poison connectio
   }finally{await statement.close();}
  }finally{await db.close();}
 });
+
+live('concurrent prepared closes issue a single native statement close',{timeout:10000},async()=>{
+ const db=await connectDatabase(target);
+ const statement=await db.prepare('SELECT ? AS once');
+ const original=db.closeNative.bind(db);
+ let started,release;
+ const entered=new Promise(resolve=>{started=resolve;});
+ const gate=new Promise(resolve=>{release=resolve;});
+ let closeCommands=0;
+ db.closeNative=async(...args)=>{
+  closeCommands++;
+  started();
+  await gate;
+  return original(...args);
+ };
+ try{
+  const first=statement.close();
+  const second=statement.close();
+  await entered;
+  assert.equal(statement.closed,true);
+  await assert.rejects(statement.execute([1]),e=>e.code==='CONNECTION_CLOSED');
+  release();
+  await Promise.all([first,second]);
+  assert.equal(closeCommands,1,'one native COM_STMT_CLOSE per handle');
+  assert.equal(db.closed,false);
+  assert.equal((await db.query('SELECT ? AS healthy',[91])).rows[0].healthy,91n);
+ }finally{
+  release?.();
+  db.closeNative=original;
+  await db.close();
+ }
+});
+
+live('prepared close queued behind interrupted execute remains idempotent',{timeout:10000},async()=>{
+ const db=await connectDatabase(target);
+ const statement=await db.prepare('SELECT ? AS interrupted');
+ const original=db.executeNativeResults.bind(db);
+ let entered,release;
+ const started=new Promise(resolve=>{entered=resolve;});
+ const gate=new Promise(resolve=>{release=resolve;});
+ let executions=0;
+ db.executeNativeResults=async(...args)=>{
+  executions++;
+  entered();
+  await gate;
+  return original(...args);
+ };
+ try{
+  const active=statement.execute([42]);
+  void active.catch(()=>{});
+  await started;
+  const closing=statement.close();
+  const duplicate=statement.close();
+  assert.equal(statement.closed,true);
+  await assert.rejects(statement.execute([43]),e=>e.code==='CONNECTION_CLOSED');
+  await db.close();
+  release();
+  await assert.rejects(active,e=>e.code==='CONNECTION_CLOSED');
+  await Promise.all([closing,duplicate]);
+  assert.equal(executions,1,'no queued prepared execution may be replayed');
+  assert.equal(db.closed,true);
+  assert.equal(statement.closed,true);
+ }finally{
+  release?.();
+  db.executeNativeResults=original;
+  await db.close();
+ }
+});
