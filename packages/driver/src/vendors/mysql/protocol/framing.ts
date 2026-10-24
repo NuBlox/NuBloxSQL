@@ -96,6 +96,12 @@ export class PacketStream {
           this.frameRemaining=this.header[0]|(this.header[1]<<8)|(this.header[2]<<16);
           this.currentFrameLength=this.frameRemaining;
           this.headerRead=0;
+          // The advertised frame length is a lower bound on the bytes we
+          // would have to retain, even if the peer never sends its payload.
+          // Reject impossible messages at the header rather than permitting
+          // a stalled peer to hold the connection and its partial results.
+          if(this.queuedBytes+this.logicalBytes+this.frameRemaining>LIMIT)
+            throw fail('RESOURCE_LIMIT','MySQL incoming logical packet exceeded limit');
         }
         const size=this.frameRemaining;
         if(size===0){
