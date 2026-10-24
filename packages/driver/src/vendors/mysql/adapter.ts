@@ -419,6 +419,14 @@ export class MysqlSession implements RelationalSession {
           async()=>{
             try{
               if(!this.closed)await this.serial(()=>this.closeNative(id));
+            }catch(error){
+              // If the transport dies while COM_STMT_CLOSE is queued, the
+              // server-owned statement is already gone with that session.
+              // Explicit close is cleanup, not application SQL: treat that
+              // specific race as an idempotent close, without concealing
+              // unrelated protocol or cancellation failures.
+              if(!(this.closed&&error instanceof DriverError&&
+                   error.code==='CONNECTION_CLOSED'))throw error;
             }finally{this.statements.delete(statement);}
           },
           ()=>this.assertNotInsideExclusiveCallback(),
