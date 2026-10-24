@@ -303,3 +303,18 @@ test('pool shutdown during session reset preserves completed callback result',{t
     await pool.close();
   }
 });
+
+test('reset failure outside shutdown still discards an unhealthy session',{timeout:3000},async()=>{
+  const session=fake(1);
+  session.resetForPool=async()=>{throw Error('reset failed');};
+  const pool=new ConnectionPool(async()=>session,{maxConnections:1});
+  try{
+    await assert.rejects(pool.withConnection(async lease=>{
+      await lease.query('SELECT 1');
+      return 'callback-finished';
+    }),error=>error.code==='CONNECTION_FAILED');
+    assert.equal(session.closed,true);
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.stats.discarded,1);
+  }finally{await pool.close();}
+});
