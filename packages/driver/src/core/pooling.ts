@@ -54,7 +54,7 @@ export interface PoolSession extends RelationalSession {
   /** Vendor-owned reset of transactions, variables and prepared statements. */
   resetForPool():Promise<void>;
 }
-type Waiter<S>={resolve:(session:S)=>void;reject:(reason:unknown)=>void;timer:NodeJS.Timeout;state:'queued'|'connecting'|'settled'};
+type Waiter<S>={resolve:(session:S)=>void;reject:(reason:unknown)=>void;timer:NodeJS.Timeout;state:'queued'|'connecting'|'settled';controller?:AbortController};
 type IdleEntry<S>={session:S;expiresAt:number;timer:NodeJS.Timeout};
 
 /**
@@ -82,7 +82,7 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
   private healthFailures=0;
   private acquireTimeouts=0;
 
-  constructor(private readonly connect:()=>Promise<S>,options:PoolOptions) {
+  constructor(private readonly connect:(signal:AbortSignal)=>Promise<S>,options:PoolOptions) {
     if(!options||typeof options!=='object'||!Number.isInteger(options.maxConnections)||
       options.maxConnections<1||options.maxConnections>32)
       throw fail('INVALID_INPUT','Pool maxConnections must be an integer from 1 to 32');
@@ -153,13 +153,17 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
       if(this.sizeCount>=this.max)break;
       const waiter=this.pending.shift()!;
       waiter.state='connecting';
+      // One controller belongs to exactly one physical dial. Aborting a
+      // checkout must never cancel unrelated sessions or application SQL.
+      const controller=new AbortController();
+      waiter.controller=controller;
       this.dialing.add(waiter);
       this.sizeCount++;
       this.connectingCount++;
       void Promise.resolve().then(()=>{
         if(this.stopped||waiter.state==='settled')
           throw fail('CONNECTION_CLOSED','Pool acquisition is no longer active');
-        return this.connect();
+        return this.connect(controller.signal);
       }).then(session=>{
         this.dialing.delete(waiter);
         this.connectingCount--;
@@ -210,6 +214,9 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
           waiter.state='settled';
           this.acquireTimeouts++;
           reject(fail('TIMEOUT','Pool acquisition timed out'));
+          // The dial retains its slot until it settles, but a cooperative
+          // connector can now destroy its socket immediately on cancellation.
+          waiter.controller?.abort();
           this.dispatch();
         },this.acquireMs)
       };
@@ -338,6 +345,7 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
         waiter.state='settled';
         clearTimeout(waiter.timer);
         waiter.reject(fail('CONNECTION_CLOSED','Pool is closed'));
+        waiter.controller?.abort();
       }
     }
     for(const entry of this.idle)clearTimeout(entry.timer);

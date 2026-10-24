@@ -548,21 +548,48 @@ export class MysqlSession implements RelationalSession {
 }
 
 /** Real MySQL 8.4 Classic protocol transport; no external database-client driver. */
-export async function connectMysql(input:MysqlTarget):Promise<MysqlSession>{
+/** AbortSignal is used internally by the pool to terminate an in-flight dial.
+ * It does not cancel commands after authentication has completed. */
+export async function connectMysql(input:MysqlTarget,signal?:AbortSignal):Promise<MysqlSession>{
   const target=validate(input);
+  if(signal?.aborted)throw fail('CANCELLED','MySQL connection attempt cancelled');
   const socket=net.createConnection({host:target.host,port:target.port});
   socket.setNoDelay(true);
   const stream=new PacketStream(socket);
   // Retain the TLS wrapper so failed handshakes cannot leak sockets.
   let active:Socket=socket;
   let negotiatingTls=false;
+  let cancelled=false;
+  const onAbort=():void=>{
+    cancelled=true;
+    // Abort the pending protocol read even if no bytes have arrived, then
+    // destroy both transport layers (STARTTLS can detach the raw socket).
+    stream.destroy();
+    active.destroy();
+    socket.destroy();
+  };
+  signal?.addEventListener('abort',onAbort,{once:true});
+  if(signal?.aborted)onAbort();
   const timer=setTimeout(()=>{
     socket.destroy(fail('TIMEOUT','MySQL connection timeout'));
   },target.timeoutMs);
   try{
     await new Promise<void>((resolve,reject)=>{
-      socket.once('connect',resolve);
-      socket.once('error',reject);
+      const cleanup=():void=>{
+        socket.off('connect',connected);
+        socket.off('error',failed);
+        socket.off('close',closed);
+      };
+      const connected=():void=>{cleanup();resolve();};
+      const failed=(error:Error):void=>{cleanup();reject(error);};
+      const closed=():void=>{
+        cleanup();
+        reject(fail('CONNECTION_FAILED','MySQL transport closed during connection'));
+      };
+      socket.once('connect',connected);
+      socket.once('error',failed);
+      socket.once('close',closed);
+      if(cancelled)closed();
     });
     const hello=greeting(await stream.read());
     const secure=target.security==='verified-tls';
@@ -578,17 +605,28 @@ export async function connectMysql(input:MysqlTarget):Promise<MysqlSession>{
       });
       active=secureSocket;
       await new Promise<void>((resolve,reject)=>{
-        const onError=():void=>{
+        const cleanup=():void=>{
           secureSocket.off('secureConnect',onSecure);
+          secureSocket.off('error',onError);
+          secureSocket.off('close',onClose);
+        };
+        const onError=():void=>{
+          cleanup();
           reject(fail('TLS_FAILED','Database TLS negotiation or identity verification failed'));
         };
+        const onClose=():void=>{
+          cleanup();
+          reject(fail('TLS_FAILED','Database TLS socket closed during negotiation'));
+        };
         const onSecure=():void=>{
-          secureSocket.off('error',onError);
+          cleanup();
           if(secureSocket.authorized)resolve();
           else reject(fail('TLS_FAILED','Database identity verification failed'));
         };
         secureSocket.once('secureConnect',onSecure);
         secureSocket.once('error',onError);
+        secureSocket.once('close',onClose);
+        if(cancelled)onClose();
       });
       negotiatingTls=false;
       stream.attach(active);
@@ -601,6 +639,7 @@ export async function connectMysql(input:MysqlTarget):Promise<MysqlSession>{
     for(let i=0;i<6;i++){
       const packet=serverPacket(await stream.read());
       if(packet[0]===0){
+        if(cancelled)throw fail('CANCELLED','MySQL connection attempt cancelled');
         return new MysqlSession(stream,active,target,{...hello,plugin});
       }
       if(packet[0]===254){
@@ -629,8 +668,12 @@ export async function connectMysql(input:MysqlTarget):Promise<MysqlSession>{
     stream.destroy();
     active.destroy();
     socket.destroy();
+    if(cancelled)throw fail('CANCELLED','MySQL connection attempt cancelled');
     if(error instanceof DriverError)throw error;
     if(negotiatingTls)throw fail('TLS_FAILED','Database TLS negotiation or identity verification failed');
     throw new DriverError('CONNECTION_FAILED',error instanceof Error?error.message:'MySQL connection failed');
-  }finally{clearTimeout(timer);}
+  }finally{
+    clearTimeout(timer);
+    signal?.removeEventListener('abort',onAbort);
+  }
 }

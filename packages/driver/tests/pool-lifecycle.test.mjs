@@ -191,3 +191,47 @@ test('nested callback acquire rejects before waiting; escaped child async scope 
   assert.equal(pool.stats.acquireTimeouts,0);
  }finally{await pool.close();}
 });
+
+test('cooperative dial is aborted on acquire timeout and frees its slot',{timeout:3000},async()=>{
+  let attempts=0,abortCount=0,entered=false;
+  const pool=new ConnectionPool(signal=>{
+    attempts++;
+    if(attempts>1)return Promise.resolve(fake(attempts));
+    return new Promise((_,reject)=>{
+      const aborted=()=>{abortCount++;reject(Error('dial aborted'));};
+      signal.addEventListener('abort',aborted,{once:true});
+      if(signal.aborted)aborted();
+    });
+  },{maxConnections:1,acquireTimeoutMs:110});
+  try{
+    await assert.rejects(pool.withConnection(async()=>{entered=true;}),e=>e.code==='TIMEOUT');
+    await sleep(10);
+    assert.equal(entered,false);
+    assert.equal(abortCount,1,'the in-progress connector must receive one abort');
+    assert.equal(pool.stats.connecting,0);
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.stats.acquireTimeouts,1);
+    assert.equal(await pool.withConnection(async s=>(await s.query('id')).rows[0].id),2);
+    assert.equal(pool.stats.created,1);
+  }finally{await pool.close();}
+});
+
+test('shutdown aborts an active cooperative dial and rejects checkout promptly',{timeout:3000},async()=>{
+  let aborted=0,entered=false;
+  const pool=new ConnectionPool(signal=>new Promise((_,reject)=>{
+    const cancel=()=>{aborted++;reject(Error('dial aborted'));};
+    signal.addEventListener('abort',cancel,{once:true});
+    if(signal.aborted)cancel();
+  }),{maxConnections:1,acquireTimeoutMs:2000});
+  const request=pool.withConnection(async()=>{entered=true;});
+  await sleep(10);
+  assert.equal(pool.stats.connecting,1);
+  await pool.close();
+  await assert.rejects(request,e=>e.code==='CONNECTION_CLOSED');
+  await sleep(10);
+  assert.equal(entered,false);
+  assert.equal(aborted,1);
+  assert.equal(pool.stats.size,0);
+  assert.equal(pool.stats.connecting,0);
+  assert.equal(pool.closed,true);
+});
