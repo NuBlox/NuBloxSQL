@@ -114,6 +114,53 @@ test('a partial fragmented message prevents resetting the command sequence',asyn
   packets.reset();
   packets.destroy();
 });
+test('oversized continuation fails at its header even if peer withholds payload',{timeout:3000},async()=>{
+  const socket=new PassThrough(),packets=new PacketStream(socket);
+  const waiting=packets.read();
+  const frame=Buffer.alloc(MAX_FRAME_PAYLOAD,0x42);
+  socket.write(header(MAX_FRAME_PAYLOAD,0));
+  socket.write(frame);
+  socket.write(header(MAX_FRAME_PAYLOAD,1));
+  socket.write(frame);
+  // Two maximum frames total LIMIT - 2 bytes. A third frame advertising
+  // three bytes is impossible within the logical packet safety limit.
+  socket.write(header(3,2));
+  await assert.rejects(waiting,error=>error.code==='RESOURCE_LIMIT');
+  await assert.rejects(packets.read(),error=>error.code==='RESOURCE_LIMIT');
+  assert.throws(()=>packets.reset(),error=>error.code==='RESOURCE_LIMIT');
+  packets.destroy();
+});
+
+test('exact inbound 32 MiB logical message remains valid across three frames',{timeout:4000},async()=>{
+  const socket=new PassThrough(),packets=new PacketStream(socket);
+  const waiting=packets.read();
+  const frame=Buffer.alloc(MAX_FRAME_PAYLOAD,0x5a);
+  socket.write(header(MAX_FRAME_PAYLOAD,0));
+  socket.write(frame);
+  socket.write(header(MAX_FRAME_PAYLOAD,1));
+  socket.write(frame);
+  socket.write(header(2,2));
+  socket.write(Buffer.from([0x42,0x43]));
+  const result=await waiting;
+  assert.equal(result.length,LIMIT);
+  assert.equal(result[0],0x5a);
+  assert.equal(result[MAX_FRAME_PAYLOAD],0x5a);
+  assert.deepEqual(result.subarray(-2),Buffer.from([0x42,0x43]));
+  packets.reset();
+  packets.destroy();
+});
+
+test('zero-byte packet flood is bounded even though queued byte count stays zero',async()=>{
+  const socket=new PassThrough(),packets=new PacketStream(socket);
+  const failure=[];
+  packets.onFatal(error=>failure.push(error));
+  for(let i=0;i<1025;i++)socket.write(header(0,i&255));
+  assert.equal(failure.length,1);
+  assert.equal(failure[0].code,'RESOURCE_LIMIT');
+  await assert.rejects(packets.read(),error=>error.code==='RESOURCE_LIMIT');
+  packets.destroy();
+});
+
 test('outbound logical packet above the bounded cap is rejected without writing',async()=>{
   const socket=new CaptureSocket(),packets=new PacketStream(socket);
   await assert.rejects(packets.send(Buffer.alloc(LIMIT+1)),/outbound logical packet.*limit/);
