@@ -458,6 +458,11 @@ export class MysqlSession implements RelationalSession {
         const schedule=<R>(run:()=>Promise<R>):Promise<R>=>{
           if(!transactionActive||this.closed||this.scope.getStore()!==context)
             return Promise.reject(fail('CONNECTION_CLOSED','Transaction scope is not active'));
+          // Transaction commands bypass the parent serial queue while holding
+          // its exclusive lock. Bound this separate backlog by the same
+          // per-session limit to prevent unbounded memory growth.
+          if(pending.size>=MAX_PENDING_COMMANDS)
+            return Promise.reject(fail('RESOURCE_LIMIT','Too many pending MySQL transaction commands'));
           const request=transactionTail.then(()=>{
             if(!transactionActive||this.closed)
               throw fail('CONNECTION_CLOSED','Transaction scope has ended');
