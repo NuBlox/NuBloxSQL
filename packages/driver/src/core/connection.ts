@@ -12,5 +12,5 @@ export async function connectDatabase(target:DatabaseTarget):Promise<RelationalS
 /** Construct a bounded native pool; connection creation is lazy. */
 export function createDatabasePool(target:DatabaseTarget,options:PoolOptions):DatabasePool {
   if(!target||target.engine!=='mysql')throw fail('UNSUPPORTED_ENGINE','Database engine is not supported');
-  return new ConnectionPool<MysqlSession>(()=>connectMysql(target),options);
+  return new ConnectionPool<MysqlSession>((signal)=>connectMysql(target,signal),options);
 }
