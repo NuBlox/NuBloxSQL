@@ -235,3 +235,71 @@ test('shutdown aborts an active cooperative dial and rejects checkout promptly',
   assert.equal(pool.stats.connecting,0);
   assert.equal(pool.closed,true);
 });
+
+test('concurrent shutdown callers join one native close and await its completion',{timeout:3000},async()=>{
+  const session=fake(1);
+  let closeCalls=0,notifyClose,finishClose;
+  const closeStarted=new Promise(resolve=>{notifyClose=resolve;});
+  const closeGate=new Promise(resolve=>{finishClose=resolve;});
+  session.close=async()=>{
+    closeCalls++;
+    notifyClose();
+    await closeGate;
+    session.closed=true;
+  };
+  const pool=new ConnectionPool(async()=>session,{maxConnections:1});
+  try{
+    await pool.withConnection(async lease=>lease.query('SELECT 1'));
+    const first=pool.close();
+    await closeStarted;
+    const second=pool.close();
+    assert.strictEqual(first,second,'every shutdown caller must receive one shared promise');
+    let settled=false;
+    void second.then(()=>{settled=true;});
+    await sleep(10);
+    assert.equal(settled,false,'shutdown promise cannot resolve before transport closes');
+    assert.equal(closeCalls,1);
+    finishClose();
+    await Promise.all([first,second]);
+    assert.equal(session.closed,true);
+    assert.equal(closeCalls,1);
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.closed,true);
+  }finally{
+    finishClose?.();
+    await pool.close();
+  }
+});
+
+test('pool shutdown during session reset preserves completed callback result',{timeout:3000},async()=>{
+  const session=fake(1);
+  let resetStarted,rejectReset;
+  const enteredReset=new Promise(resolve=>{resetStarted=resolve;});
+  let closes=0;
+  session.resetForPool=()=>{
+    resetStarted();
+    return new Promise((_,reject)=>{rejectReset=reject;});
+  };
+  session.close=async()=>{
+    closes++;
+    session.closed=true;
+    rejectReset?.(Error('reset interrupted by shutdown'));
+  };
+  const pool=new ConnectionPool(async()=>session,{maxConnections:1});
+  try{
+    const work=pool.withConnection(async lease=>{
+      await lease.query('SELECT 1');
+      return 'application-success';
+    });
+    await enteredReset;
+    const closing=pool.close();
+    assert.equal(await work,'application-success');
+    await closing;
+    assert.equal(closes,1,'pool shutdown owns disposal and must not double-close');
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.closed,true);
+  }finally{
+    rejectReset?.(Error('test cleanup'));
+    await pool.close();
+  }
+});
