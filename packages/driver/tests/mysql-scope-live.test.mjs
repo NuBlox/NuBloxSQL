@@ -206,3 +206,80 @@ live('per-session command queue rejects overload without destroying an active tr
   await db.close();
  }
 });
+
+live('transaction queue bounds 1024 waiting commands without sending or replaying SQL',{timeout:10000},async()=>{
+ const db=await connectDatabase(target);
+ const original=db.execute.bind(db);
+ let releaseFirst,enteredFirst;
+ const firstStarted=new Promise(resolve=>{enteredFirst=resolve;});
+ const gate=new Promise(resolve=>{releaseFirst=resolve;});
+ let executed=0;
+ // Deterministic test-only fault injection holds the first scoped command.
+ // Transaction START/COMMIT still use the real MySQL Classic connection.
+ db.execute=async()=>{
+  executed++;
+  if(executed===1){
+   enteredFirst();
+   await gate;
+  }
+  return {rows:[],columns:[],affectedRows:0,insertId:0};
+ };
+ try{
+  const committed=await db.transaction(async tx=>{
+   const queued=Array.from({length:1024},()=>tx.query('SELECT 1'));
+   const completion=Promise.all(queued);
+   await firstStarted;
+   await assert.rejects(tx.query('SELECT 2'),error=>
+     error.code==='RESOURCE_LIMIT'&&/transaction/.test(error.message));
+   assert.equal(executed,1,'overflow must not reach the native command executor');
+   releaseFirst();
+   await completion;
+   assert.equal(executed,1024,'exactly the accepted commands must run once');
+   return 'committed';
+  });
+  assert.equal(committed,'committed');
+  assert.equal(db.closed,false);
+  assert.equal((await db.query('SELECT ? AS recovered',[61])).rows[0].recovered,61n);
+ }finally{
+  releaseFirst?.();
+  db.execute=original;
+  await db.close();
+ }
+});
+
+live('transaction backlog is rejected after disconnect and cannot execute late SQL',{timeout:10000},async()=>{
+ const db=await connectDatabase(target);
+ const original=db.execute.bind(db);
+ let releaseFirst,enteredFirst;
+ const firstStarted=new Promise(resolve=>{enteredFirst=resolve;});
+ const gate=new Promise(resolve=>{releaseFirst=resolve;});
+ let executed=0;
+ db.execute=async(...args)=>{
+  executed++;
+  if(executed===1){
+   enteredFirst();
+   await gate;
+  }
+  return original(...args);
+ };
+ try{
+  const transaction=db.transaction(async tx=>{
+   const pending=Array.from({length:256},()=>tx.query('SELECT 1'));
+   const settled=Promise.allSettled(pending);
+   await firstStarted;
+   // Closing the native session must invalidate the transaction scope
+   // before any of the queued commands can be transmitted.
+   await db.close();
+   releaseFirst();
+   const results=await settled;
+   assert.ok(results.every(r=>r.status==='rejected'&&r.reason.code==='CONNECTION_CLOSED'));
+  });
+  await assert.rejects(transaction,error=>error.code==='CONNECTION_CLOSED');
+  assert.equal(db.closed,true);
+  assert.equal(executed,1,'no queued transaction query may execute after disconnect');
+ }finally{
+  releaseFirst?.();
+  db.execute=original;
+  await db.close();
+ }
+});
