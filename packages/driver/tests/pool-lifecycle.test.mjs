@@ -318,3 +318,119 @@ test('reset failure outside shutdown still discards an unhealthy session',{timeo
     assert.equal(pool.stats.discarded,1);
   }finally{await pool.close();}
 });
+
+test('FIFO borrowers retain arrival order across sustained single-slot contention',{timeout:5000},async()=>{
+  const pool=new ConnectionPool(async()=>fake(1),{
+    maxConnections:1,acquireTimeoutMs:4000
+  });
+  let release,started;
+  const gate=new Promise(resolve=>{release=resolve;});
+  const entered=new Promise(resolve=>{started=resolve;});
+  const held=pool.withConnection(async()=>{
+    started();
+    await gate;
+  });
+  try{
+    await entered;
+    const order=[];
+    const jobs=Array.from({length:128},(_,i)=>pool.withConnection(async lease=>{
+      order.push(i);
+      await lease.query('SELECT ordinal');
+      return i;
+    }));
+    assert.equal(pool.stats.pending,128);
+    release();
+    await held;
+    assert.deepEqual(await Promise.all(jobs),Array.from({length:128},(_,i)=>i));
+    assert.deepEqual(order,Array.from({length:128},(_,i)=>i));
+    assert.equal(pool.stats.pending,0);
+    assert.equal(pool.stats.created,1);
+    assert.equal(pool.stats.size,1);
+  }finally{
+    release?.();
+    await pool.close();
+  }
+});
+
+test('discarded native transport retains capacity until its close completes',{timeout:5000},async()=>{
+  let open=0,peak=0,created=0,finishClose,startedClose;
+  const closeGate=new Promise(resolve=>{finishClose=resolve;});
+  const closing=new Promise(resolve=>{startedClose=resolve;});
+  const pool=new ConnectionPool(async()=>{
+    created++;
+    open++;
+    peak=Math.max(peak,open);
+    const session=fake(created);
+    session.close=async()=>{
+      if(session.id===1){
+        startedClose();
+        await closeGate;
+      }
+      session.closed=true;
+      open--;
+    };
+    return session;
+  },{maxConnections:1,acquireTimeoutMs:1000});
+  const original=pool.withConnection(async lease=>{
+    await lease.query('SELECT first');
+    throw Error('intentional callback error');
+  });
+  void original.catch(()=>{});
+  try{
+    await closing;
+    const next=pool.withConnection(async lease=>
+      (await lease.query('SELECT next')).rows[0].id);
+    await sleep(20);
+    assert.equal(created,1,'replacement cannot start during native close');
+    assert.equal(open,1);
+    assert.equal(pool.stats.size,1);
+    assert.equal(pool.stats.pending,1);
+    assert.equal(pool.stats.active,0);
+    finishClose();
+    await assert.rejects(original,/intentional callback error/);
+    assert.equal(await next,2);
+    assert.equal(peak,1,'at most one physical transport may exist');
+    assert.equal(pool.stats.discarded,1);
+    assert.equal(pool.stats.created,2);
+  }finally{
+    finishClose?.();
+    await pool.close();
+  }
+  assert.equal(open,0);
+  assert.equal(pool.stats.size,0);
+});
+
+test('shutdown waits for a discarded native session still closing',{timeout:4000},async()=>{
+  let startedClose,finishClose;
+  const closing=new Promise(resolve=>{startedClose=resolve;});
+  const closeGate=new Promise(resolve=>{finishClose=resolve;});
+  const session=fake(1);
+  session.close=async()=>{
+    startedClose();
+    await closeGate;
+    session.closed=true;
+  };
+  const pool=new ConnectionPool(async()=>session,{maxConnections:1});
+  const original=pool.withConnection(async()=>{
+    throw Error('expected callback rejection');
+  });
+  void original.catch(()=>{});
+  try{
+    await closing;
+    const shutdown=pool.close();
+    let finished=false;
+    void shutdown.then(()=>{finished=true;});
+    await sleep(15);
+    assert.equal(finished,false,'shutdown must join active disposal');
+    assert.equal(pool.stats.size,1);
+    finishClose();
+    await assert.rejects(original,/expected callback rejection/);
+    await shutdown;
+    assert.equal(session.closed,true);
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.stats.discarded,1);
+  }finally{
+    finishClose?.();
+    await pool.close();
+  }
+});

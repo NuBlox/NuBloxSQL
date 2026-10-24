@@ -65,6 +65,8 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
   private readonly idle:IdleEntry<S>[]=[];
   private readonly leaseContext=new AsyncLocalStorage<{active:boolean}>();
   private readonly sessions=new Set<S>();
+  /** Discarded sessions still consume physical capacity until close completes. */
+  private readonly disposing=new Set<Promise<void>>();
   private readonly pending:Waiter<S>[]=[];
   /** In-flight dials retain a slot until their eventual outcome is cleaned up. */
   private readonly dialing=new Set<Waiter<S>>();
@@ -120,7 +122,9 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
       clearTimeout(entry.timer);
       if(entry.session.closed||entry.expiresAt<=Date.now()){
         if(entry.expiresAt<=Date.now())this.expired++;
-        void this.discardSession(entry.session);
+        // A failed cleanup cannot be delivered to a checkout caller, but the
+        // capacity reservation is still removed by discardSession's finally.
+        void this.discardSession(entry.session).catch(()=>{});
         continue;
       }
       return entry.session;
@@ -135,7 +139,7 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
         if(index<0)return;
         this.idle.splice(index,1);
         this.expired++;
-        void this.discardSession(session);
+        void this.discardSession(session).catch(()=>{});
       },this.idleMs)
     };
     entry.timer.unref();
@@ -226,12 +230,19 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
       this.dispatch();
     });
   }
-  private async discardSession(session:S):Promise<void>{
-    if(this.sessions.delete(session)){
+  private discardSession(session:S):Promise<void>{
+    if(!this.sessions.delete(session))return Promise.resolve();
+    // Remove the session from circulation immediately, but keep its native
+    // slot reserved until close completes. A replacement must never start
+    // while the previous transport is still physically open.
+    const disposal=Promise.resolve().then(()=>session.close()).finally(()=>{
+      this.disposing.delete(disposal);
       this.sizeCount--;
       this.discarded++;
-    }
-    try{await session.close();}finally{this.dispatch();}
+      this.dispatch();
+    });
+    this.disposing.add(disposal);
+    return disposal;
   }
   private async release(session:S,reusable:boolean):Promise<void>{
     if(!this.sessions.has(session))return;
@@ -372,9 +383,10 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
     this.discarded+=live.length;
     // Closing may be asynchronous. The shared promise ensures a second
     // caller never observes completion before transport disposal finishes.
-    this.closePromise=Promise.all(live.map(session=>
-      Promise.resolve().then(()=>session.close())
-    )).then(()=>undefined);
+    this.closePromise=Promise.all([
+      ...this.disposing,
+      ...live.map(session=>Promise.resolve().then(()=>session.close()))
+    ]).then(()=>undefined);
     return this.closePromise;
   }
 }
