@@ -344,16 +344,27 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
         track(()=>activeSession.transaction<R>(callback,options))
     });
     let succeeded=false;
+    let callbackFailed=false;
     const scope={active:true};
     try{
       const result=await this.leaseContext.run(scope,()=>work(lease));
       succeeded=true;
       return result;
+    }catch(error){
+      callbackFailed=true;
+      throw error;
     }finally{
       scope.active=false;
       valid=false;
       const reusable=succeeded&&pending.size===0&&!activeSession.closed;
-      await this.release(activeSession,reusable);
+      try{
+        await this.release(activeSession,reusable);
+      }catch(error){
+        // Preserve the application's original failure if disposal also fails.
+        // Otherwise a transport close error would overwrite the error that
+        // caused this lease to be discarded in the first place.
+        if(!callbackFailed)throw error;
+      }
     }
   }
 
