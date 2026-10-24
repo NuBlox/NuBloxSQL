@@ -107,3 +107,26 @@ live('24 concurrent pooled borrowers recover after one injected protocol failure
   }finally{await pool.close();}
  });
 });
+
+live('corrupt prepared response rejects execution but completes queued statement close',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const db=await connectDatabase(target);
+  const statement=await db.prepare('SELECT ? AS interrupted');
+  try{
+   proxy.arm('wrong-sequence');
+   const active=statement.execute([52]);
+   void active.catch(()=>{});
+   const closing=statement.close();
+   await assert.rejects(active,error=>error.code==='PROTOCOL_ERROR');
+   await closing;
+   assert.equal(proxy.injected,1);
+   assert.equal(statement.closed,true);
+   assert.equal(db.closed,true);
+   await assert.rejects(statement.execute([53]),error=>error.code==='CONNECTION_CLOSED');
+   const healthy=await connectDatabase(target);
+   try{
+    assert.equal((await healthy.query('SELECT ? AS fresh',[54])).rows[0].fresh,54n);
+   }finally{await healthy.close();}
+  }finally{await db.close();}
+ });
+});
