@@ -589,6 +589,7 @@ export async function connectMysql(input:MysqlTarget,signal?:AbortSignal):Promis
   let active:Socket=socket;
   let negotiatingTls=false;
   let cancelled=false;
+  let timedOut=false;
   const onAbort=():void=>{
     cancelled=true;
     // Abort the pending protocol read even if no bytes have arrived, then
@@ -600,7 +601,13 @@ export async function connectMysql(input:MysqlTarget,signal?:AbortSignal):Promis
   signal?.addEventListener('abort',onAbort,{once:true});
   if(signal?.aborted)onAbort();
   const timer=setTimeout(()=>{
-    socket.destroy(fail('TIMEOUT','MySQL connection timeout'));
+    timedOut=true;
+    // Cover TCP connect, the plaintext greeting, STARTTLS, and authentication.
+    // Destroy the transport currently owning the handshake, not just the
+    // original TCP socket. Reject outstanding packet reads immediately.
+    stream.abort(fail('TIMEOUT','MySQL connection timeout'));
+    active.destroy();
+    socket.destroy();
   },target.timeoutMs);
   try{
     await new Promise<void>((resolve,reject)=>{
@@ -698,6 +705,7 @@ export async function connectMysql(input:MysqlTarget,signal?:AbortSignal):Promis
     active.destroy();
     socket.destroy();
     if(cancelled)throw fail('CANCELLED','MySQL connection attempt cancelled');
+    if(timedOut)throw fail('TIMEOUT','MySQL connection timeout');
     if(error instanceof DriverError)throw error;
     if(negotiatingTls)throw fail('TLS_FAILED','Database TLS negotiation or identity verification failed');
     throw new DriverError('CONNECTION_FAILED',error instanceof Error?error.message:'MySQL connection failed');
