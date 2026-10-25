@@ -3,8 +3,8 @@ import {AsyncLocalStorage} from 'node:async_hooks';
 import tls from 'node:tls';
 import {PacketStream} from './protocol/framing.js';
 import {Cursor,cstr,LIMIT,u32} from './protocol/primitives.js';
-import {greeting,flags,login,sslRequest,type MysqlGreeting} from './protocol/handshake.js';
-import {token} from './auth/plugins.js';
+import {greeting,flags,login,sslRequest,authSwitchRequest,cachingSha2AuthMore,type MysqlGreeting} from './protocol/handshake.js';
+import {assertSupportedAuthPlugin,token} from './auth/plugins.js';
 import {execute,fetchRows} from './protocol/commands.js';
 import {MysqlCursor} from './cursor.js';
 import {MysqlPreparedStatement} from './prepared.js';
@@ -628,6 +628,9 @@ export async function connectMysql(input:MysqlTarget,signal?:AbortSignal):Promis
       if(cancelled)closed();
     });
     const hello=greeting(await stream.read());
+    // Reject unsupported plugins before sending login credentials, including
+    // when an account's password is empty and would yield an empty token.
+    assertSupportedAuthPlugin(hello.plugin);
     const secure=target.security==='verified-tls';
     const selectedFlags=flags(hello.flags,secure,target.database);
     if(secure){
@@ -679,23 +682,17 @@ export async function connectMysql(input:MysqlTarget,signal?:AbortSignal):Promis
         return new MysqlSession(stream,active,target,{...hello,plugin});
       }
       if(packet[0]===254){
-        const cursor=new Cursor(packet);
-        cursor.byte();
-        plugin=cursor.zero();
-        const seed=cursor.take(cursor.remaining());
-        const normalized=seed.at(-1)===0?seed.subarray(0,-1):seed;
-        if(!['mysql_native_password','caching_sha2_password'].includes(plugin))
-          throw fail('AUTH_UNSUPPORTED','Unsupported authentication plugin');
-        await stream.send(token(target.password,normalized,plugin));
+        const switchRequest=authSwitchRequest(packet);
+        plugin=switchRequest.plugin;
+        await stream.send(token(target.password,switchRequest.seed,plugin));
         continue;
       }
       if(packet[0]===1&&plugin==='caching_sha2_password'){
-        if(packet[1]===3)continue;
-        if(packet[1]===4){
-          if(!secure)throw fail('AUTH_UNSUPPORTED','Full authentication requires verified TLS');
-          await stream.send(cstr(target.password));
-          continue;
-        }
+        const status=cachingSha2AuthMore(packet);
+        if(status===3)continue;
+        if(!secure)throw fail('AUTH_UNSUPPORTED','Full authentication requires verified TLS');
+        await stream.send(cstr(target.password));
+        continue;
       }
       throw fail('AUTH_UNSUPPORTED','Unsupported authentication exchange');
     }
