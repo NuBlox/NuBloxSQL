@@ -58,20 +58,20 @@ docker run --detach --name nubloxsql-mysql-tls \
   --ssl-key=/etc/mysql/tls/server.key \
   --require-secure-transport=ON
 
+# Probe the authenticated, TLS-enabled final TCP server, not the temporary
+# socket-only initialization server or Docker's published port listener.
 ready=0
 for i in $(seq 1 90); do
-  if docker exec nubloxsql-mysql-tls mysql --protocol=socket \
-      --user=root --password=test-password --batch --skip-column-names \
+  if docker exec -e MYSQL_PWD=test-password nubloxsql-mysql-tls \
+      mysql --protocol=tcp --host=127.0.0.1 --ssl-mode=REQUIRED \
+      --user=root --batch --skip-column-names \
       -e "SELECT @@global.require_secure_transport;" 2>/dev/null \
-      | grep -Eq '^1$'; then
-    if (echo > /dev/tcp/127.0.0.1/3307) 2>/dev/null; then
-      ready=1
-      break
-    fi
+      | grep -Fqx 1; then
+    ready=1
+    break
   fi
   sleep 2
 done
-
 if [[ "${ready}" != 1 ]]; then
   docker logs nubloxsql-mysql-tls
   echo 'MySQL 8.4 TLS fixture did not become ready' >&2

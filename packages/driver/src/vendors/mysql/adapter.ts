@@ -31,6 +31,8 @@ export class MysqlSession implements RelationalSession {
   private busy=false;
   private activeGuard:OperationGuard|null=null;
   private readonly statements=new Set<MysqlPreparedStatement>();
+  /** The active server cursor is revoked on any fatal transport loss. */
+  private readonly cursors=new Set<MysqlCursor>();
   private preparing=0;
   /** Set before writing COMMIT, cleared only after receiving its valid OK. */
   private commitAwaitingAck=false;
@@ -50,14 +52,24 @@ export class MysqlSession implements RelationalSession {
     });
     // Remote closes can happen between operations when no read is pending.
     // Immediately revoke prepared handles and remove the stale pool session.
-    this.stream.onFatal(()=>this.destroy());
+    this.stream.onFatal(error=>this.destroy(error instanceof DriverError?error:undefined));
   }
 
-  private destroy():void {
+  private destroy(cause?:DriverError):void {
     if(this.closed)return;
     this.closed=true;
+    // A transport failure can occur while an exclusive transaction/cursor
+    // callback is awaiting application work rather than a packet read.
+    // Interrupt its guard immediately instead of waiting for the callback
+    // or the operation deadline. The closed flag makes re-entrant destroy
+    // from OperationGuard's interruption callback safe.
+    this.activeGuard?.interrupt(cause??
+      fail('CONNECTION_CLOSED','Native MySQL connection terminated during operation')
+    );
     for(const statement of this.statements)statement.invalidate();
     this.statements.clear();
+    for(const cursor of this.cursors)cursor.invalidate();
+    this.cursors.clear();
     const queued=this.queue.splice(0);
     for(const job of queued)
       job.reject(fail('CONNECTION_CLOSED','Database connection is closed'));
@@ -282,7 +294,7 @@ export class MysqlSession implements RelationalSession {
       // replacing it with a later COM_STMT_CLOSE stream-reset failure.
       if(!(error instanceof DriverError&&
            (error.code==='DATABASE_ERROR'||error.code==='INVALID_INPUT')))
-        this.destroy();
+        this.destroy(error instanceof DriverError?error:undefined);
       throw error;
     }finally{
       if(!this.closed)await this.closeNative(prepared.id);
@@ -375,6 +387,7 @@ export class MysqlSession implements RelationalSession {
             rows.push({row:objectRow(values,keys),values});
           }
         });
+        this.cursors.add(cursor);
         const context={active:true,kind:'cursor' as const};
         try {
           const value=await this.scope.run(context,()=>work(cursor!));
@@ -389,7 +402,10 @@ export class MysqlSession implements RelationalSession {
           context.active=false;
         }
       }finally{
-        cursor?.invalidate();
+        if(cursor){
+          cursor.invalidate();
+          this.cursors.delete(cursor);
+        }
         // COM_STMT_CLOSE releases any server-side cursor, including early exits.
         if(!this.closed)await this.closeNative(id);
       }
