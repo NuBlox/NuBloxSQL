@@ -56,6 +56,14 @@ export class MysqlSession implements RelationalSession {
   private destroy():void {
     if(this.closed)return;
     this.closed=true;
+    // A transport failure can occur while an exclusive transaction/cursor
+    // callback is awaiting application work rather than a packet read.
+    // Interrupt its guard immediately instead of waiting for the callback
+    // or the operation deadline. The closed flag makes re-entrant destroy
+    // from OperationGuard's interruption callback safe.
+    this.activeGuard?.interrupt(
+      fail('CONNECTION_CLOSED','Native MySQL connection terminated during operation')
+    );
     for(const statement of this.statements)statement.invalidate();
     this.statements.clear();
     const queued=this.queue.splice(0);
