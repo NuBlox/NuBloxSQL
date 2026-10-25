@@ -31,6 +31,8 @@ export class MysqlSession implements RelationalSession {
   private busy=false;
   private activeGuard:OperationGuard|null=null;
   private readonly statements=new Set<MysqlPreparedStatement>();
+  /** The active server cursor is revoked on any fatal transport loss. */
+  private readonly cursors=new Set<MysqlCursor>();
   private preparing=0;
   /** Set before writing COMMIT, cleared only after receiving its valid OK. */
   private commitAwaitingAck=false;
@@ -66,6 +68,8 @@ export class MysqlSession implements RelationalSession {
     );
     for(const statement of this.statements)statement.invalidate();
     this.statements.clear();
+    for(const cursor of this.cursors)cursor.invalidate();
+    this.cursors.clear();
     const queued=this.queue.splice(0);
     for(const job of queued)
       job.reject(fail('CONNECTION_CLOSED','Database connection is closed'));
@@ -383,6 +387,7 @@ export class MysqlSession implements RelationalSession {
             rows.push({row:objectRow(values,keys),values});
           }
         });
+        this.cursors.add(cursor);
         const context={active:true,kind:'cursor' as const};
         try {
           const value=await this.scope.run(context,()=>work(cursor!));
@@ -397,7 +402,10 @@ export class MysqlSession implements RelationalSession {
           context.active=false;
         }
       }finally{
-        cursor?.invalidate();
+        if(cursor){
+          cursor.invalidate();
+          this.cursors.delete(cursor);
+        }
         // COM_STMT_CLOSE releases any server-side cursor, including early exits.
         if(!this.closed)await this.closeNative(id);
       }
