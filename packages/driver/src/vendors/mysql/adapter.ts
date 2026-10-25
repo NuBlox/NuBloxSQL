@@ -703,9 +703,23 @@ export async function connectMysql(input:MysqlTarget,signal?:AbortSignal):Promis
     socket.destroy();
     if(cancelled)throw fail('CANCELLED','MySQL connection attempt cancelled');
     if(timedOut)throw fail('TIMEOUT','MySQL connection timeout');
-    if(error instanceof DriverError)throw error;
+    if(error instanceof DriverError){
+      if(error.code==='DATABASE_ERROR'){
+        // Before authentication completes, the peer controls the text of
+        // ERR packets. Never echo it: an untrusted server could embed the
+        // supplied password or other credentials in its error message.
+        // Preserve numeric MySQL diagnostics for clients instead.
+        throw new DriverError('DATABASE_ERROR','MySQL server rejected the connection',{
+          vendorCode:error.vendorCode??undefined,
+          sqlState:error.sqlState??undefined
+        });
+      }
+      throw error;
+    }
     if(negotiatingTls)throw fail('TLS_FAILED','Database TLS negotiation or identity verification failed');
-    throw new DriverError('CONNECTION_FAILED',error instanceof Error?error.message:'MySQL connection failed');
+    // Transport exception text is not a trusted source of client-visible
+    // connection diagnostics; avoid echoing host or credential material.
+    throw fail('CONNECTION_FAILED','MySQL connection failed');
   }finally{
     clearTimeout(timer);
     signal?.removeEventListener('abort',onAbort);
