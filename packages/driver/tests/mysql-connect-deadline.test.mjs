@@ -44,11 +44,11 @@ function greetingPacket(){
   low.writeUInt16LE(capabilities&0xffff);
   high.writeUInt16LE((capabilities>>>16)&0xffff);
   const body=Buffer.concat([
-    Buffer.from([10]),Buffer.from('8.4.11-test\\0','utf8'),
+    Buffer.from([10]),Buffer.from('8.4.11-test','utf8'),Buffer.from([0]),
     Buffer.from([1,0,0,0]),Buffer.alloc(8,0x31),Buffer.from([0]),
     low,Buffer.from([45,2,0]),high,Buffer.from([21]),
     Buffer.alloc(10),Buffer.alloc(12,0x32),Buffer.from([0]),
-    Buffer.from('caching_sha2_password\\0','utf8')
+    Buffer.from('caching_sha2_password','utf8'),Buffer.from([0])
   ]);
   return Buffer.concat([
     Buffer.from([body.length&255,(body.length>>>8)&255,(body.length>>>16)&255,0]),body
