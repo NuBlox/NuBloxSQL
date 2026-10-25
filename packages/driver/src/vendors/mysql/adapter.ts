@@ -52,10 +52,10 @@ export class MysqlSession implements RelationalSession {
     });
     // Remote closes can happen between operations when no read is pending.
     // Immediately revoke prepared handles and remove the stale pool session.
-    this.stream.onFatal(()=>this.destroy());
+    this.stream.onFatal(error=>this.destroy(error instanceof DriverError?error:undefined));
   }
 
-  private destroy():void {
+  private destroy(cause?:DriverError):void {
     if(this.closed)return;
     this.closed=true;
     // A transport failure can occur while an exclusive transaction/cursor
@@ -63,7 +63,7 @@ export class MysqlSession implements RelationalSession {
     // Interrupt its guard immediately instead of waiting for the callback
     // or the operation deadline. The closed flag makes re-entrant destroy
     // from OperationGuard's interruption callback safe.
-    this.activeGuard?.interrupt(
+    this.activeGuard?.interrupt(cause??
       fail('CONNECTION_CLOSED','Native MySQL connection terminated during operation')
     );
     for(const statement of this.statements)statement.invalidate();
