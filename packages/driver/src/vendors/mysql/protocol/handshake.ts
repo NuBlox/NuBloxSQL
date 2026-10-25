@@ -22,7 +22,7 @@ export function greeting(buf:Buffer):MysqlGreeting{
     c.two(); // server status flags
     const serverCapabilities=(lowerCapabilities|(c.two()<<16))>>>0;
     const challengeLength=c.byte();
-    const reserved=c.take(10);
+    c.take(10); // reserved bytes
     // This native client requires CLIENT_PLUGIN_AUTH; modern supported
     // plugins use 20 challenge bytes plus one final NUL (length 21).
     if(!(serverCapabilities&F.PLUGIN_AUTH)||challengeLength!==21)
