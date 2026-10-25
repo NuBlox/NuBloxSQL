@@ -294,7 +294,7 @@ export class MysqlSession implements RelationalSession {
       // replacing it with a later COM_STMT_CLOSE stream-reset failure.
       if(!(error instanceof DriverError&&
            (error.code==='DATABASE_ERROR'||error.code==='INVALID_INPUT')))
-        this.destroy();
+        this.destroy(error instanceof DriverError?error:undefined);
       throw error;
     }finally{
       if(!this.closed)await this.closeNative(prepared.id);
