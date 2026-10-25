@@ -104,12 +104,22 @@ test('stalled MySQL STARTTLS handshake times out and destroys the TLS transport'
 });
 
 test('abort wins over a later MySQL STARTTLS deadline',{timeout:4000},async()=>{
-  const server=await serverWith(socket=>socket.write(greetingPacket()));
+  let sslRequestSeen;
+  const startedTls=new Promise(resolve=>{sslRequestSeen=resolve;});
+  const server=await serverWith(socket=>{
+    let received=0;
+    socket.on('data',chunk=>{
+      received+=chunk.length;
+      if(received>=36)sslRequestSeen();
+    });
+    socket.write(greetingPacket());
+  });
   try{
     const controller=new AbortController();
     const connection=connectMysql(target(server.port,'verified-tls'),controller.signal);
     const socket=await server.accepted;
     const closed=once(socket,'close');
+    await startedTls;
     controller.abort();
     await assert.rejects(connection,error=>error.code==='CANCELLED');
     await closed;
