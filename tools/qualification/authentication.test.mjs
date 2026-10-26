@@ -32,8 +32,9 @@ function fakeConnect({rejectCode='DATABASE_ERROR',leak=false}={}){
       return {
         info:{transport:options.security},
         async query(sql){
-          assert.equal(sql,"SHOW GLOBAL STATUS LIKE 'Threads_connected'");
-          return {rows:[{Value:String(open)}]};
+          assert.equal(sql,
+            "SELECT VARIABLE_VALUE AS connected FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Threads_connected'");
+          return {rows:[{connected:String(open)}]};
         },
         async close(){
           if(done)return;
@@ -65,7 +66,7 @@ test('authentication qualification measures two non-SQL latency series and fully
   assert.equal(peer.stats.closed,7);
   assert.ok(peer.stats.peak<=4,'reference plus three simultaneous workers');
   assert.ok(!JSON.stringify(report).includes(target.password));
-  assert.ok(!JSON.stringify(report).includes('SHOW GLOBAL STATUS'));
+  assert.ok(!JSON.stringify(report).includes('performance_schema.global_status'));
 });
 
 test('concurrent authentication rejects wrong vendor error and still closes all accepted sessions',async()=>{
