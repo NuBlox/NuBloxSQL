@@ -85,17 +85,30 @@ export class PacketStream {
       let offset=0;
       while(offset<chunk.length||this.frameRemaining===0){
         if(this.frameRemaining===-1){
-          const take=Math.min(4-this.headerRead,chunk.length-offset);
-          chunk.copy(this.header,this.headerRead,offset,offset+take);
-          offset+=take;
-          this.headerRead+=take;
-          if(this.headerRead<4)break;
-          const seq=this.header[3];
+          let seq:number;
+          let length:number;
+          if(this.headerRead===0&&chunk.length-offset>=4){
+            // Most TCP deliveries contain an entire 4-byte frame header.
+            // Parse directly from the existing chunk: avoid copying every
+            // header into scratch memory on this common path. Keep the
+            // scratch buffer for headers split across TCP data events.
+            length=chunk[offset]|(chunk[offset+1]<<8)|(chunk[offset+2]<<16);
+            seq=chunk[offset+3];
+            offset+=4;
+          }else{
+            const take=Math.min(4-this.headerRead,chunk.length-offset);
+            chunk.copy(this.header,this.headerRead,offset,offset+take);
+            offset+=take;
+            this.headerRead+=take;
+            if(this.headerRead<4)break;
+            seq=this.header[3];
+            length=this.header[0]|(this.header[1]<<8)|(this.header[2]<<16);
+            this.headerRead=0;
+          }
           if(seq!==this.sequence)throw Error('MySQL packet sequence mismatch');
           this.sequence=(this.sequence+1)&255;
-          this.frameRemaining=this.header[0]|(this.header[1]<<8)|(this.header[2]<<16);
-          this.currentFrameLength=this.frameRemaining;
-          this.headerRead=0;
+          this.frameRemaining=length;
+          this.currentFrameLength=length;
           // The advertised frame length is a lower bound on the bytes we
           // would have to retain, even if the peer never sends its payload.
           // Reject impossible messages at the header rather than permitting
