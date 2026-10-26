@@ -48,6 +48,18 @@ jobs:
           NUBLOX_LIVE_MYSQL: '1'
           MYSQL_USER: root
           MYSQL_PASSWORD: test-password
+      - name: Repeat comparison and validate cross-run analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qualification/compare-concurrent.mjs --iterations=12 --concurrency=2 --rounds=2
+          reports=(artifacts/qualification/comparison-concurrent-*.json)
+          test "${#reports[@]}" -eq 2
+          node tools/qualification/analyze-concurrent.mjs "${reports[@]}"
+        env:
+          NUBLOX_LIVE_MYSQL: '1'
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test-password
       - name: Preserve structured comparison evidence
         if: always()
         uses: actions/upload-artifact@v4
