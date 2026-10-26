@@ -26,8 +26,15 @@ server-side cursor traversal, and reconnect churn (which includes a SQL
 query). The bounded authentication burst also runs in soak mode, once per run,
 not repeatedly throughout the soak. `--authAttempts=12` is the default and
 can be set from 2 to 64, with at most `--concurrency` simultaneous attempts.
-Half the attempts authenticate normally and half use deliberately invalid
-credentials; rejected attempts must report MySQL error 1045 / SQLSTATE 28000.
+With **verified TLS**, half the attempts authenticate normally and half use
+deliberately invalid credentials; rejected attempts must report MySQL error
+1045 / SQLSTATE 28000. In **isolated-local plaintext** mode, every attempt
+measures successful connection establishment only: a bad password can trigger
+SHA-2 full authentication, which the driver deliberately refuses without
+verified TLS. The report records `authRejectionProfile` as
+`not-qualified-isolated-local` and `rejectedAuthentication.count=0` rather
+than inventing invalid-password timings. The verified-TLS CI job explicitly
+runs a benchmark that qualifies rejected authentication on the TLS fixture.
 Each successful connection is closed by its worker, and the runner compares
 MySQL's server-side `Threads_connected` before and after the burst. If active
 sessions have not returned to baseline after bounded cleanup polling, the
