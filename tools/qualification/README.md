@@ -15,13 +15,30 @@ optionally `MYSQL_DATABASE`. For verified TLS set
 `MYSQL_USER` / `MYSQL_PASSWORD`. Never commit secrets.
 
 ```bash
-npm run qualify:mysql -- --iterations=120 --concurrency=4 --durationMs=8000
+npm run qualify:mysql -- --iterations=120 --concurrency=4 --authAttempts=12 --durationMs=8000
 npm run soak:mysql -- --durationMs=120000 --concurrency=4
 ```
 
-Benchmarks run a warmup, then measure four **separate** workloads: a warmed
+Benchmarks measure **separate** workloads: native connection establishment
+without application SQL, deliberately rejected authentication, a warmed
 single-session prepared SELECT, bounded-pool callback SELECTs, one real
-server-side cursor traversal, and reconnect churn. Soak executes a timed,
+server-side cursor traversal, and reconnect churn (which includes a SQL
+query). The bounded authentication burst also runs in soak mode, once per run,
+not repeatedly throughout the soak. `--authAttempts=12` is the default and
+can be set from 2 to 64, with at most `--concurrency` simultaneous attempts.
+With **verified TLS**, half the attempts authenticate normally and half use
+deliberately invalid credentials; rejected attempts must report MySQL error
+1045 / SQLSTATE 28000. In **isolated-local plaintext** mode, every attempt
+measures successful connection establishment only: a bad password can trigger
+SHA-2 full authentication, which the driver deliberately refuses without
+verified TLS. The report records `authRejectionProfile` as
+`not-qualified-isolated-local` and `rejectedAuthentication.count=0` rather
+than inventing invalid-password timings. The verified-TLS CI job explicitly
+runs a benchmark that qualifies rejected authentication on the TLS fixture.
+Each successful connection is closed by its worker, and the runner compares
+MySQL's server-side `Threads_connected` before and after the burst. If active
+sessions have not returned to baseline after bounded cleanup polling, the
+qualification fails as a potential native resource leak. Soak executes a timed,
 concurrent pooled read workload with periodic deliberate SQL errors that **must
 not** destroy healthy sessions. Both check result correctness and pool bounds,
 track p50/p95/p99 wall-clock latency, operations/s, RSS/heap peaks and event

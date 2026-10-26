@@ -9,6 +9,7 @@ import {resolve} from 'node:path';
 import {cpus,platform,arch} from 'node:os';
 import {connectDatabase,createDatabasePool} from '../../packages/driver/dist/index.js';
 import {parseArgs,summarize,safeError} from './metrics.mjs';
+import {qualifyAuthentication} from './authentication.mjs';
 
 const mode=process.argv[2];
 const config=parseArgs(process.argv.slice(3),mode);
@@ -185,6 +186,14 @@ async function reconnectRun(){
 }
 const started=performance.now();
 try{
+  // Connection-only timing is intentionally distinct from reconnectRun(),
+  // which includes a real query and therefore cannot isolate auth overhead.
+  const authentication=await qualifyAuthentication({
+    connect:connectDatabase,target:base,
+    concurrency:config.concurrency,attempts:config.authAttempts
+  });
+  Object.assign(report.workloads,authentication.workloads);
+  Object.assign(report.resources,authentication.resources);
   if(mode==='benchmark'){
     await singleSession();
     await poolRun(false);
