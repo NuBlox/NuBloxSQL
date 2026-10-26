@@ -3,7 +3,7 @@ import {AsyncLocalStorage} from 'node:async_hooks';
 import tls from 'node:tls';
 import {PacketStream} from './protocol/framing.js';
 import {Cursor,cstr,LIMIT,u32} from './protocol/primitives.js';
-import {greeting,flags,login,sslRequest,authSwitchRequest,cachingSha2AuthMore,type MysqlGreeting} from './protocol/handshake.js';
+import {greeting,flags,login,sslRequest,authSwitchRequest,cachingSha2AuthMore,authenticationOk,type MysqlGreeting} from './protocol/handshake.js';
 import {assertSupportedAuthPlugin,token} from './auth/plugins.js';
 import {execute,fetchRows} from './protocol/commands.js';
 import {MysqlCursor} from './cursor.js';
@@ -675,20 +675,29 @@ export async function connectMysql(input:MysqlTarget,signal?:AbortSignal):Promis
       database:target.database,seed:hello.seed,plugin:hello.plugin
     }));
     let plugin=hello.plugin;
+    let authStage:'challenge'|'final-ok'='challenge';
+    let switched=false;
     for(let i=0;i<6;i++){
       const packet=serverPacket(await stream.read());
       if(packet[0]===0){
+        authenticationOk(packet);
         if(cancelled)throw fail('CANCELLED','MySQL connection attempt cancelled');
         return new MysqlSession(stream,active,target,{...hello,plugin});
       }
       if(packet[0]===254){
+        if(switched||authStage!=='challenge')
+          throw fail('PROTOCOL_ERROR','Unexpected MySQL authentication plugin switch');
         const switchRequest=authSwitchRequest(packet);
+        switched=true;
         plugin=switchRequest.plugin;
         await stream.send(token(target.password,switchRequest.seed,plugin));
         continue;
       }
       if(packet[0]===1&&plugin==='caching_sha2_password'){
+        if(authStage!=='challenge')
+          throw fail('PROTOCOL_ERROR','Repeated MySQL authentication continuation');
         const status=cachingSha2AuthMore(packet);
+        authStage='final-ok';
         if(status===3)continue;
         if(!secure)throw fail('AUTH_UNSUPPORTED','Full authentication requires verified TLS');
         await stream.send(cstr(target.password));
