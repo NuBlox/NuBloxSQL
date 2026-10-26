@@ -17,6 +17,9 @@ optionally `MYSQL_DATABASE`. For verified TLS set
 ```bash
 npm run qualify:mysql -- --iterations=120 --concurrency=4 --authAttempts=12 --durationMs=8000
 npm run soak:mysql -- --durationMs=120000 --concurrency=4
+# Optional competitor, installed OUTSIDE the published driver:
+npm install --no-save --package-lock=false --ignore-scripts --prefix tools/qualification/mysql2-isolated mysql2@3.24.6
+npm run compare:mysql -- --iterations=80 --rounds=4 --connections=8
 ```
 
 Benchmarks measure **separate** workloads: native connection establishment
@@ -53,11 +56,32 @@ noise makes thresholds misleading). Nightly and manual GitHub workflows run
 longer soak and attach the JSON evidence. The one-million-operation safety ceiling is designed not to truncate an ordinary two-minute run; reports record the **actual** elapsed duration, and a run hitting the ceiling early is not evidence of a full-duration soak. The timer ends *between* operations;
 outstanding work completes, so actual duration may be slightly longer.
 
-The current benchmark compares **NuBloxSQL to itself across commits**; it does
-not measure mysql2, mysqljs/mysql or any commercial alternative and therefore
-cannot prove leadership. No results contain synthetic performance claims.
-For comparative benchmarking, implement an identical competitor adapter and
-publish a pinned environment and reproducible raw result artifacts.
+The optional **`compare:mysql`** command runs a bounded side-by-side
+baseline against **mysql2 3.24.6**, installed only into
+`tools/qualification/mysql2-isolated/node_modules`. It is never declared in
+the published `@nublox/driver` runtime or workspace dependency manifests.
+The comparison uses the **same MySQL 8.4 fixture and identical bound SQL**
+(`SELECT ? AS benchmark_value`) for both clients. It measures fresh physical
+connection establishment and a manually prepared statement executed repeatedly
+on a persistent connection. Both clients receive eight untimed warmups per
+statement, and numeric results are checked for correctness. The two clients
+execute in alternating **ABBA** order across 2–12 rounds to reduce ordering
+bias. Runs record package versions, Node/OS/CPU context, MySQL server version,
+per-client p50/p95/p99, throughput, sample counts and durations as gitignored
+JSON artifacts. `--iterations` ranges from 8 to 10,000 per round, and
+`--connections` from 2 to 32 per round.
+
+**Limitations:** This is a sequential, plaintext loopback-only *first*
+comparison, not a certified benchmark or proof of superior performance.
+It does not compare pooling, SQL parsing cost, TLS, cloud latency, parallel
+throughput or memory profiles. Connection-only latency excludes close(), but
+its reported operations/second includes close() between samples. Internal
+implementations and an unpinned transitive comparator dependency tree may
+influence results. The direct mysql2 version is fixed and checked at runtime.
+For authoritative performance claims, pin the entire dependency graph,
+execute multiple jobs on stable hardware and publish raw samples and
+statistical uncertainty. CI checks **correctness and workload completion**,
+not an arbitrary speed threshold.
 
 These tests intentionally avoid writes and do not represent a full
 transaction/DDL, failover, cloud IAM, multi-MySQL-version or multi-vendor
