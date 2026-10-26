@@ -16,14 +16,16 @@ test('deterministic nearest-rank latency percentiles and throughput',()=>{
 });
 test('CLI rejects unbounded or malformed qualification workloads',()=>{
   assert.deepEqual(parseArgs(['--iterations=2','--concurrency=3','--cursorRows=100'], 'benchmark'),{
-    mode:'benchmark',iterations:2,concurrency:3,durationMs:8000,fetchSize:32,cursorRows:100
+    mode:'benchmark',iterations:2,concurrency:3,durationMs:8000,fetchSize:32,cursorRows:100,authAttempts:12
   });
   for(const bad of [
     ['--concurrency=0'],['--concurrency=17'],['--iterations=1000001'],
     ['--durationMs=0'],['--durationMs=600001'],['--fetchSize=257'],
-    ['--cursorRows=99'],['--foo=2'],['--concurrency=2','--concurrency=3'],
+    ['--cursorRows=99'],['--authAttempts=1'],['--authAttempts=65'],
+    ['--foo=2'],['--concurrency=2','--concurrency=3'],
     ['--iterations=NaN'],['--iterations=-1']
   ])assert.throws(()=>parseArgs(bad,'soak'));
+  assert.equal(parseArgs(['--authAttempts=64'],'benchmark').authAttempts,64);
   assert.throws(()=>parseArgs([], 'unknown'));
   assert.throws(()=>integerOption(1.5,{name:'x',min:1,max:10}));
 });
