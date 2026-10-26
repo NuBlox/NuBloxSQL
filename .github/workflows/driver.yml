@@ -58,6 +58,14 @@ jobs:
           NUBLOX_LIVE_MYSQL: '1'
           MYSQL_USER: root
           MYSQL_PASSWORD: test-password
+      - name: Install pinned mysql2 comparator outside the published driver
+        run: npm install --no-save --package-lock=false --ignore-scripts --prefix tools/qualification/mysql2-isolated mysql2@3.24.6
+      - name: Reproducible comparison smoke against pinned MySQL 8.4
+        run: npm run compare:mysql -- --iterations=24 --rounds=2 --connections=4
+        env:
+          NUBLOX_LIVE_MYSQL: '1'
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test-password
       - name: Retain reproducible MySQL qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
