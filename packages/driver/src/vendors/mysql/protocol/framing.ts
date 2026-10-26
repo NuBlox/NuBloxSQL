@@ -4,6 +4,8 @@ import {DriverError,fail} from '../../../core/errors.js';
 
 export const MAX_FRAME_PAYLOAD=0xffffff;
 const MAX_QUEUED_MESSAGES=1024;
+/** Avoid two asynchronous socket writes for ordinary small Classic commands. */
+const INLINE_FRAME_BYTES=4096;
 
 type Waiter={resolve:(body:Buffer)=>void;reject:(error:Error)=>void};
 
@@ -178,13 +180,21 @@ export class PacketStream {
       header[0]=length&255;header[1]=(length>>8)&255;
       header[2]=(length>>16)&255;header[3]=this.sequence;
       this.sequence=(this.sequence+1)&255;
-      // No concatenation of the full payload is necessary; the header and
-      // slice are separately written with Node's TCP backpressure callbacks.
-      await new Promise<void>((resolve,reject)=>
-        socket.write(header,error=>error?reject(error):resolve()));
-      if(length){
+      if(length<=INLINE_FRAME_BYTES){
+        // One socket write for small commands avoids a second callback and
+        // microtask hop. Only copy a bounded payload; large frames remain
+        // zero-copy slices and retain their existing backpressure behaviour.
+        const frame=Buffer.allocUnsafe(4+length);
+        header.copy(frame);
+        if(length)body.copy(frame,4,offset,offset+length);
         await new Promise<void>((resolve,reject)=>
-          socket.write(body.subarray(offset,offset+length),error=>error?reject(error):resolve()));
+          socket.write(frame,error=>error?reject(error):resolve()));
+      }else{
+        await new Promise<void>((resolve,reject)=>
+          socket.write(header,error=>error?reject(error):resolve()));
+        await new Promise<void>((resolve,reject)=>
+          socket.write(body.subarray(offset,offset+length),
+            error=>error?reject(error):resolve()));
       }
       offset+=length;
       if(length<MAX_FRAME_PAYLOAD)break;
