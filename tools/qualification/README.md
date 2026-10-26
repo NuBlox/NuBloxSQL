@@ -132,3 +132,41 @@ a short correctness-focused CI smoke. There are no fixed performance
 thresholds because shared CI hardware is noisy. For performance decisions
 compare **multiple runs of the same stage** on dedicated, stable hardware
 across commits, then use CPU profiling to attribute a specific code path.
+
+
+## Decoder optimisation: before/after evidence
+
+The native decoder hot path previously created temporary type-classification
+arrays on every binary field and temporary collation arrays on every decoded
+text cell. The targeted optimisation uses direct equality tests for the same
+supported MySQL type IDs and collation IDs/ranges, retaining the exact
+bitmaps, binary buffers, decimals, UTF-8/Latin-1 validation and failure modes.
+
+The `Native MySQL decoder optimisation evidence` pull-request CI workflow
+tests a candidate against the exact PR base revision in separate Git worktrees
+on **one** Node 22 runner. Both receive identical synthetic fixtures from
+`profile:mysql-internals`: 500 samples per stage, six rotated rounds, queue
+depth eight. Runs alternate **base–candidate–candidate–base** to reveal some
+CPU warmup, JIT and scheduling bias. Results and validated same-stage
+median work-unit throughput ratios are retained as JSON artifacts alongside
+the usual full regression suite.
+
+To summarise the four raw results outside CI:
+
+```bash
+node tools/qualification/compare-internal-runs.mjs \
+  artifacts/qualification/ab/baseline-1.json \
+  artifacts/qualification/ab/candidate-1.json \
+  artifacts/qualification/ab/candidate-2.json \
+  artifacts/qualification/ab/baseline-2.json
+```
+
+`candidateToBaselineThroughputRatio > 1` indicates greater observed
+throughput on the synthetic stage. The comparator rejects missing/duplicate
+trials, incompatible options, differing Node/OS/architecture or mismatched
+revisions. **No fixed speed threshold gates correctness**: numbers can vary
+on hosted CI, and an apparent difference cannot establish production SQL
+latency or a commercial speed claim. The same-stage decoder results are
+reviewed separately from the command scheduler and packet-framing controls;
+their timings must not be added together. Preserve and repeat profiles
+under dedicated hardware before making sustained performance claims.
