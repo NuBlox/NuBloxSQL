@@ -80,3 +80,39 @@ the retained JSON trial distributions, order sensitivity and environment
 before proposing a specific driver optimisation. Ratios cannot by themselves
 identify which internal function is the bottleneck; follow up with independent
 profiling of packet parsing, result decoding and scheduling.
+
+## Independent-run aggregate analysis
+
+The paired-round bootstrap above (from PR #391) is **within one run**. For
+evidence across distinct executions, use the separate aggregation command;
+it reuses the same validated paired-round analyser rather than implementing
+a second, potentially conflicting round-level formula.
+
+Collect at least two `comparison-concurrent-*.json` files with the same
+source revision, Node/OS/CPU profile, MySQL and mysql2 versions, transport
+mode, iterations, concurrency and rounds. Analyse them as follows:
+
+```bash
+node tools/qualification/analyze-concurrent.mjs \
+  artifacts/qualification/comparison-concurrent-<first>.json \
+  artifacts/qualification/comparison-concurrent-<second>.json
+```
+
+The output `artifacts/qualification/comparison-analysis-*.json` contains
+each workload's **per-run** geometric-mean median-latency ratio, range,
+median, coefficient of variation, counts favouring each driver, and an
+exact two-sided sign-test p-value on **runs** rather than individual SQL
+operations or correlated rounds. At least six non-tied report executions
+and a p-value below 0.05 are necessary for the cautious
+`consistent-direction-in-this-environment` label; every other result is
+`inconclusive`. This is not a confidence interval, a formal production
+benchmark, or a guarantee about other operating environments. In particular
+multiple runs on one shared CI runner are not necessarily independent.
+
+The tool fails for missing client/round pairs, incomplete query counts,
+duplicate timestamps, malformed reports, or differing recorded
+configuration. It cannot independently establish that two separate runs
+used the same physical hardware, database load or server configuration,
+so operators must ensure those controls before publishing comparisons.
+CI collects only two runs to test this machinery, and therefore cannot
+produce a directional performance claim.
