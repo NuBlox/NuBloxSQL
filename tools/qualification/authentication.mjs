@@ -4,10 +4,17 @@ import {summarize} from './metrics.mjs';
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 async function connectedThreads(session){
-  const result=await session.query("SHOW GLOBAL STATUS LIKE 'Threads_connected'");
-  const value=Number(result.rows[0]?.Value);
-  if(!Number.isSafeInteger(value)||value<1)
-    throw Error('Unable to measure authenticated server connections');
+  // Use a normal prepared SELECT. Some MySQL commands such as SHOW do not
+  // follow the same prepared-statement semantics across server versions.
+  const result=await session.query(
+    "SELECT VARIABLE_VALUE AS connected FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Threads_connected'"
+  );
+  const value=Number(result.rows[0]?.connected);
+  if(!Number.isSafeInteger(value)||value<1){
+    const error=Error('Unable to measure authenticated server connections');
+    error.code='AUTH_COUNTER_UNAVAILABLE';
+    throw error;
+  }
   return value;
 }
 
@@ -67,7 +74,8 @@ export async function qualifyAuthentication({
     if(outcomes.some(outcome=>outcome.status==='rejected')||
       established.length!==Math.ceil(attempts/2)||
       rejected.length!==Math.floor(attempts/2))
-      throw Error('Concurrent authentication qualification failed');
+      throw Object.assign(Error('Concurrent authentication qualification failed'),
+        {code:'AUTH_WORKER_FAILURE'});
     const elapsed=performance.now()-started;
 
     // Compare server-side physical sessions while keeping exactly one
@@ -81,7 +89,8 @@ export async function qualifyAuthentication({
       after=await connectedThreads(reference);
     }
     if(after>before)
-      throw Error('Authentication qualification left unclosed server connections');
+      throw Object.assign(Error('Authentication qualification left unclosed server connections'),
+        {code:'AUTH_LEAK_DETECTED'});
 
     return Object.freeze({
       workloads:{
