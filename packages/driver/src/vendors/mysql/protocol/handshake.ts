@@ -43,7 +43,7 @@ export function greeting(buf:Buffer):MysqlGreeting{
     throw fail('PROTOCOL_ERROR','Malformed MySQL server greeting');
   }
 }
-export function flags(server:number,secure:boolean,database?:string):number{let f=F.LONG_PASSWORD|F.LONG_FLAG|F.PROTOCOL_41|F.TRANSACTIONS|F.SECURE_CONNECTION|F.PLUGIN_AUTH|F.MULTI_RESULTS|F.PS_MULTI_RESULTS;if(secure)f|=F.SSL;if(database)f|=F.CONNECT_WITH_DB;if((f&server)!==f)throw Error('Server lacks required capabilities');return f;}
+export function flags(server:number,secure:boolean,database?:string):number{let f=F.LONG_PASSWORD|F.LONG_FLAG|F.PROTOCOL_41|F.TRANSACTIONS|F.SECURE_CONNECTION|F.PLUGIN_AUTH|F.MULTI_RESULTS|F.PS_MULTI_RESULTS;if(secure)f|=F.SSL;if(database)f|=F.CONNECT_WITH_DB;if((f&server)!==f)throw fail('UNSUPPORTED_FEATURE','MySQL server lacks required protocol capabilities');return f;}
 export const sslRequest=(f:number):Buffer=>Buffer.concat([u32(f),u32(LIMIT),Buffer.from([45]),Buffer.alloc(23)]);
 export interface MysqlLogin {f:number;user:string;password:string;database?:string;seed:Buffer;plugin:string}
 export function login({f,user,password,database,seed,plugin}:MysqlLogin):Buffer{const t=token(password,seed,plugin);return Buffer.concat([sslRequest(f),cstr(user),Buffer.from([t.length]),t,...(database?[cstr(database)]:[]),cstr(plugin)]);}
@@ -77,4 +77,24 @@ export function cachingSha2AuthMore(packet:Buffer):3|4{
   if(packet[1]!==3&&packet[1]!==4)
     throw fail('AUTH_UNSUPPORTED','Unsupported MySQL authentication continuation');
   return packet[1] as 3|4;
+}
+
+/** The final authentication response must be a complete Classic Protocol 4.1
+ * OK packet, not just an arbitrary buffer beginning with 0x00. The negotiated
+ * client flags require the two length-encoded counts, status and warnings. */
+export function authenticationOk(packet:Buffer):void{
+  try{
+    const c=new Cursor(packet);
+    if(c.byte()!==0)throw fail('PROTOCOL_ERROR','Invalid MySQL authentication OK header');
+    const affectedRows=c.len();
+    const insertId=c.len();
+    if(affectedRows===null||insertId===null||c.remaining()<4)
+      throw fail('PROTOCOL_ERROR','Malformed MySQL authentication OK packet');
+    c.two(); // server status flags
+    c.two(); // warning count
+    // A server can append an informational message after the fixed fields.
+  }catch(error){
+    if(error instanceof DriverError)throw error;
+    throw fail('PROTOCOL_ERROR','Malformed MySQL authentication OK packet');
+  }
 }
