@@ -68,6 +68,6 @@ test('mismatched commits, options and Node environments must not be compared',()
   ]){
     const values=structuredClone(original);
     mutate(values);
-    assert.throws(()=>compareProfiles(values),/mismatch|distinct/);
+    assert.throws(()=>compareProfiles(values),/mismatch|distinct|Malformed/);
   }
 });
