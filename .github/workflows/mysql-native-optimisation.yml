@@ -1,0 +1,78 @@
+name: Native MySQL decoder optimisation evidence
+
+on:
+  pull_request:
+    paths:
+      - 'packages/driver/src/vendors/mysql/types.ts'
+      - 'packages/driver/tests/mysql-decoder-classification.test.mjs'
+      - 'tools/qualification/compare-internal-runs.mjs'
+      - 'tools/qualification/compare-internal-runs.test.mjs'
+      - '.github/workflows/mysql-native-optimisation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  decoder-before-after:
+    name: decoder-before-after
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build and validate candidate
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+          node --test tools/qualification/internal-profile.test.mjs tools/qualification/compare-internal-runs.test.mjs packages/driver/tests/mysql-decoder-classification.test.mjs
+      - name: Build exact base revision on the same runner
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git worktree add --detach "${RUNNER_TEMP}/nublox-profile-baseline" "${BASE_SHA}"
+          npm install --prefix "${RUNNER_TEMP}/nublox-profile-baseline" --no-audit --no-fund
+          npm run build --prefix "${RUNNER_TEMP}/nublox-profile-baseline"
+      - name: Execute B-A-A-B staged profiles with identical work
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CANDIDATE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          REPORT_DIR="$PWD/artifacts/qualification/ab"
+          BASE_DIR="${RUNNER_TEMP}/nublox-profile-baseline"
+          CANDIDATE_DIR="$PWD"
+          mkdir -p "$REPORT_DIR"
+          profile() {
+            local folder="$1" revision="$2" label="$3"
+            (
+              cd "$folder"
+              GITHUB_SHA="$revision" node tools/qualification/profile-internals.mjs \
+                --iterations=500 --rounds=6 --queueDepth=8
+            ) > "$REPORT_DIR/${label}.log"
+            mv "$folder"/artifacts/qualification/native-internal-profile-*.json \
+              "$REPORT_DIR/${label}.json"
+          }
+          profile "$BASE_DIR" "$BASE_SHA" baseline-1
+          profile "$CANDIDATE_DIR" "$CANDIDATE_SHA" candidate-1
+          profile "$CANDIDATE_DIR" "$CANDIDATE_SHA" candidate-2
+          profile "$BASE_DIR" "$BASE_SHA" baseline-2
+          node tools/qualification/compare-internal-runs.mjs \
+            "$REPORT_DIR/baseline-1.json" "$REPORT_DIR/candidate-1.json" \
+            "$REPORT_DIR/candidate-2.json" "$REPORT_DIR/baseline-2.json"
+      - name: Retain complete measured evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-mysql-decoder-before-after-${{ github.run_id }}
+          path: |
+            artifacts/qualification/ab/*.json
+            artifacts/qualification/native-internal-ab-*.json
+          if-no-files-found: warn
+          retention-days: 14
