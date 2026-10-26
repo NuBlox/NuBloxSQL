@@ -66,6 +66,12 @@ jobs:
           NUBLOX_LIVE_MYSQL: '1'
           MYSQL_USER: root
           MYSQL_PASSWORD: test-password
+      - name: Profile real MySQL prepared, larger results, concurrency and process memory
+        run: npm run profile:mysql-live -- --samples=6 --rows=250 --rowBytes=2048 --concurrency=2 --durationMs=700
+        env:
+          NUBLOX_LIVE_MYSQL: '1'
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test-password
       - name: Retain reproducible MySQL qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
