@@ -26,10 +26,10 @@ test('outbound Classic messages split at 0xffffff with per-frame sequence number
   const socket=new CaptureSocket(),packets=new PacketStream(socket);
   const input=Buffer.alloc(MAX_FRAME_PAYLOAD+9,0xa5);
   await packets.send(input);
-  assert.deepEqual(socket.writes.map(x=>x.length),[4,MAX_FRAME_PAYLOAD,4,9]);
+  assert.deepEqual(socket.writes.map(x=>x.length),[4,MAX_FRAME_PAYLOAD,13]);
   assert.deepEqual(socket.writes[0],header(MAX_FRAME_PAYLOAD,0));
-  assert.deepEqual(socket.writes[2],header(9,1));
-  assert.deepEqual(Buffer.concat([socket.writes[1],socket.writes[3]]),input);
+  assert.deepEqual(socket.writes[2].subarray(0,4),header(9,1));
+  assert.deepEqual(Buffer.concat([socket.writes[1],socket.writes[2].subarray(4)]),input);
   packets.destroy();
 });
 test('exact 0xffffff outbound payload requires a terminating zero-length frame',async()=>{
@@ -166,6 +166,49 @@ test('outbound logical packet above the bounded cap is rejected without writing'
   await assert.rejects(packets.send(Buffer.alloc(LIMIT+1)),/outbound logical packet.*limit/);
   assert.equal(socket.writes.length,0);
   await packets.send(Buffer.from('ok'));
-  assert.deepEqual(socket.writes[0],header(2,0));
+  assert.deepEqual(socket.writes[0],Buffer.concat([header(2,0),Buffer.from('ok')]));
+  packets.destroy();
+});
+
+test('small outbound commands use exactly one framed socket write, including boundary',async()=>{
+  for(const size of [1,2,32,4095,4096]){
+    const socket=new CaptureSocket(),packets=new PacketStream(socket);
+    const command=Buffer.alloc(size,0x5a);
+    await packets.send(command);
+    assert.equal(socket.writes.length,1,'size='+size);
+    assert.deepEqual(socket.writes[0].subarray(0,4),header(size,0));
+    assert.deepEqual(socket.writes[0].subarray(4),command);
+    packets.destroy();
+  }
+});
+test('large outbound payloads avoid copying and retain header/payload boundaries',async()=>{
+  const socket=new CaptureSocket(),packets=new PacketStream(socket);
+  const body=Buffer.alloc(4097,0x2b);
+  await packets.send(body);
+  assert.equal(socket.writes.length,2);
+  assert.deepEqual(socket.writes[0],header(body.length,0));
+  assert.equal(socket.writes[1].buffer,body.buffer);
+  assert.deepEqual(socket.writes[1],body);
+  packets.destroy();
+});
+test('outbound small messages preserve frame sequence across multiple sends',async()=>{
+  const socket=new CaptureSocket(),packets=new PacketStream(socket);
+  await packets.send(Buffer.from('a'));
+  await packets.send(Buffer.from('b'));
+  assert.deepEqual(socket.writes[0],Buffer.concat([header(1,0),Buffer.from('a')]));
+  assert.deepEqual(socket.writes[1],Buffer.concat([header(1,1),Buffer.from('b')]));
+  packets.destroy();
+});
+test('single-write socket callback errors reject the outbound message',async()=>{
+  class FailingSocket extends CaptureSocket {
+    write(data,callback){
+      this.writes.push(data);
+      callback?.(new Error('transport failed'));
+      return false;
+    }
+  }
+  const socket=new FailingSocket(),packets=new PacketStream(socket);
+  await assert.rejects(packets.send(Buffer.from('hi')),/transport failed/);
+  assert.equal(socket.writes.length,1);
   packets.destroy();
 });

@@ -9,18 +9,16 @@ class InMemoryMySqlSocket extends EventEmitter {
   commands=0;
   write(data,callback){
     if(this.destroyed)throw Error('Write to a closed synthetic socket');
-    // The only accepted command is COM_PING. Framing uses two writes:
-    // the 4-byte header and one command byte.
-    if(data.length===1){
-      if(data[0]!==0x0e)throw Error('Unexpected synthetic command');
-      this.commands++;
-      // Reply after the send callback, just like an asynchronously received
-      // MySQL Classic OK packet at server sequence number one.
-      queueMicrotask(()=>{
-        if(!this.destroyed)
-          this.emit('data',Buffer.from([7,0,0,1,0,0,0,2,0,0,0]));
-      });
-    }else if(data.length!==4)throw Error('Unexpected synthetic write size');
+    // Validate the actual single-write framed COM_PING on the fast path.
+    if(data.length!==5||data[0]!==1||data[1]!==0||
+       data[2]!==0||data[3]!==0||data[4]!==0x0e)
+      throw Error('Unexpected synthetic MySQL frame');
+    this.commands++;
+    // Asynchronous server response after the outbound callback.
+    queueMicrotask(()=>{
+      if(!this.destroyed)
+        this.emit('data',Buffer.from([7,0,0,1,0,0,0,2,0,0,0]));
+    });
     callback?.();
     return true;
   }
