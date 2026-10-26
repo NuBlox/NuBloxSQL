@@ -17,15 +17,11 @@ class PingSocket extends EventEmitter {
   }
   write(data,callback){
     assert.equal(this.destroyed,false,'a closed transport may not write');
-    if(data.length===4){
-      assert.deepEqual(data,Buffer.from([1,0,0,0]),
-        'each COM_PING begins with a reset client sequence');
-    }else if(data.length===1){
-      assert.equal(data[0],0x0e,'only COM_PING is allowed in this fixture');
-      this.commands++;
-      if(this.commands===1&&this.holdFirst)this.firstWaiting=true;
-      else queueMicrotask(()=>{if(!this.destroyed)this.emit('data',okPacket);});
-    }else throw Error('Unexpected native write');
+    assert.deepEqual(data,Buffer.from([1,0,0,0,0x0e]),
+      'each COM_PING must be one complete framed write with reset sequence');
+    this.commands++;
+    if(this.commands===1&&this.holdFirst)this.firstWaiting=true;
+    else queueMicrotask(()=>{if(!this.destroyed)this.emit('data',okPacket);});
     callback?.();
     return true;
   }
