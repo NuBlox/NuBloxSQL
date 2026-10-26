@@ -362,3 +362,40 @@ live('verified TLS loss after COMMIT send reports an unknown transaction outcome
   assert.equal(db.closed,true);
  }finally{await db.close();}
 });
+
+live('concurrent failed TLS logins cannot affect authenticated sessions',{timeout:20000},async()=>{
+  const target=trustedTarget();
+  const secret='NUBLOX_CONCURRENT_AUTH_SECRET_NEVER_ECHO_2026';
+  const attempts=Array.from({length:18},(_,i)=>
+    connectDatabase(i%3===0
+      ?target
+      :{...target,password:secret+'_'+i})
+  );
+  const results=await Promise.allSettled(attempts);
+  const liveSessions=results.filter(result=>result.status==='fulfilled')
+    .map(result=>result.value);
+  try{
+    assert.equal(liveSessions.length,6,'only the six valid login attempts should succeed');
+    const rejected=results.filter(result=>result.status==='rejected');
+    assert.equal(rejected.length,12);
+    for(const result of rejected){
+      const error=result.reason;
+      assert.equal(error.code,'DATABASE_ERROR');
+      assert.equal(error.vendorCode,1045);
+      assert.equal(error.sqlState,'28000');
+      assert.ok(!error.message.includes(secret),'invalid credentials cannot leak via server errors');
+    }
+    const values=await Promise.all(liveSessions.map((session,i)=>
+      session.query('SELECT ? AS auth_isolation',[i])
+    ));
+    assert.deepEqual(values.map(result=>result.rows[0].auth_isolation),
+      Array.from({length:6},(_,i)=>BigInt(i)));
+    assert.ok(liveSessions.every(session=>session.info.transport==='verified-tls'));
+  }finally{
+    await Promise.all(liveSessions.map(session=>session.close()));
+  }
+  const fresh=await connectDatabase(target);
+  try{
+    assert.equal((await fresh.query('SELECT ? AS recovered',[29])).rows[0].recovered,29n);
+  }finally{await fresh.close();}
+});
