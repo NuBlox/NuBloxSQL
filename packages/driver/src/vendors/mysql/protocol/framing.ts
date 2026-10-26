@@ -174,7 +174,11 @@ export class PacketStream {
     const socket=this.socket;
     if(!socket)throw new Error('MySQL packet stream has no attached socket');
     let offset=0;
-    do {
+    try{
+      do {
+      // A socket may close while an earlier write callback is pending.
+      // Never emit another frame after that transport has failed.
+      if(this.failure)throw this.failure;
       const length=Math.min(MAX_FRAME_PAYLOAD,body.length-offset);
       const header=Buffer.allocUnsafe(4);
       header[0]=length&255;header[1]=(length>>8)&255;
@@ -192,13 +196,27 @@ export class PacketStream {
       }else{
         await new Promise<void>((resolve,reject)=>
           socket.write(header,error=>error?reject(error):resolve()));
+        // A successful header write alone does not prove that the socket
+        // survived; check before transmitting this frame's payload.
+        if(this.failure)throw this.failure;
         await new Promise<void>((resolve,reject)=>
           socket.write(body.subarray(offset,offset+length),
             error=>error?reject(error):resolve()));
       }
+      if(this.failure)throw this.failure;
       offset+=length;
       if(length<MAX_FRAME_PAYLOAD)break;
-    }while(true);
+      }while(true);
+    }catch{
+      // The peer might have received a partial command. A failed outbound
+      // write irrevocably desynchronises this Classic exchange, even if the
+      // socket never emits an 'error' event. Redact transport exceptions.
+      const error=this.failure??fail('CONNECTION_CLOSED',
+        'Native MySQL transport failed during write');
+      this.abort(error);
+      socket.destroy();
+      throw error;
+    }
   }
   destroy():void {
     const socket=this.socket;
