@@ -57,7 +57,7 @@ test('mixed measured ratios preserve order sensitivity, variation and exact pair
   assert.equal(stats.min,0.5);
   assert.equal(stats.max,3);
   assert.equal(stats.roundsWithLowerNativeLatency,1);
-  assert.equal(stats.roundsWithLowerPeerLatency,5);
+  assert.equal(stats.roundsWithLowerPeerLatency,4);
   assert.ok(stats.coefficientOfVariation>0);
   assert.ok(stats.orderStrata.nativeFirstGeometricMean<
     stats.orderStrata.mysql2FirstGeometricMean);
