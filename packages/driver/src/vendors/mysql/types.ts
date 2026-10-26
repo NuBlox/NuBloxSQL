@@ -9,15 +9,17 @@ const western=new TextDecoder('windows-1252',{fatal:true});
  * A binary collation (63) describes raw bytes, not UTF-8 text. */
 function textValue(bytes:Buffer,charset:number):string{
   // Identifiers used by utf8mb3 and utf8mb4 collations in MySQL 8.x.
-  if([33,45,46,83,255].includes(charset)||
+  // Avoid allocating a transient classification array for every text cell.
+  if(charset===33||charset===45||charset===46||charset===83||charset===255||
     (charset>=192&&charset<=215)||
     (charset>=224&&charset<=247)||
     (charset>=256&&charset<=309))
     return utf8.decode(bytes);
   // MySQL latin1 has the Windows-1252 repertoire. ASCII is compatible with UTF-8.
-  if([8,15,31,47,48,49,94].includes(charset))
+  if(charset===8||charset===15||charset===31||charset===47||
+    charset===48||charset===49||charset===94)
     return western.decode(bytes);
-  if([11,65].includes(charset))return utf8.decode(bytes);
+  if(charset===11||charset===65)return utf8.decode(bytes);
   throw new Error('Unsupported MySQL result character-set collation '+charset);
 }
 function valueBytes(cursor:Cursor):Buffer{
@@ -98,15 +100,18 @@ export function binaryValues(buf:Buffer,cols:readonly MysqlColumn[]):unknown[]{
       value=cursor.take(4).readFloatLE();
     }else if(type===T.DOUBLE){
       value=cursor.take(8).readDoubleLE();
-    }else if([T.DATE,T.TIME,T.DATETIME,T.TIMESTAMP].includes(type)){
+    }else if(type===T.DATE||type===T.TIME||
+      type===T.DATETIME||type===T.TIMESTAMP){
       value=temporal(cursor,column);
     }else if(type===T.BIT||type===T.GEOMETRY){
       value=valueBytes(cursor);
-    }else if([T.BLOB,T.TINY_BLOB,T.MEDIUM_BLOB,T.LONG_BLOB,
-                 T.VARCHAR,T.VAR_STRING,T.STRING].includes(type)){
+    }else if(type===T.BLOB||type===T.TINY_BLOB||
+      type===T.MEDIUM_BLOB||type===T.LONG_BLOB||type===T.VARCHAR||
+      type===T.VAR_STRING||type===T.STRING){
       const bytes=valueBytes(cursor);
       value=column.charset===63?bytes:textValue(bytes,column.charset);
-    }else if([T.JSON,T.NEWDECIMAL,T.DECIMAL,T.ENUM,T.SET].includes(type)){
+    }else if(type===T.JSON||type===T.NEWDECIMAL||type===T.DECIMAL||
+      type===T.ENUM||type===T.SET){
       // JSON is returned as serialized text rather than implicitly parsed.
       // Decimal digits are ASCII on the wire and must not become floating point.
       const bytes=valueBytes(cursor);
