@@ -1,0 +1,58 @@
+name: Concurrent MySQL comparative qualification
+
+on:
+  pull_request:
+    paths:
+      - 'tools/qualification/**'
+      - '.github/workflows/mysql-comparison-concurrent.yml'
+      - 'packages/driver/**'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  concurrent-comparison:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      mysql:
+        image: mysql:8.4.11
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: nublox_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install build dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install isolated pinned mysql2 peer
+        run: npm install --no-save --package-lock=false --ignore-scripts --prefix tools/qualification/mysql2-isolated mysql2@3.24.6
+      - name: Build native driver and run deterministic comparison tests
+        run: |
+          npm run build
+          node --test tools/qualification/comparison-concurrent.test.mjs
+      - name: Compare concurrent prepared MySQL on the same database
+        run: node tools/qualification/compare-concurrent.mjs --iterations=12 --concurrency=2 --rounds=2
+        env:
+          NUBLOX_LIVE_MYSQL: '1'
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test-password
+      - name: Preserve structured comparison evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-concurrent-comparison-${{ github.run_id }}
+          path: artifacts/qualification/comparison-concurrent-*.json
+          if-no-files-found: warn
+          retention-days: 14
