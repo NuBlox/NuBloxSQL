@@ -317,3 +317,16 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 - `tests/` contains unit and pinned-live-server conformance checks.
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
+
+### Outbound small-packet transport
+
+The Classic protocol encoder writes framed commands up to 4,096 payload
+bytes using a single socket write (header and payload together), reducing
+per-command Node.js socket write/callback overhead. The threshold is a
+**bounded-copy optimisation**, not a public configuration or performance
+guarantee. Larger frames continue to write their 4-byte header and a
+zero-copy payload view separately; the 24-bit frame length, rollover
+sequence, empty trailers, logical 32 MiB cap and socket backpressure
+behaviour are unchanged. CI checks both exact wire bytes and live MySQL
+operations; benchmark results are workload-specific and should not be
+described as product-wide speedups.
