@@ -1,0 +1,58 @@
+name: Native MySQL frame-header optimisation evidence
+
+on:
+  pull_request:
+    paths:
+      - 'packages/driver/src/vendors/mysql/protocol/framing.ts'
+      - 'packages/driver/tests/mysql-frame-header-fastpath.test.mjs'
+      - 'tools/qualification/framing-hot.mjs'
+      - 'tools/qualification/framing-hot.test.mjs'
+      - 'tools/qualification/compare-frame-headers.mjs'
+      - '.github/workflows/mysql-frame-header-optimisation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  frame-header-before-after:
+    name: frame-header-before-after
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build and test candidate
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+          node --test packages/driver/tests/mysql-frame-header-fastpath.test.mjs tools/qualification/framing-hot.test.mjs
+      - name: Build exact base revision separately
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git worktree add --detach "${RUNNER_TEMP}/nublox-framing-baseline" "${BASE_SHA}"
+          npm install --prefix "${RUNNER_TEMP}/nublox-framing-baseline" --no-audit --no-fund
+          npm run build --prefix "${RUNNER_TEMP}/nublox-framing-baseline"
+      - name: Profile baseline-candidate-candidate-baseline without I/O waits
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CANDIDATE_SHA: ${{ github.sha }}
+        run: |
+          node tools/qualification/compare-frame-headers.mjs \
+            "${RUNNER_TEMP}/nublox-framing-baseline" \
+            "$PWD" "$BASE_SHA" "$CANDIDATE_SHA"
+      - name: Upload structured profiling evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-framing-header-ab-${{ github.run_id }}
+          path: artifacts/qualification/mysql-frame-header-ab-*.json
+          if-no-files-found: warn
+          retention-days: 14
