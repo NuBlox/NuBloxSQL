@@ -60,6 +60,7 @@ test('authentication qualification measures two non-SQL latency series and fully
   assert.equal(report.resources.authThreadsConnectedBefore,1);
   assert.equal(report.resources.authThreadsConnectedAfter,1);
   assert.equal(report.resources.authCleanupPolls,0);
+  assert.equal(report.resources.authRejectionProfile,'verified-tls');
   assert.equal(peer.stats.open,0);
   assert.equal(peer.stats.accepted,7,'six accepted probes plus one reference');
   assert.equal(peer.stats.denied,6);
@@ -87,4 +88,19 @@ test('auth qualification detects server-side session leaks invisible to JS owner
   }),/unclosed server connections/);
   assert.equal(peer.stats.open,2,'the fake server retains its two leaked sockets');
   assert.equal(peer.stats.closed,3,'all client session close calls still ran');
+});
+
+test('isolated-local profile measures connection setup but does not pretend to benchmark TLS-only credential rejection',async()=>{
+  const peer=fakeConnect();
+  const report=await qualifyAuthentication({
+    connect:options=>peer.connect(options),
+    target:{...target,security:'isolated-local'},concurrency:2,attempts:6,
+    wait:()=>Promise.resolve()
+  });
+  assert.equal(report.workloads.connectOnly.count,6);
+  assert.equal(report.workloads.rejectedAuthentication.count,0);
+  assert.equal(report.workloads.rejectedAuthentication.p95Ms,null);
+  assert.equal(report.resources.authRejectionProfile,'not-qualified-isolated-local');
+  assert.equal(peer.stats.denied,0,'no unsupported plaintext full-auth flow is attempted');
+  assert.equal(peer.stats.open,0);
 });
