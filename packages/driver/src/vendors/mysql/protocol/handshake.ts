@@ -43,7 +43,7 @@ export function greeting(buf:Buffer):MysqlGreeting{
     throw fail('PROTOCOL_ERROR','Malformed MySQL server greeting');
   }
 }
-export function flags(server:number,secure:boolean,database?:string):number{let f=F.LONG_PASSWORD|F.LONG_FLAG|F.PROTOCOL_41|F.TRANSACTIONS|F.SECURE_CONNECTION|F.PLUGIN_AUTH|F.MULTI_RESULTS|F.PS_MULTI_RESULTS;if(secure)f|=F.SSL;if(database)f|=F.CONNECT_WITH_DB;if((f&server)!==f)throw fail('UNSUPPORTED_FEATURE','MySQL server lacks required protocol capabilities');return f;}
+export function flags(server:number,secure:boolean,database?:string):number{let f=F.LONG_PASSWORD|F.LONG_FLAG|F.PROTOCOL_41|F.TRANSACTIONS|F.SECURE_CONNECTION|F.PLUGIN_AUTH|F.MULTI_RESULTS|F.PS_MULTI_RESULTS;if(secure)f|=F.SSL;if(database)f|=F.CONNECT_WITH_DB;if((f&server)!==f)throw fail('UNSUPPORTED_FEATURE','MySQL server lacks required capabilities');return f;}
 export const sslRequest=(f:number):Buffer=>Buffer.concat([u32(f),u32(LIMIT),Buffer.from([45]),Buffer.alloc(23)]);
 export interface MysqlLogin {f:number;user:string;password:string;database?:string;seed:Buffer;plugin:string}
 export function login({f,user,password,database,seed,plugin}:MysqlLogin):Buffer{const t=token(password,seed,plugin);return Buffer.concat([sslRequest(f),cstr(user),Buffer.from([t.length]),t,...(database?[cstr(database)]:[]),cstr(plugin)]);}
