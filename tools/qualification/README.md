@@ -170,3 +170,29 @@ latency or a commercial speed claim. The same-stage decoder results are
 reviewed separately from the command scheduler and packet-framing controls;
 their timings must not be added together. Preserve and repeat profiles
 under dedicated hardware before making sustained performance claims.
+
+
+## Contiguous frame-header optimisation and measurement
+
+The native MySQL Classic parser now decodes complete four-byte headers
+directly from the received TCP Buffer instead of copying every header into a
+scratch buffer. Headers split across data events continue to use the
+incremental scratch path. All sequence, zero-length trailer, message-size and
+queue bounds remain enforced.
+
+A dedicated `Native MySQL frame-header optimisation evidence` PR workflow
+builds the exact baseline and candidate in two separate Git worktrees. It
+performs a **baseline–candidate–candidate–baseline** experiment in one
+Node.js process on the same runner to compare those two compiled decoders.
+Each timing sample synchronously parses a Buffer containing 256 complete
+frames; every resulting packet is verified and drained **outside** the
+measured interval. The experiment performs 20 untimed warmups, 500 timed
+samples per round and six rounds per run. Its output reports the median
+observed frames/sec per version and the candidate/baseline ratio.
+
+Results are retained as `mysql-frame-header-ab-*.json`. These synthetic
+measurements isolate the contiguous-header receive path, not the end-to-end
+latency of a SQL statement, socket reads, TLS or real MySQL response processing.
+Shared-runner jitter and V8 JIT/thermal effects persist even with alternating
+order. There are **no performance pass/fail thresholds**. Repeat on stable
+dedicated hardware before making product-level performance claims.
