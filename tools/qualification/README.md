@@ -220,3 +220,40 @@ throughput ratios are **descriptive synthetic stage measurements**, not
 an SLA, full query latency, or a claim of universal DBMS performance.
 Correctness gates merges; shared-CI timing does not impose arbitrary
 percentage thresholds.
+
+## Live MySQL workload profiling
+
+For repeatable diagnostics using a **real isolated MySQL 8.4 server** rather
+than the mocked internals profiler, use:
+
+```bash
+npm run profile:mysql-live -- --samples=30 --rows=500 --rowBytes=4096 --concurrency=4 --durationMs=3000
+```
+
+`profile:mysql-live` uses the same explicit fixture flags as the qualification
+runner (`NUBLOX_LIVE_MYSQL=1` or `NUBLOX_LIVE_MYSQL_TLS=1`). It exercises:
+
+- A persistent physical MySQL session and prepared statement, with eight
+  unmeasured warmups, then bound parameter executions and p50/p95/p99 latency.
+- Materialised ordered result sets of `--rows` (100–1000) rows, each
+  containing a `--rowBytes` (256–8192) character payload. The workload
+  validates every ordinal and payload and limits selected payloads to 8 MiB.
+- Concurrent, bounded pooled SELECTs lasting at least `--durationMs`
+  (500–120000). Each response is checked, there are no automatic retries,
+  and exhausting `--maxOperations` (100–1000000) before the duration fails
+  the evidence instead of mislabelling a short run as a soak.
+
+`--samples` (3–1000) controls the prepared sample count; large-result
+samples are `max(3,ceil(samples/3))`. `--concurrency` ranges from 1 to 16.
+The command records per-workload latency percentiles, operation rate, sampled
+process RSS/heap/external/array-buffer peaks and CPU time. Process memory deltas
+are **not attributed allocations**; background GC and sampling intervals can
+mask peaks. A profile is not evidence of production throughput or superiority
+over another driver. Run repeated profiles under stable pinned conditions
+before selecting a performance change. The PR driver CI runs a small
+real-server profile and retains its report with existing qualification
+artifacts; no arbitrary speed thresholds gate merges.
+
+Only aggregated measurements, numeric validation counts, runtime details,
+and redacted error codes are written. SQL, results and credentials do not
+enter the JSON report. No additional published driver dependency is required.
