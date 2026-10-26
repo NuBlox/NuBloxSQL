@@ -30,7 +30,7 @@ export function summarize(samples,elapsedMs){
 }
 export function parseArgs(argv,mode){
   if(!['benchmark','soak'].includes(mode))throw new Error('Unknown qualification mode');
-  const allowed=new Set(['iterations','concurrency','durationMs','fetchSize','cursorRows']);
+  const allowed=new Set(['iterations','concurrency','durationMs','fetchSize','cursorRows','authAttempts']);
   const args={};
   for(const arg of argv){
     const match=/^--([A-Za-z]+)=([0-9]+)$/.exec(arg);
@@ -44,7 +44,8 @@ export function parseArgs(argv,mode){
     concurrency:integerOption(args.concurrency??4,{name:'concurrency',min:1,max:16}),
     durationMs:integerOption(args.durationMs??(mode==='benchmark'?8000:120000),{name:'durationMs',min:500,max:600000}),
     fetchSize:integerOption(args.fetchSize??32,{name:'fetchSize',min:1,max:256}),
-    cursorRows:integerOption(args.cursorRows??1000,{name:'cursorRows',min:100,max:1000})
+    cursorRows:integerOption(args.cursorRows??1000,{name:'cursorRows',min:100,max:1000}),
+    authAttempts:integerOption(args.authAttempts??12,{name:'authAttempts',min:2,max:64})
   });
 }
 export function safeError(error){
