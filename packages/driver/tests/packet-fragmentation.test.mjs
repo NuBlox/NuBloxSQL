@@ -208,7 +208,88 @@ test('single-write socket callback errors reject the outbound message',async()=>
     }
   }
   const socket=new FailingSocket(),packets=new PacketStream(socket);
-  await assert.rejects(packets.send(Buffer.from('hi')),/transport failed/);
+  const errors=[];
+  packets.onFatal(error=>errors.push(error));
+  const pending=packets.read();
+  await assert.rejects(packets.send(Buffer.from('hi')),
+    error=>error.code==='CONNECTION_CLOSED'&&!error.message.includes('transport failed'));
+  await assert.rejects(pending,error=>error.code==='CONNECTION_CLOSED');
   assert.equal(socket.writes.length,1);
+  assert.equal(socket.destroyed,true);
+  assert.equal(errors.length,1,'outbound failure revokes the stream exactly once');
+  await assert.rejects(packets.send(Buffer.from('no retry')),
+    error=>error.code==='CONNECTION_CLOSED');
+  assert.throws(()=>packets.reset(),error=>error.code==='CONNECTION_CLOSED');
+  assert.equal(socket.writes.length,1,'a poisoned exchange cannot emit more bytes');
   packets.destroy();
+});
+
+test('failed large-frame header never transmits its payload',async()=>{
+  class HeaderFaultSocket extends CaptureSocket {
+    write(data,callback){
+      this.writes.push(data);
+      callback?.(new Error('sensitive socket exception'));
+      return false;
+    }
+  }
+  const socket=new HeaderFaultSocket(),stream=new PacketStream(socket);
+  const pending=stream.read();
+  await assert.rejects(stream.send(Buffer.alloc(4097,0x27)),
+    error=>error.code==='CONNECTION_CLOSED');
+  await assert.rejects(pending,error=>error.code==='CONNECTION_CLOSED');
+  assert.equal(socket.writes.length,1);
+  assert.deepEqual(socket.writes[0],header(4097,0));
+  assert.equal(socket.destroyed,true);
+  stream.destroy();
+});
+
+test('failed large-frame payload prevents later commands and reports one fatal error',async()=>{
+  class PayloadFaultSocket extends CaptureSocket {
+    write(data,callback){
+      this.writes.push(data);
+      callback?.(this.writes.length===2?new Error('failed payload'):undefined);
+      return true;
+    }
+  }
+  const socket=new PayloadFaultSocket(),stream=new PacketStream(socket);
+  const errors=[];
+  stream.onFatal(error=>errors.push(error));
+  await assert.rejects(stream.send(Buffer.alloc(4097,0x36)),
+    error=>error.code==='CONNECTION_CLOSED');
+  await assert.rejects(stream.send(Buffer.from('another command')),
+    error=>error.code==='CONNECTION_CLOSED');
+  assert.deepEqual(socket.writes.map(w=>w.length),[4,4097]);
+  assert.equal(socket.destroyed,true);
+  assert.equal(errors.length,1);
+  stream.destroy();
+});
+
+test('a synchronous socket.write exception terminates and redacts the exchange',async()=>{
+  class ThrowSocket extends CaptureSocket {
+    write(){throw Error('secret transport internals');}
+  }
+  const socket=new ThrowSocket(),stream=new PacketStream(socket);
+  const fatal=[];
+  stream.onFatal(e=>fatal.push(e));
+  await assert.rejects(stream.send(Buffer.from('command')),
+    e=>e.code==='CONNECTION_CLOSED'&&!e.message.includes('secret'));
+  assert.equal(fatal.length,1);
+  assert.equal(socket.destroyed,true);
+  stream.destroy();
+});
+
+test('an asynchronously closed socket cannot complete an outbound send successfully',async()=>{
+  class ClosingSocket extends CaptureSocket {
+    write(data,callback){
+      this.writes.push(data);
+      this.emit('close');
+      callback?.();
+      return true;
+    }
+  }
+  const socket=new ClosingSocket(),stream=new PacketStream(socket);
+  await assert.rejects(stream.send(Buffer.from('query')),e=>e.message.includes('closed'));
+  assert.equal(socket.writes.length,1);
+  assert.equal(socket.destroyed,true);
+  stream.destroy();
 });
