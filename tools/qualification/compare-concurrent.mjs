@@ -10,6 +10,7 @@ import {resolve} from 'node:path';
 import {platform,arch,cpus} from 'node:os';
 import {connectDatabase} from '../../packages/driver/dist/index.js';
 import {runComparison} from './comparison/core.mjs';
+import {analyseComparison} from './comparison/analyse.mjs';
 import {integerOption,safeError} from './metrics.mjs';
 
 if(process.env.NUBLOX_LIVE_MYSQL!=='1'||process.env.NUBLOX_LIVE_MYSQL_TLS==='1')
@@ -94,7 +95,7 @@ const report={
     ordering:'alternating by round',
     workloads:['connectionOnly','preparedSequential','preparedConcurrent']
   },
-  trials:[],errors:{codes:[]}
+  trials:[],analysis:null,errors:{codes:[]}
 };
 let reference;
 try{
@@ -105,6 +106,7 @@ try{
   report.trials=await runComparison({
     adapters:{nubloxsql:native,mysql2:competitor},iterations,concurrency,rounds
   });
+  report.analysis=analyseComparison(report.trials,{rounds,iterations});
   report.status='passed';
 }catch(error){
   report.status='failed';
@@ -120,6 +122,6 @@ try{
   console.log(JSON.stringify({
     report:reportPath,status:report.status,
     environment:report.environment,configuration:report.configuration,
-    trials:report.trials,errors:report.errors
+    trials:report.trials,analysis:report.analysis,errors:report.errors
   },null,2));
 }
