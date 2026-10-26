@@ -174,31 +174,46 @@ export class PacketStream {
     const socket=this.socket;
     if(!socket)throw new Error('MySQL packet stream has no attached socket');
     let offset=0;
-    do {
-      const length=Math.min(MAX_FRAME_PAYLOAD,body.length-offset);
-      const header=Buffer.allocUnsafe(4);
-      header[0]=length&255;header[1]=(length>>8)&255;
-      header[2]=(length>>16)&255;header[3]=this.sequence;
-      this.sequence=(this.sequence+1)&255;
-      if(length<=INLINE_FRAME_BYTES){
-        // One socket write for small commands avoids a second callback and
-        // microtask hop. Only copy a bounded payload; large frames remain
-        // zero-copy slices and retain their existing backpressure behaviour.
-        const frame=Buffer.allocUnsafe(4+length);
-        header.copy(frame);
-        if(length)body.copy(frame,4,offset,offset+length);
-        await new Promise<void>((resolve,reject)=>
-          socket.write(frame,error=>error?reject(error):resolve()));
-      }else{
-        await new Promise<void>((resolve,reject)=>
-          socket.write(header,error=>error?reject(error):resolve()));
-        await new Promise<void>((resolve,reject)=>
-          socket.write(body.subarray(offset,offset+length),
-            error=>error?reject(error):resolve()));
-      }
-      offset+=length;
-      if(length<MAX_FRAME_PAYLOAD)break;
-    }while(true);
+    try{
+      do{
+        // A socket may close while an earlier write callback is pending.
+        // Never emit another frame after that transport has failed.
+        if(this.failure)throw this.failure;
+        const length=Math.min(MAX_FRAME_PAYLOAD,body.length-offset);
+        const header=Buffer.allocUnsafe(4);
+        header[0]=length&255;header[1]=(length>>8)&255;
+        header[2]=(length>>16)&255;header[3]=this.sequence;
+        this.sequence=(this.sequence+1)&255;
+        if(length<=INLINE_FRAME_BYTES){
+          // A bounded copy lets ordinary commands use one socket write.
+          const frame=Buffer.allocUnsafe(4+length);
+          header.copy(frame);
+          if(length)body.copy(frame,4,offset,offset+length);
+          await new Promise<void>((resolve,reject)=>
+            socket.write(frame,error=>error?reject(error):resolve()));
+        }else{
+          // Larger frames retain the original zero-copy payload slice.
+          await new Promise<void>((resolve,reject)=>
+            socket.write(header,error=>error?reject(error):resolve()));
+          // Do not send the payload if its header write lost the socket.
+          if(this.failure)throw this.failure;
+          await new Promise<void>((resolve,reject)=>
+            socket.write(body.subarray(offset,offset+length),
+              error=>error?reject(error):resolve()));
+        }
+        if(this.failure)throw this.failure;
+        offset+=length;
+        if(length<MAX_FRAME_PAYLOAD)break;
+      }while(true);
+    }catch{
+      // A partially written command may have reached the server. Never
+      // retry or reuse its sequence state; do not reveal raw callback errors.
+      const error=this.failure??fail('CONNECTION_CLOSED',
+        'Native MySQL transport failed during write');
+      this.abort(error);
+      socket.destroy();
+      throw error;
+    }
   }
   destroy():void {
     const socket=this.socket;

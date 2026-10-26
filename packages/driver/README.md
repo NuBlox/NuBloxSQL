@@ -318,6 +318,18 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
 
+### Fail-closed outbound writes
+
+A Classic packet may have been partially transmitted when Node reports an
+outbound socket write failure. This state cannot be repaired safely by
+rewinding a packet sequence or automatically retrying SQL. Both callback
+failures (even without a socket `error` event) and synchronous write
+exceptions now invalidate the packet stream, reject pending reads and queued
+session work, and destroy the transport. Any affected transaction commit
+remains subject to the existing **outcome unknown** safeguards. A new
+authenticated connection is required; the original operation is never
+replayed. Driver-generated failures do not expose raw callback messages.
+
 ### Outbound small-packet transport
 
 The Classic protocol encoder writes framed commands up to 4,096 payload
