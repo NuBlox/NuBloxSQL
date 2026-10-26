@@ -16,6 +16,7 @@
     "soak:mysql": "npm run build && node tools/qualification/run.mjs soak",
     "compare:mysql": "npm run build && node tools/qualification/compare.mjs",
     "profile:mysql-internals": "npm run build && node tools/qualification/profile-internals.mjs",
-    "release:verify": "npm run build && node tools/release/verify.mjs"
+    "release:verify": "npm run build && node tools/release/verify.mjs",
+    "profile:mysql-live": "npm run build && node tools/qualification/profile-live.mjs"
   }
 }
