@@ -92,6 +92,21 @@ jobs:
           MYSQL_TLS_PORT: '3307'
           MYSQL_USER: root
           MYSQL_PASSWORD: test-password
+      - name: Qualify TLS-only connection and rejected-authentication latency
+        run: npm run qualify:mysql -- --iterations=24 --concurrency=3 --authAttempts=12 --cursorRows=100
+        env:
+          NUBLOX_LIVE_MYSQL_TLS: '1'
+          MYSQL_TLS_PORT: '3307'
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test-password
+      - name: Retain TLS authentication qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-tls-qualification-${{ github.run_id }}
+          path: artifacts/qualification/*.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: TLS fixture logs on failure
         if: failure()
         run: docker logs nubloxsql-mysql-tls 2>&1 | tail -100 || true
