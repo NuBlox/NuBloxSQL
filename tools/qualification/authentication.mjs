@@ -37,12 +37,16 @@ export async function qualifyAuthentication({
     const before=await connectedThreads(reference);
     const established=[];
     const rejected=[];
+    // Plaintext loopback intentionally refuses caching_sha2_password's
+    // full-auth flow. Invalid-credential server rejection (1045) is only
+    // comparable in the verified-TLS profile, which can finish that flow.
+    const rejectionEnabled=target.security==='verified-tls';
     let cursor=0;
     const started=performance.now();
     const workers=Array.from({length:Math.min(concurrency,attempts)},()=> (async()=>{
       while(cursor<attempts){
         const index=cursor++;
-        const expectFailure=index%2===1;
+        const expectFailure=rejectionEnabled&&index%2===1;
         const probe=expectFailure?{
           ...target,
           password:target.password+'-nublox-invalid-auth-'+index
@@ -72,8 +76,8 @@ export async function qualifyAuthentication({
     // while other authentication attempts are still in flight.
     const outcomes=await Promise.allSettled(workers);
     if(outcomes.some(outcome=>outcome.status==='rejected')||
-      established.length!==Math.ceil(attempts/2)||
-      rejected.length!==Math.floor(attempts/2))
+      established.length!==(rejectionEnabled?Math.ceil(attempts/2):attempts)||
+      rejected.length!==(rejectionEnabled?Math.floor(attempts/2):0))
       throw Object.assign(Error('Concurrent authentication qualification failed'),
         {code:'AUTH_WORKER_FAILURE'});
     const elapsed=performance.now()-started;
@@ -100,7 +104,8 @@ export async function qualifyAuthentication({
       resources:{
         authThreadsConnectedBefore:before,
         authThreadsConnectedAfter:after,
-        authCleanupPolls:retries
+        authCleanupPolls:retries,
+        authRejectionProfile:rejectionEnabled?'verified-tls':'not-qualified-isolated-local'
       }
     });
   }finally{
