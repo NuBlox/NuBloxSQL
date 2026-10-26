@@ -203,17 +203,17 @@ test('single-write socket callback errors reject the outbound message',async()=>
   class FailingSocket extends CaptureSocket {
     write(data,callback){
       this.writes.push(data);
-      callback?.(new Error('transport failed'));
+      callback?.(new Error('secret-callback-detail'));
       return false;
     }
   }
   const socket=new FailingSocket(),packets=new PacketStream(socket);
   const errors=[];
   packets.onFatal(error=>errors.push(error));
-  const pending=packets.read();
+  const pending=assert.rejects(packets.read(),error=>error.code==='CONNECTION_CLOSED');
   await assert.rejects(packets.send(Buffer.from('hi')),
-    error=>error.code==='CONNECTION_CLOSED'&&!error.message.includes('transport failed'));
-  await assert.rejects(pending,error=>error.code==='CONNECTION_CLOSED');
+    error=>error.code==='CONNECTION_CLOSED'&&!error.message.includes('secret-callback-detail'));
+  await pending;
   assert.equal(socket.writes.length,1);
   assert.equal(socket.destroyed,true);
   assert.equal(errors.length,1,'outbound failure revokes the stream exactly once');
@@ -233,10 +233,10 @@ test('failed large-frame header never transmits its payload',async()=>{
     }
   }
   const socket=new HeaderFaultSocket(),stream=new PacketStream(socket);
-  const pending=stream.read();
+  const pending=assert.rejects(stream.read(),error=>error.code==='CONNECTION_CLOSED');
   await assert.rejects(stream.send(Buffer.alloc(4097,0x27)),
     error=>error.code==='CONNECTION_CLOSED');
-  await assert.rejects(pending,error=>error.code==='CONNECTION_CLOSED');
+  await pending;
   assert.equal(socket.writes.length,1);
   assert.deepEqual(socket.writes[0],header(4097,0));
   assert.equal(socket.destroyed,true);
