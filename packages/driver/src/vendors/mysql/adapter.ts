@@ -162,11 +162,20 @@ export class MysqlSession implements RelationalSession {
           });
         }
       };
-      this.queue.push(job);
+      // An idle session has no scheduling contention: start directly instead
+      // of allocating an array slot and immediately shifting it away.
+      // Contending callers still use the same bounded FIFO queue.
+      const uncontended=!this.busy&&this.queue.length===0;
+      if(!uncontended)this.queue.push(job);
       signal?.addEventListener('abort',cancelQueued,{once:true});
-      // In case the signal was aborted between preflight and registration.
+      // Recheck after subscription: a signal can abort during registration.
       if(signal?.aborted)cancelQueued();
-      else this.drain();
+      else if(state==='queued'){
+        if(uncontended)job.start();
+        else if(!this.busy)this.drain();
+        // An active command's completion will drain the queued jobs.
+        // Avoid calling drain() for each contender while busy.
+      }
     });
   }
 
