@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import {once} from 'node:events';
-import {authSwitchRequest,cachingSha2AuthMore} from '../dist/vendors/mysql/protocol/handshake.js';
+import {authSwitchRequest,cachingSha2AuthMore,authenticationOk,flags} from '../dist/vendors/mysql/protocol/handshake.js';
 import {assertSupportedAuthPlugin,token} from '../dist/vendors/mysql/auth/plugins.js';
 import {connectMysql} from '../dist/vendors/mysql/adapter.js';
 import {F} from '../dist/vendors/mysql/protocol/primitives.js';
@@ -175,6 +175,118 @@ test('supported auth switch exchanges one token and establishes a native session
     assert.equal(session.info.authPlugin,'mysql_native_password');
     assert.deepEqual(challengeResponse,token('private-test-password',challenge,'mysql_native_password'));
     assert.equal(peer.receivedFrames,2);
+  }finally{
+    await session?.close();
+    await peer.close();
+  }
+});
+
+test('final authentication OK must include counts, status and warning fields',()=>{
+  for(const malformed of [
+    Buffer.from([0]),Buffer.from([0,0]),Buffer.from([0,0,0]),
+    Buffer.from([0,0,0,2,0]),Buffer.from([0,251,0,2,0,0,0]),
+    Buffer.from([0,254,1,0,0])
+  ]){
+    assert.throws(()=>authenticationOk(malformed),error=>error.code==='PROTOCOL_ERROR');
+  }
+  assert.doesNotThrow(()=>authenticationOk(Buffer.from([0,0,0,2,0,0,0])));
+  assert.doesNotThrow(()=>authenticationOk(Buffer.from([0,0,0,2,0,0,0,65,66])));
+});
+
+test('capability negotiation rejects missing required server features before login',()=>{
+  const supported=F.LONG_PASSWORD|F.LONG_FLAG|F.PROTOCOL_41|
+    F.TRANSACTIONS|F.SECURE_CONNECTION|F.PLUGIN_AUTH|F.MULTI_RESULTS|
+    F.PS_MULTI_RESULTS;
+  assert.equal(flags(supported,false),supported);
+  assert.throws(()=>flags(supported&~F.PS_MULTI_RESULTS,false),
+    error=>error.code==='UNSUPPORTED_FEATURE');
+  assert.throws(()=>flags(supported,true),error=>error.code==='UNSUPPORTED_FEATURE');
+  assert.throws(()=>flags(supported,false,'testdb'),
+    error=>error.code==='UNSUPPORTED_FEATURE');
+});
+
+test('a malformed OK response cannot create an authenticated native session',{timeout:4000},async()=>{
+  const peer=await startPeer('caching_sha2_password',(socket,_body,_seq,count)=>{
+    if(count===1)socket.write(frame(Buffer.from([0]),2));
+  });
+  try{
+    const connection=connectMysql(target(peer.port));
+    const socket=await peer.established;
+    const disconnected=once(socket,'close');
+    await assert.rejects(connection,error=>error.code==='PROTOCOL_ERROR');
+    await disconnected;
+    assert.equal(peer.receivedFrames,1);
+  }finally{await peer.close();}
+});
+
+test('a second SHA-2 continuation cannot repeat the authentication exchange',{timeout:4000},async()=>{
+  const peer=await startPeer('caching_sha2_password',(socket,_body,_seq,count)=>{
+    if(count===1){
+      socket.write(frame(Buffer.from([1,3]),2));
+      socket.write(frame(Buffer.from([1,3]),3));
+    }
+  });
+  try{
+    const connection=connectMysql(target(peer.port));
+    const socket=await peer.established;
+    const disconnected=once(socket,'close');
+    await assert.rejects(connection,error=>error.code==='PROTOCOL_ERROR');
+    await disconnected;
+    assert.equal(peer.receivedFrames,1,'repeated continuation cannot trigger a client response');
+  }finally{await peer.close();}
+});
+
+test('a plugin switch is forbidden after SHA-2 reports fast-auth success',{timeout:4000},async()=>{
+  const peer=await startPeer('caching_sha2_password',(socket,_body,_seq,count)=>{
+    if(count===1){
+      socket.write(frame(Buffer.from([1,3]),2));
+      socket.write(frame(switchPacket('mysql_native_password',Buffer.alloc(20,0x52)),3));
+    }
+  });
+  try{
+    const connection=connectMysql(target(peer.port));
+    const socket=await peer.established;
+    const disconnected=once(socket,'close');
+    await assert.rejects(connection,error=>error.code==='PROTOCOL_ERROR');
+    await disconnected;
+    assert.equal(peer.receivedFrames,1);
+  }finally{await peer.close();}
+});
+
+test('repeated auth-plugin switches cannot trigger multiple challenge tokens',{timeout:4000},async()=>{
+  const peer=await startPeer('caching_sha2_password',(socket,_body,seq,count)=>{
+    if(count===1){
+      assert.equal(seq,1);
+      socket.write(frame(switchPacket('mysql_native_password',Buffer.alloc(20,0x52)),2));
+    }else if(count===2){
+      assert.equal(seq,3);
+      socket.write(frame(switchPacket('caching_sha2_password',Buffer.alloc(20,0x53)),4));
+    }
+  });
+  try{
+    const connection=connectMysql(target(peer.port));
+    const socket=await peer.established;
+    const disconnected=once(socket,'close');
+    await assert.rejects(connection,error=>error.code==='PROTOCOL_ERROR');
+    await disconnected;
+    assert.equal(peer.receivedFrames,2,'only the first supported switch receives a response');
+  }finally{await peer.close();}
+});
+
+test('SHA-2 fast-auth accepts a complete final OK exactly once',{timeout:4000},async()=>{
+  const peer=await startPeer('caching_sha2_password',(socket,_body,seq,count)=>{
+    if(count===1){
+      assert.equal(seq,1);
+      socket.write(frame(Buffer.from([1,3]),2));
+      socket.write(frame(Buffer.from([0,0,0,2,0,0,0]),3));
+    }
+  });
+  let session;
+  try{
+    session=await connectMysql(target(peer.port));
+    assert.equal(session.closed,false);
+    assert.equal(session.info.authPlugin,'caching_sha2_password');
+    assert.equal(peer.receivedFrames,1);
   }finally{
     await session?.close();
     await peer.close();
