@@ -196,3 +196,27 @@ latency of a SQL statement, socket reads, TLS or real MySQL response processing.
 Shared-runner jitter and V8 JIT/thermal effects persist even with alternating
 order. There are **no performance pass/fail thresholds**. Repeat on stable
 dedicated hardware before making product-level performance claims.
+
+## Native session scheduler fast-path qualification
+
+The MySQL session scheduler has an uncontended path: when its connection is
+idle **and the pending FIFO is empty**, a command can begin immediately
+without being appended and then shifted from the same JavaScript array.
+Contending operations still use the existing bounded FIFO, and abort
+listeners are installed and rechecked before starting either path.
+
+The dedicated regression suite validates 256 consecutive native commands,
+48 FIFO contenders interleaved with 12 cancelled requests, cancellation
+during listener subscription, and closing a session with 64 queued commands.
+Every accepted synthetic COM_PING is checked for exactly-once execution;
+no cancelled or late command may write to a closed native connection.
+
+The generalised `Native MySQL stage optimisation evidence` workflow uses
+the exact PR base and candidate builds on one runner, executing the same
+six-round profiler in base–candidate–candidate–base order. Inspect the
+`serialPing` (uncontended) and `contendedPing` results in particular, plus
+`packetFraming` and `binaryRowDecode` as negative controls. Published
+throughput ratios are **descriptive synthetic stage measurements**, not
+an SLA, full query latency, or a claim of universal DBMS performance.
+Correctness gates merges; shared-CI timing does not impose arbitrary
+percentage thresholds.

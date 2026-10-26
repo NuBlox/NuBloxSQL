@@ -1,10 +1,12 @@
-name: Native MySQL decoder optimisation evidence
+name: Native MySQL stage optimisation evidence
 
 on:
   pull_request:
     paths:
       - 'packages/driver/src/vendors/mysql/types.ts'
+      - 'packages/driver/src/vendors/mysql/adapter.ts'
       - 'packages/driver/tests/mysql-decoder-classification.test.mjs'
+      - 'packages/driver/tests/mysql-serial-fastpath.test.mjs'
       - 'tools/qualification/compare-internal-runs.mjs'
       - 'tools/qualification/compare-internal-runs.test.mjs'
       - '.github/workflows/mysql-native-optimisation.yml'
@@ -13,8 +15,8 @@ permissions:
   contents: read
 
 jobs:
-  decoder-before-after:
-    name: decoder-before-after
+  stage-before-after:
+    name: stage-before-after
     runs-on: ubuntu-latest
     timeout-minutes: 14
     steps:
@@ -28,7 +30,7 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npm run build
-          node --test tools/qualification/internal-profile.test.mjs tools/qualification/compare-internal-runs.test.mjs packages/driver/tests/mysql-decoder-classification.test.mjs
+          node --test tools/qualification/internal-profile.test.mjs tools/qualification/compare-internal-runs.test.mjs packages/driver/tests/mysql-decoder-classification.test.mjs packages/driver/tests/mysql-serial-fastpath.test.mjs
       - name: Build exact base revision on the same runner
         shell: bash
         env:
@@ -70,7 +72,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: native-mysql-decoder-before-after-${{ github.run_id }}
+          name: native-mysql-stage-before-after-${{ github.run_id }}
           path: |
             artifacts/qualification/ab/*.json
             artifacts/qualification/native-internal-ab-*.json
