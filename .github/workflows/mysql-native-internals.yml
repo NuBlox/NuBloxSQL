@@ -1,0 +1,40 @@
+name: Native MySQL internal profiling
+
+on:
+  pull_request:
+    paths:
+      - 'tools/qualification/**'
+      - 'packages/driver/**'
+      - 'package.json'
+      - '.github/workflows/mysql-native-internals.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  internal-profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install native driver build dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build native driver and run profiling regression tests
+        run: |
+          npm run build
+          node --test tools/qualification/internal-profile.test.mjs
+      - name: Collect deterministic native component profiling smoke
+        run: npm run profile:mysql-internals -- --iterations=24 --rounds=2 --queueDepth=4
+      - name: Retain synthetic native component evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-native-profile-${{ github.run_id }}
+          path: artifacts/qualification/native-internal-profile-*.json
+          if-no-files-found: warn
+          retention-days: 14

@@ -86,3 +86,49 @@ not an arbitrary speed threshold.
 These tests intentionally avoid writes and do not represent a full
 transaction/DDL, failover, cloud IAM, multi-MySQL-version or multi-vendor
 qualification suite. Check those separately before changing release status.
+
+
+## Experimental in-process native component profiling
+
+To identify which **component** merits profiling before changing production
+code, run the optional internal profiler. It does **not** connect to MySQL
+or use a third-party DBMS client and it adds **no tracing to the driver**:
+
+```bash
+npm run profile:mysql-internals -- --iterations=500 --rounds=6 --queueDepth=8
+```
+
+The profiler invokes actual built NuBloxSQL code against deterministic
+in-memory fixtures, collecting per-round p50/p95/p99, work units per second,
+and CPU/runtime context:
+
+- `asyncHarness`: an intentionally minimal Promise/microtask timing baseline
+- `packetFraming`: incremental parsing of one valid 256-byte Classic packet,
+  exercising the native `PacketStream` and sequence reset
+- `binaryRowDecode`: 128 synthetic three-column binary rows per timed sample,
+  including a 64-bit integer, UTF-8 text, exact decimal and row-object mapping
+- `serialPing`: one native `MysqlSession.healthCheckForPool` command,
+  including native command serialization, packet send/receive and mocked OK
+- `contendedPing`: the same native per-connection scheduler with 2–16
+  competing commands, requiring strictly sequenced responses and no replay
+
+A **sample** is one framing operation, one 128-row decode group, or one
+single/concurrent ping group. Reported p50/p95/p99 are milliseconds **per
+sample group**; `workUnits` and `workUnitsPerSecond` count the individual
+rows/commands represented by each group. Dividing p50 of a concurrent group
+by the queue depth is **not** a measurement of per-command latency.
+
+Warmups (12 per stage/round) are excluded. Stage ordering rotates every
+round to expose systematic thermal and JIT effects, and all fixtures are
+validated and explicitly closed. The command queue uses a fake asynchronous
+Classic OK response, not a real network socket. Consequently these are
+**component-level microbenchmarks** including harness/Promise overhead.
+They cannot be summed to estimate complete SQL-query latency, compared
+directly with mysql2, or used alone to claim any driver optimisation.
+
+Results are written to gitignored, private-permission
+`artifacts/qualification/native-internal-profile-*.json` and collected in
+a short correctness-focused CI smoke. There are no fixed performance
+thresholds because shared CI hardware is noisy. For performance decisions
+compare **multiple runs of the same stage** on dedicated, stable hardware
+across commits, then use CPU profiling to attribute a specific code path.
