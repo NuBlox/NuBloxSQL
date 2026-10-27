@@ -318,6 +318,21 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
 
+### Verified MySQL command acknowledgements
+
+NuBloxSQL requires complete Classic Protocol 4.1 OK payloads before accepting
+`START TRANSACTION`, `COMMIT`, `ROLLBACK`, `COM_PING` or
+`COM_RESET_CONNECTION` as confirmed. The required length-encoded affected-row
+and insert-ID fields, two-byte server status and two-byte warning count must
+be present; optional informational bytes remain supported. A packet that
+merely starts with `0x00` is insufficient even if the physical frame length
+and packet sequence are valid.
+
+Malformed transaction acknowledgements are handled through the existing
+outcome-unknown safeguards for COMMIT and ROLLBACK. Malformed pool health or
+reset acknowledgements trigger `PROTOCOL_ERROR` and discard the session.
+Neither SQL nor transaction-control commands are automatically replayed.
+
 ### Rollback acknowledgement and uncertain outcomes
 
 Transaction cleanup is not considered confirmed merely because the Driver

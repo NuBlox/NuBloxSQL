@@ -163,3 +163,69 @@ live('lost ROLLBACK acknowledgement cannot trigger a second rollback or a false 
   }finally{await db.close();}
  });
 });
+
+live('truncated COMMIT OK with a valid frame and sequence cannot claim success',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const db=await connectDatabase(target);
+  try{
+   await assert.rejects(db.transaction(async tx=>{
+    assert.equal((await tx.query('SELECT ? AS before_commit',[63])).rows[0].before_commit,63n);
+    proxy.arm('short-ok');
+    return 'must-not-be-confirmed';
+   }),error=>error.code==='TRANSACTION_OUTCOME_UNKNOWN');
+   assert.equal(proxy.injected,1);
+   assert.equal(db.closed,true);
+   await assert.rejects(db.query('SELECT 1'),error=>error.code==='CONNECTION_CLOSED');
+  }finally{await db.close();}
+ });
+});
+
+live('truncated ROLLBACK OK never certifies rollback or permits socket reuse',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const db=await connectDatabase(target);
+  const wire=db.stream,originalSend=wire.send.bind(wire);
+  let rollbacks=0;
+  wire.send=async body=>{
+   if(body[0]===3&&body.subarray(1).toString('ascii')==='ROLLBACK')rollbacks++;
+   return originalSend(body);
+  };
+  try{
+   await assert.rejects(db.transaction(async tx=>{
+    assert.equal((await tx.query('SELECT ? AS before_rollback',[64])).rows[0].before_rollback,64n);
+    proxy.arm('short-ok');
+    throw Error('application requested rollback');
+   }),error=>error.code==='TRANSACTION_OUTCOME_UNKNOWN');
+   assert.equal(proxy.injected,1);
+   assert.equal(rollbacks,1,'unconfirmed rollback cannot be resent');
+   assert.equal(db.closed,true);
+  }finally{await db.close();}
+ });
+});
+
+live('incomplete COM_PING acknowledgement poisons the authenticated session',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const db=await connectDatabase(target);
+  try{
+   proxy.arm('short-ok');
+   await assert.rejects(db.healthCheckForPool(3000),
+     error=>error.code==='PROTOCOL_ERROR');
+   assert.equal(proxy.injected,1);
+   assert.equal(db.closed,true);
+   await assert.rejects(db.query('SELECT 1'),error=>error.code==='CONNECTION_CLOSED');
+  }finally{await db.close();}
+ });
+});
+
+live('incomplete COM_RESET_CONNECTION acknowledgement cannot return a session to pool',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const db=await connectDatabase(target);
+  try{
+   proxy.arm('short-ok');
+   await assert.rejects(db.resetForPool(),
+     error=>error.code==='PROTOCOL_ERROR');
+   assert.equal(proxy.injected,1);
+   assert.equal(db.closed,true);
+   await assert.rejects(db.query('SELECT 1'),error=>error.code==='CONNECTION_CLOSED');
+  }finally{await db.close();}
+ });
+});

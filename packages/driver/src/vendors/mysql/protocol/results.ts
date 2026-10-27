@@ -1,5 +1,5 @@
 import {Cursor} from './primitives.js';
-import {fail} from '../../../core/errors.js';
+import {DriverError,fail} from '../../../core/errors.js';
 import type {MysqlColumn,QueryResult} from '../../../core/contracts.js';
 export function errorPacket(buf:Buffer):{code:number;state:string;message:string}{const c=new Cursor(buf);c.byte();const code=c.two();let state='HY000';if(c.remaining()>=6&&c.b[c.p]===35){c.byte();state=c.take(5).toString();}return {code,state,message:c.take(c.remaining()).toString('utf8')};}
 export function field(buf:Buffer):MysqlColumn{
@@ -19,6 +19,28 @@ export function field(buf:Buffer):MysqlColumn{
   return {name,schema,table,originalName,originalTable,charset,length,type,flags,decimals,unsigned:!!(flags&32)};
 }
 export function ok(buf:Buffer,allowMultiple=false):QueryResult{const c=new Cursor(buf);if(c.byte()!==0)throw Error('Not an OK packet');const affectedRows=c.len(),insertId=c.len(),status=c.remaining()>=2?c.two():0,warnings=c.remaining()>=2?c.two():0;if(affectedRows===null||insertId===null)throw Error('Invalid OK counts');if(!allowMultiple)assertSingleResult(status);return {rows:[],columns:[],affectedRows,insertId,status,warnings};}
+
+
+/** A command acknowledgement must contain the mandatory Classic 4.1
+ * affected-row and insert-id counts followed by status and warnings. Merely
+ * receiving a leading 0x00 is not evidence that COMMIT, ROLLBACK, PING or
+ * RESET_CONNECTION completed. Info bytes may legitimately follow. */
+export function acknowledgedOk(buf:Buffer):QueryResult{
+  try{
+    const c=new Cursor(buf);
+    if(c.byte()!==0)
+      throw fail('PROTOCOL_ERROR','Unexpected MySQL command acknowledgement');
+    const affectedRows=c.len(),insertId=c.len();
+    if(affectedRows===null||insertId===null||c.remaining()<4)
+      throw fail('PROTOCOL_ERROR','Incomplete MySQL command acknowledgement');
+    const status=c.two(),warnings=c.two();
+    assertSingleResult(status);
+    return {rows:[],columns:[],affectedRows,insertId,status,warnings};
+  }catch(error){
+    if(error instanceof DriverError)throw error;
+    throw fail('PROTOCOL_ERROR','Malformed MySQL command acknowledgement');
+  }
+}
 
 /** With CLIENT_PROTOCOL_41 and without CLIENT_DEPRECATE_EOF, a server EOF
  * packet is exactly five bytes: FE, warning count LE16, status flags LE16. */
