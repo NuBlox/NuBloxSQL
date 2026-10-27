@@ -229,3 +229,57 @@ live('incomplete COM_RESET_CONNECTION acknowledgement cannot return a session to
   }finally{await db.close();}
  });
 });
+
+live('short but sequence-correct INSERT OK is never accepted as SQL success',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const db=await connectDatabase(target);
+  let executes=0;
+  const wire=db.stream,originalSend=wire.send.bind(wire);
+  wire.send=async body=>{
+   if(body[0]===0x17)executes++;
+   return originalSend(body);
+  };
+  try{
+   await db.query('CREATE TEMPORARY TABLE nublox_short_ok_insert (id INT PRIMARY KEY) ENGINE=InnoDB');
+   const statement=await db.prepare('INSERT INTO nublox_short_ok_insert (id) VALUES (?)');
+   proxy.arm('short-ok');
+   await assert.rejects(statement.execute([71]),
+     error=>error.code==='PROTOCOL_ERROR');
+   assert.equal(proxy.injected,1);
+   assert.equal(executes,1,'uncertain INSERT must never be replayed');
+   assert.equal(db.closed,true,'unconfirmed statement result invalidates transport');
+   assert.equal(statement.closed,true,'prepared handle belongs to the poisoned socket');
+   await assert.rejects(db.query('SELECT 1'),
+     error=>error.code==='CONNECTION_CLOSED');
+   const replacement=await connectDatabase(target);
+   try{
+    assert.equal((await replacement.query('SELECT ? AS healthy',[72])).rows[0].healthy,72n);
+   }finally{await replacement.close();}
+  }finally{await db.close();}
+ });
+});
+
+live('pooled session with incomplete prepared DML OK is discarded before another borrower',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const pool=createDatabasePool(target,{
+   maxConnections:1,acquireTimeoutMs:8000,healthCheckTimeoutMs:2000
+  });
+  try{
+   await assert.rejects(pool.withConnection(async lease=>{
+    await lease.query('CREATE TEMPORARY TABLE nublox_short_ok_pool (id INT PRIMARY KEY) ENGINE=InnoDB');
+    const statement=await lease.prepare('INSERT INTO nublox_short_ok_pool (id) VALUES (?)');
+    proxy.arm('short-ok');
+    await statement.execute([73]);
+   }),error=>error.code==='PROTOCOL_ERROR');
+   assert.equal(proxy.injected,1);
+   assert.ok(pool.stats.discarded>=1,'unsafe connection must leave pool');
+   const result=await pool.withConnection(async lease=>
+    (await lease.query('SELECT ? AS recovered',[74])).rows[0].recovered
+   );
+   assert.equal(result,74n);
+   assert.ok(pool.stats.created>=2,'a new authenticated socket must replace the invalid one');
+   assert.equal(pool.stats.pending,0);
+   assert.ok(pool.stats.size<=1);
+  }finally{await pool.close();}
+ });
+});
