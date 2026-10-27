@@ -527,7 +527,16 @@ export class MysqlSession implements RelationalSession {
             throw fail('CONNECTION_CLOSED','Transaction callback failed with unfinished operations');
           }
           if(this.closed)throw error;
-          await this.control('ROLLBACK');
+          try{
+            await this.control('ROLLBACK');
+          }catch{
+            // An interrupted or rejected ROLLBACK cannot prove that the
+            // transaction was undone. Do not retry it in finally or reuse
+            // a socket whose transaction state is not trustworthy.
+            this.destroy();
+            throw fail('TRANSACTION_OUTCOME_UNKNOWN',
+              'ROLLBACK acknowledgement was not confirmed; transaction outcome is unknown');
+          }
           finished=true;
           return {success:false,error};
         }
