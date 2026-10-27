@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {T,sized,u16,u32} from '../dist/vendors/mysql/protocol/primitives.js';
 import {binaryValues,binaryRow,columnKeys,objectRow} from '../dist/vendors/mysql/types.js';
-import {eofStatus,assertSingleResult,ok,field} from '../dist/vendors/mysql/protocol/results.js';
+import {eofStatus,assertSingleResult,acknowledgedOk,ok,field} from '../dist/vendors/mysql/protocol/results.js';
 import {readMetadata} from '../dist/vendors/mysql/metadata.js';
 
 const column=name=>({name,type:T.LONGLONG,charset:63,unsigned:false,
@@ -93,4 +93,31 @@ test('seeded malformed-binary-row corpus always fails closed or returns exact co
  }
  assert.ok(invalid>2000,'Most random malformed packets should fail');
  assert.equal(valid+invalid,2500);
+});
+
+test('critical command acknowledgements require complete Classic protocol 4.1 OK fields',()=>{
+ const standard=Buffer.from([0,0,0,2,0,1,0]);
+ const valid=acknowledgedOk(standard);
+ assert.equal(valid.status,2);
+ assert.equal(valid.warnings,1);
+ assert.equal(valid.affectedRows,0);
+ assert.equal(valid.insertId,0);
+ assert.deepEqual(acknowledgedOk(Buffer.concat([
+   standard,Buffer.from('optional info','ascii')
+ ])).rows,[]);
+ for(let end=0;end<standard.length;end++){
+   assert.throws(()=>acknowledgedOk(standard.subarray(0,end)),
+     error=>error.code==='PROTOCOL_ERROR','truncated length='+end);
+ }
+ const invalid=[
+   Buffer.from([0,0xfb,0,2,0,0,0]), // NULL affected-rows count
+   Buffer.from([0,0,0xfb,2,0,0,0]), // NULL insert ID
+   Buffer.from([0,0xfc,1]), // truncated length-encoded count
+   Buffer.from([0xff,0,0,2,0,0,0]) // not an OK header
+ ];
+ for(const packet of invalid)
+   assert.throws(()=>acknowledgedOk(packet),
+     error=>error.code==='PROTOCOL_ERROR');
+ assert.throws(()=>acknowledgedOk(Buffer.from([0,0,0,8,0,0,0])),
+   error=>error.code==='UNSUPPORTED_FEATURE');
 });
