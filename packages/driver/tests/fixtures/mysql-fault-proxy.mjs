@@ -68,6 +68,17 @@ export async function startMysqlFaultProxy(upstreamPort){
         return;
       }
       if(responsePrefix.length<4)return; // a TCP split can divide the header
+      if(responseMode==='short-ok'){
+        // Keep a syntactically valid physical frame and sequence, but send
+        // only the OK marker and its two length-encoded counts. A Protocol
+        // 4.1 acknowledgement MUST also contain status and warning fields.
+        // The connection stays open so EOF cannot hide a lax parser.
+        const replacement=Buffer.from([3,0,0,responsePrefix[3],0,0,0]);
+        responsePrefix=Buffer.alloc(0);
+        responseMode=null;
+        if(!forward(client,replacement))upstream.pause();
+        return;
+      }
       if(responseMode==='truncate-body'){
         // Advertise an intact physical frame, deliver only one payload byte.
         if(responsePrefix.length<5)return;
@@ -121,7 +132,7 @@ export async function startMysqlFaultProxy(upstreamPort){
     get injected(){return injected;},
     arm(mode){
       if(pending)throw Error('Only one pending fault is permitted');
-      if(!['wrong-sequence','truncate-header','truncate-body','oversized-frame','drop-upload'].includes(mode))
+      if(!['wrong-sequence','truncate-header','truncate-body','oversized-frame','drop-upload','short-ok'].includes(mode))
         throw Error('Unknown fault mode');
       pending=mode;
     },
