@@ -121,3 +121,28 @@ test('critical command acknowledgements require complete Classic protocol 4.1 OK
  assert.throws(()=>acknowledgedOk(Buffer.from([0,0,0,8,0,0,0])),
    error=>error.code==='UNSUPPORTED_FEATURE');
 });
+
+test('prepared statement OK cannot claim SQL success without complete Protocol 4.1 fields',()=>{
+ const standard=Buffer.from([0,1,0,2,0,0,0]);
+ assert.equal(ok(standard).affectedRows,1);
+ for(let end=0;end<standard.length;end++){
+   for(const allowMultiple of [false,true])
+     assert.throws(()=>ok(standard.subarray(0,end),allowMultiple),
+       error=>error.code==='PROTOCOL_ERROR',
+       'truncated prepared SQL OK length='+end);
+ }
+ const variants=[
+   Buffer.from([0,0xfb,0,2,0,0,0]),
+   Buffer.from([0,0,0xfb,2,0,0,0]),
+   Buffer.from([0,0xfc,1]),
+   Buffer.from([0xff,0,0,2,0,0,0])
+ ];
+ for(const packet of variants)
+   assert.throws(()=>ok(packet,true),error=>error.code==='PROTOCOL_ERROR');
+ const continuation=Buffer.from([0,1,0,8,0,0,0]);
+ assert.throws(()=>ok(continuation),
+   error=>error.code==='UNSUPPORTED_FEATURE');
+ assert.equal(ok(continuation,true).status,8,
+   'valid stored procedure OK may legitimately announce more result sets');
+ assert.equal(ok(Buffer.concat([standard,Buffer.from('server info')])).affectedRows,1);
+});

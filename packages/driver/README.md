@@ -318,6 +318,23 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
 
+### Strict prepared-statement result acknowledgements
+
+Prepared SQL without a row set (for example `INSERT`, `UPDATE`, and
+`DELETE`) can return a Classic Protocol 4.1 OK packet. NuBloxSQL applies
+the **same complete-packet validation** used for transaction and pool control:
+both length-encoded counters, status and warnings must be present. Valid
+multi-result continuation flags and optional informational text remain
+supported. A syntactically correct physical frame with an incomplete OK body
+is not evidence that an SQL statement succeeded.
+
+On malformed prepared SQL OK replies, the Driver reports `PROTOCOL_ERROR`,
+invalidates the physical session and prepared handles, and discards that
+connection from a pool. The server may already have applied the statement:
+NuBloxSQL **does not automatically replay** an operation with an unknown
+effect. Callers must reconcile any business effects before deciding whether
+to retry.
+
 ### Verified MySQL command acknowledgements
 
 NuBloxSQL requires complete Classic Protocol 4.1 OK payloads before accepting

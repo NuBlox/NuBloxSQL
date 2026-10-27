@@ -18,28 +18,35 @@ export function field(buf:Buffer):MysqlColumn{
   if(c.remaining()!==0)throw Error('Trailing MySQL column definition bytes');
   return {name,schema,table,originalName,originalTable,charset,length,type,flags,decimals,unsigned:!!(flags&32)};
 }
-export function ok(buf:Buffer,allowMultiple=false):QueryResult{const c=new Cursor(buf);if(c.byte()!==0)throw Error('Not an OK packet');const affectedRows=c.len(),insertId=c.len(),status=c.remaining()>=2?c.two():0,warnings=c.remaining()>=2?c.two():0;if(affectedRows===null||insertId===null)throw Error('Invalid OK counts');if(!allowMultiple)assertSingleResult(status);return {rows:[],columns:[],affectedRows,insertId,status,warnings};}
+/** All Classic 4.1 statement OK packets require status and warnings too. */
+export function ok(buf:Buffer,allowMultiple=false):QueryResult{
+  return parseOkPacket(buf,allowMultiple);
+}
 
 
-/** A command acknowledgement must contain the mandatory Classic 4.1
- * affected-row and insert-id counts followed by status and warnings. Merely
- * receiving a leading 0x00 is not evidence that COMMIT, ROLLBACK, PING or
- * RESET_CONNECTION completed. Info bytes may legitimately follow. */
-export function acknowledgedOk(buf:Buffer):QueryResult{
+/** Decode the same complete Classic 4.1 OK structure for prepared SQL,
+ * transaction control and pool probes. A three-byte response is never proof
+ * of SQL success, even with a valid physical frame and packet sequence. */
+function parseOkPacket(buf:Buffer,allowMultiple:boolean):QueryResult{
   try{
     const c=new Cursor(buf);
     if(c.byte()!==0)
-      throw fail('PROTOCOL_ERROR','Unexpected MySQL command acknowledgement');
+      throw fail('PROTOCOL_ERROR','Unexpected MySQL OK packet');
     const affectedRows=c.len(),insertId=c.len();
     if(affectedRows===null||insertId===null||c.remaining()<4)
-      throw fail('PROTOCOL_ERROR','Incomplete MySQL command acknowledgement');
+      throw fail('PROTOCOL_ERROR','Incomplete MySQL OK packet');
     const status=c.two(),warnings=c.two();
-    assertSingleResult(status);
+    if(!allowMultiple)assertSingleResult(status);
     return {rows:[],columns:[],affectedRows,insertId,status,warnings};
   }catch(error){
     if(error instanceof DriverError)throw error;
-    throw fail('PROTOCOL_ERROR','Malformed MySQL command acknowledgement');
+    throw fail('PROTOCOL_ERROR','Malformed MySQL OK packet');
   }
+}
+
+/** Transaction and pool-control acknowledgements never permit extra results. */
+export function acknowledgedOk(buf:Buffer):QueryResult{
+  return parseOkPacket(buf,false);
 }
 
 /** With CLIENT_PROTOCOL_41 and without CLIENT_DEPRECATE_EOF, a server EOF
