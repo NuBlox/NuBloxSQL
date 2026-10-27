@@ -318,6 +318,18 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
 
+### Rollback acknowledgement and uncertain outcomes
+
+Transaction cleanup is not considered confirmed merely because the Driver
+sent `ROLLBACK`. If the acknowledgement is lost, rejected or malformed, the
+Driver returns `TRANSACTION_OUTCOME_UNKNOWN`, permanently closes that physical
+session, and **does not issue a second rollback or retry application SQL**.
+This is deliberately conservative: it cannot certify whether the server
+applied rollback when the response was unavailable. On an acknowledged
+rollback, the original application callback error is returned unchanged and
+the session remains reusable. A caller seeing an unknown outcome must
+reconcile application state using a newly authenticated connection.
+
 ### Fail-closed outbound writes
 
 A Classic packet may have been partially transmitted when Node reports an

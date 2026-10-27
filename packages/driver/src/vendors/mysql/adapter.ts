@@ -34,8 +34,9 @@ export class MysqlSession implements RelationalSession {
   /** The active server cursor is revoked on any fatal transport loss. */
   private readonly cursors=new Set<MysqlCursor>();
   private preparing=0;
-  /** Set before writing COMMIT, cleared only after receiving its valid OK. */
+  /** These commands may have taken effect before their acknowledgement was lost. */
   private commitAwaitingAck=false;
+  private rollbackAwaitingAck=false;
   /** Distinguishes a nested call in an exclusive callback from independent
    * concurrent callers, which must continue to queue normally. */
   private readonly scope=new AsyncLocalStorage<{active:boolean;kind:'transaction'|'cursor'}>();
@@ -137,16 +138,20 @@ export class MysqlSession implements RelationalSession {
               // A COMMIT may already be durable even if its acknowledgement
               // never arrives. Never transform this into a definite rollback
               // or retry the command on another socket.
-              const ambiguous=this.commitAwaitingAck;
-              const mapped=ambiguous
+              const ambiguousCommit=this.commitAwaitingAck;
+              const ambiguousRollback=this.rollbackAwaitingAck;
+              const mapped=ambiguousCommit
                 ?fail('TRANSACTION_OUTCOME_UNKNOWN',
                   'COMMIT acknowledgement was not confirmed; transaction outcome is unknown')
+                :ambiguousRollback
+                  ?fail('TRANSACTION_OUTCOME_UNKNOWN',
+                    'ROLLBACK acknowledgement was not confirmed; transaction outcome is unknown')
                 :error instanceof DriverError
                   ?error // preserve RESOURCE_LIMIT, CANCELLED, TIMEOUT, server codes
                   :this.closed
                     ?fail('CONNECTION_CLOSED','Native MySQL connection terminated during operation')
                     :error;
-              if(ambiguous||!(mapped instanceof DriverError&&
+              if(ambiguousCommit||ambiguousRollback||!(mapped instanceof DriverError&&
                 (mapped.code==='DATABASE_ERROR'||mapped.code==='INVALID_INPUT'||
                  mapped.code==='CANCELLED'||mapped.code==='TIMEOUT'||
                  mapped.code==='CONNECTION_CLOSED')))
@@ -467,11 +472,13 @@ export class MysqlSession implements RelationalSession {
     this.assertOpen();
     this.stream.reset();
     if(command==='COMMIT')this.commitAwaitingAck=true;
+    if(command==='ROLLBACK')this.rollbackAwaitingAck=true;
     await this.send(Buffer.concat([Buffer.from([3]),Buffer.from(command,'ascii')]));
     const response=await this.get();
     if(!isOk(response))throw Error('Expected transaction OK');
     const result=ok(response);
     if(command==='COMMIT')this.commitAwaitingAck=false;
+    if(command==='ROLLBACK')this.rollbackAwaitingAck=false;
     return result;
   }
 
@@ -527,7 +534,16 @@ export class MysqlSession implements RelationalSession {
             throw fail('CONNECTION_CLOSED','Transaction callback failed with unfinished operations');
           }
           if(this.closed)throw error;
-          await this.control('ROLLBACK');
+          try{
+            await this.control('ROLLBACK');
+          }catch{
+            // Mark cleanup as attempted before propagating failure so finally
+            // never issues a second rollback. The outer serial handler
+            // discards the connection after surfacing the unknown outcome.
+            finished=true;
+            throw fail('TRANSACTION_OUTCOME_UNKNOWN',
+              'ROLLBACK acknowledgement was not confirmed; transaction outcome is unknown');
+          }
           finished=true;
           return {success:false,error};
         }
