@@ -130,3 +130,36 @@ live('corrupt prepared response rejects execution but completes queued statement
   }finally{await db.close();}
  });
 });
+
+live('lost ROLLBACK acknowledgement cannot trigger a second rollback or a false success',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const db=await connectDatabase(target);
+  const wire=db.stream;
+  const originalSend=wire.send.bind(wire);
+  let rollbackCommands=0;
+  wire.send=async body=>{
+    if(body[0]===0x03&&body.subarray(1).toString('ascii')==='ROLLBACK')
+      rollbackCommands++;
+    return originalSend(body);
+  };
+  try{
+   await db.query('CREATE TEMPORARY TABLE nublox_rollback_fault (id INT PRIMARY KEY) ENGINE=InnoDB');
+   await assert.rejects(db.transaction(async tx=>{
+     await tx.query('INSERT INTO nublox_rollback_fault (id) VALUES (?)',[83]);
+     // Only the subsequent ROLLBACK reply is corrupted; the INSERT was
+     // acknowledged and must not be replayed on a replacement socket.
+     proxy.arm('truncate-header');
+     throw Error('trigger rollback');
+   }),error=>error.code==='TRANSACTION_OUTCOME_UNKNOWN'&&
+     /ROLLBACK acknowledgement/.test(error.message));
+   assert.equal(proxy.injected,1);
+   assert.equal(rollbackCommands,1,'never retry an unacknowledged rollback');
+   assert.equal(db.closed,true);
+   await assert.rejects(db.query('SELECT 1'),error=>error.code==='CONNECTION_CLOSED');
+   const healthy=await connectDatabase(target);
+   try{
+     assert.equal((await healthy.query('SELECT ? AS recovered',[84])).rows[0].recovered,84n);
+   }finally{await healthy.close();}
+  }finally{await db.close();}
+ });
+});
