@@ -8,7 +8,7 @@ import {assertSupportedAuthPlugin,token} from './auth/plugins.js';
 import {execute,fetchRows} from './protocol/commands.js';
 import {MysqlCursor} from './cursor.js';
 import {MysqlPreparedStatement} from './prepared.js';
-import {ok,eofStatus,assertSingleResult} from './protocol/results.js';
+import {ok,acknowledgedOk,eofStatus,assertSingleResult} from './protocol/results.js';
 import {binaryValues,columnKeys,objectRow} from './types.js';
 import {serverPacket,eof,isOk} from './errors.js';
 import {validate} from './configuration.js';
@@ -474,9 +474,10 @@ export class MysqlSession implements RelationalSession {
     if(command==='COMMIT')this.commitAwaitingAck=true;
     if(command==='ROLLBACK')this.rollbackAwaitingAck=true;
     await this.send(Buffer.concat([Buffer.from([3]),Buffer.from(command,'ascii')]));
-    const response=await this.get();
-    if(!isOk(response))throw Error('Expected transaction OK');
-    const result=ok(response);
+    // Only a complete Protocol 4.1 OK confirms transaction control.
+    // On a missing/truncated acknowledgement, the outer transaction
+    // lifecycle must not claim that COMMIT or ROLLBACK is definite.
+    const result=acknowledgedOk(await this.get());
     if(command==='COMMIT')this.commitAwaitingAck=false;
     if(command==='ROLLBACK')this.rollbackAwaitingAck=false;
     return result;
@@ -574,8 +575,7 @@ export class MysqlSession implements RelationalSession {
     await this.serial(async()=>{
       this.stream.reset();
       await this.send(Buffer.from([0x0e])); // COM_PING
-      const response=await this.get();
-      if(!isOk(response))throw Error('Invalid MySQL ping response');
+      acknowledgedOk(await this.get());
     },{timeoutMs});
   }
 
@@ -585,8 +585,7 @@ export class MysqlSession implements RelationalSession {
     return this.serial(async()=>{
       this.stream.reset();
       await this.send(Buffer.from([0x1f])); // COM_RESET_CONNECTION
-      const response=await this.get();
-      if(!isOk(response))throw Error('Invalid MySQL session reset response');
+      acknowledgedOk(await this.get());
       for(const statement of this.statements)statement.invalidate();
       this.statements.clear();
     });
