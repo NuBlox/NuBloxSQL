@@ -242,6 +242,7 @@ live('short but sequence-correct INSERT OK is never accepted as SQL success',asy
   try{
    await db.query('CREATE TEMPORARY TABLE nublox_short_ok_insert (id INT PRIMARY KEY) ENGINE=InnoDB');
    const statement=await db.prepare('INSERT INTO nublox_short_ok_insert (id) VALUES (?)');
+   executes=0; // Exclude earlier fixture DDL; count only the prepared INSERT.
    proxy.arm('short-ok');
    await assert.rejects(statement.execute([71]),
      error=>error.code==='PROTOCOL_ERROR');
