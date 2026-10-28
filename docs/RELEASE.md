@@ -86,6 +86,29 @@ from cloud providers, external networks, alternative architectures,
 future patch versions or commercial deployments. G8 remains **not met**
 for general commercial release.
 
+## Matrix-wide evidence integrity gate
+
+The `mysql-qualification-evidence` job runs **after** both native-version
+and TLS-version matrices. It downloads the four independent
+version/transport artifact groups and rejects the full matrix decision
+unless it finds exactly eight valid reports: a local benchmark, local
+soak, TLS benchmark and destructive-restart report for **each** of
+MySQL 8.0.44 and 8.4.11. It checks the actual server version,
+Node 22/Linux x64 and matching commit SHA, verified TLS rejection
+coverage, authentication cleanup, cursor/statement/pool workloads,
+zero unexpected errors, the minimum elapsed soak duration, and
+fail-closed restart/statement revocation without replay.
+
+The validator produces a single redacted `mysql-qualification-matrix`
+JSON artifact only after passing all checks. Missing, duplicated, failed,
+stale or cross-version reports fail the gate. A green individual job is
+**not** a substitute for a green matrix evidence decision. Neither the
+validator nor its unit tests connect to customer servers or store
+credentials, SQL, row data or connection IDs. This improves traceability
+of G1/G3/G4/G6/G8/G11 but is **not** independent penetration testing,
+external disaster recovery, long-duration stability or a commercial
+release approval. Keep G8 and G11 unfulfilled beyond the tested profile.
+
 ## Target decision levels
 
 - **Engineering preview**: clearly labelled non-production, qualified on a
