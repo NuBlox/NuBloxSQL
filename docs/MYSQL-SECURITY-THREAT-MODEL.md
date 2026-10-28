@@ -23,7 +23,7 @@ dependency artifacts, and code using escaped/revoked handles.
 | Threat | Existing engineering control | Evidence / remaining limit |
 | --- | --- | --- |
 | Server identity substitution or network interception | `verified-tls` validates chain and server name; plaintext permitted only on explicitly isolated loopback | Pinned LTS negative CA/hostname tests. Cloud/private PKI and rotation not qualified |
-| Excessive database privileges | New isolated CI fixtures authenticate as `nubloxsql_readonly` with SELECT-only grant; SSL-required user in TLS profile | Explicit write/DDL denial, prepared/cursor/pool/transaction and recovery tests. Production principal/role management not yet assessed |
+| Excessive database privileges | Pinned TLS CI fixtures authenticate with SELECT-only grants; cold plaintext authentication must refuse full-password fallback | Explicit write/DDL denial and prepared/cursor/pool/transaction tests under verified LTS TLS; cold plaintext full-auth rejection on three versions. Production principal/role management not assessed |
 | Credential disclosure | Redacted error vocabulary; no SQL/row/secret capture in qualification artifacts | Negative authentication and error tests. Independent log review and secret rotation process still open |
 | SQL injection or unsafe binding | Native bound prepared statements; inputs treated as values, not query text | Protocol and type conformance suite. Applications remain responsible for query text they build |
 | Session poisoning or handle reuse | FIFO command lifecycle, statement/cursor ownership, pool reset, cancellation and fail-closed ambiguous cleanup | Real MySQL restart, cursor and prepared cleanup, pool saturation and multi-version tests. Multiple network partition profiles remain open |
