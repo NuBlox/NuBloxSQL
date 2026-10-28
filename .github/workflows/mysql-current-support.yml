@@ -1,0 +1,101 @@
+name: MySQL current LTS and Innovation qualification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '43 3 * * 3'
+
+permissions:
+  contents: read
+
+jobs:
+  mysql-current-release:
+    name: mysql-current-${{ matrix.mysql }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ['8.4.13', '9.7.4', '26.10.0']
+    services:
+      mysql:
+        image: mysql:${{ matrix.mysql }}
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: nublox_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
+    env:
+      NUBLOX_LIVE_MYSQL: '1'
+      NUBLOX_TEST_MYSQL_VERSION: ${{ matrix.mysql }}
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test-password
+      MYSQL_DATABASE: nublox_test
+      MYSQL_PORT: '3306'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install build dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify exact MySQL Community Server patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t containers < <(docker ps -q --filter "ancestor=mysql:${{ matrix.mysql }}")
+          test "${#containers[@]}" -eq 1
+          actual="$(docker exec -e MYSQL_PWD=test-password "${containers[0]}" mysql -N -s --protocol=tcp -h127.0.0.1 -uroot -e 'SELECT VERSION()')"
+          case "$actual" in
+            "${{ matrix.mysql }}"|"${{ matrix.mysql }}"-*) ;;
+            *) echo "Unexpected MySQL version: $actual"; exit 1 ;;
+          esac
+          echo "MySQL qualification target: $actual"
+      - name: Install multi-result stored procedure fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t containers < <(docker ps -q --filter "ancestor=mysql:${{ matrix.mysql }}")
+          test "${#containers[@]}" -eq 1
+          docker exec -i -e MYSQL_PWD=test-password "${containers[0]}" mysql --protocol=tcp -h127.0.0.1 -uroot nublox_test < packages/driver/tests/fixtures/multi-results.sql
+      - name: Verify native protocol, prepared SQL, pool, transaction and cursor
+        run: npm test
+      - name: Verify independently packaged driver
+        run: npm run release:verify
+      - name: Exercise prepared, pooled and cursor qualification workloads
+        run: npm run qualify:mysql -- --iterations=30 --concurrency=2 --cursorRows=500 --fetchSize=25
+      - name: Validate sustained reads and recoverable SQL errors
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == schedule ]]; then
+            npm run soak:mysql -- --durationMs=120000 --concurrency=4 --iterations=1000000
+          else
+            npm run soak:mysql -- --durationMs=5000 --concurrency=2 --iterations=1000000
+          fi
+      - name: Kill disposable server mid-query and prove fresh pool recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t containers < <(docker ps -q --filter "ancestor=mysql:${{ matrix.mysql }}")
+          test "${#containers[@]}" -eq 1
+          export NUBLOX_ALLOW_DESTRUCTIVE_MYSQL_FIXTURE=1
+          export NUBLOX_QUALIFICATION_MYSQL_VERSION="${{ matrix.mysql }}"
+          export NUBLOX_QUALIFICATION_CONTAINER="${containers[0]}"
+          node tools/qualification/mysql-restart-recovery.mjs
+      - name: Preserve version-scoped qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-current-release-${{ matrix.mysql }}-${{ github.run_id }}
+          path: artifacts/qualification/*.json
+          if-no-files-found: error
+          retention-days: 30

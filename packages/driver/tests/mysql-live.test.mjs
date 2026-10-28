@@ -8,8 +8,12 @@ live('pinned MySQL handshake, prepared statements, type fidelity, errors and rol
  const db=await connectDatabase(target);
  try{
   const expected=process.env.NUBLOX_TEST_MYSQL_VERSION??'8.4';
-  assert.match(expected,/^8\.(?:0|4)(?:\.[0-9]+)?$/);
-  const matchesVersion=value=>value===expected||value.startsWith(expected+'.');
+  // MySQL 8.0 remains a legacy compatibility fixture, while maintained
+  // LTS and Innovation release lines have separate qualification jobs.
+  assert.match(expected,/^(?:8\.(?:0|4)|9\.7|26\.10)(?:\.[0-9]+)?$/);
+  const exactPatch=expected.split('.').length===3;
+  const matchesVersion=value=>value===expected||
+    (typeof value==='string'&&value.startsWith(expected+(exactPatch?'-':'.')));
   assert.ok(matchesVersion(db.info.version),'native greeting reports the selected MySQL version');
   const basic=await db.query('SELECT ? AS label, ? AS amount, ? AS nullable',['hello',42,null]);
   assert.equal(basic.rows[0].label,'hello');assert.equal(basic.rows[0].amount,42n);
