@@ -35,6 +35,34 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## Extended version and restart qualification (new evidence gate)
+
+The [version and recovery workflow](../.github/workflows/mysql-version-qualification.yml)
+now executes independent CI jobs against the fixed official Docker image tags
+`mysql:8.0.44` and `mysql:8.4.11`, on Node.js 22/Linux x64.
+Each matrix entry builds and runs the native regression suite (including real
+MySQL), installs stored-procedure fixtures, performs bounded prepared/cursor/
+pool/authentication qualification, and captures a timed concurrent soak.
+PR/push runs require at least **5 seconds** of soak per version; weekly scheduled
+runs require at least **120 seconds** per version. These are explicitly
+short qualification stages, **not** multi-day stability evidence.
+
+The same CI job then *destructively kills* its disposable MySQL service
+during an outstanding prepared SQL request, waits for the native connection
+and prepared handle to be revoked, restarts MySQL and requires a bounded pool
+to recover with a **different physical server connection ID**, with no
+automatic SQL replay. The recovery runner requires CI, an explicit destructive
+fixture opt-in, a container identity, an exact allowed MySQL version and
+Docker image identity. **Do not run against a real customer database.**
+
+A job is evidence only once it has completed successfully. Store the
+version-specific JSON artifacts alongside its run URL and commit SHA.
+This augments G1, G4, G6, G8 and G11; it does **not** qualify arbitrary
+MySQL versions, other operating systems/architectures, TLS on every version,
+cloud endpoints, overnight endurance or customer recovery targets.
+G8 and G11 remain **not met** for general commercial release until their
+full deployment and recovery requirements have independent evidence.
+
 ## Target decision levels
 
 - **Engineering preview**: clearly labelled non-production, qualified on a
