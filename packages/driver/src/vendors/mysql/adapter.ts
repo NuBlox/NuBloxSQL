@@ -452,10 +452,17 @@ export class MysqlSession implements RelationalSession {
         }
       }finally{
         if(cursor){
+          // An application callback may THROW while an unawaited next() is
+          // still sending or reading COM_STMT_FETCH. The normal-return path
+          // checks this above, but failure must enforce the same invariant:
+          // never race COM_STMT_CLOSE with an active fetch or reuse its socket.
+          const unfinished=cursor.inFlight;
           cursor.invalidate();
           this.cursors.delete(cursor);
+          if(unfinished)this.destroy();
         }
         // COM_STMT_CLOSE releases any server-side cursor, including early exits.
+        // Do not send it into an unfinished fetch on a discarded socket.
         if(!this.closed)await this.closeNative(id);
       }
     },operation);

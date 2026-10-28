@@ -318,6 +318,21 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
 
+### Unawaited cursor work at callback completion or failure
+
+A native cursor exclusively owns one MySQL session while its callback runs.
+A caller must await each `cursor.next()` before the callback returns or
+throws. If any fetch remains in flight when the callback exits, NuBloxSQL
+destroys the physical session and revokes the cursor **before** attempting
+`COM_STMT_CLOSE`. This also covers exception paths, which must not let
+native close race an unfinished `COM_STMT_FETCH` request.
+
+The session is not reusable after that race; a pooled lease discards its
+connection and the next borrower receives a newly authenticated socket.
+The driver never sends a delayed fetch on a terminated connection or
+replays SQL. Fully awaited cursors, including intentionally early exits,
+continue to use the normal close and pool-reset lifecycle.
+
 ### Fail-closed server-side cursor fetches
 
 A native server cursor holds an exclusive session lock across its callback.
