@@ -7,6 +7,9 @@ const live=process.env.NUBLOX_LIVE_MYSQL_TLS==='1'?test:test.skip;
 const tlsPort=Number(process.env.MYSQL_TLS_PORT||3307);
 const username=process.env.MYSQL_USER||'root';
 const password=process.env.MYSQL_PASSWORD||'test-password';
+const expectedVersion=process.env.NUBLOX_TEST_MYSQL_VERSION||'8.4.11';
+if(!['8.0.44','8.4.11'].includes(expectedVersion))
+  throw Error('Unqualified MySQL TLS test version');
 
 function trustedTarget() {
   return {
@@ -18,12 +21,13 @@ function trustedTarget() {
   };
 }
 
-live('verified MySQL 8.4 TLS: trusted CA, hostname, authenticated session and prepared query',async()=>{
+live('verified MySQL TLS: trusted CA, hostname, authenticated session and prepared query',async()=>{
   const target=trustedTarget();
   const session=await connectDatabase(target);
   try{
     assert.equal(session.info.transport,'verified-tls');
-    assert.match(session.info.version,/^8\.4\./);
+    assert.ok(session.info.version.startsWith(expectedVersion),
+      'Authenticated MySQL server does not match pinned TLS image');
     assert.equal(session.info.authPlugin,'caching_sha2_password');
     const result=await session.query('SELECT ? AS greeting, ? AS number',['TLS connected',42]);
     assert.equal(result.rows[0].greeting,'TLS connected');
@@ -43,22 +47,22 @@ live('verified MySQL 8.4 TLS: trusted CA, hostname, authenticated session and pr
   assert.equal(session.closed,true);
 });
 
-live('verified MySQL 8.4 TLS: untrusted CA fails closed',async()=>{
+live('verified MySQL TLS: untrusted CA fails closed',async()=>{
   const target={...trustedTarget(),ca:readFileSync(process.env.NUBLOX_TLS_OTHER_CA_FILE,'utf8')};
   await assert.rejects(connectDatabase(target),error=>error?.code==='TLS_FAILED');
 });
 
-live('verified MySQL 8.4 TLS: mismatched server identity fails closed',async()=>{
+live('verified MySQL TLS: mismatched server identity fails closed',async()=>{
   const target={...trustedTarget(),serverName:'not-localhost.invalid'};
   await assert.rejects(connectDatabase(target),error=>error?.code==='TLS_FAILED');
 });
 
-live('verified MySQL 8.4 TLS: no trusted CA fails closed',async()=>{
+live('verified MySQL TLS: no trusted CA fails closed',async()=>{
   const {ca,...target}=trustedTarget();
   await assert.rejects(connectDatabase(target),error=>error?.code==='TLS_FAILED');
 });
 
-live('verified MySQL 8.4 TLS: invalid credentials fail without exposing password',async()=>{
+live('verified MySQL TLS: invalid credentials fail without exposing password',async()=>{
   const secret='NUBLOX_NEVER_LOG_THIS_PASSWORD_4917';
   const target={...trustedTarget(),password:secret};
   await assert.rejects(connectDatabase(target),error=>{
@@ -69,7 +73,7 @@ live('verified MySQL 8.4 TLS: invalid credentials fail without exposing password
   });
 });
 
-live('TLS-required MySQL 8.4 rejects attempted plaintext connection',async()=>{
+live('TLS-required MySQL rejects attempted plaintext connection',async()=>{
   const t=trustedTarget();
   const target={...t,security:'isolated-local'};
   delete target.ca;
@@ -189,7 +193,7 @@ live('verified TLS pool health checks keep the same encrypted MySQL connection',
 });
 
 
-live('TLS-protected MySQL 8.4 text and binary conversions preserve result types',async()=>{
+live('TLS-protected MySQL text and binary conversions preserve result types',async()=>{
  const db=await connectDatabase(trustedTarget());
  try{
    const payload=Buffer.from([0,255,128,0]);
