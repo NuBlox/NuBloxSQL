@@ -1,0 +1,121 @@
+name: Native MySQL least-privilege authentication and security qualification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  restricted-local:
+    name: mysql-restricted-local-${{ matrix.mysql }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ['8.4.13','9.7.4','26.10.0']
+    services:
+      mysql:
+        image: mysql:${{ matrix.mysql }}
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: nublox_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
+    env:
+      NUBLOX_LIVE_MYSQL_RESTRICTED: '1'
+      NUBLOX_TEST_MYSQL_VERSION: ${{ matrix.mysql }}
+      MYSQL_PORT: '3306'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and compile native driver
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Provision a dedicated SELECT-only principal on the disposable MySQL server
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t containers < <(docker ps -q --filter 'ancestor=mysql:${{ matrix.mysql }}')
+          test "${#containers[@]}" -eq 1
+          actual="$(docker exec -e MYSQL_PWD=test-password "${containers[0]}" mysql -N -s --protocol=tcp -h127.0.0.1 -uroot -e 'SELECT VERSION()')"
+          case "$actual" in
+            "${{ matrix.mysql }}"|"${{ matrix.mysql }}"-*) ;;
+            *) echo 'Unqualified fixture version'; exit 1 ;;
+          esac
+          docker exec -i -e MYSQL_PWD=test-password "${containers[0]}" mysql --protocol=tcp -h127.0.0.1 -uroot < packages/driver/tests/fixtures/least-privilege.sql
+      - name: Prove read-only authentication, rejected writes, prepared SQL, cursors and pool reset
+        run: node --test packages/driver/tests/mysql-least-privilege-live.test.mjs
+
+  restricted-tls:
+    name: mysql-restricted-tls-${{ matrix.mysql }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ['8.4.13','9.7.4']
+    env:
+      NUBLOX_LIVE_MYSQL_RESTRICTED: '1'
+      NUBLOX_LIVE_MYSQL_TLS: '1'
+      NUBLOX_TEST_MYSQL_VERSION: ${{ matrix.mysql }}
+      MYSQL_TLS_PORT: '3307'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Start temporary certificate-verified TLS-required server
+        run: bash packages/driver/tests/fixtures/start-mysql-tls.sh
+      - name: Compile native driver
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Install SELECT-only user and independently require TLS for its login
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(docker exec -e MYSQL_PWD=test-password nubloxsql-mysql-tls mysql -N -s --protocol=tcp -h127.0.0.1 -uroot -e 'SELECT VERSION()')"
+          case "$actual" in
+            "${{ matrix.mysql }}"|"${{ matrix.mysql }}"-*) ;;
+            *) echo 'Unqualified TLS fixture version'; exit 1 ;;
+          esac
+          docker exec -i -e MYSQL_PWD=test-password nubloxsql-mysql-tls mysql --protocol=tcp -h127.0.0.1 -uroot < packages/driver/tests/fixtures/least-privilege.sql
+          docker exec -e MYSQL_PWD=test-password nubloxsql-mysql-tls mysql --protocol=tcp -h127.0.0.1 -uroot -e "ALTER USER 'nubloxsql_readonly'@'%' REQUIRE SSL"
+      - name: Prove least-privilege SSL login and fail-closed plaintext/credential attempts
+        run: node --test packages/driver/tests/mysql-least-privilege-live.test.mjs
+      - name: Inspect isolated test logs if restricted TLS qualification fails
+        if: failure()
+        run: docker logs nubloxsql-mysql-tls 2>&1 | tail -100 || true
+      - name: Destroy fixture and remove all temporary CA private keys
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f nubloxsql-mysql-tls >/dev/null 2>&1 || true
+          rm -rf "${RUNNER_TEMP}/nubloxsql-mysql-tls"
+
+  restricted-summary:
+    name: mysql-restricted-security
+    if: ${{ always() }}
+    needs: [restricted-local, restricted-tls]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every LTS, Innovation and SSL-only least-privilege job
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ needs.restricted-local.result }}" = success
+          test "${{ needs.restricted-tls.result }}" = success
