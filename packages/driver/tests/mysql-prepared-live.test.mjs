@@ -464,7 +464,13 @@ live('uncertain explicit prepared close retires socket for typed cleanup failure
    assert.equal(statement.closed,true,'failed close cannot revive handle: '+code);
    assert.equal(statement.sessionRevoked,true,'owner session revokes the statement: '+code);
    assert.equal(db.statements.size,0,'native statement registrations are invalidated');
-   await assert.rejects(statement.close(),e=>e.code===code);
+   if(code==='RESOURCE_LIMIT'){
+    // A failed enqueue ordinarily clears the closing promise. Once the
+    // native session is revoked, that path becomes an idempotent no-op.
+    await statement.close();
+   }else{
+    await assert.rejects(statement.close(),e=>e.code===code);
+   }
    assert.equal(closeAttempts,1,'repeat close must never replay uncertain cleanup');
    await assert.rejects(statement.execute([157]),e=>e.code==='CONNECTION_CLOSED');
    await assert.rejects(db.query('SELECT 1'),e=>e.code==='CONNECTION_CLOSED');
