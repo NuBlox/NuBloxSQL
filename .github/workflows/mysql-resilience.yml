@@ -127,3 +127,36 @@ jobs:
           path: artifacts/qualification/*.json
           if-no-files-found: error
           retention-days: 60
+
+  repeated-outage-evidence:
+    name: mysql-repeated-outage-evidence
+    if: ${{ always() }}
+    needs: [repeated-outages]
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      NUBLOX_QUALIFICATION_MYSQL_VERSION: '8.4.13'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require passed destructive-outage qualification
+        run: test "${{ needs.repeated-outages.result }}" = success
+      - name: Download each separately preserved crash cycle
+        uses: actions/download-artifact@v4
+        with:
+          name: mysql-repeated-outages-${{ github.run_id }}
+          path: artifacts/repeated-evidence
+      - name: Validate strict evidence and replay-rejection policy
+        run: |
+          node --test tools/qualification/outage-evidence.test.mjs tools/qualification/verify-outage-bundle.test.mjs
+          node tools/qualification/verify-outage-bundle.mjs artifacts/repeated-evidence
+      - name: Retain an independently validated resilience decision
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-repeated-outage-decision-${{ github.run_id }}
+          path: artifacts/qualification-matrix/*.json
+          if-no-files-found: warn
+          retention-days: 30
