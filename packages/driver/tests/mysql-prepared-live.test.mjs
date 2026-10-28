@@ -464,7 +464,8 @@ live('uncertain explicit prepared close retires socket for typed cleanup failure
    assert.equal(statement.closed,true,'failed close cannot revive handle: '+code);
    assert.equal(statement.sessionRevoked,true,'owner session revokes the statement: '+code);
    assert.equal(db.statements.size,0,'native statement registrations are invalidated');
-   await statement.close();
+   await assert.rejects(statement.close(),e=>e.code===code);
+   assert.equal(closeAttempts,1,'repeat close must never replay uncertain cleanup');
    await assert.rejects(statement.execute([157]),e=>e.code==='CONNECTION_CLOSED');
    await assert.rejects(db.query('SELECT 1'),e=>e.code==='CONNECTION_CLOSED');
    const replacement=await connectDatabase(target);
@@ -483,19 +484,22 @@ live('pool discards connection after caught explicit prepared close failure',{ti
  const {ConnectionPool}=await import('../dist/core/pooling.js');
  const {connectMysql}=await import('../dist/vendors/mysql/adapter.js');
  const {fail}=await import('../dist/core/errors.js');
- let sockets=0,firstId;
+ let sockets=0,firstId,firstSession;
  const pool=new ConnectionPool(async signal=>{
   const db=await connectMysql(target,signal);
   sockets++;
-  if(sockets===1){
-   db.closeNative=async()=>{throw fail('DATABASE_ERROR','Prepared close not confirmed');};
-  }
+  if(sockets===1)firstSession=db;
   return db;
  },{maxConnections:1,acquireTimeoutMs:7000,healthCheckTimeoutMs:1500});
  try{
   await pool.withConnection(async lease=>{
    firstId=(await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
    const statement=await lease.prepare('SELECT ? AS first');
+   // Normal lease queries use their own temporary prepared statements.
+   // Inject the failure only once the explicit statement is allocated.
+   firstSession.closeNative=async()=>{
+    throw fail('DATABASE_ERROR','Prepared close not confirmed');
+   };
    await assert.rejects(statement.close(),e=>e.code==='DATABASE_ERROR');
    assert.equal(lease.closed,true,'caught cleanup errors still terminate the native lease');
    // Deliberately return successfully: pool must not park the failed socket.
