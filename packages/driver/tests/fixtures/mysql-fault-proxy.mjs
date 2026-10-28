@@ -68,6 +68,35 @@ export async function startMysqlFaultProxy(upstreamPort){
         return;
       }
       if(responsePrefix.length<4)return; // a TCP split can divide the header
+      if(responseMode==='cursor-mid-fetch-error'){
+        // Preserve one complete, sequence-correct binary row packet from a
+        // live COM_STMT_FETCH. Replace the next response with a framed ERR
+        // and withhold the server's remaining rows and EOF. The TCP socket
+        // stays open so fail-closed behaviour is owned by the driver.
+        const size=responsePrefix[0]|(responsePrefix[1]<<8)|(responsePrefix[2]<<16);
+        if(responsePrefix.length<4+size)return;
+        if(size<2||responsePrefix[4]!==0){
+          responseMode=null;
+          drop(client,upstream);
+          return;
+        }
+        const errorBody=Buffer.concat([
+          Buffer.from([0xff,0x48,0x04,0x23]),
+          Buffer.from('HY000partial cursor fetch error','ascii')
+        ]);
+        const errorHeader=Buffer.from([
+          errorBody.length&255,(errorBody.length>>8)&255,0,
+          (responsePrefix[3]+1)&255
+        ]);
+        const changed=Buffer.concat([
+          responsePrefix.subarray(0,4+size),errorHeader,errorBody
+        ]);
+        responsePrefix=Buffer.alloc(0);
+        responseMode=null;
+        upstream.pause();
+        if(!forward(client,changed))upstream.pause();
+        return;
+      }
       if(responseMode==='execute-metadata-error'){
         // The prepared SELECT has already supplied its column-count packet.
         // Replace only the following metadata frame with a valid ERR packet
@@ -207,7 +236,7 @@ export async function startMysqlFaultProxy(upstreamPort){
     get injected(){return injected;},
     arm(mode){
       if(pending)throw Error('Only one pending fault is permitted');
-      if(!['wrong-sequence','truncate-header','truncate-body','oversized-frame','drop-upload','short-ok','prepare-trailing-byte','prepare-invalid-reserved','prepare-metadata-error','execute-metadata-error'].includes(mode))
+      if(!['wrong-sequence','truncate-header','truncate-body','oversized-frame','drop-upload','short-ok','prepare-trailing-byte','prepare-invalid-reserved','prepare-metadata-error','execute-metadata-error','cursor-mid-fetch-error'].includes(mode))
         throw Error('Unknown fault mode');
       pending=mode;
     },

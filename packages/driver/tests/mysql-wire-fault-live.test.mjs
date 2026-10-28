@@ -465,3 +465,91 @@ live('ordinary first-packet SQL errors remain recoverable on an existing prepare
   }finally{await statement.close();}
  }finally{await db.close();}
 });
+
+live('cursor fetch error after one row retires native session without unsafe close',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const db=await connectDatabase(target);
+  const send=db.stream.send.bind(db.stream);
+  let fetches=0,closes=0,escaped;
+  db.stream.send=async body=>{
+   if(body[0]===0x1c)fetches++;
+   if(body[0]===0x19)closes++;
+   return send(body);
+  };
+  try{
+   await assert.rejects(db.withCursor(
+    'SELECT n AS value FROM (SELECT 1 n UNION ALL SELECT 2 UNION ALL SELECT 3) t ORDER BY n',
+    [],async cursor=>{
+     escaped=cursor;
+     proxy.arm('cursor-mid-fetch-error');
+     await cursor.next();
+    },{fetchSize:3}),error=>
+      error.code==='DATABASE_ERROR'&&/partial cursor fetch error/.test(error.message));
+   assert.equal(proxy.injected,1);
+   assert.equal(fetches,1,'a partially received cursor batch must not be replayed');
+   assert.equal(closes,0,'no COM_STMT_CLOSE into incomplete fetch response');
+   assert.equal(db.closed,true,'mid-batch server ERR must retire physical connection');
+   assert.equal(escaped.closed,true,'cursor is revoked when session closes');
+   await assert.rejects(db.query('SELECT 1'),error=>error.code==='CONNECTION_CLOSED');
+   const fresh=await connectDatabase(target);
+   try{
+    assert.equal((await fresh.query('SELECT ? AS recovered',[131])).rows[0].recovered,131n);
+   }finally{await fresh.close();}
+  }finally{await db.close();}
+ });
+});
+
+live('pooled cursor mid-fetch ERR cannot contaminate the next borrower',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const pool=createDatabasePool(target,{
+   maxConnections:1,acquireTimeoutMs:8000,healthCheckTimeoutMs:2000
+  });
+  try{
+   await assert.rejects(pool.withConnection(async lease=>{
+    await lease.withCursor(
+     'SELECT n AS value FROM (SELECT 1 n UNION ALL SELECT 2 UNION ALL SELECT 3) t ORDER BY n',
+     [],async cursor=>{
+      proxy.arm('cursor-mid-fetch-error');
+      await cursor.next();
+     },{fetchSize:3});
+   }),error=>error.code==='DATABASE_ERROR');
+   assert.equal(proxy.injected,1);
+   assert.ok(pool.stats.discarded>=1,'poisoned session must not return to idle');
+   const recovered=await pool.withConnection(async lease=>
+     (await lease.query('SELECT ? AS recovered',[132])).rows[0].recovered);
+   assert.equal(recovered,132n);
+   assert.ok(pool.stats.created>=2,'next borrower must get a new native session');
+   assert.ok(pool.stats.size<=1);
+   assert.equal(pool.stats.pending,0);
+  }finally{await pool.close();}
+ });
+});
+
+live('cursor metadata ERR after result header retires socket before fetch or close',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const db=await connectDatabase(target);
+  const send=db.send.bind(db);
+  const wireSend=db.stream.send.bind(db.stream);
+  let executes=0,fetches=0,closes=0;
+  db.send=async body=>{
+   if(body[0]===0x17)proxy.arm('execute-metadata-error');
+   return send(body);
+  };
+  db.stream.send=async body=>{
+   if(body[0]===0x17)executes++;
+   if(body[0]===0x1c)fetches++;
+   if(body[0]===0x19)closes++;
+   return wireSend(body);
+  };
+  try{
+   await assert.rejects(db.withCursor('SELECT ? AS cursor_metadata',[133],
+     async cursor=>{await cursor.next();},{fetchSize:1}),error=>
+       error.code==='DATABASE_ERROR'&&/partial result metadata error/.test(error.message));
+   assert.equal(proxy.injected,1);
+   assert.equal(executes,1,'cursor execute must not be replayed');
+   assert.equal(fetches,0,'no cursor fetch after failed metadata');
+   assert.equal(closes,0,'no close into incomplete metadata');
+   assert.equal(db.closed,true);
+  }finally{db.send=send;db.stream.send=wireSend;await db.close();}
+ });
+});

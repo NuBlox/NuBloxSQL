@@ -390,7 +390,17 @@ export class MysqlSession implements RelationalSession {
         const raw=new Cursor(first),count=raw.len();
         if(count===null||count<1||count>MAX_COLUMNS)
           throw Error('Invalid cursor result column count');
-        const {columns,status}=await readMetadataWithStatus(()=>this.get(),count);
+        // After the result-set header, a server ERR during metadata cannot
+        // establish that the remainder of COM_STMT_EXECUTE was consumed.
+        // Never send COM_STMT_CLOSE into that uncertain response.
+        const cursorMetadata=async():Promise<Buffer>=>{
+          try{return await this.get();}
+          catch(error){
+            this.destroy(error instanceof DriverError?error:undefined);
+            throw error;
+          }
+        };
+        const {columns,status}=await readMetadataWithStatus(cursorMetadata,count);
         if(!(status&0x40))
           throw fail('UNSUPPORTED_FEATURE','MySQL did not open a native server-side cursor');
         const keys=columnKeys(columns);
@@ -401,7 +411,16 @@ export class MysqlSession implements RelationalSession {
           const rows:RelationalCursorRow[]=[];
           let bytes=0;
           for(;;){
-            const packet=await this.get();
+            let packet:Buffer;
+            try{packet=await this.get();}
+            catch(error){
+              // An ERR as the first fetch response can be a complete SQL
+              // failure. After any binary row, the fetch response is only
+              // partially consumed; fail closed instead of issuing a native
+              // statement close against unread data or reusing the socket.
+              if(rows.length)this.destroy(error instanceof DriverError?error:undefined);
+              throw error;
+            }
             if(eof(packet)){
               const end=eofStatus(packet);
               assertSingleResult(end.status);

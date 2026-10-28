@@ -318,6 +318,22 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
 
+### Fail-closed server-side cursor fetches
+
+A native server cursor holds an exclusive session lock across its callback.
+For `COM_STMT_FETCH`, an `ERR` packet after at least one binary row has
+already been received leaves the fetch response incomplete. NuBloxSQL
+preserves the structured `DATABASE_ERROR` but destroys the native
+connection, revokes the cursor and skips `COM_STMT_CLOSE` into an
+untrusted response. A server error interrupting cursor result metadata
+after the row-set header is handled in the same fail-closed way.
+
+A first-packet fetch error is distinguished from a partial batch; valid
+early cursor termination still closes the native statement and preserves
+healthy session reuse. A pool discards any poisoned socket and acquires a
+new authenticated connection for subsequent independent work. No cursor
+fetch or application statement is replayed.
+
 ### Prepared-result server errors and safe session reuse
 
 A MySQL server `ERR` packet received as the **first** response to a
