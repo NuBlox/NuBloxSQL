@@ -99,3 +99,113 @@ jobs:
           path: artifacts/qualification/*.json
           if-no-files-found: error
           retention-days: 30
+
+  mysql-current-tls:
+    name: mysql-current-tls-${{ matrix.mysql }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ['8.4.13', '9.7.4']
+    env:
+      NUBLOX_LIVE_MYSQL_TLS: '1'
+      NUBLOX_TEST_MYSQL_VERSION: ${{ matrix.mysql }}
+      MYSQL_TLS_PORT: '3307'
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test-password
+      MYSQL_DATABASE: nublox_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reject unqualified TLS server versions before fixture startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n packages/driver/tests/fixtures/start-mysql-tls.sh
+          if NUBLOX_TEST_MYSQL_VERSION=9.7.0 bash packages/driver/tests/fixtures/start-mysql-tls.sh; then
+            echo 'Unpinned TLS MySQL image was incorrectly accepted' >&2
+            exit 1
+          fi
+      - name: Start pinned certificate-verified current LTS server
+        shell: bash
+        run: bash packages/driver/tests/fixtures/start-mysql-tls.sh
+      - name: Verify actual authenticated TLS server patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(docker exec -e MYSQL_PWD=test-password nubloxsql-mysql-tls mysql -N -s --protocol=tcp -h127.0.0.1 -uroot -e 'SELECT VERSION()')"
+          case "$actual" in
+            "${{ matrix.mysql }}"|"${{ matrix.mysql }}"-*) ;;
+            *) echo "Unexpected TLS MySQL server version: $actual"; exit 1 ;;
+          esac
+      - name: Install build dependencies
+        run: npm install --no-audit --no-fund
+      - name: Load stored procedure and multi-result fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i -e MYSQL_PWD=test-password nubloxsql-mysql-tls \
+            mysql --protocol=tcp -h127.0.0.1 -uroot nublox_test \
+            < packages/driver/tests/fixtures/multi-results.sql
+      - name: Qualify trusted and rejected TLS identity, prepared SQL, pool and cursor
+        run: npm test
+      - name: Require encrypted authentication rejection and resource evidence
+        run: npm run qualify:mysql -- --iterations=24 --concurrency=3 --authAttempts=12 --cursorRows=100 --fetchSize=25
+      - name: Preserve current LTS TLS qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-current-tls-${{ matrix.mysql }}-${{ github.run_id }}
+          path: artifacts/qualification/*.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Show test-only MySQL log on failure
+        if: failure()
+        run: docker logs nubloxsql-mysql-tls 2>&1 | tail -100 || true
+      - name: Remove ephemeral TLS fixture and certificate keys
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f nubloxsql-mysql-tls >/dev/null 2>&1 || true
+          rm -rf "${RUNNER_TEMP}/nubloxsql-mysql-tls"
+
+  mysql-current-evidence:
+    name: mysql-current-qualification-evidence
+    if: ${{ always() }}
+    needs: [mysql-current-release, mysql-current-tls]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require all current-release native and LTS TLS jobs to pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ needs.mysql-current-release.result }}" = success
+          test "${{ needs.mysql-current-tls.result }}" = success
+      - name: Download isolated per-version qualification reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mysql-current-*
+          path: artifacts/current-matrix
+          merge-multiple: false
+      - name: Test fail-closed legacy and current matrix evidence validators
+        run: node --test tools/qualification/verify-matrix-evidence.test.mjs
+      - name: Require 11 matching current-release and LTS TLS reports
+        env:
+          NUBLOX_MYSQL_MATRIX_PROFILE: current
+        run: node tools/qualification/verify-matrix-evidence.mjs artifacts/current-matrix
+      - name: Preserve one current-release qualification decision
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-current-qualification-evidence-${{ github.run_id }}
+          path: artifacts/qualification-matrix/*.json
+          if-no-files-found: warn
+          retention-days: 30
