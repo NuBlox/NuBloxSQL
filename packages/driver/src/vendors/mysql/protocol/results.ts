@@ -49,6 +49,23 @@ export function acknowledgedOk(buf:Buffer):QueryResult{
   return parseOkPacket(buf,false);
 }
 
+/** COM_STMT_PREPARE_OK is exactly twelve bytes when optional result-set
+ * metadata is not negotiated (as in the NuBloxSQL MySQL client). Reject
+ * trailing bytes or an invalid reserved field before trusting the server's
+ * prepared statement ID or reading its parameter/column metadata. */
+export function prepareOk(buf:Buffer):{
+  id:number;parameterCount:number;columnCount:number;warnings:number
+}{
+  if(buf.length!==12||buf[0]!==0||buf[9]!==0)
+    throw fail('PROTOCOL_ERROR','Malformed MySQL statement preparation acknowledgement');
+  return {
+    id:buf.readUInt32LE(1),
+    columnCount:buf.readUInt16LE(5),
+    parameterCount:buf.readUInt16LE(7),
+    warnings:buf.readUInt16LE(10)
+  };
+}
+
 /** With CLIENT_PROTOCOL_41 and without CLIENT_DEPRECATE_EOF, a server EOF
  * packet is exactly five bytes: FE, warning count LE16, status flags LE16. */
 export function eofStatus(buf:Buffer):{warnings:number;status:number}{

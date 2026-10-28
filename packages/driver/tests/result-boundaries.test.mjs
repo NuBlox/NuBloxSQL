@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {T,sized,u16,u32} from '../dist/vendors/mysql/protocol/primitives.js';
 import {binaryValues,binaryRow,columnKeys,objectRow} from '../dist/vendors/mysql/types.js';
-import {eofStatus,assertSingleResult,acknowledgedOk,ok,field} from '../dist/vendors/mysql/protocol/results.js';
+import {eofStatus,assertSingleResult,acknowledgedOk,prepareOk,ok,field} from '../dist/vendors/mysql/protocol/results.js';
 import {readMetadata} from '../dist/vendors/mysql/metadata.js';
 
 const column=name=>({name,type:T.LONGLONG,charset:63,unsigned:false,
@@ -145,4 +145,23 @@ test('prepared statement OK cannot claim SQL success without complete Protocol 4
  assert.equal(ok(continuation,true).status,8,
    'valid stored procedure OK may legitimately announce more result sets');
  assert.equal(ok(Buffer.concat([standard,Buffer.from('server info')])).affectedRows,1);
+});
+
+test('native COM_STMT_PREPARE_OK requires the negotiated twelve-byte reply',()=>{
+  const packet=Buffer.from([0,0x40,0x30,0x20,0x10,2,0,3,0,0,7,0]);
+  assert.deepEqual(prepareOk(packet),{
+    id:0x10203040,columnCount:2,parameterCount:3,warnings:7
+  });
+  for(let n=0;n<12;n++)
+    assert.throws(()=>prepareOk(packet.subarray(0,n)),
+      e=>e.code==='PROTOCOL_ERROR','truncated prepare length='+n);
+  for(const tail of [0,0xff])
+    assert.throws(()=>prepareOk(Buffer.concat([packet,Buffer.from([tail])])),
+      e=>e.code==='PROTOCOL_ERROR','extended reply must fail');
+  const badReserved=Buffer.from(packet);
+  badReserved[9]=0x01;
+  assert.throws(()=>prepareOk(badReserved),e=>e.code==='PROTOCOL_ERROR');
+  const badMarker=Buffer.from(packet);
+  badMarker[0]=0xfe;
+  assert.throws(()=>prepareOk(badMarker),e=>e.code==='PROTOCOL_ERROR');
 });
