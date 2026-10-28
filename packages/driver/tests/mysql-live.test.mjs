@@ -4,15 +4,19 @@ import {connectDatabase} from '../dist/index.js';
 const live=process.env.NUBLOX_LIVE_MYSQL==='1'?test:test.skip;
 const target={engine:'mysql',host:'127.0.0.1',port:Number(process.env.MYSQL_PORT||3306),user:process.env.MYSQL_USER||'root',password:process.env.MYSQL_PASSWORD||'test-password',database:'nublox_test',security:'isolated-local',timeoutMs:15000};
 
-live('MySQL 8.4 real handshake, prepared statements, type fidelity, errors and rollback',async()=>{
+live('pinned MySQL handshake, prepared statements, type fidelity, errors and rollback',async()=>{
  const db=await connectDatabase(target);
  try{
-  assert.match(db.info.version,/^8\.4\./);
+  const expected=process.env.NUBLOX_TEST_MYSQL_VERSION??'8.4';
+  assert.match(expected,/^8\.(?:0|4)(?:\.[0-9]+)?$/);
+  const matchesVersion=value=>value===expected||value.startsWith(expected+'.');
+  assert.ok(matchesVersion(db.info.version),'native greeting reports the selected MySQL version');
   const basic=await db.query('SELECT ? AS label, ? AS amount, ? AS nullable',['hello',42,null]);
   assert.equal(basic.rows[0].label,'hello');assert.equal(basic.rows[0].amount,42n);
   assert.equal(basic.rows[0].nullable,null);
   const version=await db.query('SELECT VERSION() AS server_version');
-  assert.match(version.rows[0].server_version,/^8\.4\./);
+  assert.ok(matchesVersion(version.rows[0].server_version),
+    'SELECT VERSION() reports the selected MySQL version');
   await db.query('CREATE TEMPORARY TABLE nublox_native_test (id INT PRIMARY KEY,label VARCHAR(255),amount DECIMAL(20,5),bin VARBINARY(255))');
   await db.transaction(async tx=>{await tx.query('INSERT INTO nublox_native_test (id,label,amount,bin) VALUES (?,?,?,?)',[1,'safe','123456789.12345',Buffer.from([0,255])]);});
   await assert.rejects(db.transaction(async tx=>{await tx.query('INSERT INTO nublox_native_test (id,label) VALUES (?,?)',[2,'rollback']);throw Error('cancel transaction');}),/cancel transaction/);
