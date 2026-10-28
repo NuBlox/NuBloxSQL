@@ -223,3 +223,99 @@ live('pooled callback failure during cursor fetch discards socket before next bo
   await pool.close();
  }
 });
+
+live('failed cursor COM_STMT_CLOSE cannot leave an apparently healthy session',{timeout:10000},async()=>{
+ const {fail}=await import('../dist/core/errors.js');
+ const db=await connectDatabase(target);
+ const originalClose=db.closeNative.bind(db);
+ let closes=0;
+ db.closeNative=async()=>{closes++;throw fail('DATABASE_ERROR','Native cursor close was not confirmed');};
+ try{
+  await assert.rejects(db.withCursor('SELECT ? AS cursor_value',[151],async cursor=>{
+   const first=await cursor.next();
+   assert.equal(first.value.row.cursor_value,151n);
+  },{fetchSize:1}),e=>e.code==='DATABASE_ERROR');
+  assert.equal(closes,1);
+  assert.equal(db.closed,true,'unconfirmed native cleanup must discard the socket');
+  await assert.rejects(db.query('SELECT 1'),e=>e.code==='CONNECTION_CLOSED');
+  const next=await connectDatabase(target);
+  try{
+   assert.equal((await next.query('SELECT ? AS healthy',[152])).rows[0].healthy,152n);
+  }finally{await next.close();}
+ }finally{db.closeNative=originalClose;await db.close();}
+});
+
+live('pooled cursor close failure discards session instead of returning an unsafe lease',{timeout:10000},async()=>{
+ const {ConnectionPool}=await import('../dist/core/pooling.js');
+ const {connectMysql}=await import('../dist/vendors/mysql/adapter.js');
+ const {fail}=await import('../dist/core/errors.js');
+ let created=0,originalId;
+ const pool=new ConnectionPool(async signal=>{
+  const db=await connectMysql(target,signal);
+  created++;
+  if(created===1){
+   db.closeNative=async()=>{throw fail('DATABASE_ERROR','Native cursor cleanup failed');};
+  }
+  return db;
+ },{maxConnections:1,acquireTimeoutMs:5000,healthCheckTimeoutMs:1500});
+ try{
+  await assert.rejects(pool.withConnection(async lease=>{
+   originalId=(await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+   return lease.withCursor('SELECT ? AS value',[153],async cursor=>{
+    assert.equal((await cursor.next()).value.row.value,153n);
+   },{fetchSize:1});
+  }),e=>e.code==='DATABASE_ERROR');
+  assert.ok(pool.stats.discarded>=1,'failed cleanup cannot reenter the idle pool');
+  const id=await pool.withConnection(async lease=>{
+   assert.equal((await lease.query('SELECT ? AS recovered',[154])).rows[0].recovered,154n);
+   return (await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+  });
+  assert.notEqual(id,originalId,'a new physical MySQL connection is required');
+  assert.ok(pool.stats.created>=2);
+  assert.equal(pool.stats.pending,0);
+  assert.ok(pool.stats.size<=1);
+ }finally{await pool.close();}
+});
+
+live('cancel or timeout during stalled cursor close retires socket without a late native command',{timeout:12000},async()=>{
+ for(const mode of ['cancel','timeout']){
+  const db=await connectDatabase(target);
+  const originalClose=db.closeNative.bind(db);
+  const originalSend=db.stream.send.bind(db.stream);
+  let entered,release,closeTask,nativeCloses=0;
+  const start=new Promise(resolve=>{entered=resolve;});
+  const gate=new Promise(resolve=>{release=resolve;});
+  const controller=new AbortController();
+  db.stream.send=async body=>{
+   if(body[0]===0x19)nativeCloses++;
+   return originalSend(body);
+  };
+  db.closeNative=(...args)=>{
+   closeTask=(async()=>{
+    entered();
+    await gate;
+    return originalClose(...args);
+   })();
+   return closeTask;
+  };
+  try{
+   const job=db.withCursor('SELECT ? AS value',[155],async cursor=>{
+    assert.equal((await cursor.next()).value.row.value,155n);
+   },{fetchSize:1,timeoutMs:mode==='timeout'?220:5000,signal:controller.signal});
+   void job.catch(()=>{});
+   await start;
+   if(mode==='cancel')controller.abort();
+   await assert.rejects(job,e=>e.code===(mode==='cancel'?'CANCELLED':'TIMEOUT'));
+   assert.equal(db.closed,true,'interrupted close must retire session: '+mode);
+   release();
+   await assert.rejects(closeTask,e=>e.code==='CONNECTION_CLOSED');
+   assert.equal(nativeCloses,0,'stalled close cannot write after cancellation: '+mode);
+   await assert.rejects(db.query('SELECT 1'),e=>e.code==='CONNECTION_CLOSED');
+  }finally{
+   release?.();
+   db.closeNative=originalClose;
+   db.stream.send=originalSend;
+   await db.close();
+  }
+ }
+});
