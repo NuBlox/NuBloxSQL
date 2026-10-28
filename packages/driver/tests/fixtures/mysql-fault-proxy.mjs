@@ -68,6 +68,26 @@ export async function startMysqlFaultProxy(upstreamPort){
         return;
       }
       if(responsePrefix.length<4)return; // a TCP split can divide the header
+      if(responseMode==='prepare-trailing-byte'||responseMode==='prepare-invalid-reserved'){
+        // Only the first COM_STMT_PREPARE_OK frame is modified. Preserve
+        // the physical sequence number and any coalesced metadata frames.
+        const size=responsePrefix[0]|(responsePrefix[1]<<8)|(responsePrefix[2]<<16);
+        if(size!==12){responseMode=null;drop(client,upstream);return;}
+        if(responsePrefix.length<4+size)return;
+        const first=Buffer.from(responsePrefix.subarray(0,16));
+        if(responseMode==='prepare-trailing-byte'){
+          first[0]=13; // valid frame with one unexpected byte in payload
+        }else{
+          first[13]=1; // reserved byte at packet payload offset 9
+        }
+        const changed=responseMode==='prepare-trailing-byte'
+          ?Buffer.concat([first,Buffer.from([0xff]),responsePrefix.subarray(16)])
+          :Buffer.concat([first,responsePrefix.subarray(16)]);
+        responsePrefix=Buffer.alloc(0);
+        responseMode=null;
+        if(!forward(client,changed))upstream.pause();
+        return;
+      }
       if(responseMode==='short-ok'){
         // Keep a syntactically valid physical frame and sequence, but send
         // only the OK marker and its two length-encoded counts. A Protocol
@@ -132,7 +152,7 @@ export async function startMysqlFaultProxy(upstreamPort){
     get injected(){return injected;},
     arm(mode){
       if(pending)throw Error('Only one pending fault is permitted');
-      if(!['wrong-sequence','truncate-header','truncate-body','oversized-frame','drop-upload','short-ok'].includes(mode))
+      if(!['wrong-sequence','truncate-header','truncate-body','oversized-frame','drop-upload','short-ok','prepare-trailing-byte','prepare-invalid-reserved'].includes(mode))
         throw Error('Unknown fault mode');
       pending=mode;
     },
