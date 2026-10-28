@@ -6,8 +6,9 @@ import {connectDatabase,createDatabasePool} from '../dist/index.js';
 // This test must never use a production database or privileged account.
 // The dedicated disposable fixture is installed explicitly by CI.
 const enabled=process.env.NUBLOX_LIVE_MYSQL_RESTRICTED==='1';
-const live=enabled?test:test.skip;
 const tls=process.env.NUBLOX_LIVE_MYSQL_TLS==='1';
+const secured=enabled&&tls?test:test.skip;
+const coldLocal=enabled&&!tls?test:test.skip;
 const version=process.env.NUBLOX_TEST_MYSQL_VERSION;
 if(enabled&&(
   process.env.CI!=='true'||
@@ -51,7 +52,7 @@ async function rejectedWrites(db){
  await readValue(db);
 }
 
-live('least-privilege MySQL user authenticates and cannot execute writes or DDL',async()=>{
+secured('least-privilege MySQL user authenticates and cannot execute writes or DDL',async()=>{
  const db=await connectDatabase(target());
  try{
   assert.ok(exactVersion(db.info.version),'unexpected server release');
@@ -71,7 +72,7 @@ live('least-privilege MySQL user authenticates and cannot execute writes or DDL'
  assert.equal(db.closed,true);
 });
 
-live('restricted MySQL user retains native prepared statements and read-only cursor access',async()=>{
+secured('restricted MySQL user retains native prepared statements and read-only cursor access',async()=>{
  const db=await connectDatabase(target());
  try{
   const stmt=await db.prepare('SELECT ? AS statement_value');
@@ -92,7 +93,7 @@ live('restricted MySQL user retains native prepared statements and read-only cur
  }finally{await db.close();}
 });
 
-live('restricted MySQL sessions can be pooled and reset without privilege escalation',async()=>{
+secured('restricted MySQL sessions can be pooled and reset without privilege escalation',async()=>{
  const pool=createDatabasePool(target(),{maxConnections:2,
   acquireTimeoutMs:5000,healthCheckTimeoutMs:2000});
  try{
@@ -116,7 +117,7 @@ live('restricted MySQL sessions can be pooled and reset without privilege escala
  assert.equal(pool.stats.pending,0);
 });
 
-live('restricted TLS user rejects plaintext and incorrect credentials without secrets',async()=>{
+secured('restricted TLS user rejects plaintext and incorrect credentials without secrets',async()=>{
  if(!tls)return;
  const connection=target();
  const attempted={...connection,security:'isolated-local'};
@@ -137,4 +138,13 @@ live('restricted TLS user rejects plaintext and incorrect credentials without se
   assert.equal(db.info.transport,'verified-tls');
   await readValue(db);
  }finally{await db.close();}
+});
+
+coldLocal('fresh caching_sha2_password principal fails closed on plaintext loopback',async()=>{
+ // A cold newly created account must not trigger an RSA-password fallback
+ // over an unverified, plaintext connection. TLS functional coverage uses
+ // the same restricted user with the required cryptographic identity check.
+ await assert.rejects(connectDatabase(target()),error=>
+  error?.code==='AUTH_UNSUPPORTED'&&
+  !String(error.message).includes('nublox-test-readonly-credential'));
 });
