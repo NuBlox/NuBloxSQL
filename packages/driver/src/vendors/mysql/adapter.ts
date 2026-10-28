@@ -461,9 +461,17 @@ export class MysqlSession implements RelationalSession {
           this.cursors.delete(cursor);
           if(unfinished)this.destroy();
         }
-        // COM_STMT_CLOSE releases any server-side cursor, including early exits.
-        // Do not send it into an unfinished fetch on a discarded socket.
-        if(!this.closed)await this.closeNative(id);
+        // COM_STMT_CLOSE has no server acknowledgement. If sending it fails
+        // for any reason, even a typed DATABASE_ERROR, native cleanup has not
+        // been confirmed. Never let the generic recoverable-SQL error rule
+        // return that connection to a pool or another application command.
+        if(!this.closed){
+          try{await this.closeNative(id);}
+          catch(error){
+            this.destroy(error instanceof DriverError?error:undefined);
+            throw error;
+          }
+        }
       }
     },operation);
   }
