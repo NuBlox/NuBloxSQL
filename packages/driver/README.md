@@ -318,6 +318,23 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
 
+### Fail-closed native cursor cleanup
+
+The MySQL Classic `COM_STMT_CLOSE` command has **no server response**.
+If a cursor callback has completed but its native statement-close
+write rejects, the driver cannot certify that cleanup finished. Any
+failure in this cleanup path, including one classified as
+`DATABASE_ERROR`, permanently retires the physical session rather
+than applying the normal recoverable-SQL rule. The original typed
+failure is preserved, outstanding cursors are invalidated, and pooled
+sessions are discarded.
+
+Cursor cancellation and operation deadlines remain active through the
+native close. An interrupted or timed-out close destroys the transport;
+a delayed cleanup continuation cannot transmit `COM_STMT_CLOSE` on
+that terminated socket or return it to the pool. Healthy early cursor
+termination still sends one close and allows subsequent session reuse.
+
 ### Unawaited cursor work at callback completion or failure
 
 A native cursor exclusively owns one MySQL session while its callback runs.
