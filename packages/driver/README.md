@@ -318,6 +318,21 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
 
+### Prepared-result server errors and safe session reuse
+
+A MySQL server `ERR` packet received as the **first** response to a
+prepared statement is a normal SQL failure. NuBloxSQL preserves its
+structured `DATABASE_ERROR` and allows the authenticated session and
+statement to remain usable, for example after a primary-key violation.
+
+If an `ERR` arrives **after** the server has already started streaming
+result-set metadata, rows or multiple result sets, NuBloxSQL preserves the
+structured database error but **destroys the physical session**. The
+remainder of that response cannot be trusted as a complete protocol boundary.
+No `COM_STMT_CLOSE` is transmitted into an incomplete response and no
+application SQL is replayed. A pool discards the affected connection and
+later work obtains a newly authenticated session.
+
 ### Queued prepared work and session reset ownership
 
 A prepared handle belongs to the native statement generation in which MySQL

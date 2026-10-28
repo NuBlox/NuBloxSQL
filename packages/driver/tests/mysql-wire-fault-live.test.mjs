@@ -396,3 +396,72 @@ live('pooled metadata error discards native session and gives next borrower a fr
   }finally{await pool.close();}
  });
 });
+
+live('server ERR after prepared result header cannot preserve an unsafe native connection',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const db=await connectDatabase(target);
+  const originalSend=db.stream.send.bind(db.stream);
+  let executions=0,closes=0;
+  db.stream.send=async body=>{
+   if(body[0]===0x17)executions++;
+   if(body[0]===0x19)closes++;
+   return originalSend(body);
+  };
+  const statement=await db.prepare('SELECT ? AS partial_metadata');
+  try{
+   proxy.arm('execute-metadata-error');
+   await assert.rejects(statement.execute([117]),error=>
+     error.code==='DATABASE_ERROR'&&/partial result metadata error/.test(error.message));
+   assert.equal(proxy.injected,1);
+   assert.equal(executions,1,'the application query cannot be replayed');
+   assert.equal(closes,0,'do not send COM_STMT_CLOSE into unfinished result metadata');
+   assert.equal(db.closed,true,'server error after a result prefix invalidates the socket');
+   assert.equal(statement.closed,true,'prepared handle is revoked with the native session');
+   await assert.rejects(db.query('SELECT 1'),error=>error.code==='CONNECTION_CLOSED');
+   const replacement=await connectDatabase(target);
+   try{
+    assert.equal((await replacement.query('SELECT ? AS healthy',[118])).rows[0].healthy,118n);
+   }finally{await replacement.close();}
+  }finally{await statement.close();await db.close();}
+ });
+});
+
+live('pooled mid-result server ERR discards the connection and never replays the statement',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const pool=createDatabasePool(target,{
+   maxConnections:1,acquireTimeoutMs:8000,healthCheckTimeoutMs:2000
+  });
+  try{
+   await assert.rejects(pool.withConnection(async lease=>{
+    const statement=await lease.prepare('SELECT ? AS incomplete');
+    proxy.arm('execute-metadata-error');
+    await statement.executeResults([119]);
+   }),error=>error.code==='DATABASE_ERROR');
+   assert.equal(proxy.injected,1);
+   assert.ok(pool.stats.discarded>=1,'incomplete response cannot return to idle pool');
+   const recovered=await pool.withConnection(async lease=>
+     (await lease.query('SELECT ? AS recovered',[120])).rows[0].recovered);
+   assert.equal(recovered,120n);
+   assert.ok(pool.stats.created>=2,'a new authenticated session must replace the poisoned one');
+   assert.equal(pool.stats.pending,0);
+   assert.ok(pool.stats.size<=1);
+  }finally{await pool.close();}
+ });
+});
+
+live('ordinary first-packet SQL errors remain recoverable on an existing prepared handle',async()=>{
+ const db=await connectDatabase(base);
+ try{
+  await db.query('CREATE TEMPORARY TABLE nublox_first_packet_error (id INT PRIMARY KEY) ENGINE=InnoDB');
+  const statement=await db.prepare('INSERT INTO nublox_first_packet_error (id) VALUES (?)');
+  try{
+   assert.equal((await statement.execute([121])).affectedRows,1);
+   await assert.rejects(statement.execute([121]),
+     error=>error.code==='DATABASE_ERROR'&&error.vendorCode===1062);
+   assert.equal(statement.closed,false);
+   assert.equal(db.closed,false,'normal SQL constraint error must not destroy a healthy session');
+   assert.equal((await statement.execute([122])).affectedRows,1);
+   assert.equal((await db.query('SELECT COUNT(*) AS n FROM nublox_first_packet_error')).rows[0].n,2n);
+  }finally{await statement.close();}
+ }finally{await db.close();}
+});

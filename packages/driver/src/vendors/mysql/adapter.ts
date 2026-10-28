@@ -232,7 +232,22 @@ export class MysqlSession implements RelationalSession {
     await this.send(command);
     const results:QueryResult[]=[];
     let totalRows=0,totalBytes=0;
-    let next=await this.get();
+    let responseStarted=false;
+    // An ERR as the *first* response is a normal recoverable SQL failure.
+    // Once metadata/rows/results have begun, any server ERR leaves the
+    // remainder of the exchange uncertain. Never put that socket back in
+    // circulation or transmit COM_STMT_CLOSE into its unread response.
+    const readResultPacket=async():Promise<Buffer>=>{
+      try{
+        const packet=await this.get();
+        responseStarted=true;
+        return packet;
+      }catch(error){
+        if(responseStarted)this.destroy(error instanceof DriverError?error:undefined);
+        throw error;
+      }
+    };
+    let next=await readResultPacket();
     for(;;){
       if(results.length>=MAX_RESULT_SETS)
         throw fail('RESOURCE_LIMIT','Stored procedure exceeded the result-set limit');
@@ -240,20 +255,20 @@ export class MysqlSession implements RelationalSession {
         const result=ok(next,true);
         results.push(result);
         if(!((result.status??0)&0x0008))return results;
-        next=await this.get();
+        next=await readResultPacket();
         continue;
       }
       const raw=new Cursor(next),count=raw.len();
       if(count===null||count<1||count>MAX_COLUMNS)
         throw Error('Invalid prepared result column count');
       const {columns,status:metadataStatus}=await readMetadataWithStatus(
-        ()=>this.get(),count,true
+        ()=>readResultPacket(),count,true
       );
       const keys=columnKeys(columns);
       const rows:Array<Record<string,unknown>>=[];
       const rowValues:unknown[][]=[];
       for(;;){
-        const packet=await this.get();
+        const packet=await readResultPacket();
         if(eof(packet)){
           const last=eofStatus(packet);
           const result:QueryResult={
@@ -265,7 +280,7 @@ export class MysqlSession implements RelationalSession {
           if(!(last.status&0x0008)&&!(metadataStatus&0x1000))return results;
           // MySQL's prepared OUT-parameter EOF can omit MORE_RESULTS even
           // though the trailing CALL status packet is still on the wire.
-          next=await this.get();
+          next=await readResultPacket();
           break;
         }
         totalBytes+=packet.length;
