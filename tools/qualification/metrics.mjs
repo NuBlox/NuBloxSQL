@@ -40,9 +40,9 @@ export function parseArgs(argv,mode){
   }
   return Object.freeze({
     mode,
-    iterations:integerOption(args.iterations??(mode==='benchmark'?120:1_000_000),{name:'iterations',min:1,max:1_000_000}),
+    iterations:integerOption(args.iterations??(mode==='benchmark'?120:1_000_000),{name:'iterations',min:1,max:mode==='soak'?100_000_000:1_000_000}),
     concurrency:integerOption(args.concurrency??4,{name:'concurrency',min:1,max:16}),
-    durationMs:integerOption(args.durationMs??(mode==='benchmark'?8000:120000),{name:'durationMs',min:500,max:600000}),
+    durationMs:integerOption(args.durationMs??(mode==='benchmark'?8000:120000),{name:'durationMs',min:500,max:mode==='soak'?7_200_000:600_000}),
     fetchSize:integerOption(args.fetchSize??32,{name:'fetchSize',min:1,max:256}),
     cursorRows:integerOption(args.cursorRows??1000,{name:'cursorRows',min:100,max:1000}),
     authAttempts:integerOption(args.authAttempts??12,{name:'authAttempts',min:2,max:64})

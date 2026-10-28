@@ -1,0 +1,169 @@
+name: MySQL repeated outage and long-duration resilience qualification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: 'Manual uninterrupted soak duration (hours)'
+        type: choice
+        required: true
+        default: '2'
+        options: ['1', '2']
+  schedule:
+    - cron: '11 1 * * 6'
+
+permissions:
+  contents: read
+
+jobs:
+  repeated-outages:
+    name: mysql-repeated-outages
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.4.13
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: nublox_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
+    env:
+      NUBLOX_LIVE_MYSQL: '1'
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test-password
+      MYSQL_DATABASE: nublox_test
+      NUBLOX_QUALIFICATION_MYSQL_VERSION: '8.4.13'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build native driver
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Install multi-result SQL procedure fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t containers < <(docker ps -q --filter 'ancestor=mysql:8.4.13')
+          test "${#containers[@]}" -eq 1
+          docker exec -i -e MYSQL_PWD=test-password "${containers[0]}" mysql --protocol=tcp -h127.0.0.1 -uroot nublox_test < packages/driver/tests/fixtures/multi-results.sql
+      - name: Validate resilience policy and complete ordinary driver regressions
+        run: |
+          node --test tools/qualification/outage-evidence.test.mjs
+          npm test
+      - name: Repeat destructive fixture outage, queued pool saturation and recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t containers < <(docker ps -q --filter 'ancestor=mysql:8.4.13')
+          test "${#containers[@]}" -eq 1
+          export NUBLOX_QUALIFICATION_CONTAINER="${containers[0]}"
+          export NUBLOX_ALLOW_DESTRUCTIVE_MYSQL_FIXTURE=1
+          if [[ "${{ github.event_name }}" == schedule ||
+                "${{ github.event_name }}" == workflow_dispatch ]]; then
+            cycles=6
+          else
+            cycles=2
+          fi
+          node tools/qualification/repeated-outages.mjs --cycles="$cycles"
+      - name: Retain every crash cycle and pool resource evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-repeated-outages-${{ github.run_id }}
+          path: artifacts/qualification/*.json
+          if-no-files-found: error
+          retention-days: 30
+
+  long-soak:
+    name: mysql-extended-soak
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 140
+    services:
+      mysql:
+        image: mysql:8.4.13
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: nublox_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
+    env:
+      NUBLOX_LIVE_MYSQL: '1'
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test-password
+      MYSQL_DATABASE: nublox_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compile native driver
+        run: npm install --no-audit --no-fund
+      - name: Sustained pooled reads and SQL error recovery without early iteration cutoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == workflow_dispatch ]]; then
+            duration_ms=$(( ${{ inputs.hours || '2' }} * 3600000 ))
+          else
+            duration_ms=1800000
+          fi
+          npm run soak:mysql -- --durationMs="$duration_ms" --iterations=100000000 --concurrency=4
+      - name: Retain extended resource, heap and elapsed-duration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-extended-soak-${{ github.run_id }}
+          path: artifacts/qualification/*.json
+          if-no-files-found: error
+          retention-days: 60
+
+  repeated-outage-evidence:
+    name: mysql-repeated-outage-evidence
+    if: ${{ always() }}
+    needs: [repeated-outages]
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      NUBLOX_QUALIFICATION_MYSQL_VERSION: '8.4.13'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require passed destructive-outage qualification
+        run: test "${{ needs.repeated-outages.result }}" = success
+      - name: Download each separately preserved crash cycle
+        uses: actions/download-artifact@v4
+        with:
+          name: mysql-repeated-outages-${{ github.run_id }}
+          path: artifacts/repeated-evidence
+      - name: Validate strict evidence and replay-rejection policy
+        run: |
+          node --test tools/qualification/outage-evidence.test.mjs tools/qualification/verify-outage-bundle.test.mjs
+          node tools/qualification/verify-outage-bundle.mjs artifacts/repeated-evidence
+      - name: Retain an independently validated resilience decision
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-repeated-outage-decision-${{ github.run_id }}
+          path: artifacts/qualification-matrix/*.json
+          if-no-files-found: warn
+          retention-days: 30
