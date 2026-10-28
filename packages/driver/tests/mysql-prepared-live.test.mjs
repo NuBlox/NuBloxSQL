@@ -435,3 +435,92 @@ live('executions accepted ahead of close finish in FIFO without reviving the han
   await db.close();
  }
 });
+
+live('uncertain explicit prepared close retires socket for typed cleanup failures',{timeout:15000},async()=>{
+ const {fail}=await import('../dist/core/errors.js');
+ for(const code of ['DATABASE_ERROR','TIMEOUT','CANCELLED','RESOURCE_LIMIT']){
+  const db=await connectDatabase(target);
+  const statement=await db.prepare('SELECT ? AS prepared_cleanup');
+  const originalClose=db.closeNative.bind(db);
+  const originalWireSend=db.stream.send.bind(db.stream);
+  let closeAttempts=0,lateCommands=0;
+  db.closeNative=async()=>{
+   closeAttempts++;
+   throw fail(code,'Native prepared close did not complete');
+  };
+  db.stream.send=async body=>{
+   if(body[0]===0x19||body[0]===0x17)lateCommands++;
+   return originalWireSend(body);
+  };
+  try{
+   const first=statement.close();
+   const second=statement.close();
+   const outcome=await Promise.allSettled([first,second]);
+   assert.ok(outcome.every(x=>x.status==='rejected'&&x.reason.code===code),
+    'original typed cleanup error must reach concurrent callers: '+code);
+   assert.equal(closeAttempts,1,'one native close attempt despite concurrent callers');
+   assert.equal(lateCommands,0,'no additional native statements are sent after failed close');
+   assert.equal(db.closed,true,'unconfirmed close must retire physical session: '+code);
+   assert.equal(statement.closed,true,'failed close cannot revive handle: '+code);
+   assert.equal(statement.sessionRevoked,true,'owner session revokes the statement: '+code);
+   assert.equal(db.statements.size,0,'native statement registrations are invalidated');
+   if(code==='RESOURCE_LIMIT'){
+    // A failed enqueue ordinarily clears the closing promise. Once the
+    // native session is revoked, that path becomes an idempotent no-op.
+    await statement.close();
+   }else{
+    await assert.rejects(statement.close(),e=>e.code===code);
+   }
+   assert.equal(closeAttempts,1,'repeat close must never replay uncertain cleanup');
+   await assert.rejects(statement.execute([157]),e=>e.code==='CONNECTION_CLOSED');
+   await assert.rejects(db.query('SELECT 1'),e=>e.code==='CONNECTION_CLOSED');
+   const replacement=await connectDatabase(target);
+   try{
+    assert.equal((await replacement.query('SELECT ? AS healthy',[158])).rows[0].healthy,158n);
+   }finally{await replacement.close();}
+  }finally{
+   db.closeNative=originalClose;
+   db.stream.send=originalWireSend;
+   await db.close();
+  }
+ }
+});
+
+live('pool discards connection after caught explicit prepared close failure',{timeout:10000},async()=>{
+ const {ConnectionPool}=await import('../dist/core/pooling.js');
+ const {connectMysql}=await import('../dist/vendors/mysql/adapter.js');
+ const {fail}=await import('../dist/core/errors.js');
+ let sockets=0,firstId,firstSession;
+ const pool=new ConnectionPool(async signal=>{
+  const db=await connectMysql(target,signal);
+  sockets++;
+  if(sockets===1)firstSession=db;
+  return db;
+ },{maxConnections:1,acquireTimeoutMs:7000,healthCheckTimeoutMs:1500});
+ try{
+  await pool.withConnection(async lease=>{
+   firstId=(await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+   const statement=await lease.prepare('SELECT ? AS first');
+   // Normal lease queries use their own temporary prepared statements.
+   // Inject the failure only once the explicit statement is allocated.
+   firstSession.closeNative=async()=>{
+    throw fail('DATABASE_ERROR','Prepared close not confirmed');
+   };
+   await assert.rejects(statement.close(),e=>e.code==='DATABASE_ERROR');
+   assert.equal(lease.closed,true,'caught cleanup errors still terminate the native lease');
+   // Deliberately return successfully: pool must not park the failed socket.
+  });
+  assert.ok(pool.stats.discarded>=1,'uncertain close cannot enter idle pool');
+  assert.equal(pool.stats.idle,0);
+  const nextId=await pool.withConnection(async lease=>{
+   const statement=await lease.prepare('SELECT ? AS second');
+   try{assert.equal((await statement.execute([159])).rows[0].second,159n);}
+   finally{await statement.close();}
+   return (await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+  });
+  assert.notEqual(firstId,nextId,'subsequent borrower must receive another physical session');
+  assert.ok(pool.stats.created>=2);
+  assert.equal(pool.stats.pending,0);
+  assert.ok(pool.stats.size<=1);
+ }finally{await pool.close();}
+});
