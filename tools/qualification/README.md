@@ -123,6 +123,29 @@ This evidence does **not** qualify failover clusters, cloud routing,
 customer SLAs, multi-day uptime, TLS on all versions, or non-Linux
 architectures.
 
+## Pinned MySQL verified-TLS compatibility matrix
+
+The [native MySQL driver CI](../../.github/workflows/driver.yml) now
+runs two independent certificate-verified TLS qualification jobs:
+`verified-tls-mysql-8.0.44` and `verified-tls-mysql` (8.4.11).
+Both use the same isolated fixture and complete TLS regression suite
+on Node.js 22/Linux. The test server must require TLS; the client must
+validate a newly created CA and the server's `localhost` certificate
+identity. Unknown CAs, mismatched names, missing trust anchors,
+plaintext, and incorrect credentials must fail safely. The tests
+verify the authenticated server version against the selected pinned
+image, and the benchmark records encrypted successful and rejected
+authentication independently.
+
+`start-mysql-tls.sh` accepts only `NUBLOX_TEST_MYSQL_VERSION=8.0.44`
+or `8.4.11`; an omitted version uses the existing 8.4.11 default.
+It is a CI fixture requiring `RUNNER_TEMP` and `GITHUB_ENV`, not a
+general-purpose MySQL installer. Each job uses disposable test keys
+and uploads version-specific redacted qualification evidence. Review
+the exact commit SHA and successful job before making a scoped
+compatibility statement; this does not qualify TLS in arbitrary
+deployments, cloud services, or non-Linux targets.
+
 ## Experimental in-process native component profiling
 
 To identify which **component** merits profiling before changing production
