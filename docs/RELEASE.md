@@ -162,12 +162,16 @@ realistic customer profiles and documented operational recovery targets.
 ## Commercial security and operator assurance
 
 The [least-privilege qualification workflow](../.github/workflows/mysql-restricted-principal.yml)
-tests real current-release MySQL connections using a **SELECT-only**
-database user, not the privileged CI fixture account. It covers denied
-writes and DDL, prepared statements, cursors, read-only transactions,
-pool reset and clean disposal. The two currently qualified LTS
-versions additionally require account-level SSL and verified client-side
-TLS with explicit plaintext/credential rejection.
+provisions a fresh **SELECT-only** database principal rather than
+using the privileged CI fixture account. Current-release
+plaintext-loopback checks require cold full `caching_sha2_password`
+authentication to **fail closed**; they do not claim successful cold
+restricted-user login over plaintext.
+
+The two qualified LTS versions (8.4.13 and 9.7.4) exercise **functional
+least-privilege SQL over verified TLS** with MySQL `REQUIRE SSL`:
+prepared statements, cursors, read-only transactions, pool reset, denied
+writes and DDL, and clean disposal, plus plaintext/credential rejection.
 
 The [security threat model](MYSQL-SECURITY-THREAT-MODEL.md)
 enumerates network identity, credential handling, native protocol and
