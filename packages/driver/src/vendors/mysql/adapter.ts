@@ -280,7 +280,7 @@ export class MysqlSession implements RelationalSession {
           if(!(last.status&0x0008)&&!(metadataStatus&0x1000))return results;
           // MySQL's prepared OUT-parameter EOF can omit MORE_RESULTS even
           // though the trailing CALL status packet is still on the wire.
-          next=await this.get();
+          next=await readResultPacket();
           break;
         }
         totalBytes+=packet.length;
