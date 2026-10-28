@@ -2,7 +2,7 @@
 /** Validate that each pinned MySQL version has complete, same-revision
  * isolated-local, verified-TLS and destructive-restart qualification evidence.
  * Reads only downloaded Actions artifacts, not a live database or secrets. */
-import {readFileSync,readdirSync,mkdirSync,writeFileSync} from 'node:fs';
+import {readFileSync,readdirSync,existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -23,6 +23,9 @@ const serverMatches=(actual,expected)=>typeof actual==='string'&&
   (actual===expected||actual.startsWith(expected+'-'));
 const readArtifact=(directory,artifact,stem)=>{
   const dir=join(directory,artifact);
+  // A wholly absent artifact group is an ordinary missing-evidence failure,
+  // not an unclassified filesystem exception.
+  check(existsSync(dir),'Expected exactly one '+stem+' report in '+artifact);
   const names=readdirSync(dir).filter(name=>name.startsWith(stem)&&name.endsWith('.json'));
   check(names.length===1,'Expected exactly one '+stem+' report in '+artifact);
   const report=JSON.parse(readFileSync(join(dir,names[0]),'utf8'));
