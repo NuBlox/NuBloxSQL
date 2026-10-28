@@ -123,6 +123,26 @@ This evidence does **not** qualify failover clusters, cloud routing,
 customer SLAs, multi-day uptime, TLS on all versions, or non-Linux
 architectures.
 
+## Pinned cross-version TLS qualification
+
+The version/restart workflow adds two independent verified-TLS CI jobs,
+one each for official MySQL `8.0.44` and `8.4.11`, alongside the existing
+plaintext and destructive-restart matrix. The TLS fixture accepts only those
+exact image tags and defaults to `8.4.11` for the original driver job.
+All connections are to a disposable TLS-required loopback server with an
+ephemeral certificate authority. The version-specific regression suite
+requires matching server identity, negotiated encryption, server version,
+rejection of untrusted/missing CA, hostname mismatches, bad credentials
+and attempted plaintext, plus native prepared, cursor and pool workflows.
+
+Each CI matrix job also runs `qualify:mysql` under verified TLS, recording
+bounded positive/negative authentication and session resource evidence in
+a separate redacted artifact. These tests are not evidence of external TLS
+load balancers, PKI revocation, cloud vendor authentication or production
+support readiness. Run the GitHub Actions matrix on throwaway CI runners;
+the fixture requires `RUNNER_TEMP` and `GITHUB_ENV` and never writes
+certificates to the repository.
+
 ## Experimental in-process native component profiling
 
 To identify which **component** merits profiling before changing production
