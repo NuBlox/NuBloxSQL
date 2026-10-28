@@ -340,3 +340,59 @@ live('pool discards an invalid preparation acknowledgement before the next borro
   }finally{await pool.close();}
  });
 });
+
+live('server ERR during prepared metadata retires the socket and cannot expose a handle',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const db=await connectDatabase(target);
+  const originalSend=db.stream.send.bind(db.stream);
+  let prepares=0,closes=0;
+  db.stream.send=async body=>{
+   if(body[0]===0x16)prepares++;
+   if(body[0]===0x19)closes++;
+   return originalSend(body);
+  };
+  try{
+   proxy.arm('prepare-metadata-error');
+   await assert.rejects(db.prepare('SELECT ? AS parameter_metadata'),
+     error=>error.code==='DATABASE_ERROR'&&
+       /metadata unavailable/.test(error.message));
+   assert.equal(proxy.injected,1);
+   assert.equal(prepares,1,'unconfirmed prepare may not be replayed');
+   assert.equal(closes,0,'COM_STMT_CLOSE must not enter an unfinished metadata exchange');
+   assert.equal(db.closed,true,'partial metadata must poison the authenticated socket');
+   await assert.rejects(db.query('SELECT 1'),error=>error.code==='CONNECTION_CLOSED');
+   const replacement=await connectDatabase(target);
+   try{
+    const statement=await replacement.prepare('SELECT ? AS recovered');
+    try{
+     assert.equal((await statement.execute([85])).rows[0].recovered,85n);
+    }finally{await statement.close();}
+   }finally{await replacement.close();}
+  }finally{await db.close();}
+ });
+});
+
+live('pooled metadata error discards native session and gives next borrower a fresh socket',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const pool=createDatabasePool(target,{
+   maxConnections:1,acquireTimeoutMs:8000,healthCheckTimeoutMs:2000
+  });
+  try{
+   await assert.rejects(pool.withConnection(async lease=>{
+    proxy.arm('prepare-metadata-error');
+    await lease.prepare('SELECT ? AS metadata_broken');
+   }),error=>error.code==='DATABASE_ERROR');
+   assert.equal(proxy.injected,1);
+   assert.ok(pool.stats.discarded>=1,'failed metadata session cannot return to pool');
+   const recovered=await pool.withConnection(async lease=>{
+    const stmt=await lease.prepare('SELECT ? AS value');
+    try{return (await stmt.execute([86])).rows[0].value;}
+    finally{await stmt.close();}
+   });
+   assert.equal(recovered,86n);
+   assert.ok(pool.stats.created>=2,'next borrower must receive a newly authenticated session');
+   assert.ok(pool.stats.size<=1);
+   assert.equal(pool.stats.pending,0);
+  }finally{await pool.close();}
+ });
+});

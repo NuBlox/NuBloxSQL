@@ -318,6 +318,19 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
 
+### Fail-closed prepared-statement metadata
+
+After a valid `COM_STMT_PREPARE_OK`, the server has assigned a native
+statement ID but can still be delivering parameter and result-column
+metadata. A failure while consuming this metadata — including a typed
+server `DATABASE_ERROR` — makes the native packet-exchange boundary
+untrustworthy. NuBloxSQL destroys the physical connection, invalidates
+outstanding statement handles and refuses to return that session to a pool.
+
+The Driver does not send `COM_STMT_CLOSE` into a partially consumed metadata
+exchange and does not replay preparation or subsequent application SQL.
+A new authenticated session may be acquired for later independent work.
+
 ### Strict native prepared-statement creation
 
 The native `COM_STMT_PREPARE_OK` response must contain exactly twelve payload

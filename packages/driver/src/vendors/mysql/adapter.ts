@@ -197,11 +197,20 @@ export class MysqlSession implements RelationalSession {
     this.stream.reset();
     await this.send(Buffer.concat([Buffer.from([0x16]),Buffer.from(sql,'utf8')]));
     const {id,columnCount,parameterCount}=prepareOk(await this.get());
-    if(parameterCount>MAX_PARAMETERS||columnCount>MAX_COLUMNS)
-      throw fail('RESOURCE_LIMIT','Prepared statement metadata exceeds supported limits');
-    if(parameterCount)await this.metadata(parameterCount);
-    if(columnCount)await this.metadata(columnCount);
-    return {id,parameterCount};
+    // The server has allocated an ID and may still be streaming metadata.
+    // If any metadata packet fails validation (including a typed server
+    // DATABASE_ERROR), no protocol boundary can be trusted for reuse.
+    // COM_STMT_CLOSE would itself be unsafe while unread metadata remains.
+    try{
+      if(parameterCount>MAX_PARAMETERS||columnCount>MAX_COLUMNS)
+        throw fail('RESOURCE_LIMIT','Prepared statement metadata exceeds supported limits');
+      if(parameterCount)await this.metadata(parameterCount);
+      if(columnCount)await this.metadata(columnCount);
+      return {id,parameterCount};
+    }catch(error){
+      this.destroy(error instanceof DriverError?error:undefined);
+      throw error;
+    }
   }
 
   /** One COM_STMT_EXECUTE can return multiple binary result sets and a final
