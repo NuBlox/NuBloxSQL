@@ -51,6 +51,13 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npm run build
+      - name: Install multi-result SQL procedure fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t containers < <(docker ps -q --filter 'ancestor=mysql:8.4.13')
+          test "${#containers[@]}" -eq 1
+          docker exec -i -e MYSQL_PWD=test-password "${containers[0]}" mysql --protocol=tcp -h127.0.0.1 -uroot nublox_test < packages/driver/tests/fixtures/multi-results.sql
       - name: Validate resilience policy and complete ordinary driver regressions
         run: |
           node --test tools/qualification/outage-evidence.test.mjs
