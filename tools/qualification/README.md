@@ -143,6 +143,31 @@ support readiness. Run the GitHub Actions matrix on throwaway CI runners;
 the fixture requires `RUNNER_TEMP` and `GITHUB_ENV` and never writes
 certificates to the repository.
 
+## Final matrix-wide release-evidence check
+
+After the two native-version jobs and two TLS-version jobs finish, the
+`mysql-qualification-evidence` job downloads their four independent
+artifact groups and runs
+`node tools/qualification/verify-matrix-evidence.mjs artifacts/matrix`.
+The validator requires a complete and nonduplicated set of eight
+same-revision reports (local benchmark, local soak, restart, TLS
+benchmark for each supported test version). It rejects missing or
+failed stages, mismatched server versions/transports/commits,
+missing negative TLS authentication, unexpected errors, incomplete
+timed soak duration, leaked pool connections and unsuccessful restart
+invalidation. Scheduled runs are checked against a two-minute minimum;
+PR and push checks require five seconds.
+
+The emitted `artifacts/qualification-matrix/mysql-matrix-evidence-*.json`
+is a concise, redacted per-version outcome, **not** a performance
+certification or an automatic decision to release commercially.
+Validator regressions run with:
+`node --test tools/qualification/verify-matrix-evidence.test.mjs`.
+The test fixtures use synthetic, entirely local JSON: no real MySQL
+container, secrets or network access are needed. This final job fails
+if either upstream matrix fails; CI evidence must be inspected before
+making compatibility claims.
+
 ## Experimental in-process native component profiling
 
 To identify which **component** merits profiling before changing production

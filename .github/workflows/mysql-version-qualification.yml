@@ -148,3 +148,39 @@ jobs:
         run: |
           docker rm -f nubloxsql-mysql-tls >/dev/null 2>&1 || true
           rm -rf "${RUNNER_TEMP}/nubloxsql-mysql-tls"
+
+  mysql-matrix-evidence:
+    name: mysql-qualification-evidence
+    if: ${{ always() }}
+    needs: [mysql-version-recovery, mysql-tls-version]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require every native and TLS matrix job to succeed
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ needs.mysql-version-recovery.result }}" = success
+          test "${{ needs.mysql-tls-version.result }}" = success
+      - name: Fetch redacted evidence from both version/transport matrices
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mysql-*
+          path: artifacts/matrix
+          merge-multiple: false
+      - name: Test the fail-closed evidence validator
+        run: node --test tools/qualification/verify-matrix-evidence.test.mjs
+      - name: Verify all eight reports share the same revision and passed assertions
+        run: node tools/qualification/verify-matrix-evidence.mjs artifacts/matrix
+      - name: Preserve one matrix-wide release-evidence decision
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-qualification-evidence-${{ github.run_id }}
+          path: artifacts/qualification-matrix/*.json
+          if-no-files-found: warn
+          retention-days: 30
