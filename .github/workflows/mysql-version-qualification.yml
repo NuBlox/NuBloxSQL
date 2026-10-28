@@ -35,6 +35,7 @@ jobs:
           --health-retries=40
     env:
       NUBLOX_LIVE_MYSQL: '1'
+      NUBLOX_TEST_MYSQL_VERSION: ${{ matrix.mysql }}
       MYSQL_USER: root
       MYSQL_PASSWORD: test-password
       MYSQL_DATABASE: nublox_test
