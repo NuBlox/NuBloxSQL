@@ -68,6 +68,31 @@ export async function startMysqlFaultProxy(upstreamPort){
         return;
       }
       if(responsePrefix.length<4)return; // a TCP split can divide the header
+      if(responseMode==='prepare-metadata-error'){
+        // Forward the valid 12-byte COM_STMT_PREPARE_OK but replace its first
+        // metadata frame with a sequence-correct MySQL server ERR packet.
+        // Leave TCP open: the client must explicitly discard the socket when
+        // metadata consumption fails, not rely on a connection-close event.
+        const size=responsePrefix[0]|(responsePrefix[1]<<8)|(responsePrefix[2]<<16);
+        if(size!==12){responseMode=null;drop(client,upstream);return;}
+        if(responsePrefix.length<20)return; // prepare OK + next frame header
+        const seq=responsePrefix[19];
+        const errorBody=Buffer.concat([
+          Buffer.from([0xff,0x48,0x04,0x23]),
+          Buffer.from('HY000metadata unavailable','ascii')
+        ]);
+        const errorHeader=Buffer.from([
+          errorBody.length&255,(errorBody.length>>8)&255,0,seq
+        ]);
+        const changed=Buffer.concat([
+          responsePrefix.subarray(0,16),errorHeader,errorBody
+        ]);
+        responsePrefix=Buffer.alloc(0);
+        responseMode=null;
+        upstream.pause(); // never forward the remaining original metadata
+        if(!forward(client,changed))upstream.pause();
+        return;
+      }
       if(responseMode==='prepare-trailing-byte'||responseMode==='prepare-invalid-reserved'){
         // Only the first COM_STMT_PREPARE_OK frame is modified. Preserve
         // the physical sequence number and any coalesced metadata frames.
@@ -152,7 +177,7 @@ export async function startMysqlFaultProxy(upstreamPort){
     get injected(){return injected;},
     arm(mode){
       if(pending)throw Error('Only one pending fault is permitted');
-      if(!['wrong-sequence','truncate-header','truncate-body','oversized-frame','drop-upload','short-ok','prepare-trailing-byte','prepare-invalid-reserved'].includes(mode))
+      if(!['wrong-sequence','truncate-header','truncate-body','oversized-frame','drop-upload','short-ok','prepare-trailing-byte','prepare-invalid-reserved','prepare-metadata-error'].includes(mode))
         throw Error('Unknown fault mode');
       pending=mode;
     },
