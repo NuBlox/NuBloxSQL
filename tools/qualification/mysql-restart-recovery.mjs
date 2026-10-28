@@ -67,16 +67,17 @@ try{
     'healthy','Fixture must already be healthy');
   db=await connectDatabase(target);
   report.environment.serverVersion=db.info.version;
-  assert.ok(db.info.version.startsWith(version.slice(0,version.lastIndexOf('.')+1)),
-    'Connected MySQL major.minor version mismatch');
+  assert.ok(db.info.version===version||db.info.version.startsWith(version+'-'),
+    'Connected MySQL server does not match the pinned patch version');
 
   stmt=await db.prepare('SELECT ? AS statement_owned_before_restart');
   assert.equal((await stmt.execute([201])).rows[0].statement_owned_before_restart,201n);
 
   pool=createDatabasePool(target,{maxConnections:1,acquireTimeoutMs:12000,
     healthCheckTimeoutMs:2000});
-  const oldPoolId=await pool.withConnection(async lease=>
-    (await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id);
+  await pool.withConnection(async lease=>
+    assert.equal((await lease.query('SELECT ? AS connection_ready',[200]))
+      .rows[0].connection_ready,200n));
   report.resources.poolBefore=pool.stats;
   assert.equal(pool.stats.idle,1);
 
@@ -120,12 +121,15 @@ try{
     catch{return false;}
   },90000,'MySQL service did not recover after restart');
 
-  const recoveredId=await pool.withConnection(async lease=>{
+  await pool.withConnection(async lease=>{
     assert.equal((await lease.query('SELECT ? AS recovered',[203])).rows[0].recovered,203n);
-    return (await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+    assert.ok(lease.info.version===version||lease.info.version.startsWith(version+'-'));
   });
-  assert.notEqual(recoveredId,oldPoolId,'Pool cannot reuse a pre-restart session');
-  assert.ok(pool.stats.created>=2);
+  // MySQL server connection IDs may be recycled when mysqld restarts.
+  // Require proof from the pool's monotonic physical-connection lifecycle,
+  // rather than treating a changed numeric ID as evidence of replacement.
+  assert.ok(pool.stats.created>=2,'Pool must establish a new physical session');
+  assert.ok(pool.stats.discarded>=1,'Pre-restart session must be retired');
   assert.equal(pool.stats.pending,0);
   assert.ok(pool.stats.size<=1);
   report.recovery.poolReconnected=true;
