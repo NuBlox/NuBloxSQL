@@ -19,6 +19,28 @@ unreviewed third-party runtime dependencies or install scripts. Automated
 dependency vulnerability audits and Node 22/24 package checks supplement
 this; they do **not** replace threat modelling or penetration testing.
 
+## Least-privilege MySQL database accounts
+
+The [restricted-principal qualification](.github/workflows/mysql-restricted-principal.yml)
+runs a disposable `nubloxsql_readonly` MySQL user with **SELECT-only**
+database grants on three pinned current-release fixtures (8.4.13,
+9.7.4 and 26.10.0). The two LTS fixtures also enforce **REQUIRE SSL**
+at the server account level and client-side verified TLS.
+
+Live tests cover successful bounded SELECT, prepared statements, cursor,
+read-only transaction and pooled reset, rejection of UPDATE/DELETE/INSERT
+and CREATE TABLE, and continued safe read access after a denied operation.
+The TLS jobs additionally test rejection of plaintext connections and
+incorrect credentials. Root is used exclusively by the ephemeral CI
+fixture installer, **not** by the restricted client tests.
+
+Passing these test profiles does not certify customer IAM, cloud service
+accounts, credential lifecycle, or least-privilege application workflows.
+The [threat model](docs/MYSQL-SECURITY-THREAT-MODEL.md) and
+[operations runbook](docs/MYSQL-OPERATIONS-RUNBOOK.md) document controls,
+residual risks and incident handling. Independent security assessment and
+an accountable confidential reporting contact remain outstanding.
+
 ## Responsible security reporting
 
 Please do **not** disclose suspected exploitable details in a public issue,
