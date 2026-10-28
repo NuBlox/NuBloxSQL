@@ -25,6 +25,23 @@ evidence cannot pass. MySQL `26.10.0` has **no TLS qualification** in
 this phase; the summary records `not-qualified` rather than claiming
 coverage from plaintext-only tests.
 
+## Repeated server outages and extended pool endurance
+
+See [repeated MySQL outage and endurance qualification](../../docs/MYSQL-RESILIENCE-QUALIFICATION.md).
+The dedicated `mysql-resilience.yml` workflow runs two controlled
+server crashes per PR/main check (six when scheduled or manually dispatched),
+exercises twelve simultaneous borrowers against a strict two-connection
+pool before and after each restart, and retains every original
+`mysql-restart` artifact plus its aggregate redacted summary.
+`mysql-repeated-outage-evidence` independently validates every crash,
+pool-disposal invariant and exact commit; missing/duplicate cycles fail.
+
+A separate 30-minute weekly pooled soak, and optional one/two-hour
+manual soak, preserve elapsed-duration, expected error recovery,
+observed memory peaks and zero native pool capacity after close.
+The two-hour configuration is **not** proof of a completed two-hour run.
+Neither script may be aimed at shared or production databases.
+
 ## Running
 
 Build the workspace with Node.js 22 and `npm install`. Use **only** an isolated
