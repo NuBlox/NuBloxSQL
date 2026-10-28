@@ -284,3 +284,59 @@ live('pooled session with incomplete prepared DML OK is discarded before another
   }finally{await pool.close();}
  });
 });
+
+live('malformed COM_STMT_PREPARE_OK fails closed before exposing a prepared handle',async()=>{
+ for(const mode of ['prepare-trailing-byte','prepare-invalid-reserved']){
+  await runWithProxy(async(proxy,target)=>{
+   const db=await connectDatabase(target);
+   const send=db.stream.send.bind(db.stream);
+   let prepares=0;
+   db.stream.send=async body=>{
+    if(body[0]===0x16)prepares++;
+    return send(body);
+   };
+   try{
+    proxy.arm(mode);
+    await assert.rejects(db.prepare('SELECT ? AS rejected'),
+      error=>error.code==='PROTOCOL_ERROR');
+    assert.equal(proxy.injected,1);
+    assert.equal(prepares,1,'invalid acknowledgement cannot retry prepare');
+    assert.equal(db.closed,true,'invalid prepare response must retire socket');
+    await assert.rejects(db.query('SELECT 1'),
+      error=>error.code==='CONNECTION_CLOSED');
+    const fresh=await connectDatabase(target);
+    try{
+      const stmt=await fresh.prepare('SELECT ? AS accepted');
+      try{
+       assert.equal((await stmt.execute([81])).rows[0].accepted,81n);
+      }finally{await stmt.close();}
+    }finally{await fresh.close();}
+   }finally{await db.close();}
+  });
+ }
+});
+
+live('pool discards an invalid preparation acknowledgement before the next borrower',async()=>{
+ await runWithProxy(async(proxy,target)=>{
+  const pool=createDatabasePool(target,{
+   maxConnections:1,acquireTimeoutMs:8000,healthCheckTimeoutMs:2000
+  });
+  try{
+   await assert.rejects(pool.withConnection(async lease=>{
+     proxy.arm('prepare-invalid-reserved');
+     await lease.prepare('SELECT ? AS rejected');
+   }),error=>error.code==='PROTOCOL_ERROR');
+   assert.equal(proxy.injected,1);
+   assert.ok(pool.stats.discarded>=1);
+   const result=await pool.withConnection(async lease=>{
+     const stmt=await lease.prepare('SELECT ? AS recovered');
+     try{return (await stmt.execute([82])).rows[0].recovered;}
+     finally{await stmt.close();}
+   });
+   assert.equal(result,82n);
+   assert.ok(pool.stats.created>=2,'pool must use a new native session');
+   assert.ok(pool.stats.size<=1);
+   assert.equal(pool.stats.pending,0);
+  }finally{await pool.close();}
+ });
+});
