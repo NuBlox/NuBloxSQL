@@ -1,4 +1,4 @@
-import {fail} from '../../core/errors.js';
+import {DriverError,fail} from '../../core/errors.js';
 import type {BindValue,QueryResult} from '../../core/contracts.js';
 import type {OperationOptions} from '../../core/resources.js';
 import type {RelationalPreparedStatement} from '../../models/relational.js';
@@ -7,6 +7,8 @@ import type {RelationalPreparedStatement} from '../../models/relational.js';
  * It must never migrate to a different physical connection. */
 export class MysqlPreparedStatement implements RelationalPreparedStatement {
   private invalid=false;
+  /** A reset/transport loss permanently revokes the server-owned handle. */
+  private revoked=false;
   private closing:Promise<void>|null=null;
 
   constructor(
@@ -36,10 +38,20 @@ export class MysqlPreparedStatement implements RelationalPreparedStatement {
     if(this.closing)return this.closing;
     if(this.invalid)return;
     this.invalid=true;
-    this.closing=this.dispose();
+    this.closing=this.dispose().catch(error=>{
+      // If the bounded session queue is full, COM_STMT_CLOSE never entered
+      // the wire. Keep this handle usable and retryable; the server statement
+      // remains allocated and counted against the per-session limit.
+      // Never revive a handle revoked concurrently by reset/disconnect.
+      if(error instanceof DriverError&&error.code==='RESOURCE_LIMIT'&&!this.revoked){
+        this.invalid=false;
+        this.closing=null;
+      }
+      throw error;
+    });
     await this.closing;
   }
 
   /** A reset or terminated native session revokes all outstanding handles. */
-  invalidate():void{this.invalid=true;}
+  invalidate():void{this.revoked=true;this.invalid=true;}
 }
