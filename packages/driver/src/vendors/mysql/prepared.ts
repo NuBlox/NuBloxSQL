@@ -21,6 +21,17 @@ export class MysqlPreparedStatement implements RelationalPreparedStatement {
 
   get closed():boolean{return this.invalid;}
 
+  /** Native session reset/revocation can happen after an execution enters
+   * the FIFO but before its turn begins. Never send that stale statement ID
+   * to a subsequent session generation on the same physical connection.
+   * Explicit close is different: older accepted FIFO executions may finish
+   * ahead of their queued COM_STMT_CLOSE. */
+  assertSessionOwned():void{
+    if(this.revoked)throw fail('CONNECTION_CLOSED','Prepared statement no longer belongs to this MySQL session');
+  }
+
+  get sessionRevoked():boolean{return this.revoked;}
+
   async execute(params:readonly BindValue[]=[],options:OperationOptions={}):Promise<QueryResult>{
     if(this.invalid)throw fail('CONNECTION_CLOSED','Prepared statement is closed');
     return this.run(params,options);

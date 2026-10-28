@@ -318,6 +318,24 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
 
+### Queued prepared work and session reset ownership
+
+A prepared handle belongs to the native statement generation in which MySQL
+created it. `COM_RESET_CONNECTION` releases server-side prepared statements
+without closing the physical socket. Calls to `execute()` or
+`executeResults()` that entered the bounded FIFO **before** a reset completed
+must revalidate statement ownership **when their command begins**. If the
+handle has been revoked, the operation rejects with `CONNECTION_CLOSED`
+without sending the stale statement ID or destroying the healthy reset
+connection.
+
+The same guard skips `COM_STMT_CLOSE` for a handle already released by
+an earlier reset; it cannot accidentally target a new statement generation.
+Executions that were accepted ahead of an ordinary explicit `close()`
+remain FIFO ordered and may finish before their own close command; new
+executions after `close()` are rejected. Connection loss permanently
+revokes all handles, including those with pending operations.
+
 ### Retryable native prepared-statement closure under queue pressure
 
 The session's bounded command FIFO can reject a new `COM_STMT_CLOSE` with

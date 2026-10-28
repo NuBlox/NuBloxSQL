@@ -304,3 +304,134 @@ live('full session backlog cannot permanently orphan an explicit native prepared
   await db.close();
  }
 });
+
+live('queued executions cannot reuse statement IDs revoked by an earlier reset',{timeout:10000},async()=>{
+ const db=await connectDatabase(target);
+ const statement=await db.prepare('SELECT ? AS before_reset');
+ const originalSend=db.send.bind(db);
+ const originalWireSend=db.stream.send.bind(db.stream);
+ let releaseReset,enteredReset,held=false,executes=0;
+ const gate=new Promise(resolve=>{releaseReset=resolve;});
+ const resetStarted=new Promise(resolve=>{enteredReset=resolve;});
+ db.send=async body=>{
+  if(body[0]===0x1f&&!held){
+   held=true;
+   enteredReset();
+   await gate;
+  }
+  return originalSend(body);
+ };
+ db.stream.send=async body=>{
+  if(body[0]===0x17)executes++;
+  return originalWireSend(body);
+ };
+ try{
+  const resetting=db.resetForPool();
+  void resetting.catch(()=>{});
+  await resetStarted;
+  const first=statement.execute([101]);
+  const second=statement.executeResults([102]);
+  void first.catch(()=>{});
+  void second.catch(()=>{});
+  releaseReset();
+  await resetting;
+  assert.equal(statement.closed,true,'reset must revoke all previously created handles');
+  await assert.rejects(first,e=>e.code==='CONNECTION_CLOSED');
+  await assert.rejects(second,e=>e.code==='CONNECTION_CLOSED');
+  assert.equal(executes,0,'neither stale statement ID may reach COM_STMT_EXECUTE');
+  assert.equal(db.closed,false,'refusing stale executions must not poison a reset session');
+  const fresh=await db.prepare('SELECT ? AS after_reset');
+  try{
+   assert.equal((await fresh.execute([103])).rows[0].after_reset,103n);
+   assert.equal(executes,1,'new-generation prepared statement remains fully usable');
+  }finally{await fresh.close();}
+ }finally{
+  releaseReset?.();
+  db.send=originalSend;
+  db.stream.send=originalWireSend;
+  await db.close();
+ }
+});
+
+live('queued close skips stale COM_STMT_CLOSE after earlier session reset',{timeout:10000},async()=>{
+ const db=await connectDatabase(target);
+ const statement=await db.prepare('SELECT ? AS reset_close');
+ const originalSend=db.send.bind(db),originalClose=db.closeNative.bind(db);
+ let enteredReset,releaseReset,held=false,closes=0;
+ const started=new Promise(resolve=>{enteredReset=resolve;});
+ const gate=new Promise(resolve=>{releaseReset=resolve;});
+ db.send=async body=>{
+  if(body[0]===0x1f&&!held){
+   held=true;
+   enteredReset();
+   await gate;
+  }
+  return originalSend(body);
+ };
+ db.closeNative=async(...args)=>{closes++;return originalClose(...args);};
+ try{
+  const resetting=db.resetForPool();
+  void resetting.catch(()=>{});
+  await started;
+  const closing=statement.close();
+  void closing.catch(()=>{});
+  releaseReset();
+  await resetting;
+  await closing;
+  assert.equal(closes,0,'a reset already released the server-owned ID');
+  assert.equal(statement.closed,true);
+  assert.equal(db.statements.size,0);
+  const replacement=await db.prepare('SELECT ? AS new_statement');
+  try{
+   assert.equal((await replacement.execute([104])).rows[0].new_statement,104n);
+  }finally{await replacement.close();}
+  assert.equal(closes,1,'only the new statement requires native cleanup');
+  assert.equal(db.closed,false);
+ }finally{
+  releaseReset?.();
+  db.send=originalSend;
+  db.closeNative=originalClose;
+  await db.close();
+ }
+});
+
+live('executions accepted ahead of close finish in FIFO without reviving the handle',{timeout:10000},async()=>{
+ const db=await connectDatabase(target);
+ const statement=await db.prepare('SELECT ? AS ordered_execution');
+ const originalExecute=db.executeNativeResults.bind(db);
+ const originalClose=db.closeNative.bind(db);
+ let started,release,held=false,closes=0;
+ const firstStarted=new Promise(resolve=>{started=resolve;});
+ const gate=new Promise(resolve=>{release=resolve;});
+ db.executeNativeResults=async(...args)=>{
+  if(!held){
+   held=true;
+   started();
+   await gate;
+  }
+  return originalExecute(...args);
+ };
+ db.closeNative=async(...args)=>{closes++;return originalClose(...args);};
+ try{
+  const first=statement.execute([105]);
+  void first.catch(()=>{});
+  await firstStarted;
+  const second=statement.executeResults([106]);
+  void second.catch(()=>{});
+  const closing=statement.close();
+  assert.equal(statement.closed,true);
+  await assert.rejects(statement.execute([107]),e=>e.code==='CONNECTION_CLOSED');
+  release();
+  assert.equal((await first).rows[0].ordered_execution,105n);
+  assert.equal((await second)[0].rows[0].ordered_execution,106n);
+  await closing;
+  assert.equal(closes,1,'exactly one close follows the earlier accepted executions');
+  assert.equal(db.closed,false);
+  assert.equal((await db.query('SELECT ? AS ready',[108])).rows[0].ready,108n);
+ }finally{
+  release?.();
+  db.executeNativeResults=originalExecute;
+  db.closeNative=originalClose;
+  await db.close();
+ }
+});
