@@ -440,9 +440,10 @@ export class MysqlSession implements RelationalSession {
         statement=new MysqlPreparedStatement(
           parameterCount,
           async(params,opts)=>{
-            const sets=await this.serial(
-              ()=>this.executeNativeResults(id,parameterCount,params),opts
-            );
+            const sets=await this.serial(()=>{
+              statement.assertSessionOwned();
+              return this.executeNativeResults(id,parameterCount,params);
+            },opts);
             if(sets.length!==1)
               throw fail('UNSUPPORTED_FEATURE','Statement returned multiple results; use executeResults');
             return sets[0];
@@ -450,7 +451,13 @@ export class MysqlSession implements RelationalSession {
           async()=>{
             let released=false;
             try{
-              if(!this.closed)await this.serial(()=>this.closeNative(id));
+              if(!this.closed)await this.serial(()=>{
+                // A preceding COM_RESET_CONNECTION already released this ID.
+                // Sending a stale COM_STMT_CLOSE must not target the next
+                // generation of prepared statements on the same socket.
+                if(!statement.sessionRevoked)return this.closeNative(id);
+                return Promise.resolve();
+              });
               released=true;
             }catch(error){
               // If the transport dies while COM_STMT_CLOSE is queued, the
@@ -468,7 +475,10 @@ export class MysqlSession implements RelationalSession {
             }
           },
           ()=>this.assertNotInsideExclusiveCallback(),
-          (params,opts)=>this.serial(()=>this.executeNativeResults(id,parameterCount,params),opts)
+          (params,opts)=>this.serial(()=>{
+            statement.assertSessionOwned();
+            return this.executeNativeResults(id,parameterCount,params);
+          },opts)
         );
         this.statements.add(statement);
         return statement;
