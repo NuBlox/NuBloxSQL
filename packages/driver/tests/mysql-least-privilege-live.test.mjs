@@ -131,10 +131,10 @@ live('restricted TLS user rejects plaintext and incorrect credentials without se
  });
  const db=await connectDatabase(connection);
  try{
-  const res=await db.query(
-   "SELECT VARIABLE_VALUE AS cipher FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_cipher'");
-  assert.equal(res.rows.length,1);
-  assert.ok(typeof res.rows[0].cipher==='string'&&res.rows[0].cipher.length>0);
+  // The client verified the CA and hostname, and this database account
+  // has REQUIRE SSL enforced by MySQL. Do not grant performance_schema
+  // access merely to inspect a cipher from the restricted principal.
+  assert.equal(db.info.transport,'verified-tls');
   await readValue(db);
  }finally{await db.close();}
 });
