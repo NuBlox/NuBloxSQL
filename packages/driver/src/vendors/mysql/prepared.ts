@@ -43,8 +43,11 @@ export class MysqlPreparedStatement implements RelationalPreparedStatement {
       // the wire. Keep this handle usable and retryable; the server statement
       // remains allocated and counted against the per-session limit.
       // Never revive a handle revoked concurrently by reset/disconnect.
-      if(error instanceof DriverError&&error.code==='RESOURCE_LIMIT'&&!this.revoked){
-        this.invalid=false;
+      if(error instanceof DriverError&&error.code==='RESOURCE_LIMIT'){
+        // A simultaneous reset/disconnect may have revoked the handle.
+        // Clear only the stale failed close attempt in that case; later
+        // idempotent close() calls must not inherit its rejection.
+        if(!this.revoked)this.invalid=false;
         this.closing=null;
       }
       throw error;
