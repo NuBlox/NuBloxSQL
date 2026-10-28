@@ -88,6 +88,41 @@ transaction/DDL, failover, cloud IAM, multi-MySQL-version or multi-vendor
 qualification suite. Check those separately before changing release status.
 
 
+## Version matrix and destructive server-restart qualification
+
+[MySQL version and restart recovery CI](../../.github/workflows/mysql-version-qualification.yml)
+tests two fixed MySQL Docker image tags: `8.0.44` and `8.4.11`.
+Each isolated job loads the conformance SQL, executes the full
+`npm test` suite against that server, runs a short prepared/cursor/pool/
+authentication smoke and a timed soak. Weekly runs use a two-minute
+soak per version; PR and main-push runs use a five-second safety smoke.
+The existing nightly 8.4.11 sustained workflow remains separate.
+
+After workload qualification, the dedicated CI-only
+`tools/qualification/mysql-restart-recovery.mjs` opens a real prepared
+statement, parks a connection in a bounded pool, starts an actual
+`SELECT SLEEP(?)` native request, and **SIGKILLs** its isolated server
+container. It verifies the pending command returns `CONNECTION_CLOSED`,
+the prepared handle and native session are revoked, the original command
+was not replayed, and a restarted MySQL service is reachable only through
+a fresh pool connection. A failing assertion or cleanup fails the job.
+
+**Destructive test:** the runner requires `CI=true`, an explicit
+`NUBLOX_ALLOW_DESTRUCTIVE_MYSQL_FIXTURE=1` flag, `NUBLOX_LIVE_MYSQL=1`,
+an actual Docker container ID and an image exactly matching the selected
+`mysql:<version>` tag. The workflow supplies these values only for its
+throwaway MySQL service. Never point this runner at production, shared
+development or customer services. No credentials, SQL, row values or
+native connection IDs are persisted in evidence reports.
+
+Each matrix job uploads mode- and version-specific redacted JSON under
+`artifacts/qualification`, including the server version, Git SHA,
+workload outcomes and recovery assertions. Retain the matching Actions
+run URL and artifact before claiming any version compatibility.
+This evidence does **not** qualify failover clusters, cloud routing,
+customer SLAs, multi-day uptime, TLS on all versions, or non-Linux
+architectures.
+
 ## Experimental in-process native component profiling
 
 To identify which **component** merits profiling before changing production
