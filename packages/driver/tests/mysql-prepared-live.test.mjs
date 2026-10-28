@@ -253,3 +253,54 @@ live('prepared close queued behind interrupted execute remains idempotent',{time
   await db.close();
  }
 });
+
+live('full session backlog cannot permanently orphan an explicit native prepared handle',{timeout:15000},async()=>{
+ const db=await connectDatabase(target);
+ const statement=await db.prepare('SELECT ? AS close_backlog_recovery');
+ const original=db.executeNativeResults.bind(db);
+ const originalClose=db.closeNative.bind(db);
+ let entered,release,closeCommands=0,hold=true;
+ const started=new Promise(resolve=>{entered=resolve;});
+ const gate=new Promise(resolve=>{release=resolve;});
+ const controller=new AbortController();
+ db.executeNativeResults=async(...args)=>{
+  if(hold){
+   hold=false;
+   entered();
+   await gate;
+  }
+  return original(...args);
+ };
+ db.closeNative=async(...args)=>{closeCommands++;return originalClose(...args);};
+ try{
+  const active=statement.execute([41]);
+  void active.catch(()=>{});
+  await started;
+  const queued=Array.from({length:1024},()=>db.query('SELECT 1',[],{signal:controller.signal}));
+  const outcome=Promise.allSettled(queued);
+  await assert.rejects(statement.close(),e=>e.code==='RESOURCE_LIMIT');
+  assert.equal(statement.closed,false,'a close that never entered the queue must be retryable');
+  assert.equal(db.statements.has(statement),true,'server statement still consumes a quota slot');
+  assert.equal(closeCommands,0,'no close was transmitted while queue was saturated');
+  assert.equal(db.closed,false,'queue overload must not kill unrelated active operations');
+  controller.abort();
+  const cancelled=await outcome;
+  assert.ok(cancelled.every(x=>x.status==='rejected'&&x.reason.code==='CANCELLED'));
+  release();
+  assert.equal((await active).rows[0].close_backlog_recovery,41n);
+  assert.equal((await statement.execute([42])).rows[0].close_backlog_recovery,42n);
+  await statement.close();
+  assert.equal(statement.closed,true);
+  assert.equal(db.statements.has(statement),false,'successful cleanup releases the quota slot');
+  assert.equal(closeCommands,1,'exactly one native COM_STMT_CLOSE');
+  assert.equal(db.closed,false);
+  assert.equal((await db.query('SELECT ? AS healthy',[43])).rows[0].healthy,43n);
+ }finally{
+  controller.abort();
+  release?.();
+  db.executeNativeResults=original;
+  db.closeNative=originalClose;
+  await statement.close().catch(()=>{});
+  await db.close();
+ }
+});
