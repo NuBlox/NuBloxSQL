@@ -159,6 +159,29 @@ This advances evidence for G4/G6/G11, but the gates remain
 write/commit ambiguity qualification, HA failover, security assessment,
 realistic customer profiles and documented operational recovery targets.
 
+## Commercial security and operator assurance
+
+The [least-privilege qualification workflow](../.github/workflows/mysql-restricted-principal.yml)
+tests real current-release MySQL connections using a **SELECT-only**
+database user, not the privileged CI fixture account. It covers denied
+writes and DDL, prepared statements, cursors, read-only transactions,
+pool reset and clean disposal. The two currently qualified LTS
+versions additionally require account-level SSL and verified client-side
+TLS with explicit plaintext/credential rejection.
+
+The [security threat model](MYSQL-SECURITY-THREAT-MODEL.md)
+enumerates network identity, credential handling, native protocol and
+result parsing, resource exhaustion, transaction ambiguity, data
+privileges and package-supply-chain threats; residual risks remain
+open pending formal review. The [operator runbook](MYSQL-OPERATIONS-RUNBOOK.md)
+specifies safe connection retirement, no automatic ambiguous-write replay,
+reconciliation and rollback, TLS refusal and staged resumption.
+
+**These documents and CI tests are engineering evidence, not third-party
+security approval, signed customer licensing, a staffed vulnerability
+process or a customer recovery SLA.** G3, G9, G10 and G11 remain open
+until their independent requirements and accountable sign-offs exist.
+
 ## Target decision levels
 
 - **Engineering preview**: clearly labelled non-production, qualified on a
