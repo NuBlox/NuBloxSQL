@@ -399,6 +399,26 @@ remain FIFO ordered and may finish before their own close command; new
 executions after `close()` are rejected. Connection loss permanently
 revokes all handles, including those with pending operations.
 
+### Fail-closed explicit prepared-statement cleanup
+
+An explicitly prepared native handle belongs to its authenticated MySQL
+session. `COM_STMT_CLOSE` is a one-way Classic Protocol command without
+a server acknowledgement. If the cleanup command was admitted to the
+session FIFO but native close fails, even with a normally recoverable
+`DATABASE_ERROR`, `CANCELLED` or `TIMEOUT`, the physical connection
+is permanently retired. The original typed error reaches the caller,
+all prepared handles are revoked, and the pool discards the session
+even when application code catches that error. Neither the close nor
+any application SQL is automatically replayed on another socket.
+
+This differs from a `RESOURCE_LIMIT` **before** FIFO admission. Such
+an overload sends no native close and retains the original prepared
+handle and quota slot for a later retry. A `RESOURCE_LIMIT` raised
+**during** native close is treated as unconfirmed cleanup and retires
+the connection. A handle already revoked by a preceding successful
+`COM_RESET_CONNECTION` does not send a stale close into the next
+prepared statement generation.
+
 ### Retryable native prepared-statement closure under queue pressure
 
 The session's bounded command FIFO can reject a new `COM_STMT_CLOSE` with
