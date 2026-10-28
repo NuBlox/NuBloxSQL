@@ -186,6 +186,23 @@ security approval, signed customer licensing, a staffed vulnerability
 process or a customer recovery SLA.** G3, G9, G10 and G11 remain open
 until their independent requirements and accountable sign-offs exist.
 
+## Native MySQL parser mutation regression corpus
+
+The package's ordinary `npm test` suite includes a fixed-seed,
+dependency-free [protocol mutation corpus](../packages/driver/tests/mysql-parser-mutation.test.mjs).
+It exercises malformed MySQL greetings, authentication switches and
+continuations, length-encoded fields, result/prepare/EOF acknowledgements
+and incrementally framed messages with random TCP chunk boundaries.
+A deliberately incorrect packet sequence must fail closed; valid split
+frames reconstruct the original payload. Parsing results and error
+classification are checked within strictly bounded input sizes and
+iteration counts so CI execution is reproducible on Node 22 and 24.
+
+This improves G2/G3 *engineering regression coverage*. It does **not**
+substitute for independent coverage-guided fuzzing, sanitiser-assisted
+native audits, an external security assessment or security risk signoff.
+Those commercial release blockers remain open.
+
 ## Target decision levels
 
 - **Engineering preview**: clearly labelled non-production, qualified on a
