@@ -82,14 +82,21 @@ jobs:
           retention-days: 14
 
   native-mysql-tls:
-    name: verified-tls-mysql
+    # Keep the existing 8.4 required-check name stable for branch protection.
+    name: ${{ matrix.mysql == '8.4.11' && 'verified-tls-mysql' || 'verified-tls-mysql-8.0.44' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ['8.0.44', '8.4.11']
+    env:
+      NUBLOX_TEST_MYSQL_VERSION: ${{ matrix.mysql }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Start pinned TLS-only MySQL 8.4 server with temporary test CA
+      - name: Start pinned TLS-only MySQL server with temporary test CA
         shell: bash
         run: bash packages/driver/tests/fixtures/start-mysql-tls.sh
       - name: Install build dependencies
@@ -117,7 +124,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mysql-tls-qualification-${{ github.run_id }}
+          name: mysql-tls-qualification-${{ matrix.mysql }}-${{ github.run_id }}
           path: artifacts/qualification/*.json
           if-no-files-found: warn
           retention-days: 14
