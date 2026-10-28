@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   restricted-local:
-    name: mysql-restricted-local-${{ matrix.mysql }}
+    name: mysql-restricted-cold-local-${{ matrix.mysql }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     strategy:
@@ -56,7 +56,7 @@ jobs:
             *) echo 'Unqualified fixture version'; exit 1 ;;
           esac
           docker exec -i -e MYSQL_PWD=test-password "${containers[0]}" mysql --protocol=tcp -h127.0.0.1 -uroot < packages/driver/tests/fixtures/least-privilege.sql
-      - name: Prove read-only authentication, rejected writes, prepared SQL, cursors and pool reset
+      - name: Prove cold full-password authentication refuses plaintext without a TLS downgrade
         run: node --test packages/driver/tests/mysql-least-privilege-live.test.mjs
 
   restricted-tls:
@@ -113,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require every LTS, Innovation and SSL-only least-privilege job
+      - name: Require plaintext fail-closed checks and both functional SSL-only least-privilege jobs
         shell: bash
         run: |
           set -euo pipefail
