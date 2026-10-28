@@ -22,17 +22,19 @@ this; they do **not** replace threat modelling or penetration testing.
 ## Least-privilege MySQL database accounts
 
 The [restricted-principal qualification](.github/workflows/mysql-restricted-principal.yml)
-runs a disposable `nubloxsql_readonly` MySQL user with **SELECT-only**
-database grants on three pinned current-release fixtures (8.4.13,
-9.7.4 and 26.10.0). The two LTS fixtures also enforce **REQUIRE SSL**
-at the server account level and client-side verified TLS.
+provisions a disposable `nubloxsql_readonly` MySQL user with
+**SELECT-only** grants. On MySQL 8.4.13, 9.7.4 and 26.10.0 the
+**plaintext-loopback** checks require a *cold* `caching_sha2_password`
+full-authentication attempt to fail closed with `AUTH_UNSUPPORTED`;
+a cached password is not assumed and no unverified RSA fallback is enabled.
 
-Live tests cover successful bounded SELECT, prepared statements, cursor,
-read-only transaction and pooled reset, rejection of UPDATE/DELETE/INSERT
-and CREATE TABLE, and continued safe read access after a denied operation.
-The TLS jobs additionally test rejection of plaintext connections and
-incorrect credentials. Root is used exclusively by the ephemeral CI
-fixture installer, **not** by the restricted client tests.
+Separate **certificate-verified TLS** functional tests on the two LTS
+versions (8.4.13 and 9.7.4) enforce `REQUIRE SSL` on that account.
+They prove bounded SELECT, prepared statements, cursor, read-only transaction
+and pool reset, rejection of UPDATE/DELETE/INSERT and CREATE TABLE, and
+continued safe reads after a denied operation. TLS jobs additionally test
+rejection of plaintext and incorrect credentials. Root is used exclusively
+by the disposable fixture installer, **never** by the restricted client.
 
 Passing these test profiles does not certify customer IAM, cloud service
 accounts, credential lifecycle, or least-privilege application workflows.
