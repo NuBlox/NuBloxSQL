@@ -8,7 +8,7 @@ import {assertSupportedAuthPlugin,token} from './auth/plugins.js';
 import {execute,fetchRows} from './protocol/commands.js';
 import {MysqlCursor} from './cursor.js';
 import {MysqlPreparedStatement} from './prepared.js';
-import {ok,acknowledgedOk,eofStatus,assertSingleResult} from './protocol/results.js';
+import {ok,acknowledgedOk,prepareOk,eofStatus,assertSingleResult} from './protocol/results.js';
 import {binaryValues,columnKeys,objectRow} from './types.js';
 import {serverPacket,eof,isOk} from './errors.js';
 import {validate} from './configuration.js';
@@ -196,15 +196,7 @@ export class MysqlSession implements RelationalSession {
       throw fail('INVALID_INPUT','Invalid SQL statement');
     this.stream.reset();
     await this.send(Buffer.concat([Buffer.from([0x16]),Buffer.from(sql,'utf8')]));
-    const header=await this.get();
-    if(!isOk(header)||header.length<12)throw Error('Malformed statement preparation');
-    const cursor=new Cursor(header);
-    cursor.byte();
-    const id=cursor.four();
-    const columnCount=cursor.two();
-    const parameterCount=cursor.two();
-    cursor.byte();
-    cursor.two();
+    const {id,columnCount,parameterCount}=prepareOk(await this.get());
     if(parameterCount>MAX_PARAMETERS||columnCount>MAX_COLUMNS)
       throw fail('RESOURCE_LIMIT','Prepared statement metadata exceeds supported limits');
     if(parameterCount)await this.metadata(parameterCount);
