@@ -3,6 +3,15 @@
 set -euo pipefail
 
 : "${RUNNER_TEMP:?This fixture runs in the GitHub Actions runner}"
+: "${GITHUB_ENV:?This fixture requires the GitHub Actions environment file}"
+# Restrict the image choice to qualified, explicit, immutable version tags.
+# The existing MySQL 8.4 driver workflow works without an override.
+MYSQL_TLS_VERSION="${NUBLOX_TEST_MYSQL_VERSION:-8.4.11}"
+case "${MYSQL_TLS_VERSION}" in
+  8.0.44|8.4.11) ;;
+  *) echo "Unsupported TLS qualification MySQL image version" >&2; exit 1 ;;
+esac
+MYSQL_TLS_IMAGE="mysql:${MYSQL_TLS_VERSION}"
 TLS_DIR="${RUNNER_TEMP}/nubloxsql-mysql-tls"
 mkdir -p "${TLS_DIR}"
 chmod 700 "${TLS_DIR}"
@@ -39,7 +48,7 @@ openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 2 \
 
 # The image starts mysqld as its mysql account. Only that account may read
 # the test server's private key; avoid world-readable credentials.
-MYSQL_UID="$(docker run --rm --entrypoint id mysql:8.4.11 -u mysql)"
+MYSQL_UID="$(docker run --rm --entrypoint id "${MYSQL_TLS_IMAGE}" -u mysql)"
 chmod 600 server.key
 sudo chown "${MYSQL_UID}" server.key
 chmod 644 ca.pem server.pem unrelated-ca.pem
@@ -52,7 +61,7 @@ docker run --detach --name nubloxsql-mysql-tls \
   --mount "type=bind,src=${TLS_DIR},dst=/etc/mysql/tls,readonly" \
   --env MYSQL_ROOT_PASSWORD=test-password \
   --env MYSQL_DATABASE=nublox_test \
-  mysql:8.4.11 \
+  "${MYSQL_TLS_IMAGE}" \
   --ssl-ca=/etc/mysql/tls/ca.pem \
   --ssl-cert=/etc/mysql/tls/server.pem \
   --ssl-key=/etc/mysql/tls/server.key \
@@ -74,10 +83,10 @@ for i in $(seq 1 90); do
 done
 if [[ "${ready}" != 1 ]]; then
   docker logs nubloxsql-mysql-tls
-  echo 'MySQL 8.4 TLS fixture did not become ready' >&2
+  echo 'MySQL ${MYSQL_TLS_VERSION} TLS fixture did not become ready' >&2
   exit 1
 fi
 
 echo "NUBLOX_TLS_CA_FILE=${TLS_DIR}/ca.pem" >> "${GITHUB_ENV}"
 echo "NUBLOX_TLS_OTHER_CA_FILE=${TLS_DIR}/unrelated-ca.pem" >> "${GITHUB_ENV}"
-echo 'MySQL 8.4 TLS-required fixture is ready'
+echo "MySQL ${MYSQL_TLS_VERSION} TLS-required fixture is ready"

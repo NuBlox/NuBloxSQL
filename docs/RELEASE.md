@@ -63,6 +63,29 @@ cloud endpoints, overnight endurance or customer recovery targets.
 G8 and G11 remain **not met** for general commercial release until their
 full deployment and recovery requirements have independent evidence.
 
+## Certificate-verified TLS version matrix
+
+The [MySQL version qualification workflow](../.github/workflows/mysql-version-qualification.yml)
+also runs independent certificate-verified TLS jobs for the pinned
+`mysql:8.0.44` and `mysql:8.4.11` images on Node.js 22/Linux x64.
+Each job starts a TLS-required server using a newly generated, short-lived
+test CA and a hostname/IP SAN certificate; verifies the actual MySQL
+version; and runs native TLS regressions for trusted authentication,
+rejected CA, invalid hostname, missing trust, incorrect credentials,
+rejected plaintext transport, transactions, prepared statements,
+server-side cursors and pooled state reset. A bounded qualification runner
+also records rejected-authentication results and native-resource evidence.
+The fixture rejects unsupported image versions before startup and removes
+the container and ephemeral key material on cleanup.
+
+Keep the separate 8.4 TLS driver CI job as a baseline. The matrix extends
+G1, G3 and G8 only for these exact local-Linux test profiles. A green run
+must be retained with its version-specific artifact, commit SHA and workflow
+URL before being treated as evidence. It does not qualify TLS certificates
+from cloud providers, external networks, alternative architectures,
+future patch versions or commercial deployments. G8 remains **not met**
+for general commercial release.
+
 ## Target decision levels
 
 - **Engineering preview**: clearly labelled non-production, qualified on a

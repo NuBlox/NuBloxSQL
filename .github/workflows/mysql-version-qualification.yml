@@ -85,3 +85,66 @@ jobs:
           path: artifacts/qualification/*.json
           if-no-files-found: warn
           retention-days: 30
+
+  mysql-tls-version:
+    name: mysql-tls-version-${{ matrix.mysql }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ['8.0.44', '8.4.11']
+    env:
+      NUBLOX_LIVE_MYSQL_TLS: '1'
+      NUBLOX_TEST_MYSQL_VERSION: ${{ matrix.mysql }}
+      MYSQL_TLS_PORT: '3307'
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test-password
+      MYSQL_DATABASE: nublox_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate fail-closed pinned TLS fixture configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n packages/driver/tests/fixtures/start-mysql-tls.sh
+          if NUBLOX_TEST_MYSQL_VERSION=8.0.0 bash packages/driver/tests/fixtures/start-mysql-tls.sh; then
+            echo 'Unqualified TLS image tag was incorrectly accepted' >&2
+            exit 1
+          fi
+      - name: Start pinned certificate-verified MySQL ${{ matrix.mysql }} fixture
+        shell: bash
+        run: bash packages/driver/tests/fixtures/start-mysql-tls.sh
+      - name: Install build dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install SQL stored-procedure conformance fixtures over isolated TLS host
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i -e MYSQL_PWD=test-password nubloxsql-mysql-tls \
+            mysql --protocol=tcp -h127.0.0.1 -uroot nublox_test \
+            < packages/driver/tests/fixtures/multi-results.sql
+      - name: Run certificate validation, authentication, transaction, cursor and pool regressions
+        run: npm test
+      - name: Require trusted TLS authentication and negative-credential qualification
+        run: npm run qualify:mysql -- --iterations=24 --concurrency=3 --authAttempts=12 --cursorRows=100 --fetchSize=25
+      - name: Preserve MySQL-version-specific verified-TLS evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-tls-version-${{ matrix.mysql }}-${{ github.run_id }}
+          path: artifacts/qualification/*.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Show test-only MySQL logs on failure
+        if: failure()
+        run: docker logs nubloxsql-mysql-tls 2>&1 | tail -100 || true
+      - name: Remove isolated TLS fixture and ephemeral certificate material
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f nubloxsql-mysql-tls >/dev/null 2>&1 || true
+          rm -rf "${RUNNER_TEMP}/nubloxsql-mysql-tls"
