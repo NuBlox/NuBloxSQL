@@ -318,6 +318,21 @@ Live tests use pinned MySQL 8.4.11 GitHub Actions fixtures. The ordinary databas
 
 **Known architecture gaps:** pool warmup, background keepalive and quota policies; transport-independent cancellation, broader native type coverage and complete vendor-version capability negotiation are **not implemented**, rather than represented by empty placeholder modules. All existing MySQL TypeScript modules are now compiled under `strict` without `@ts-nocheck`. This does not establish production qualification: broader TLS deployment/certificate lifecycle, non-destructive server-side cancellation, production-grade pooling policies, comprehensive native type support, and operational conformance remain incomplete.
 
+### Retryable native prepared-statement closure under queue pressure
+
+The session's bounded command FIFO can reject a new `COM_STMT_CLOSE` with
+`RESOURCE_LIMIT` before a byte is sent. In this case NuBloxSQL keeps the
+server-side statement **allocated, counted and usable**, resets its local
+closing state and allows the caller to retry `close()` after the backlog
+drains. Concurrent close callers share the original attempt; no duplicate
+native close is transmitted. A simultaneous connection reset or transport
+failure instead revokes the handle permanently and can never be undone by
+a late queue-overload error.
+
+Applications should retry explicit statement cleanup after `RESOURCE_LIMIT`
+once session queue pressure subsides. Closing a prepared handle never
+automatically replays application SQL.
+
 ### Fail-closed prepared-statement metadata
 
 After a valid `COM_STMT_PREPARE_OK`, the server has assigned a native
