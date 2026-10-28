@@ -500,12 +500,22 @@ export class MysqlSession implements RelationalSession {
           async()=>{
             let released=false;
             try{
-              if(!this.closed)await this.serial(()=>{
+              if(!this.closed)await this.serial(async()=>{
                 // A preceding COM_RESET_CONNECTION already released this ID.
                 // Sending a stale COM_STMT_CLOSE must not target the next
                 // generation of prepared statements on the same socket.
-                if(!statement.sessionRevoked)return this.closeNative(id);
-                return Promise.resolve();
+                if(statement.sessionRevoked)return;
+                try{
+                  await this.closeNative(id);
+                }catch(error){
+                  // The native close has started but was not confirmed.
+                  // Even an error typed DATABASE_ERROR, CANCELLED or TIMEOUT
+                  // cannot be treated as recoverable cleanup. Unlike a
+                  // RESOURCE_LIMIT before FIFO enqueue, the statement ID
+                  // may have been released and the wire state is uncertain.
+                  this.destroy(error instanceof DriverError?error:undefined);
+                  throw error;
+                }
               });
               released=true;
             }catch(error){
