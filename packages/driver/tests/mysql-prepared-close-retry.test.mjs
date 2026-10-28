@@ -63,3 +63,36 @@ test('a concurrent socket revocation always wins over a failed close enqueue',as
  await assert.rejects(statement.execute(),e=>e.code==='CONNECTION_CLOSED');
  await statement.close();
 });
+
+test('session revocation prevents late execution even after a handle was accepted',async()=>{
+ const statement=new MysqlPreparedStatement(
+  0,async()=>result,async()=>{},()=>{},async()=>[result]
+ );
+ assert.doesNotThrow(()=>statement.assertSessionOwned());
+ assert.equal(statement.sessionRevoked,false);
+ // Explicit close does not revoke executions already accepted into FIFO.
+ await statement.close();
+ assert.equal(statement.closed,true);
+ assert.doesNotThrow(()=>statement.assertSessionOwned());
+ statement.invalidate();
+ assert.equal(statement.sessionRevoked,true);
+ assert.throws(()=>statement.assertSessionOwned(),e=>e.code==='CONNECTION_CLOSED');
+ await assert.rejects(statement.execute(),e=>e.code==='CONNECTION_CLOSED');
+ await assert.rejects(statement.executeResults(),e=>e.code==='CONNECTION_CLOSED');
+});
+
+test('failed close-queue enqueue cannot restore ownership after reset',async()=>{
+ let rejectDispose;
+ const pendingDispose=new Promise((_,reject)=>{rejectDispose=reject;});
+ const statement=new MysqlPreparedStatement(
+  0,async()=>result,async()=>pendingDispose,()=>{},async()=>[result]
+ );
+ const closing=statement.close();
+ statement.invalidate();
+ rejectDispose(fail('RESOURCE_LIMIT','Queue full'));
+ await assert.rejects(closing,e=>e.code==='RESOURCE_LIMIT');
+ assert.equal(statement.closed,true);
+ assert.equal(statement.sessionRevoked,true);
+ assert.throws(()=>statement.assertSessionOwned(),e=>e.code==='CONNECTION_CLOSED');
+ await statement.close();
+});
