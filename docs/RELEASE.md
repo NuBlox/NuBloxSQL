@@ -50,7 +50,7 @@ short qualification stages, **not** multi-day stability evidence.
 The same CI job then *destructively kills* its disposable MySQL service
 during an outstanding prepared SQL request, waits for the native connection
 and prepared handle to be revoked, restarts MySQL and requires a bounded pool
-to recover with a **different physical server connection ID**, with no
+to recover using a **new physical connection (proven by pool lifecycle counters)**, with no
 automatic SQL replay. The recovery runner requires CI, an explicit destructive
 fixture opt-in, a container identity, an exact allowed MySQL version and
 Docker image identity. **Do not run against a real customer database.**
@@ -132,6 +132,32 @@ run URL for each qualified revision.
 This extends the scope of G1/G3/G4/G6/G8/G11 evidence; **G8 remains not
 met for a general commercial release** without cross-platform, cloud,
 resilience and independent security qualification.
+
+## Repeated outages, bounded pool pressure and longer endurance
+
+The dedicated [resilience qualification](MYSQL-RESILIENCE-QUALIFICATION.md)
+adds an independent GitHub Actions workflow for pinned MySQL 8.4.13:
+two destructive `mysqld` outage/restart cycles on each PR/main run,
+or six cycles on scheduled/manual runs. Every cycle verifies twelve
+concurrent borrowers against a two-connection pool before and after
+the crash, native capacity and waiter cleanup, terminated in-flight
+work, revoked prepared handles, and fresh authenticated recovery
+without SQL replay. A separate dependent evidence gate requires each
+original crash report to match the redacted aggregate decision.
+
+A parallel, isolated weekly endurance job runs a minimum **30-minute**
+timed pooled soak. A manually dispatched run can request **one or two
+hours** (with a bounded iteration ceiling and explicit full-duration
+checks). These are available qualification profiles, **not claims that
+long-duration runs have passed until their evidence artifacts exist**.
+Process memory peaks and snapshots are observations, not proof of a
+memory-leak-free service. A clean pool at shutdown is a stricter,
+separately verified resource invariant.
+
+This advances evidence for G4/G6/G11, but the gates remain
+**incomplete** pending multi-day stability, multiple outage mechanisms,
+write/commit ambiguity qualification, HA failover, security assessment,
+realistic customer profiles and documented operational recovery targets.
 
 ## Target decision levels
 
