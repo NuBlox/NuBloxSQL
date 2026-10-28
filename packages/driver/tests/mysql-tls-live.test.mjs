@@ -8,11 +8,11 @@ const tlsPort=Number(process.env.MYSQL_TLS_PORT||3307);
 const username=process.env.MYSQL_USER||'root';
 const password=process.env.MYSQL_PASSWORD||'test-password';
 const expectedVersion=process.env.NUBLOX_TEST_MYSQL_VERSION||'8.4.11';
-// Only the two pinned certificate-verified fixtures are TLS-qualified.
+// Only the explicitly pinned certificate-verified fixtures are TLS-qualified.
 // In plaintext cross-version jobs these tests are skipped, so their separate
 // server-version matrix must not be rejected by the TLS-only entrypoint.
 if(process.env.NUBLOX_LIVE_MYSQL_TLS==='1'&&
-   !['8.0.44','8.4.11'].includes(expectedVersion))
+   !['8.0.44','8.4.11','8.4.13','9.7.4'].includes(expectedVersion))
   throw Error('Unqualified MySQL TLS test version');
 
 function trustedTarget() {
@@ -30,7 +30,8 @@ live('verified MySQL TLS: trusted CA, hostname, authenticated session and prepar
   const session=await connectDatabase(target);
   try{
     assert.equal(session.info.transport,'verified-tls');
-    assert.ok(session.info.version.startsWith(expectedVersion),
+    assert.ok(session.info.version===expectedVersion||
+      session.info.version.startsWith(expectedVersion+'-'),
       'Authenticated MySQL server does not match pinned TLS image');
     assert.equal(session.info.authPlugin,'caching_sha2_password');
     const result=await session.query('SELECT ? AS greeting, ? AS number',['TLS connected',42]);

@@ -2,11 +2,20 @@
 /** Validate that each pinned MySQL version has complete, same-revision
  * isolated-local, verified-TLS and destructive-restart qualification evidence.
  * Reads only downloaded Actions artifacts, not a live database or secrets. */
-import {readFileSync,readdirSync,mkdirSync,writeFileSync} from 'node:fs';
+import {readFileSync,readdirSync,existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const versions=Object.freeze(['8.0.44','8.4.11']);
+const profiles=Object.freeze({
+  legacy:Object.freeze({
+    versions:['8.0.44','8.4.11'],tlsVersions:['8.0.44','8.4.11'],
+    localPrefix:'mysql-version-',tlsPrefix:'mysql-tls-version-'
+  }),
+  current:Object.freeze({
+    versions:['8.4.13','9.7.4','26.10.0'],tlsVersions:['8.4.13','9.7.4'],
+    localPrefix:'mysql-current-release-',tlsPrefix:'mysql-current-tls-'
+  })
+});
 const check=(ok,message)=>{if(!ok)throw Error(message);};
 const record=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const whole=value=>Number.isSafeInteger(value)&&value>=0;
@@ -14,6 +23,9 @@ const serverMatches=(actual,expected)=>typeof actual==='string'&&
   (actual===expected||actual.startsWith(expected+'-'));
 const readArtifact=(directory,artifact,stem)=>{
   const dir=join(directory,artifact);
+  // A wholly absent artifact group is an ordinary missing-evidence failure,
+  // not an unclassified filesystem exception.
+  check(existsSync(dir),'Expected exactly one '+stem+' report in '+artifact);
   const names=readdirSync(dir).filter(name=>name.startsWith(stem)&&name.endsWith('.json'));
   check(names.length===1,'Expected exactly one '+stem+' report in '+artifact);
   const report=JSON.parse(readFileSync(join(dir,names[0]),'utf8'));
@@ -93,35 +105,41 @@ const restart=(report,{version,revision})=>{
 
 /** Returns a redacted summary only after all independent evidence is valid. */
 export function validateMatrixEvidence({
-  directory,runId,revision,eventName='pull_request'
+  directory,runId,revision,eventName='pull_request',profile='legacy'
 }){
   check(typeof directory==='string'&&directory.length>0,'Artifact directory required');
   check(/^\d+$/.test(runId??''),'Numeric workflow run ID required');
   check(/^[a-f0-9]{40}$/.test(revision??''),'Exact 40-character commit SHA required');
   check(['push','pull_request','workflow_dispatch','schedule'].includes(eventName),
     'Unsupported workflow event');
+  check(Object.hasOwn(profiles,profile),'Unsupported qualification matrix profile');
+  const selected=profiles[profile];
   const minDurationMs=eventName==='schedule'?120000:5000;
   const validated=[];
-  for(const version of versions){
-    const localArtifact='mysql-version-'+version+'-'+runId;
-    const tlsArtifact='mysql-tls-version-'+version+'-'+runId;
+  for(const version of selected.versions){
+    const localArtifact=selected.localPrefix+version+'-'+runId;
     const local={version,revision,transport:'isolated-local'};
-    const tls={version,revision,transport:'verified-tls'};
     benchmark(readArtifact(directory,localArtifact,'benchmark-local-'+runId+'-'),local);
     soak(readArtifact(directory,localArtifact,'soak-local-'+runId+'-'),local,minDurationMs);
     restart(readArtifact(directory,localArtifact,'mysql-restart-'+version+'-'+runId+'.json'),
       {version,revision});
-    benchmark(readArtifact(directory,tlsArtifact,'benchmark-tls-'+runId+'-'),tls);
+    if(selected.tlsVersions.includes(version)){
+      const tlsArtifact=selected.tlsPrefix+version+'-'+runId;
+      const tls={version,revision,transport:'verified-tls'};
+      benchmark(readArtifact(directory,tlsArtifact,'benchmark-tls-'+runId+'-'),tls);
+    }
     validated.push({
       mysqlVersion:version,
-      isolatedLocal:'passed',verifiedTls:'passed',
+      isolatedLocal:'passed',
+      verifiedTls:selected.tlsVersions.includes(version)?'passed':'not-qualified',
       restartRecovery:'passed',minSoakMs:minDurationMs
     });
   }
   return Object.freeze({
     schemaVersion:1,kind:'mysql-qualification-matrix',status:'passed',
-    revision,eventName,runId,validated,artifactGroups:versions.length*2,
-    validatedReports:versions.length*4
+    profile,revision,eventName,runId,validated,
+    artifactGroups:selected.versions.length+selected.tlsVersions.length,
+    validatedReports:selected.versions.length*3+selected.tlsVersions.length
   });
 }
 
@@ -131,14 +149,15 @@ if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1])){
       directory:process.argv[2],
       runId:process.env.GITHUB_RUN_ID,
       revision:process.env.GITHUB_SHA,
-      eventName:process.env.GITHUB_EVENT_NAME
+      eventName:process.env.GITHUB_EVENT_NAME,
+      profile:process.env.NUBLOX_MYSQL_MATRIX_PROFILE??'legacy'
     });
     const dir=resolve('artifacts/qualification-matrix');
     mkdirSync(dir,{recursive:true});
-    const path=join(dir,'mysql-matrix-evidence-'+result.runId+'.json');
+    const path=join(dir,'mysql-'+result.profile+'-matrix-evidence-'+result.runId+'.json');
     writeFileSync(path,JSON.stringify(result,null,2)+'\n',{mode:0o600});
     console.log(JSON.stringify({status:result.status,revision:result.revision,
-      artifactGroups:result.artifactGroups,validatedReports:result.validatedReports,
+      profile:result.profile,artifactGroups:result.artifactGroups,validatedReports:result.validatedReports,
       versions:result.validated.map(x=>x.mysqlVersion)}));
   }catch(error){
     // Do not print raw reports: they may contain arbitrary untrusted fields.

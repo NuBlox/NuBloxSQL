@@ -109,6 +109,30 @@ of G1/G3/G4/G6/G8/G11 but is **not** independent penetration testing,
 external disaster recovery, long-duration stability or a commercial
 release approval. Keep G8 and G11 unfulfilled beyond the tested profile.
 
+## Maintained MySQL LTS TLS qualification and current-release evidence
+
+The [current MySQL release qualification specification](MYSQL-CURRENT-RELEASE-QUALIFICATION.md)
+defines separate pinned native local-TCP qualification for MySQL
+`8.4.13`, `9.7.4`, and `26.10.0`, plus certificate-verified TLS
+integration for the **8.4.13 and 9.7.4 LTS** lines. The TLS fixture
+requires an ephemeral trusted CA, verified hostname, authenticated TLS
+cipher, negative CA/hostname/credential tests, and prepared/cursor/pool
+operation coverage. The Innovation 26.10.0 version remains
+**local-TCP-qualified only**, not TLS-qualified.
+
+An independent `mysql-current-qualification-evidence` job checks the
+three local benchmarks, three duration-bounded soaks, three real server
+restart reports and two LTS TLS benchmarks, enforcing the same exact
+revision, actual server-version and environment constraints as the
+legacy matrix. All eleven reports are required; one failed or missing
+LTS TLS job invalidates the complete current-release decision. Save
+the single redacted current-release evidence artifact and the Actions
+run URL for each qualified revision.
+
+This extends the scope of G1/G3/G4/G6/G8/G11 evidence; **G8 remains not
+met for a general commercial release** without cross-platform, cloud,
+resilience and independent security qualification.
+
 ## Target decision levels
 
 - **Engineering preview**: clearly labelled non-production, qualified on a

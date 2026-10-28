@@ -10,7 +10,11 @@ const runId='12345';
 const versions=['8.0.44','8.4.11'];
 const context={runId,revision,eventName:'pull_request'};
 
-function fixture(){
+function fixture(profile='legacy'){
+ const chosenVersions=profile==='current'?['8.4.13','9.7.4','26.10.0']:versions;
+ const tlsVersions=profile==='current'?['8.4.13','9.7.4']:versions;
+ const localPrefix=profile==='current'?'mysql-current-release-':'mysql-version-';
+ const tlsPrefix=profile==='current'?'mysql-current-tls-':'mysql-tls-version-';
  const directory=mkdtempSync(join(tmpdir(),'nublox-matrix-'));
  const reports=new Map();
  const emit=(artifact,file,report)=>{
@@ -20,7 +24,7 @@ function fixture(){
   writeFileSync(name,JSON.stringify(report));
   reports.set(artifact+'/'+file,name);
  };
- for(const version of versions){
+ for(const version of chosenVersions){
   const base={node:'v22.14.0',platform:'linux',arch:'x64',ci:true,
    serverVersion:version,revision};
   const bench=(transport)=>({
@@ -51,12 +55,13 @@ function fixture(){
     oldSessionRetired:true,poolReconnected:true,exactlyOnce:true},
    resources:{poolClosed:{size:0}},failureCode:null
   };
-  const local='mysql-version-'+version+'-'+runId;
-  const tls='mysql-tls-version-'+version+'-'+runId;
+  const local=localPrefix+version+'-'+runId;
+  const tls=tlsPrefix+version+'-'+runId;
   emit(local,'benchmark-local-'+runId+'-100.json',bench('isolated-local'));
   emit(local,'soak-local-'+runId+'-200.json',soak);
   emit(local,'mysql-restart-'+version+'-'+runId+'.json',restart);
-  emit(tls,'benchmark-tls-'+runId+'-300.json',bench('verified-tls'));
+  if(tlsVersions.includes(version))
+   emit(tls,'benchmark-tls-'+runId+'-300.json',bench('verified-tls'));
  }
  return {
   directory,reports,
@@ -145,5 +150,64 @@ test('scheduled two-minute matrix requires actual 120-second soak evidence',()=>
   assert.throws(()=>validateMatrixEvidence({...context,eventName:'schedule',directory:x.directory}),/Incomplete sustained-duration/);
   for(const v of versions)x.change(...soak(v),r=>{r.workloads.pool.elapsedMs=120100;});
   assert.equal(validateMatrixEvidence({...context,eventName:'schedule',directory:x.directory}).status,'passed');
+ }finally{x.dispose();}
+});
+
+test('current-release matrix requires all three local profiles and both LTS TLS profiles',()=>{
+ const x=fixture('current');
+ try{
+  const result=validateMatrixEvidence({...context,directory:x.directory,profile:'current'});
+  assert.equal(result.status,'passed');
+  assert.equal(result.artifactGroups,5);
+  assert.equal(result.validatedReports,11);
+  assert.deepEqual(result.validated.map(x=>x.mysqlVersion),['8.4.13','9.7.4','26.10.0']);
+  assert.deepEqual(result.validated.map(x=>x.verifiedTls),['passed','passed','not-qualified']);
+  assert.ok(!JSON.stringify(result).includes('password'));
+ }finally{x.dispose();}
+});
+
+test('current matrix must not silently approve absent LTS TLS or a failed Innovation restart',()=>{
+ for(const failure of ['tls','restart','revision','soak']){
+  const x=fixture('current');
+  try{
+   if(failure==='tls')
+    unlinkSync(x.reports.get('mysql-current-tls-9.7.4-'+runId+
+      '/benchmark-tls-'+runId+'-300.json'));
+   if(failure==='restart')
+    x.change('mysql-current-release-26.10.0-'+runId,
+      'mysql-restart-26.10.0-'+runId+'.json',report=>{
+       report.recovery.poolReconnected=false;
+      });
+   if(failure==='revision')
+    x.change('mysql-current-tls-8.4.13-'+runId,
+      'benchmark-tls-'+runId+'-300.json',report=>{
+       report.environment.revision='f'.repeat(40);
+      });
+   if(failure==='soak')
+    x.change('mysql-current-release-9.7.4-'+runId,
+      'soak-local-'+runId+'-200.json',report=>{
+       report.workloads.pool.elapsedMs=4999;
+      });
+   assert.throws(()=>validateMatrixEvidence({...context,directory:x.directory,
+    profile:'current'}),'Expected current matrix to reject '+failure);
+  }finally{x.dispose();}
+ }
+});
+
+test('the current matrix cannot be substituted for legacy or scheduled evidence',()=>{
+ const x=fixture('current');
+ try{
+  assert.throws(()=>validateMatrixEvidence({...context,directory:x.directory}),
+    /Expected exactly one/);
+  assert.throws(()=>validateMatrixEvidence({...context,directory:x.directory,
+    profile:'unrecognised'}),/Unsupported qualification matrix profile/);
+  assert.throws(()=>validateMatrixEvidence({...context,directory:x.directory,
+    eventName:'schedule',profile:'current'}),/Incomplete sustained-duration/);
+  for(const v of ['8.4.13','9.7.4','26.10.0']){
+   x.change('mysql-current-release-'+v+'-'+runId,
+    'soak-local-'+runId+'-200.json',r=>{r.workloads.pool.elapsedMs=120100;});
+  }
+  assert.equal(validateMatrixEvidence({...context,directory:x.directory,
+   eventName:'schedule',profile:'current'}).status,'passed');
  }finally{x.dispose();}
 });

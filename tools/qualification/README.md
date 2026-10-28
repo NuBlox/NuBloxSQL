@@ -5,6 +5,26 @@ release. No database credentials, query text, certificates or row contents are
 persisted in JSON reports. A full production gate also requires version-matrix,
 security, migration/compatibility, operational and comparative evidence.
 
+## Current LTS verified-TLS qualification and evidence integrity
+
+The [current-release CI workflow](../../.github/workflows/mysql-current-support.yml)
+adds certificate-verified, TLS-required MySQL `8.4.13` and `9.7.4` jobs
+alongside the local TCP `8.4.13`, `9.7.4`, `26.10.0` matrix.
+The TLS fixture uses temporary CA and hostname-verified certificates,
+rejects unpinned image versions, executes the complete native TLS suite,
+and requires actual negative-authentication and resource evidence.
+
+The `mysql-current-qualification-evidence` gate downloads those five
+independent artifact groups and validates exactly **11 reports** from the
+same commit and runner profile. Reuse the validator locally with
+`NUBLOX_MYSQL_MATRIX_PROFILE=current node tools/qualification/verify-matrix-evidence.mjs <artifact-dir>`
+after setting `GITHUB_RUN_ID`, `GITHUB_SHA` and `GITHUB_EVENT_NAME`.
+The default profile remains `legacy` for MySQL 8.0.44 and 8.4.11.
+Missing, wrong-version, failed, incomplete-duration and cross-revision
+evidence cannot pass. MySQL `26.10.0` has **no TLS qualification** in
+this phase; the summary records `not-qualified` rather than claiming
+coverage from plaintext-only tests.
+
 ## Running
 
 Build the workspace with Node.js 22 and `npm install`. Use **only** an isolated
