@@ -8,7 +8,7 @@ set -euo pipefail
 # The existing MySQL 8.4 driver workflow works without an override.
 MYSQL_TLS_VERSION="${NUBLOX_TEST_MYSQL_VERSION:-8.4.11}"
 case "${MYSQL_TLS_VERSION}" in
-  8.0.44|8.4.11) ;;
+  8.0.44|8.4.11|8.4.13|9.7.4) ;;
   *) echo "Unsupported TLS qualification MySQL image version" >&2; exit 1 ;;
 esac
 MYSQL_TLS_IMAGE="mysql:${MYSQL_TLS_VERSION}"
