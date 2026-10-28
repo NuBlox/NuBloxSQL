@@ -123,3 +123,103 @@ live('pooled cursor remains exclusively leased and resets cleanly on early termi
   assert.equal(next,original,'early cursor close must not leak protocol state across leases');
  }finally{await pool.close();}
 });
+
+live('callback completion or failure with unawaited cursor fetch cannot send late wire commands',{timeout:12000},async()=>{
+ for(const mode of ['return','throw']){
+  const db=await connectDatabase(target);
+  const originalSend=db.send.bind(db);
+  const originalWireSend=db.stream.send.bind(db.stream);
+  let release,entered,held=false,fetchCommands=0,closeCommands=0;
+  let detached,cursor;
+  const started=new Promise(resolve=>{entered=resolve;});
+  const gate=new Promise(resolve=>{release=resolve;});
+  db.send=async body=>{
+   if(body[0]===0x1c&&!held){
+    held=true;
+    entered();
+    await gate;
+   }
+   return originalSend(body);
+  };
+  db.stream.send=async body=>{
+   if(body[0]===0x1c)fetchCommands++;
+   if(body[0]===0x19)closeCommands++;
+   return originalWireSend(body);
+  };
+  try{
+   const operation=db.withCursor(
+    'SELECT n AS value FROM (SELECT 1 n UNION ALL SELECT 2 UNION ALL SELECT 3) t ORDER BY n',
+    [],async current=>{
+     cursor=current;
+     detached=current.next();
+     void detached.catch(()=>{});
+     await started;
+     if(mode==='throw')throw Error('application callback failed during fetch');
+     return 'callback completed without awaiting cursor.next';
+    },{fetchSize:3,timeoutMs:6000}
+   );
+   await assert.rejects(operation,e=>e.code==='CONNECTION_CLOSED');
+   assert.equal(db.closed,true,'unawaited cursor work makes session unrecoverable: '+mode);
+   assert.equal(cursor.closed,true,'escaped cursor is revoked: '+mode);
+   assert.equal(closeCommands,0,'COM_STMT_CLOSE cannot race unfinished fetch: '+mode);
+   release();
+   await assert.rejects(detached,e=>e.code==='CONNECTION_CLOSED');
+   assert.equal(fetchCommands,0,'paused fetch must not transmit after callback exit: '+mode);
+   await assert.rejects(db.query('SELECT 1'),e=>e.code==='CONNECTION_CLOSED');
+  }finally{
+   release?.();
+   db.send=originalSend;
+   db.stream.send=originalWireSend;
+   await db.close();
+  }
+ }
+});
+
+live('pooled callback failure during cursor fetch discards socket before next borrower',{timeout:12000},async()=>{
+ const {ConnectionPool}=await import('../dist/core/pooling.js');
+ const {connectMysql}=await import('../dist/vendors/mysql/adapter.js');
+ let entered,release,held=false,detached,firstId;
+ const started=new Promise(resolve=>{entered=resolve;});
+ const gate=new Promise(resolve=>{release=resolve;});
+ const pool=new ConnectionPool(async signal=>{
+  const db=await connectMysql(target,signal);
+  const originalSend=db.send.bind(db);
+  db.send=async body=>{
+   if(body[0]===0x1c&&!held){
+    held=true;
+    entered();
+    await gate;
+   }
+   return originalSend(body);
+  };
+  return db;
+ },{maxConnections:1,acquireTimeoutMs:8000,healthCheckTimeoutMs:2000});
+ try{
+  await assert.rejects(pool.withConnection(async lease=>{
+   firstId=(await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+   await lease.withCursor(
+    'SELECT n AS value FROM (SELECT 1 n UNION ALL SELECT 2 UNION ALL SELECT 3) t ORDER BY n',
+    [],async cursor=>{
+     detached=cursor.next();
+     void detached.catch(()=>{});
+     await started;
+     throw Error('application cursor callback failed');
+    },{fetchSize:3}
+   );
+  }),error=>error.code==='CONNECTION_CLOSED');
+  assert.ok(pool.stats.discarded>=1,'unfinished cursor fetch must discard pooled session');
+  release();
+  await assert.rejects(detached,e=>e.code==='CONNECTION_CLOSED');
+  const nextId=await pool.withConnection(async lease=>{
+   assert.equal((await lease.query('SELECT ? AS healthy',[141])).rows[0].healthy,141n);
+   return (await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+  });
+  assert.notEqual(nextId,firstId,'next borrower must receive a new physical MySQL session');
+  assert.ok(pool.stats.created>=2);
+  assert.equal(pool.stats.pending,0);
+  assert.ok(pool.stats.size<=1);
+ }finally{
+  release?.();
+  await pool.close();
+ }
+});
