@@ -20,12 +20,18 @@ test('CLI rejects unbounded or malformed qualification workloads',()=>{
   });
   for(const bad of [
     ['--concurrency=0'],['--concurrency=17'],['--iterations=1000001'],
-    ['--durationMs=0'],['--durationMs=600001'],['--fetchSize=257'],
+    ['--durationMs=0'],['--durationMs=7200001'],['--iterations=100000001'],['--fetchSize=257'],
     ['--cursorRows=99'],['--authAttempts=1'],['--authAttempts=65'],
     ['--foo=2'],['--concurrency=2','--concurrency=3'],
     ['--iterations=NaN'],['--iterations=-1']
   ])assert.throws(()=>parseArgs(bad,'soak'));
   assert.equal(parseArgs(['--authAttempts=64'],'benchmark').authAttempts,64);
+  assert.deepEqual(
+    [parseArgs(['--durationMs=7200000','--iterations=100000000'],'soak').durationMs,
+     parseArgs(['--durationMs=7200000','--iterations=100000000'],'soak').iterations],
+    [7200000,100000000]);
+  assert.throws(()=>parseArgs(['--durationMs=7200000'],'benchmark'));
+  assert.throws(()=>parseArgs(['--iterations=100000000'],'benchmark'));
   assert.throws(()=>parseArgs([], 'unknown'));
   assert.throws(()=>integerOption(1.5,{name:'x',min:1,max:10}));
 });
