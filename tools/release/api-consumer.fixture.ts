@@ -59,7 +59,7 @@ async function consumerUsage(session:RelationalSession,pool:DatabasePool,
   cursor:RelationalCursor):Promise<void>{
   const r:QueryResult=await session.query('SELECT ? AS value',[42n],timeout);
   const sets:QueryResult[]=await session.queryResults('SELECT ?',[1],timeout);
-  const prepared:RelationalPreparedStatement=await session.prepare('SELECT ?',[...[]].length?timeout:timeout);
+  const prepared:RelationalPreparedStatement=await session.prepare('SELECT ?',timeout);
   await prepared.execute([2],timeout);
   await prepared.executeResults([3],timeout);
   await prepared.close();
