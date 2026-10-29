@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "package": "@nublox/driver",
+  "releaseLine": "0.1.0-dev.0",
+  "policy": "exact-reviewed-public-exports",
+  "exports": [
+    {
+      "name": "BindValue",
+      "kind": "type",
+      "from": "./core/contracts.js",
+      "imported": "BindValue"
+    },
+    {
+      "name": "connectDatabase",
+      "kind": "value",
+      "from": "./core/connection.js",
+      "imported": "connectDatabase"
+    },
+    {
+      "name": "createDatabasePool",
+      "kind": "value",
+      "from": "./core/connection.js",
+      "imported": "createDatabasePool"
+    },
+    {
+      "name": "CursorOptions",
+      "kind": "type",
+      "from": "./models/relational.js",
+      "imported": "CursorOptions"
+    },
+    {
+      "name": "DatabasePool",
+      "kind": "type",
+      "from": "./core/pooling.js",
+      "imported": "DatabasePool"
+    },
+    {
+      "name": "DatabaseTarget",
+      "kind": "type",
+      "from": "./core/contracts.js",
+      "imported": "DatabaseTarget"
+    },
+    {
+      "name": "DriverError",
+      "kind": "value",
+      "from": "./core/errors.js",
+      "imported": "DriverError"
+    },
+    {
+      "name": "MysqlColumn",
+      "kind": "type",
+      "from": "./core/contracts.js",
+      "imported": "MysqlColumn"
+    },
+    {
+      "name": "MysqlSession",
+      "kind": "value",
+      "from": "./vendors/mysql/adapter.js",
+      "imported": "MysqlSession"
+    },
+    {
+      "name": "MysqlTarget",
+      "kind": "type",
+      "from": "./core/contracts.js",
+      "imported": "MysqlTarget"
+    },
+    {
+      "name": "OperationOptions",
+      "kind": "type",
+      "from": "./core/resources.js",
+      "imported": "OperationOptions"
+    },
+    {
+      "name": "PooledRelationalSession",
+      "kind": "type",
+      "from": "./core/pooling.js",
+      "imported": "PooledRelationalSession"
+    },
+    {
+      "name": "PoolOptions",
+      "kind": "type",
+      "from": "./core/pooling.js",
+      "imported": "PoolOptions"
+    },
+    {
+      "name": "PoolStats",
+      "kind": "type",
+      "from": "./core/pooling.js",
+      "imported": "PoolStats"
+    },
+    {
+      "name": "QueryResult",
+      "kind": "type",
+      "from": "./core/contracts.js",
+      "imported": "QueryResult"
+    },
+    {
+      "name": "RelationalCursor",
+      "kind": "type",
+      "from": "./models/relational.js",
+      "imported": "RelationalCursor"
+    },
+    {
+      "name": "RelationalCursorRow",
+      "kind": "type",
+      "from": "./models/relational.js",
+      "imported": "RelationalCursorRow"
+    },
+    {
+      "name": "RelationalPreparedStatement",
+      "kind": "type",
+      "from": "./models/relational.js",
+      "imported": "RelationalPreparedStatement"
+    },
+    {
+      "name": "RelationalSession",
+      "kind": "type",
+      "from": "./models/relational.js",
+      "imported": "RelationalSession"
+    },
+    {
+      "name": "RelationalTransaction",
+      "kind": "type",
+      "from": "./models/relational.js",
+      "imported": "RelationalTransaction"
+    },
+    {
+      "name": "SessionInfo",
+      "kind": "type",
+      "from": "./core/contracts.js",
+      "imported": "SessionInfo"
+    }
+  ]
+}
