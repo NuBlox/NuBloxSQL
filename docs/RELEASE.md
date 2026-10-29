@@ -228,6 +228,27 @@ Review an updated baseline only in an explicit versioned PR with
 documented consumer impact; do not treat a green API lock as commercial
 licensing or production suitability.
 
+## Unpublished release-candidate provenance
+
+The [candidate provenance specification](RELEASE-CANDIDATE-PROVENANCE.md)
+adds a GitHub Actions build gate that packages the exact preview npm
+tarball, validates its SHA-256, proprietary licence, dependency inventory,
+API compatibility evidence and source commit. On **`main` only**, the
+workflow signs SLSA provenance via GitHub OIDC and Sigstore and uses
+`gh attestation verify` to require the exact signer workflow, source
+revision and branch identity. Pull requests build/inspect an **unsigned
+candidate**; a green PR check is not evidence that provenance signing
+succeeded. Only a green main-branch signing and verification job is
+suitable evidence for a specific candidate.
+
+The workflow never publishes to npm, grants redistribution rights,
+promotes `0.1.0-dev.0` to a stable release, or provisions customer
+credentials. This advances G3/G7/G10 *engineering supply-chain evidence*
+but does **not** complete commercial licensing, external security review,
+support commitments, code-review segregation or production release
+authorisation. See the source workflow and retained Actions attestation
+for the specific validated commit before making an integrity claim.
+
 ## Target decision levels
 
 - **Engineering preview**: clearly labelled non-production, qualified on a
