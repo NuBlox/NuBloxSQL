@@ -2,6 +2,12 @@
 
 **Experimental — not production qualified.** This is an independently consumable first-party MySQL Classic protocol client. It is not a universal SQL implementation, full SQL:2023 support or a multi-vendor release.
 
+The [public API compatibility gate](../../docs/DRIVER-PUBLIC-API-COMPATIBILITY.md)
+locks 21 root exports and compiles a strict TypeScript consumer against
+the published declarations in every `release:verify` run. It detects
+accidental public API changes for this preview version, but is **not yet
+a supported semver or commercial stability guarantee**.
+
 ## Example
 
 ```js

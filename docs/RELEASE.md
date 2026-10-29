@@ -203,6 +203,31 @@ substitute for independent coverage-guided fuzzing, sanitiser-assisted
 native audits, an external security assessment or security risk signoff.
 Those commercial release blockers remain open.
 
+## Preview public API compatibility gate
+
+The [public API compatibility contract](DRIVER-PUBLIC-API-COMPATIBILITY.md)
+pins **21 named root exports** for `@nublox/driver@0.1.0-dev.0` and
+their value-vs-type status to an explicitly reviewed baseline. Every
+`npm run release:verify` now builds a strict TypeScript consumer fixture
+against the published declaration entrypoint; incompatible connection,
+pool, statement, cursor, transaction, type or error contracts cause
+release preflight failure. The ordinary `npm test` suite also tests that
+unexpected exports, aliases, defaults, subpaths and preview version
+changes cannot pass the lock.
+
+Redacted `artifacts/release/public-api-contract.json` records the
+compiled declaration SHA-256, baseline fingerprint, revision and runtime.
+Both Node 22 and Node 24 package-security jobs exercise the contract.
+The independent tarball consumer smoke test remains in force.
+
+This adds concrete **G7 compatibility-change detection**, but the gate
+remains **partial**: no stable customer release exists against which to
+verify backward compatibility, semantic-versioning promises, deprecation
+windows, support lifecycle or separately signed release provenance.
+Review an updated baseline only in an explicit versioned PR with
+documented consumer impact; do not treat a green API lock as commercial
+licensing or production suitability.
+
 ## Target decision levels
 
 - **Engineering preview**: clearly labelled non-production, qualified on a
