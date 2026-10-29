@@ -1,0 +1,72 @@
+name: Driver unpublished release candidate and signed build provenance
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-provenance:
+    name: release-candidate-provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install audited build toolchain
+        run: npm install --no-audit --no-fund
+      - name: Verify proprietary licence, published tarball inventory and strict API contract
+        run: npm run release:verify
+      - name: Verify independently installed package and pure provenance policy
+        run: |
+          node --test packages/driver/tests/package-consumer.test.mjs
+          node --test tools/release/release-candidate-core.test.mjs
+      - name: Build exactly one unpublished npm tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/release-candidate
+          npm pack --silent --workspace @nublox/driver \
+            --pack-destination artifacts/release-candidate
+          node tools/release/release-candidate.mjs
+          cd artifacts/release-candidate
+          sha256sum --check SHA256SUMS
+      - name: Sign main-only build provenance using GitHub OIDC
+        if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+        uses: actions/attest@v4
+        with:
+          subject-path: artifacts/release-candidate/*.tgz
+      - name: Independently verify signed subject, source commit and signing workflow
+        if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          archive="$(find artifacts/release-candidate -maxdepth 1 -name '*.tgz' -print -quit)"
+          test -n "$archive"
+          gh attestation verify "$archive" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-provenance.yml" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref refs/heads/main \
+            --deny-self-hosted-runners
+      - name: Preserve verifiable unpublished release-candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: driver-unpublished-candidate-${{ github.run_id }}
+          path: artifacts/release-candidate/
+          if-no-files-found: error
+          retention-days: 60
