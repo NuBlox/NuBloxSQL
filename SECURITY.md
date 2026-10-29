@@ -67,8 +67,12 @@ certificates.
 - Set operation timeouts, bounded pool capacity and maximum fetch sizes.
 - Aborting an in-progress query or transaction destroys the session;
   ambiguous writes must not be replayed automatically.
-- Protect downloaded release artifacts and verify their provenance before
-  distribution. A passing release preflight is **not** a signed attestation.
+- Protect downloaded release artifacts. The unpublished main-branch
+  [candidate provenance workflow](.github/workflows/release-provenance.yml)
+  signs and independently verifies its own exact tarball using GitHub OIDC;
+  require a successful specific-run attestation before relying on its origin.
+  Neither a PR-built candidate nor a generic passing preflight is signed
+  provenance, and none authorises commercial distribution.
 - Obtain the owner's express written licence for evaluation or commercial use.
   Public visibility of source or npm tarballs conveys no additional licence.
 
