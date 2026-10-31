@@ -50,6 +50,39 @@ allocations or a statistically sound absence of leaks. Pool disposal
 and bounded pending checkouts are enforced invariants. Tests do not
 automatically replay SQL or silently retry an ambiguous write.
 
+## Mixed API lifecycle qualification
+
+A new pinned MySQL **8.4.13** job exercises four time-bounded
+**concurrent pooled phases** against a disposable, isolated server:
+ordinary bound reads, create/execute/close prepared statements,
+two-row server-side cursors with one-row fetch batches, and read-only
+transactions including deliberately triggered rollbacks followed by a
+same-lease recovery query. Each phase requires successful concurrent
+operations and a recorded memory snapshot at its boundaries.
+
+The PR and `main` push jobs run an **eight-second functional smoke**.
+Scheduled and manually dispatched resilience workflows extend this
+mixed profile to **ten minutes**. These are separate from the existing
+30-minute/two-hour standard read-soak; no long-run success is assumed
+until an actual corresponding job passes and its artifact is retained.
+
+The runner records exact completed operation counts, bounded
+1024-value latency reservoirs for each phase, phase-level heap/RSS/
+external/ArrayBuffer snapshots, and a bounded whole-run memory timeline.
+It recomputes the trend with the existing conservative investigation
+guardrails, requires full configured elapsed duration, and proves
+zero pooled sessions and waiters after shutdown. Any incorrect value,
+uncaught rollback, prematurely exhausted operation cap or failed cleanup
+fails the job. Original SQL, credentials, row values and connection IDs
+are not written into the report.
+
+The corresponding isolated synthetic regression tests use fake sessions,
+including injected statement failures, wrong rows, swallowed rollbacks
+and deliberate pool leaks. This qualifies **API coexistence across
+time-sequenced phases**, not a proof of memory-leak freedom, heavy
+concurrent writes, replica failover or customer representative workload
+stability. G4/G6/G11 therefore remain open.
+
 ## Timed endurance
 
 The optional separate `mysql-extended-soak` job uses the existing
