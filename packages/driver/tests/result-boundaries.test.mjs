@@ -2,7 +2,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {T,sized,u16,u32} from '../dist/vendors/mysql/protocol/primitives.js';
 import {binaryValues,binaryRow,columnKeys,objectRow} from '../dist/vendors/mysql/types.js';
-import {eofStatus,assertSingleResult,acknowledgedOk,prepareOk,ok,field} from '../dist/vendors/mysql/protocol/results.js';
+import {eofStatus,assertSingleResult,acknowledgedOk,prepareOk,ok,field,errorPacket} from '../dist/vendors/mysql/protocol/results.js';
+import {serverPacket} from '../dist/vendors/mysql/errors.js';
 import {readMetadata} from '../dist/vendors/mysql/metadata.js';
 
 const column=name=>({name,type:T.LONGLONG,charset:63,unsigned:false,
@@ -164,4 +165,41 @@ test('native COM_STMT_PREPARE_OK requires the negotiated twelve-byte reply',()=>
   const badMarker=Buffer.from(packet);
   badMarker[0]=0xfe;
   assert.throws(()=>prepareOk(badMarker),e=>e.code==='PROTOCOL_ERROR');
+});
+
+test('Protocol 4.1 server errors require a complete marked five-byte SQLSTATE',()=>{
+  const packet=(state='HY000',message='Access denied')=>Buffer.concat([
+    Buffer.from([0xff,0x15,0x04,0x23]),
+    Buffer.from(state,'ascii'),
+    Buffer.from(message,'utf8')
+  ]);
+  assert.deepEqual(errorPacket(packet()),{
+    code:1045,state:'HY000',message:'Access denied'
+  });
+  assert.deepEqual(errorPacket(packet('42000','')),{
+    code:1045,state:'42000',message:''
+  });
+  assert.throws(()=>serverPacket(packet()),error=>
+    error.code==='DATABASE_ERROR'&&error.vendorCode===1045&&
+    error.sqlState==='HY000'&&error.message==='Access denied');
+  const valid=packet();
+  const malformed=[
+    ...Array.from({length:9},(_,n)=>valid.subarray(0,n)),
+    Buffer.from([0,0x15,0x04,0x23,72,89,48,48,48]),
+    Buffer.from([0xff,0x15,0x04,0x21,72,89,48,48,48]),
+    Buffer.from([0xff,0x15,0x04,0x23,72,89,48,48]),
+    packet('HY00?'),
+    packet('hy000'),
+    packet('H 000'),
+    packet('H\\0Y00')
+  ];
+  for(const invalid of malformed){
+    assert.throws(()=>errorPacket(invalid),
+      error=>error.code==='PROTOCOL_ERROR',
+      'Malformed error packets must not be treated as recoverable SQL errors');
+  }
+  for(const invalid of malformed.filter(buf=>buf[0]===0xff)){
+    assert.throws(()=>serverPacket(invalid),
+      error=>error.code==='PROTOCOL_ERROR');
+  }
 });
