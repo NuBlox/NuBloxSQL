@@ -33,6 +33,22 @@ owner and has permission to restart dependent services.
 | Certificate verification / TLS authentication failure | Block connection, review CA trust anchor, hostname/SAN, credential rotation and server configuration | Certificate and account validation succeed; **never downgrade to plaintext** |
 | Repeated crash, corruption or loss of server | Stop write traffic, escalate to database operators; isolate failed node, preserve evidence and recover using the customer's documented restore/failover process | Database integrity confirmed, application outcome reconciliation finished and driver health probes succeed |
 
+## Single-node crash at COMMIT
+
+Disposable CI qualification now sends one bound InnoDB write and COMMIT,
+kills the actual MySQL server while acknowledgement is withheld, and
+restarts the same isolated service. The driver must report an unknown
+transaction outcome, retire the old connection and refuse automatic
+replay. A separately authenticated connection reconciles the
+transaction token after recovery; either zero or one durable token
+can be legitimate depending on crash timing.
+
+**Never** use this CI crash harness on a customer, production, shared
+development or otherwise unauthorised database. The customer
+runbook requires its own written, authorised recovery procedure.
+Even when reconciliation finds no row, other in-flight effects and
+replicas must be assessed before any deliberate new operation.
+
 ## Reconcile an unknown COMMIT without replay
 
 When an operation reports `TRANSACTION_OUTCOME_UNKNOWN`, **do not infer**
