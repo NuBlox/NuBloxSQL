@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install build dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Install pinned MySQL stored-procedure conformance fixtures
         shell: bash
         run: |
@@ -93,7 +93,7 @@ jobs:
         shell: bash
         run: bash packages/driver/tests/fixtures/start-mysql-tls.sh
       - name: Install build dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Install pinned TLS MySQL stored-procedure fixtures
         shell: bash
         run: |

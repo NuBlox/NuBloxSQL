@@ -44,7 +44,7 @@ Neither script may be aimed at shared or production databases.
 
 ## Running
 
-Build the workspace with Node.js 22 and `npm install`. Use **only** an isolated
+Build the workspace with Node.js 22 and `npm ci`. Use **only** an isolated
 throwaway MySQL 8.4 database for this script. Set `NUBLOX_LIVE_MYSQL=1` and
 `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_PORT` to target a test container;
 optionally `MYSQL_DATABASE`. For verified TLS set

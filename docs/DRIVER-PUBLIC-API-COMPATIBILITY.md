@@ -26,7 +26,7 @@ JavaScript runtime test alone cannot catch.
 Run the complete checks with:
 
 ```bash
-npm install --no-audit --no-fund
+npm ci --no-audit --no-fund
 npm run verify:api
 npm run release:verify
 npm test

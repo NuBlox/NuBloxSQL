@@ -304,7 +304,7 @@ try {
 ## Verify
 
 ```sh
-npm install
+npm ci
 npm test
 NUBLOX_LIVE_MYSQL=1 MYSQL_PASSWORD=test-password npm test
 npm pack --dry-run --workspace @nublox/driver

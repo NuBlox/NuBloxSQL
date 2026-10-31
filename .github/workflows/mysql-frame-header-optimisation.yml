@@ -27,7 +27,7 @@ jobs:
           node-version: '22'
       - name: Build and test candidate
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run build
           node --test packages/driver/tests/mysql-frame-header-fastpath.test.mjs tools/qualification/framing-hot.test.mjs
       - name: Build exact base revision separately
