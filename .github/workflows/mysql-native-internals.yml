@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install native driver build dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Build native driver and run profiling regression tests
         run: |
           npm run build
