@@ -83,6 +83,40 @@ COMMIT, validate replica durability, customer transaction isolation,
 external side effects or a multi-node failover. Write-path resilience and
 G4/G11 therefore remain **partial/not met** for a commercial release.
 
+## Real MySQL server crash during an unacknowledged COMMIT
+
+The `mysql-commit-server-crash` CI job now uses an isolated, pinned
+MySQL **8.4.13** Docker service and a test-owned InnoDB table. It binds
+a unique application token in one INSERT, then pauses delivery of the
+COMMIT acknowledgement. Only after the native COMMIT frame has been
+written once does the runner execute a genuine `docker kill --signal=KILL`
+against the verified disposable service. The buffered acknowledgement
+is never permitted to confirm success to the native driver.
+
+The driver must return `TRANSACTION_OUTCOME_UNKNOWN`, discard the
+poisoned native socket, and avoid replaying the transaction callback,
+INSERT or COMMIT. After the same MySQL container is restarted and
+healthy, a **new authenticated connection** reads the token: a count
+of **0 or 1** is valid, since actual crash timing can determine whether
+the server made the COMMIT durable. The driver must never guess the
+business outcome. A replacement pool connection must work; native
+pool slots and waiters must reach zero on cleanup. The CI runner
+restores the service even after a test failure and drops the owned
+table when the fixture is available.
+
+A separate `mysql-commit-server-crash-evidence` job downloads the
+original same-run JSON report, independently verifies the exact
+commit/run, pinned MySQL version, real crash, single submission,
+unknown outcome, authoritative read, fresh pool recovery and cleanup,
+and retains a reduced decision artifact. Synthetic negative fixtures
+reject forged or incomplete evidence in normal `npm test`.
+
+This is a **real single-node server-crash test** at the COMMIT boundary,
+not deterministic control over the instant InnoDB writes its commit
+record. It does not prove distributed exactly-once semantics,
+replica durability, crash recovery point objectives, cloud failover or
+safe automatic resubmission of absent tokens. G4/G11 remain open.
+
 ## Mixed API lifecycle qualification
 
 A new pinned MySQL **8.4.13** job exercises four time-bounded
