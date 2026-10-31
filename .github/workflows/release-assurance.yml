@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: Resolve build dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Block high and critical dependency advisories
         run: npm audit --audit-level=high
       - name: Compile and verify actual published package inventory
