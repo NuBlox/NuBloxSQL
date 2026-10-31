@@ -201,3 +201,58 @@ jobs:
           path: artifacts/qualification-matrix/mysql-extended-soak-evidence-*.json
           if-no-files-found: error
           retention-days: 60
+
+  mixed-workloads:
+    name: mysql-mixed-workloads
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    services:
+      mysql:
+        image: mysql:8.4.13
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: nublox_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
+    env:
+      NUBLOX_LIVE_MYSQL: '1'
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test-password
+      MYSQL_DATABASE: nublox_test
+      NUBLOX_QUALIFICATION_MYSQL_VERSION: '8.4.13'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install the reviewed driver toolchain
+        run: npm ci --no-audit --no-fund
+      - name: Build and test the mixed-workload qualification contract
+        run: |
+          npm run build
+          node --test tools/qualification/mixed-workloads.test.mjs
+      - name: Exercise pooled query, prepared, cursor, transaction and rollback phases
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == schedule ||
+                "${{ github.event_name }}" == workflow_dispatch ]]; then
+            duration_ms=600000
+          else
+            duration_ms=8000
+          fi
+          node tools/qualification/run-mixed.mjs --durationMs="$duration_ms" \
+            --maxOperations=1000000 --concurrency=4
+      - name: Retain mixed-workload and memory-phase evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-mixed-workloads-${{ github.run_id }}
+          path: artifacts/qualification/mixed-workload-*.json
+          if-no-files-found: error
+          retention-days: 60

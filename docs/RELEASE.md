@@ -62,6 +62,23 @@ A checksum/registry allowlist is not a substitute for audit, provenance,
 a reviewed dependency update, independent security evaluation or legal
 distribution approval. G7 and G10 remain **partial/not met** respectively.
 
+## Mixed prepared/cursor/transaction/pool qualification
+
+The MySQL resilience workflow now includes an independently selectable
+**mixed native lifecycle profile** in addition to the longer pooled
+read-soak. It exercises bound queries, prepared-handle closure,
+server-side cursor draining, read-only transaction commit/rollback and
+reuse through a bounded native pool. Four sequential but concurrently
+executed phases record per-phase heap/RSS/externals and bounded latency
+samples. The total memory timeline is checked with existing investigative
+growth guardrails and all connections must close.
+
+Normal PR/main runs execute an eight-second integration smoke; weekly
+scheduled/manual runs are configured for ten minutes. These checks
+extend *functional* G4/G6/G11 engineering coverage but do not constitute
+multi-day endurance, sustained writes, ambiguous commit recovery or
+commercial production approval.
+
 ## Bounded memory observation during endurance
 
 Timed soak qualification now uses a constant-capacity 4,096-value
