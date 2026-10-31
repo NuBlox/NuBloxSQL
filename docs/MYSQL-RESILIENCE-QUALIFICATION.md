@@ -73,6 +73,36 @@ Retain the commit, GitHub run URL, exact version, measured duration,
 completed operations, expected/unexpected error counts, resource
 statistics and cleanup status.
 
+## Bounded sustained-memory and latency observation
+
+The timed pooled-soak runner no longer retains every query's latency in an
+unbounded array. Its **4,096-sample deterministic reservoir** uses constant
+storage even when millions of operations execute; `count`, `completed` and
+throughput still reflect **all** completed operations. P50/P95/P99 are now
+sample-based estimates for soaks (not exact full-population percentiles);
+`percentileMethod`, `latencySamples` and `latencySampleCapacity` disclose
+the method and coverage. Short benchmarks retain exact latency percentiles.
+
+The same runner records pooled workload process-memory observations every
+**30 seconds**, plus the start and finish, for a maximum of **256 samples**:
+heap used, resident set size, external memory and ArrayBuffers. The
+timeline is bounded and saved in the existing redacted soak JSON report.
+A pure post-run validator recomputes the difference between median readings
+in the first and final fifths of the trace, verifies sample integrity and
+minimum duration coverage, and rejects retained-growth signals above
+**128 MiB heap used** or **256 MiB RSS**. These are conservative
+**investigation guardrails**, not product memory SLAs or statistical proof
+of a memory leak. V8 garbage collection, heap reservation and operating
+system caching may legitimately affect the trajectory.
+
+A long-soak report without enough observations, with malformed readings
+or with a forged trend now fails the independent evidence gate. The
+ordinary unit suite includes synthetic plateau, continuous-growth,
+out-of-order, oversized and tampered-trace regressions. A multi-hour
+observed plateau is evidence of *bounded observed growth* in that
+specific process and workload, **not** proof of leak freedom or
+customer-representative reliability.
+
 ## Independent extended-soak evidence decision
 
 A scheduled or manually dispatched `mysql-extended-soak` run must also
