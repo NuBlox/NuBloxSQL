@@ -35,7 +35,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install build dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Install isolated pinned mysql2 peer
         run: npm install --no-save --package-lock=false --ignore-scripts --prefix tools/qualification/mysql2-isolated mysql2@3.24.6
       - name: Build native driver and run deterministic comparison tests
