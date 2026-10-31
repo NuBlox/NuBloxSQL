@@ -28,7 +28,7 @@ jobs:
           node-version: '22'
       - name: Build and validate candidate
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run build
           node --test tools/qualification/internal-profile.test.mjs tools/qualification/compare-internal-runs.test.mjs packages/driver/tests/mysql-decoder-classification.test.mjs packages/driver/tests/mysql-serial-fastpath.test.mjs
       - name: Build exact base revision on the same runner
