@@ -38,7 +38,8 @@ const report={
 };
 try{
   const result=await runMixedWorkloads({
-    createPool:createDatabasePool,target,options
+    createPool:createDatabasePool,target,options,
+    expectedServerVersion:process.env.NUBLOX_QUALIFICATION_MYSQL_VERSION??null
   });
   report.environment.serverVersion=result.serverVersion;
   report.workloads=result;
