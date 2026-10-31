@@ -195,7 +195,7 @@ try{
     report.failureCode??='CLEANUP_FAILED';
     process.exitCode=1;
   }
-  if(createdTable&&report.cleanup.mysqlRestored!==false){
+  if(createdTable){
     try{
       const cleanup=await connectDatabase(target);
       try{await cleanup.query('DROP TABLE IF EXISTS '+table);}
