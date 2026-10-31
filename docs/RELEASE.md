@@ -35,6 +35,33 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## Reproducible workspace dependency gate
+
+The experimental driver is now built from a **committed npm v3 lockfile**
+(`package-lock.json`). Workspace CI uses `npm ci --no-audit --no-fund`
+rather than silently resolving new build-tool versions. The reviewed graph
+contains only development dependencies: TypeScript 5.9.3, Node.js type
+definitions 22.20.5 and undici-types 6.21.0. The driver itself retains
+**zero third-party runtime dependencies**.
+
+`npm run verify:lock` checks exact workspace linkage, matching package
+manifests, HTTPS npm registry tarball identities, SHA-512 integrity digests,
+the dependency allowlist, and absence of dependency install scripts.
+`npm run release:verify` requires this gate before its existing tarball
+preflight and strict public API checks. `npm test` includes negative
+lock-policy regression tests. Pinned, separately installed comparison
+fixtures remain outside the release workspace dependency graph.
+
+**Procedure for intended upgrades:** change the source `package.json`
+manifest, regenerate the root lockfile using a reviewed Node/npm version,
+inspect the full dependency diff, update the allowlist/policy tests if the
+new transitive graph has been explicitly approved, run `npm ci`,
+`npm test`, `npm run release:verify`, and independently rerun CI before
+merging. Never use `npm install` as the normal CI installation command.
+A checksum/registry allowlist is not a substitute for audit, provenance,
+a reviewed dependency update, independent security evaluation or legal
+distribution approval. G7 and G10 remain **partial/not met** respectively.
+
 ## Extended version and restart qualification (new evidence gate)
 
 The [version and recovery workflow](../.github/workflows/mysql-version-qualification.yml)
