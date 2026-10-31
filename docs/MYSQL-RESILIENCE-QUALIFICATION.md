@@ -50,6 +50,39 @@ allocations or a statistically sound absence of leaks. Pool disposal
 and bounded pending checkouts are enforced invariants. Tests do not
 automatically replay SQL or silently retry an ambiguous write.
 
+## Real ambiguous-COMMIT reconciliation
+
+The dedicated `mysql-transaction-reconciliation` CI job uses a disposable
+MySQL **8.4.13** database, an InnoDB table unique to each test, application
+idempotency tokens and independent, freshly authenticated reconciliation
+reads. Two complementary deterministic fault cases must both pass:
+
+- **Durable transaction, acknowledgement lost:** a loopback fault proxy
+  forwards the original COMMIT to MySQL, then corrupts its otherwise
+  successful acknowledgement. The native Driver returns
+  `TRANSACTION_OUTCOME_UNKNOWN`; the pooled session is discarded. A
+  fresh connection confirms exactly one durable row with the token.
+- **COMMIT never transmitted:** a test-only hook drops the native socket
+  before COMMIT can reach the wire. The Driver still returns
+  `TRANSACTION_OUTCOME_UNKNOWN` because its caller cannot assert the
+  durable result. MySQL rolls back the open InnoDB transaction; a fresh
+  connection confirms that the token is absent.
+
+Both cases verify that the application transaction callback and bound
+INSERT are executed exactly once, no COMMIT or application SQL is replayed,
+the failed native socket cannot re-enter the pool, a new authenticated
+session works, all waiters drain, and no physical pool capacity remains
+after closure. Test-created tables are dropped in `finally` blocks. The
+two cases demonstrate **why a transport error alone is insufficient to
+determine the committed business outcome**: the application must reconcile
+its own stable business/idempotency key.
+
+The underlying tests are also part of the full driver regression suite.
+They do **not** perform a real `mysqld` crash during an ambiguous
+COMMIT, validate replica durability, customer transaction isolation,
+external side effects or a multi-node failover. Write-path resilience and
+G4/G11 therefore remain **partial/not met** for a commercial release.
+
 ## Mixed API lifecycle qualification
 
 A new pinned MySQL **8.4.13** job exercises four time-bounded

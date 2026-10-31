@@ -62,6 +62,24 @@ A checksum/registry allowlist is not a substitute for audit, provenance,
 a reviewed dependency update, independent security evaluation or legal
 distribution approval. G7 and G10 remain **partial/not met** respectively.
 
+## Deterministic ambiguous-COMMIT outcome reconciliation
+
+A dedicated MySQL 8.4.13 local-CI integration gate exercises
+two distinct write outcomes with the native first-party protocol driver:
+one successful InnoDB COMMIT whose final acknowledgement is deliberately
+corrupted, and one client transport interrupted **before** COMMIT reaches
+the server. Both correctly return `TRANSACTION_OUTCOME_UNKNOWN`;
+fresh independently authenticated read-only reconciliation confirms
+**one durable token** in the former case and **no durable token** in
+the latter. The pool must discard poisoned sockets and must never
+replay either transaction callback or bound write.
+
+The tests create and remove isolated test-owned tables. This is
+direct real-database evidence for the error contract and recovery
+procedure, not a guarantee about external side effects, customer
+workloads, replica failover, real server crashes during COMMIT or
+full recovery operations. G4 and G11 remain incomplete.
+
 ## Mixed prepared/cursor/transaction/pool qualification
 
 The MySQL resilience workflow now includes an independently selectable

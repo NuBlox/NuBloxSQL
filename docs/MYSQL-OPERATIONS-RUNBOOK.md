@@ -33,6 +33,30 @@ owner and has permission to restart dependent services.
 | Certificate verification / TLS authentication failure | Block connection, review CA trust anchor, hostname/SAN, credential rotation and server configuration | Certificate and account validation succeed; **never downgrade to plaintext** |
 | Repeated crash, corruption or loss of server | Stop write traffic, escalate to database operators; isolate failed node, preserve evidence and recover using the customer's documented restore/failover process | Database integrity confirmed, application outcome reconciliation finished and driver health probes succeed |
 
+## Reconcile an unknown COMMIT without replay
+
+When an operation reports `TRANSACTION_OUTCOME_UNKNOWN`, **do not infer**
+the presence or absence of a durable commit from the error code. The
+same code occurs if COMMIT committed but its acknowledgement was lost,
+or if COMMIT never reached the database.
+
+For a controlled application workflow, persist a unique business
+operation or idempotency token **inside the same InnoDB transaction**
+as the affected write. Stop any automatic retries, retire the failed
+connection, and connect independently using an authorised, healthy
+database principal. Read the authoritative row by that stable token
+and evaluate any downstream side effects using their separate systems
+of record. If the token exists once, do not repeat the write. If it is
+absent, verify that no other transaction or external side effect may
+still be in flight before authorising any new action; absence at one
+instant is not automatically a safe retry decision.
+
+The disposable-MySQL regression suite verifies both durable-commit
+and unsent-COMMIT fault paths, including connection retirement and
+no automatic SQL replay. It is not a general distributed exactly-once
+transaction guarantee. A human/operator or an explicitly designed
+idempotency workflow owns the business-level reconciliation decision.
+
 ## Incident and rollback procedure
 
 1. Record the exact driver version/commit, UTC time, MySQL server patch,
