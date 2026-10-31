@@ -20,7 +20,7 @@ function exactIntegrity(value){
 }
 function registryArtifact(name,entry){
   assert.equal(typeof entry.version,'string','Missing resolved version: '+name);
-  assert.match(entry.version,/^\\d+\\.\\d+\\.\\d+$/,
+  assert.match(entry.version,/^\d+\.\d+\.\d+$/,
     'Resolved version must be exact: '+name);
   const tarball=new URL(entry.resolved);
   assert.equal(tarball.protocol,'https:','Registry must use HTTPS: '+name);
@@ -79,7 +79,7 @@ export function inspectWorkspaceLock(rootManifest,driverManifest,lock){
     registryArtifact(name,packages['node_modules/'+name]);
   assert.equal(packages['node_modules/typescript'].version,
     driverManifest.devDependencies.typescript);
-  assert.match(packages['node_modules/@types/node'].version,/^22\\./);
+  assert.match(packages['node_modules/@types/node'].version,/^22\./);
   same(packages['node_modules/@types/node'].dependencies,{
     'undici-types':'~6.21.0'
   });
