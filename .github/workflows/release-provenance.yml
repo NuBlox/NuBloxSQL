@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install audited build toolchain
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Verify proprietary licence, published tarball inventory and strict API contract
         run: npm run release:verify
       - name: Verify independently installed package and pure provenance policy
