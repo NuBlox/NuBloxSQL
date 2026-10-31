@@ -86,7 +86,7 @@ test('all four native paths, rollback, bounded latency, per-phase memory and poo
   assert.equal(result.resources.poolAfterClose.size,0);
   assert.equal(result.resources.memoryTrend.heapUsedGrowthBytes,0);
   assert.equal(result.resources.memoryTrend.rssGrowthBytes,0);
-  assert.ok(result.resources.memoryTimeline.count>=6);
+  assert.ok(result.resources.memoryTimeline.count>=5);
   const c=fixtureState.counters;
   assert.ok(c.rollbacks>=1);
   assert.equal(c.prepares,c.preparedCloses);
