@@ -181,6 +181,17 @@ Process memory peaks and snapshots are observations, not proof of a
 memory-leak-free service. A clean pool at shutdown is a stricter,
 separately verified resource invariant.
 
+The scheduled/manual `mysql-extended-soak` job now has a separate
+`mysql-extended-soak-evidence` verification job that requires the original
+same-run, same-commit MySQL 8.4.13 report, the exact configured duration,
+valid read/error-recovery counts, reconnect evidence, process resource
+measurements and zero pool/waiter capacity after shutdown. It stores a
+redacted independent decision and fails if the original job or its artifact
+is missing. Unit tests run during normal PR checks; full-duration evidence
+is accepted **only after** a successful scheduled/manual run and decision.
+This is an evidence-integrity improvement, not an assertion that a
+multi-hour workload has already passed.
+
 This advances evidence for G4/G6/G11, but the gates remain
 **incomplete** pending multi-day stability, multiple outage mechanisms,
 write/commit ambiguity qualification, HA failover, security assessment,

@@ -73,6 +73,35 @@ Retain the commit, GitHub run URL, exact version, measured duration,
 completed operations, expected/unexpected error counts, resource
 statistics and cleanup status.
 
+## Independent extended-soak evidence decision
+
+A scheduled or manually dispatched `mysql-extended-soak` run must also
+pass the separate `mysql-extended-soak-evidence` job before its endurance
+result counts as qualified engineering evidence. That job does **not** run
+a second long database test: it downloads the original bounded JSON artifact
+and checks its identity, content and cleanup independently.
+
+The validator requires the exact originating Git commit and Actions run,
+the pinned MySQL 8.4.13 isolated-local Linux x64 / Node 22 profile, a
+complete `soak` result and the selected configuration (30 minutes on the
+weekly schedule, or precisely one/two hours via manual dispatch). It rejects
+an iteration-limited early exit, missing expected SQL errors, any unexpected
+error, absent reconnect work, incomplete operations, nonzero pool slots/
+waiters at close, and missing process memory/duration observations. Only one
+run-matching JSON report is accepted; stale/duplicate reports fail closed.
+The resulting separate `mysql-extended-soak-decision-<run-id>` artifact
+contains no SQL, passwords, result rows or connection identifiers.
+
+`node --test tools/qualification/extended-soak-evidence.test.mjs` runs
+in normal CI and checks deliberately corrupted synthetic report fixtures
+without requiring a real database or a multi-hour run. The independent
+decision itself runs only when a real scheduled/manual long-soak job
+finishes. PR/push checks cannot claim those durations have already passed.
+
+Passing verifies measured duration and cleanup invariants, **not**
+memory-leak freedom, a statistically robust memory-growth trend,
+customer workload endurance, an uptime SLA or commercial approval.
+
 ## Remaining commercial blockers
 
 Release gates G4, G6 and G11 remain incomplete for production:
