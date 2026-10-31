@@ -62,6 +62,24 @@ A checksum/registry allowlist is not a substitute for audit, provenance,
 a reviewed dependency update, independent security evaluation or legal
 distribution approval. G7 and G10 remain **partial/not met** respectively.
 
+## Genuine MySQL server-crash COMMIT qualification
+
+A dedicated PR/main CI job now crashes a pinned disposable MySQL
+8.4.13 container with `SIGKILL` after one native COMMIT frame is
+written and before the driver receives acknowledgement. The test
+requires `TRANSACTION_OUTCOME_UNKNOWN`, a retired native session,
+exactly one write and transaction callback, **no replay**, restart of
+the same service, read-only business-token reconciliation (0 or 1
+durable token, depending on crash timing), a healthy fresh pool
+connection and complete cleanup. A second dependent job independently
+validates same-revision/same-run crash evidence.
+
+This extends G4/G11 real-server failure coverage beyond a transport
+proxy. It does **not** establish the precise InnoDB commit boundary,
+database-cluster correctness, cloud recovery or safe automatic retries.
+Customer recovery requirements and independent commercial approval
+remain outstanding.
+
 ## Deterministic ambiguous-COMMIT outcome reconciliation
 
 A dedicated MySQL 8.4.13 local-CI integration gate exercises
