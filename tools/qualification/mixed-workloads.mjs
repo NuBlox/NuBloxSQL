@@ -75,8 +75,8 @@ async function oneOperation(lease,kind,index,rollback){
  * Phase boundaries provide evidence of each API workload's process context.
  */
 export async function runMixedWorkloads({
-  createPool,target,options,now=()=>performance.now(),
-  memoryUsage=()=>process.memoryUsage()
+  createPool,target,options,expectedServerVersion=null,
+  now=()=>performance.now(),memoryUsage=()=>process.memoryUsage()
 }){
   assert.ok(typeof createPool==='function'&&typeof now==='function');
   const pool=createPool(target,{
@@ -90,6 +90,9 @@ export async function runMixedWorkloads({
   try{
     await pool.withConnection(async lease=>{
       serverVersion=lease.info.version;
+      if(expectedServerVersion&&serverVersion!==expectedServerVersion&&
+        !serverVersion.startsWith(expectedServerVersion+'-'))
+        fail('Unexpected MySQL server version');
       requireValue(await lease.query('SELECT ? AS value',[0]),0);
     });
     const start=now();
