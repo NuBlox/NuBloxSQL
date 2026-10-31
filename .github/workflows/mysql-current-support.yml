@@ -46,7 +46,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install build dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Verify exact MySQL Community Server patch
         shell: bash
         run: |
@@ -142,7 +142,7 @@ jobs:
             *) echo "Unexpected TLS MySQL server version: $actual"; exit 1 ;;
           esac
       - name: Install build dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Load stored procedure and multi-result fixtures
         shell: bash
         run: |
