@@ -49,7 +49,7 @@ jobs:
           node-version: '22'
       - name: Build native driver
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run build
       - name: Install multi-result SQL procedure fixtures
         shell: bash
@@ -115,7 +115,7 @@ jobs:
         with:
           node-version: '22'
       - name: Compile native driver
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Sustained pooled reads and SQL error recovery without early iteration cutoff
         shell: bash
         run: |
