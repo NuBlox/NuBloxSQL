@@ -62,6 +62,24 @@ A checksum/registry allowlist is not a substitute for audit, provenance,
 a reviewed dependency update, independent security evaluation or legal
 distribution approval. G7 and G10 remain **partial/not met** respectively.
 
+## Bounded memory observation during endurance
+
+Timed soak qualification now uses a constant-capacity 4,096-value
+latency reservoir rather than retaining every successful operation's
+latency, so the qualification harness does not introduce linear memory
+growth as query count increases. Soak percentiles are **sample estimates**
+with the actual total operation count retained separately. This does not
+change the published native driver.
+
+On long scheduled/manual endurance jobs a 30-second, maximum-256-sample
+process heap/RSS/external/ArrayBuffer timeline is retained. The
+independent long-soak validator rechecks timestamps, sample coverage,
+trend calculations, and provisional 128 MiB heap / 256 MiB RSS
+growth-investigation guardrails. Synthetic regression tests reject both
+forged data and deliberately sustained growth. These gates do not claim
+absence of leaks, validate all physical memory effects, or replace heap
+profiling under customer-like write loads; G6 remains **in progress**.
+
 ## Extended version and restart qualification (new evidence gate)
 
 The [version and recovery workflow](../.github/workflows/mysql-version-qualification.yml)

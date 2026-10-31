@@ -2,9 +2,14 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {validateExtendedSoakEvidence,selectExtendedSoakReport}
   from './extended-soak-evidence.mjs';
+import {BoundedMemoryTimeline} from './soak-observations.mjs';
 
 const sha='a'.repeat(40),runId='12345';
 function fixture(durationMs=1_800_000){
+  const timeline=new BoundedMemoryTimeline();
+  for(let t=0;t<=durationMs;t+=30000)
+    timeline.record(t,{heapUsed:40_000_000,rss:90_000_000,
+      external:3_000_000,arrayBuffers:2_000_000});
   return {
     schemaVersion:1,kind:'soak',status:'passed',
     environment:{revision:sha,ci:true,platform:'linux',arch:'x64',
@@ -13,7 +18,8 @@ function fixture(durationMs=1_800_000){
     errors:{unexpected:0,expectedSqlErrors:100,codes:[]},
     workloads:{pool:{elapsedMs:durationMs+5,count:6000,completed:6000,
         workerCount:4,operationsPerSecond:30},reconnect:{count:6}},
-    resources:{poolBeforeClose:{size:4,pending:0},
+    resources:{memoryTimeline:timeline.summary(),
+      poolBeforeClose:{size:4,pending:0},
       poolAfterClose:{size:0,active:0,idle:0,connecting:0,pending:0,
         created:4,discarded:4},heapPeakBytes:30_000_000,
       rssPeakBytes:90_000_000,totalElapsedMs:durationMs+100}
@@ -23,7 +29,7 @@ const base={revision:sha,runId,eventName:'schedule'};
 function reject(mutate,opts=base){
   const duration=opts.eventName==='workflow_dispatch'
     ?Number(opts.hours)*3_600_000:1_800_000;
-  const report=fixture(duration);
+  const report=structuredClone(fixture(duration));
   mutate(report);
   assert.throws(()=>validateExtendedSoakEvidence(report,opts));
 }
@@ -32,6 +38,9 @@ test('scheduled 30-minute evidence is same-revision, complete and redacted',()=>
   assert.equal(proof.requestedDurationMs,1_800_000);
   assert.equal(proof.completedOperations,6000);
   assert.equal(proof.poolSlotsAfterClose,0);
+  assert.equal(proof.memorySamples,61);
+  assert.equal(proof.heapUsedGrowthBytes,0);
+  assert.equal(proof.rssGrowthBytes,0);
   assert.equal(proof.status,'passed');
   assert.ok(Object.isFrozen(proof));
   assert.equal(JSON.stringify(proof).includes('password'),false);
@@ -83,6 +92,10 @@ test('reject leaked pool sessions, waiters and absent process measurements',()=>
   reject(r=>{r.resources.rssPeakBytes=Infinity;});
   reject(r=>{r.resources.totalElapsedMs=1;});
   reject(r=>{delete r.resources.poolAfterClose;});
+  reject(r=>{delete r.resources.memoryTimeline;});
+  reject(r=>{r.resources.memoryTimeline.samples[5].rssBytes=Infinity;});
+  reject(r=>{r.resources.memoryTimeline.trend.heapUsedGrowthBytes=1000;});
+  reject(r=>{r.resources.memoryTimeline.samples.length=1;});
 });
 test('reject duplicate, stale or missing persisted run artifacts',()=>{
   assert.equal(selectExtendedSoakReport(['soak-local-12345-1790000.json'],runId),

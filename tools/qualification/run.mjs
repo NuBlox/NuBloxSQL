@@ -9,6 +9,7 @@ import {resolve} from 'node:path';
 import {cpus,platform,arch} from 'node:os';
 import {connectDatabase,createDatabasePool} from '../../packages/driver/dist/index.js';
 import {parseArgs,summarize,safeError} from './metrics.mjs';
+import {BoundedLatencySamples,BoundedMemoryTimeline} from './soak-observations.mjs';
 import {qualifyAuthentication} from './authentication.mjs';
 
 const mode=process.argv[2];
@@ -34,7 +35,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const latency=async(work,samples)=>{
   const start=performance.now();
   const value=await work();
-  samples.push(performance.now()-start);
+  const elapsed=performance.now()-start;
+  if(Array.isArray(samples))samples.push(elapsed);
+  else samples.record(elapsed);
   return value;
 };
 const cursorSql=`SELECT a.n+10*b.n+100*c.n AS n
@@ -108,7 +111,14 @@ async function poolRun(durationBounded){
     report.environment.serverVersion=db.info.version;
     check((await db.query('SELECT ? AS sequence',[1])).rows[0].sequence===1n);
   });
-  const samples=[],start=performance.now();
+  const samples=durationBounded?new BoundedLatencySamples():[];
+  const start=performance.now();
+  const memoryTimeline=durationBounded?new BoundedMemoryTimeline():null;
+  if(memoryTimeline)memoryTimeline.record(0,process.memoryUsage());
+  const memoryTimer=memoryTimeline?setInterval(()=>{
+    memoryTimeline.record(performance.now()-start,process.memoryUsage());
+  },30000):null;
+  memoryTimer?.unref();
   let next=0,failed=false;
   const failures=[];
   const workers=Array.from({length:config.concurrency},(_,worker)=> (async()=>{
@@ -140,9 +150,20 @@ async function poolRun(durationBounded){
       }
     }
   })());
-  await Promise.all(workers);
-  report.workloads.pool={...summarize(samples,performance.now()-start),
-    workerCount:config.concurrency,completed:samples.length};
+  try{
+    await Promise.all(workers);
+  }finally{
+    if(memoryTimer){
+      clearInterval(memoryTimer);
+      memoryTimeline.record(performance.now()-start,process.memoryUsage());
+      report.resources.memoryTimeline=memoryTimeline.summary();
+    }
+  }
+  const completed=durationBounded?samples.count:samples.length;
+  const summary=durationBounded?samples.summarize(performance.now()-start):
+    summarize(samples,performance.now()-start);
+  report.workloads.pool={...summary,
+    workerCount:config.concurrency,completed};
   report.resources.poolBeforeClose=pool.stats;
   if(pool.stats.size>config.concurrency||pool.stats.pending!==0||failures.length){
     report.errors.unexpected+=failures.length||1;

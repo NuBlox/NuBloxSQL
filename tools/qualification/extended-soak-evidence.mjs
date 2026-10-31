@@ -1,3 +1,4 @@
+import {validateMemoryTimeline} from './soak-observations.mjs';
 import assert from 'node:assert/strict';
 
 const record=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
@@ -51,12 +52,17 @@ export function validateExtendedSoakEvidence(report,{revision,runId,eventName,ho
     positive(resources.heapPeakBytes)&&positive(resources.rssPeakBytes)&&
     positive(resources.totalElapsedMs)&&resources.totalElapsedMs>=durationMs,
     'Pool cleanup or process resource evidence incomplete');
+  const memoryTrend=validateMemoryTimeline(resources.memoryTimeline,
+    {minDurationMs:durationMs});
   return Object.freeze({
     schemaVersion:1,kind:'mysql-extended-soak-evidence',status:'passed',
     revision,runId,eventName,mysqlVersion:'8.4.13',
     requestedDurationMs:durationMs,observedDurationMs:pool.elapsedMs,
     completedOperations:pool.completed,expectedSqlErrors:errors.expectedSqlErrors,
-    poolSlotsAfterClose:after.size
+    poolSlotsAfterClose:after.size,
+    memorySamples:memoryTrend.samples,
+    heapUsedGrowthBytes:memoryTrend.heapUsedGrowthBytes,
+    rssGrowthBytes:memoryTrend.rssGrowthBytes
   });
 }
 export function selectExtendedSoakReport(names,runId){
