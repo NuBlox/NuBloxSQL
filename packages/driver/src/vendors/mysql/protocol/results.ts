@@ -2,13 +2,15 @@ import {Cursor} from './primitives.js';
 import {DriverError,fail} from '../../../core/errors.js';
 import type {MysqlColumn,QueryResult} from '../../../core/contracts.js';
 /** A negotiated CLIENT_PROTOCOL_41 error is FF + LE16 code + '#' +
- * five ASCII SQLSTATE bytes + EOF-terminated message. Reject an incomplete
+ * five ASCII SQLSTATE bytes + packet-terminated message. Reject an incomplete
  * or legacy-format ERR rather than mislabelling untrusted bytes as a normal
  * recoverable SQL error (which could allow the socket to be reused). */
 export function errorPacket(buf:Buffer):{code:number;state:string;message:string}{
   if(buf.length<9||buf[0]!==0xff||buf[3]!==0x23)
     throw fail('PROTOCOL_ERROR','Malformed MySQL Protocol 4.1 error packet');
-  const state=buf.toString('ascii',4,9);
+  // Node's 'ascii' decoder drops each byte's high bit (0xC8 becomes H).
+  // Latin-1 preserves the original five bytes for strict SQLSTATE validation.
+  const state=buf.toString('latin1',4,9);
   if(!/^[0-9A-Z]{5}$/.test(state))
     throw fail('PROTOCOL_ERROR','Invalid MySQL error SQLSTATE');
   return {
