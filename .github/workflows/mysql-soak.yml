@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install build dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Sustained pooled reads, session recovery and resource qualification
         run: npm run soak:mysql -- --durationMs=120000 --concurrency=4 --iterations=1000000
         env:
