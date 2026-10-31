@@ -42,7 +42,7 @@ jobs:
           node-version: '22'
       - name: Install and compile native driver
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run build
       - name: Provision a dedicated SELECT-only principal on the disposable MySQL server
         shell: bash
@@ -81,7 +81,7 @@ jobs:
         run: bash packages/driver/tests/fixtures/start-mysql-tls.sh
       - name: Compile native driver
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run build
       - name: Install SELECT-only user and independently require TLS for its login
         shell: bash
