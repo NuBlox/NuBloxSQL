@@ -1,7 +1,22 @@
 import {Cursor} from './primitives.js';
 import {DriverError,fail} from '../../../core/errors.js';
 import type {MysqlColumn,QueryResult} from '../../../core/contracts.js';
-export function errorPacket(buf:Buffer):{code:number;state:string;message:string}{const c=new Cursor(buf);c.byte();const code=c.two();let state='HY000';if(c.remaining()>=6&&c.b[c.p]===35){c.byte();state=c.take(5).toString();}return {code,state,message:c.take(c.remaining()).toString('utf8')};}
+/** A negotiated CLIENT_PROTOCOL_41 error is FF + LE16 code + '#' +
+ * five ASCII SQLSTATE bytes + EOF-terminated message. Reject an incomplete
+ * or legacy-format ERR rather than mislabelling untrusted bytes as a normal
+ * recoverable SQL error (which could allow the socket to be reused). */
+export function errorPacket(buf:Buffer):{code:number;state:string;message:string}{
+  if(buf.length<9||buf[0]!==0xff||buf[3]!==0x23)
+    throw fail('PROTOCOL_ERROR','Malformed MySQL Protocol 4.1 error packet');
+  const state=buf.toString('ascii',4,9);
+  if(!/^[0-9A-Z]{5}$/.test(state))
+    throw fail('PROTOCOL_ERROR','Invalid MySQL error SQLSTATE');
+  return {
+    code:buf.readUInt16LE(1),
+    state,
+    message:buf.toString('utf8',9)
+  };
+}
 export function field(buf:Buffer):MysqlColumn{
   const c=new Cursor(buf);
   c.lstr(); // catalog ("def")
