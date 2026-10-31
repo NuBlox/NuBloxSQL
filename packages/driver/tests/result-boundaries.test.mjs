@@ -183,7 +183,15 @@ test('Protocol 4.1 server errors require a complete marked five-byte SQLSTATE',(
     error.code==='DATABASE_ERROR'&&error.vendorCode===1045&&
     error.sqlState==='HY000'&&error.message==='Access denied');
   const valid=packet();
+  // ASCII decoding masks bit 7 in Node: a high-bit-corrupted SQLSTATE
+  // must not be normalised into a valid-looking vendor error.
+  const highBitStates=Array.from({length:5},(_,i)=>{
+    const corrupted=Buffer.from(valid);
+    corrupted[4+i]|=0x80;
+    return corrupted;
+  });
   const malformed=[
+    ...highBitStates,
     ...Array.from({length:9},(_,n)=>valid.subarray(0,n)),
     Buffer.from([0,0x15,0x04,0x23,72,89,48,48,48]),
     Buffer.from([0xff,0x15,0x04,0x21,72,89,48,48,48]),
