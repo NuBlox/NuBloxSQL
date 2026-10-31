@@ -29,7 +29,7 @@ const base={revision:sha,runId,eventName:'schedule'};
 function reject(mutate,opts=base){
   const duration=opts.eventName==='workflow_dispatch'
     ?Number(opts.hours)*3_600_000:1_800_000;
-  const report=fixture(duration);
+  const report=structuredClone(fixture(duration));
   mutate(report);
   assert.throws(()=>validateExtendedSoakEvidence(report,opts));
 }
