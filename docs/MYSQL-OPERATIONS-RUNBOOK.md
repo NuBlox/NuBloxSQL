@@ -33,6 +33,21 @@ owner and has permission to restart dependent services.
 | Certificate verification / TLS authentication failure | Block connection, review CA trust anchor, hostname/SAN, credential rotation and server configuration | Certificate and account validation succeed; **never downgrade to plaintext** |
 | Repeated crash, corruption or loss of server | Stop write traffic, escalate to database operators; isolate failed node, preserve evidence and recover using the customer's documented restore/failover process | Database integrity confirmed, application outcome reconciliation finished and driver health probes succeed |
 
+## Replication link unavailable: do not infer authority from health
+
+A replica can remain reachable even when it is missing transactions
+committed on a healthy primary. In the disposable GTID-partition test,
+both nodes remain responsive, but a broken replication network causes
+a new source token to be absent from the replica's executed GTID set.
+The replica rejects client writes and the promotion policy refuses
+cutover. After the network heals, GTID catch-up completes before
+declaring replication restored.
+
+Customer systems must use their approved HA topology controller and
+external fencing mechanisms. A health check, local GTID sample or
+application retry alone cannot elect a new primary or make an old
+primary safe to rejoin.
+
 ## Rejoining a former primary after promotion
 
 A former primary must **not** simply restart as a writable server
