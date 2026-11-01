@@ -33,6 +33,27 @@ owner and has permission to restart dependent services.
 | Certificate verification / TLS authentication failure | Block connection, review CA trust anchor, hostname/SAN, credential rotation and server configuration | Certificate and account validation succeed; **never downgrade to plaintext** |
 | Repeated crash, corruption or loss of server | Stop write traffic, escalate to database operators; isolate failed node, preserve evidence and recover using the customer's documented restore/failover process | Database integrity confirmed, application outcome reconciliation finished and driver health probes succeed |
 
+## Conflicting network observers must not elect a writer
+
+A client or monitoring observer may reach one MySQL node while
+another observer can reach only a different node. This conflicting
+visibility is **not evidence of leadership**. A stale replica must
+not be promoted while its GTID set omits acknowledged transactions,
+even if the former source appears down to some clients.
+
+The disposable asymmetric-observer test persists
+`super_read_only=ON`, verifies actual write rejection, kills
+the original source, and keeps the candidate non-writable until
+the replication connection heals. After the source restarts, it
+must retain its read-only fence; both nodes remain read-only until
+an independently authorised controller takes responsibility.
+
+Production fencing needs a separate trusted authority, protected
+credentials, node identity and fencing epochs, quorum-safe
+decisions, and a procedure for divergence and recovery.
+This test is not such an authority and is not permission for
+operators to run Docker kill commands on production databases.
+
 ## Replication link unavailable: do not infer authority from health
 
 A replica can remain reachable even when it is missing transactions
