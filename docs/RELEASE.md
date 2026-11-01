@@ -5,6 +5,29 @@ A passing CI job or npm package does not grant commercial redistribution rights
 or establish a production service-level commitment. This register is a
 release-decision gate, not a marketing checklist.
 
+## Machine-readable commercial decision (fail closed)
+
+The reviewed [MySQL commercial decision manifest](release/mysql-commercial-decision.json)
+covers proposed MySQL 8.4.13 / Node 22 / Linux x64 / verified-TLS scope only.
+It is a **proposed pilot qualification target, not an approved customer profile**.
+All G1–G11 release sign-offs and independent product/security/legal/support
+approvals remain pending. **Neither customer evaluation, production use nor
+package publication is currently authorised.**
+
+`npm run release:verify` checks this manifest's full shape, exact dev package
+identity, all pending gates and absence of any claims of approval. The unpublished
+candidate GitHub workflow also invokes the decision check explicitly, and writes
+a redacted `artifacts/release/commercial-decision.json` audit report.
+`npm run release:production-check` **must fail** until a separately reviewed
+production authorisation mechanism is implemented and independent signed
+evidence is accepted. No field or boolean checked into Git can alone approve
+commercial distribution. A green preview CI is **not a production readiness pass**.
+
+The authoritative outstanding work and independent sign-off criteria remain in
+[issue #421](https://github.com/NuBlox/NuBloxSQL/issues/421). Production
+authorisation requires a separate reviewed implementation, package/version
+transition, per-profile evidence, product decision and approved customer terms.
+
 ## Current verified engineering scope
 
 The current implementation is a first-party MySQL Classic protocol client,

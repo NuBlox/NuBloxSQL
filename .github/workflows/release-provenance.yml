@@ -26,6 +26,8 @@ jobs:
           node-version: '22'
       - name: Install audited build toolchain
         run: npm ci --no-audit --no-fund
+      - name: Verify explicit pre-commercial release decision
+        run: node tools/release/verify-commercial-decision.mjs
       - name: Verify proprietary licence, published tarball inventory and strict API contract
         run: npm run release:verify
       - name: Verify independently installed package and pure provenance policy
