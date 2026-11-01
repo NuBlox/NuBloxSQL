@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * DESTRUCTIVE CI-ONLY GTID replication and explicitly authorised promotion
+ * ISOLATED CI-ONLY GTID network partition and blocked-promotion qualification
  * with two isolated disposable MySQL 8.4.13 containers. Not a production
  * topology controller or general-purpose replica configuration system.
  * Never targets customer, shared or production servers.
@@ -179,7 +179,6 @@ try{
     await db.transaction(async tx=>{
       await tx.query('INSERT INTO promoted_tokens (token,value) VALUES (?,?)',
         [firstToken,71]);
-      report.promotion.originalWriteExecutions++;
     });
     report.replication.sourceCommitAcknowledged=true;
     const row=(await db.query('SELECT @@GLOBAL.gtid_executed AS gtid')).rows[0];
@@ -332,9 +331,8 @@ try{
     error.code:'QUALIFICATION_FAILED';
   process.exitCode=1;
 }finally{
-  // Do not revive a fenced source after the promoted replica has accepted
-  // a new write: it would introduce two divergent writable primaries.
-  // Remove both containers and their entire dedicated network instead.
+  // Dispose both isolated fixtures. Neither was promoted in this test;
+  // no production network, server or application data is touched.
   try{
     for(const {id} of refs){
       await docker(['rm','-f',id],30000);
