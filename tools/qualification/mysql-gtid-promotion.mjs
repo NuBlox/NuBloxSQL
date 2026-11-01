@@ -89,6 +89,7 @@ const report={
 };
 const labels={source:'source',replica:'replica'};
 const refs=[{id:sourceId,role:'source'},{id:replicaId,role:'replica'}];
+let stage='docker-identity';
 try{
   for(const {id,role} of refs){
     assert.equal(await docker(['inspect','--format','{{.Config.Image}}',id]),
@@ -99,10 +100,12 @@ try{
       '{{index .Config.Labels "nublox.qual.role"}}',id]),labels[role]);
     assert.equal(await docker(['inspect','--format',
       '{{.State.Health.Status}}',id]),'healthy');
-    assert.equal(await docker(['inspect','--format',
-      '{{index .NetworkSettings.Networks "'+network+'"}}',id])
-      .includes('IPAddress'),true,'Expected isolated network membership');
+    const ip=await docker(['inspect','--format',
+      '{{with index .NetworkSettings.Networks "'+network+'"}}{{.IPAddress}}{{end}}',id]);
+    assert.match(ip,/^[0-9]{1,3}(\.[0-9]{1,3}){3}$/,
+      'Expected a network-scoped IPv4 for each Docker fixture');
   }
+  stage='source-settings';
   let sourceUUID,replicaUUID,sourceServerId,replicaServerId;
   await session(source,async db=>{
     report.environment.primaryVersion=db.info.version;
@@ -116,6 +119,7 @@ try{
     await db.query(
       "GRANT REPLICATION SLAVE ON *.* TO 'nublox_repl'@'%'");
   });
+  stage='replica-settings';
   await session(replica,async db=>{
     report.environment.replicaVersion=db.info.version;
     const r=(await db.query(
@@ -130,6 +134,7 @@ try{
   report.environment.distinctServerIds=true;
   report.replication.gtidModeOnBoth=true;
 
+  stage='replication-configure';
   await session(replica,async db=>{
     // This is a test-owned network alias; credentials never enter artifacts.
     await db.query("CHANGE REPLICATION SOURCE TO "+
@@ -145,6 +150,7 @@ try{
     report.replication.replicaReadOnlyBefore=true;
     await db.query('START REPLICA');
   });
+  stage='replication-start';
   await until(async()=>{
     return session(replica,async db=>{
       const row=(await db.query('SHOW REPLICA STATUS')).rows[0];
@@ -155,6 +161,7 @@ try{
   report.replication.replicationApplierRunning=true;
   report.replication.autoPosition=true;
 
+  stage='schema-and-commit';
   let sourceGTID;
   await session(source,async db=>{
     await db.query('CREATE DATABASE nublox_ha_test');
@@ -179,6 +186,7 @@ try{
     assert.ok(typeof row.gtid==='string'&&row.gtid.length>0);
     sourceGTID=row.gtid;
   });
+  stage='gtid-catchup';
   await session(replica,async db=>{
     const result=(await db.query(
       'SELECT WAIT_FOR_EXECUTED_GTID_SET(?, 20) AS caught_up',[sourceGTID]
@@ -200,6 +208,7 @@ try{
   });
 
   // Fence the former source before any test-only change to writable state.
+  stage='source-fencing';
   await docker(['kill','--signal=KILL',sourceId],15000);
   report.promotion.primaryKilled=true;
   assert.equal(await docker(['inspect','--format','{{.State.Running}}',sourceId]),
@@ -219,6 +228,7 @@ try{
   assert.equal(assessment.allowed,true);
   report.promotion.promotionDecision=assessment.decision;
 
+  stage='test-promotion';
   await session(replica,async db=>{
     await db.query('STOP REPLICA');
     report.promotion.replicationStopped=true;
@@ -259,6 +269,7 @@ try{
     report.promotion.promotedWriteExecutions===1;
 }catch(error){
   report.status='failed';
+  report.failureStage=stage;
   report.failureCode=/^[A-Z_]{2,40}$/.test(error?.code??'')?
     error.code:'QUALIFICATION_FAILED';
   process.exitCode=1;
@@ -301,6 +312,6 @@ try{
     testPromotion:report.promotion.promotionDecision,
     promotedTokenCount:report.promotion.promotedTokenCount,
     fixturesDisposed:report.cleanup.isolatedFixturesDisposed,
-    failureCode:report.failureCode
+    failureCode:report.failureCode,failureStage:report.failureStage??null
   }));
 }
