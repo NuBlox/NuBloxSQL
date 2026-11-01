@@ -941,3 +941,72 @@ jobs:
           path: artifacts/qualification-matrix/mysql-asymmetric-fencing-decision-*.json
           if-no-files-found: error
           retention-days: 60
+
+  durable-fencing-epoch:
+    name: mysql-durable-fencing-epoch
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      NUBLOX_TEST_MYSQL_VERSION: '8.4.13'
+      NUBLOX_LIVE_MYSQL_TLS: '1'
+      NUBLOX_LIVE_MYSQL_AUTHORITY: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked dependencies and build native driver
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          node --test tools/qualification/fencing-epoch-evidence.test.mjs
+      - name: Start a pinned, temporary CA-verified TLS MySQL service
+        run: bash packages/driver/tests/fixtures/start-mysql-tls.sh
+      - name: Qualify MySQL transactional epoch fencing across actual server restart
+        env:
+          NUBLOX_AUTHORITY_DISPOSABLE_RESTART: '1'
+        run: node tools/qualification/mysql-fencing-epoch.mjs
+      - name: Remove only the temporary certificate keys and MySQL service
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f nubloxsql-mysql-tls >/dev/null 2>&1 || true
+          rm -rf "${RUNNER_TEMP}/nubloxsql-mysql-tls"
+      - name: Retain the redacted original same-run fencing epoch report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-fencing-epoch-${{ github.run_id }}
+          path: artifacts/qualification/mysql-fencing-epoch-${{ github.run_id }}.json
+          if-no-files-found: error
+          retention-days: 60
+
+  durable-fencing-epoch-evidence:
+    name: mysql-durable-fencing-epoch-evidence
+    if: ${{ always() }}
+    needs: [durable-fencing-epoch]
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require passed pinned MySQL TLS authority test and restart
+        run: test "${{ needs.durable-fencing-epoch.result }}" = success
+      - name: Download original epoch report from this exact run
+        uses: actions/download-artifact@v4
+        with:
+          name: mysql-fencing-epoch-${{ github.run_id }}
+          path: artifacts/fencing-epoch-original
+      - name: Independently verify server-enforced identities and monotonic epochs
+        run: |
+          node --test tools/qualification/fencing-epoch-evidence.test.mjs
+          node tools/qualification/verify-fencing-epoch.mjs artifacts/fencing-epoch-original
+      - name: Retain reduced same-run engineering decision
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-fencing-epoch-decision-${{ github.run_id }}
+          path: artifacts/qualification-matrix/mysql-fencing-epoch-decision-*.json
+          if-no-files-found: error
+          retention-days: 60
