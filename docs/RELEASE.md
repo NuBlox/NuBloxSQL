@@ -62,6 +62,26 @@ A checksum/registry allowlist is not a substitute for audit, provenance,
 a reviewed dependency update, independent security evaluation or legal
 distribution approval. G7 and G10 remain **partial/not met** respectively.
 
+## MySQL transactional fencing-epoch qualification
+
+An isolated TLS-required MySQL 8.4.13 CI gate now tests **server-side,
+monotonically increasing authority epochs**. Two distinct restricted
+database principals can invoke a test-owned, security-definer stored
+routine, but cannot directly read or write its authority or
+operation tables. Each write locks and verifies the current
+`(epoch, authenticated identity)` inside the same transaction as
+its business-token INSERT. Stale epochs, unauthorised holders,
+replays and direct writes must fail; competing administrative epoch
+compare-and-swap operations yield exactly one winner. A real
+server restart must retain the new epoch and continue refusing
+the old authority. An independent same-run evidence check is required.
+
+This demonstrates a **server-enforced single-node fencing primitive**,
+not a production integration or independent trusted election service.
+Privileged SQL clients are not fenced by the routine. NuBloxSQL
+does not transparently enforce the epoch on every SQL operation.
+Commercial HA release gate G11 remains **not met**.
+
 ## Asymmetric observer visibility and test-controlled hard fencing
 
 An additional pinned MySQL 8.4.13 CI gate now uses independent
