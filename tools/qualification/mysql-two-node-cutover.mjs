@@ -120,6 +120,7 @@ try{
     uuidPrimary!==uuidStandby,'Both endpoints must be distinct MySQL servers');
   report.environment.distinctServerIdentities=true;
 
+  let armed=false;
   let resolveSent;
   const commandSent=new Promise(resolve=>{resolveSent=resolve;});
   pool=new ConnectionPool(async()=>{
@@ -128,13 +129,14 @@ try{
     const send=db.send.bind(db);
     db.send=async body=>{
       await send(body);
-      if(body[0]===0x17)resolveSent();
+      if(armed&&body[0]===0x17){armed=false;resolveSent();}
     };
     return db;
   },{maxConnections:1,acquireTimeoutMs:12000,healthCheckTimeoutMs:2000});
   await pool.withConnection(async lease=>{
     assert.equal((await lease.query('SELECT ? AS ready',[7])).rows[0].ready,7n);
   });
+  armed=true;
   const active=pool.withConnection(lease=>
     lease.query('SELECT SLEEP(?) AS interrupted',[15]));
   void active.catch(()=>{});
