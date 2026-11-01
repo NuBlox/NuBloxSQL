@@ -83,6 +83,38 @@ COMMIT, validate replica durability, customer transaction isolation,
 external side effects or a multi-node failover. Write-path resilience and
 G4/G11 therefore remain **partial/not met** for a commercial release.
 
+## Live GTID network partition and split-brain refusal
+
+The pinned `mysql-gtid-network-partition` CI profile exercises two real
+MySQL 8.4.13 instances with separate host-access networking and a
+dedicated GTID replication bridge. It verifies unique server identities,
+GTID auto-positioning, source-to-replica catch-up and a read-only standby,
+then disconnects **only the private replication network**. Both nodes
+remain reachable to the test client; health alone cannot authorise
+promotion.
+
+One bound transaction is acknowledged on the original writable source
+after isolation. The replica must be missing that committed business
+token, and `WAIT_FOR_EXECUTED_GTID_SET` must time out against the
+source's executed GTIDs. The replica must reject a direct client write.
+With the original source still active and unfenced and the replica
+behind, the explicit safety decision **blocks promotion**, new replica
+writes and application SQL replay.
+
+The job reconnects the replication network without changing the primary
+role, restarts only the replication receiver, verifies that both threads
+resume, waits for GTID application, and confirms that both business
+tokens are present while the replica remains read-only and the original
+source remains the sole writer. Disposable Docker resources are removed.
+A separate evidence job validates exact-run, exact-revision observations;
+negative fixtures reject forged catch-up, dual writers, missing
+partition isolation, unauthorised promotion and incomplete cleanup.
+
+This tests a controlled **replication-link partition**, not all
+network partition topologies, production quorum/election, external
+fencing or arbitrary split-brain recovery. It is **not** an automatic
+HA router or general guarantee of loss-free failover. G11 remains open.
+
 ## Former-primary restart and read-only GTID rejoin
 
 The `mysql-gtid-former-primary-rejoin` CI profile extends the existing
