@@ -33,6 +33,26 @@ owner and has permission to restart dependent services.
 | Certificate verification / TLS authentication failure | Block connection, review CA trust anchor, hostname/SAN, credential rotation and server configuration | Certificate and account validation succeed; **never downgrade to plaintext** |
 | Repeated crash, corruption or loss of server | Stop write traffic, escalate to database operators; isolate failed node, preserve evidence and recover using the customer's documented restore/failover process | Database integrity confirmed, application outcome reconciliation finished and driver health probes succeed |
 
+## Leadership epochs require independent authority and database-side enforcement
+
+A reconnecting client must not regain write authority merely because
+its socket is healthy. In the disposable MySQL fencing-epoch test,
+the database stores a current epoch and authenticated holder, and
+a tightly permissioned stored procedure checks both under a row
+lock in the **same transaction as the write**. Separate least-privilege
+accounts can execute the procedure but cannot bypass its admission
+check using direct table access. An administrative epoch update
+revokes old connected holders immediately; the epoch persists over
+a real MySQL restart.
+
+This is **not** a replacement for production fencing. A real system
+requires a trusted, independent source of epoch allocation,
+authenticated topology membership and quorum/election semantics,
+credential governance, privileges that prevent bypassing
+the admission check, and a documented recovery policy. The current
+native Driver does not automatically impose these restrictions on
+all queries or carry a distributed leadership credential.
+
 ## Conflicting network observers must not elect a writer
 
 A client or monitoring observer may reach one MySQL node while

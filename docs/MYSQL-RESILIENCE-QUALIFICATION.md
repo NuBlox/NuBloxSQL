@@ -83,6 +83,42 @@ COMMIT, validate replica durability, customer transaction isolation,
 external side effects or a multi-node failover. Write-path resilience and
 G4/G11 therefore remain **partial/not met** for a commercial release.
 
+## Server-enforced durable fencing epochs and restricted writers
+
+The `mysql-durable-fencing-epoch` job starts an isolated **MySQL 8.4.13
+TLS-required** server with a temporary, hostname-verified CA. It creates
+two separate, fixture-only authenticated database principals, each
+restricted to **EXECUTE** on a test-owned `SQL SECURITY DEFINER` stored
+routine. Neither principal can read the authority table or insert
+directly into the operation table.
+
+The stored routine starts a MySQL transaction, reads the active
+`(epoch, holder)` authority row **FOR UPDATE**, compares the requested
+epoch and `USER()` authenticated account identity, and then inserts the
+unique business operation token inside that **same transaction**.
+Wrong holders, stale/future epochs and replayed tokens are rejected
+by MySQL, not by an in-memory client flag. A trusted administrative
+compare-and-swap advances the epoch monotonically; concurrent
+advances from the same expected epoch must yield exactly one winner.
+Already-connected former holders must fail immediately after the
+authority row changes. The test then **restarts the real pinned MySQL
+server** and requires the durable epoch to survive, with the
+former epoch still denied and the current authorised holder admitted.
+
+A separate job checks a redacted, original same-run report and
+negative fixtures for stale epochs, impersonation, privilege
+escalation, competing CAS winners, lost state after restart,
+operation replay and incomplete cleanup.
+
+**Limits:** this is a **single-MySQL authority row** managed by a
+trusted administrator. The native NuBloxSQL Driver does not yet
+route all application writes through this routine. An administrator
+or privileged direct SQL client can bypass this test's account
+restrictions. This is **not** an external consensus authority,
+automated distributed leader election, crash-proof multisite
+fencing, network partition quorum or full production admission
+control. G11 remains **not met**.
+
 ## Asymmetric client views and externally enforced source fencing
 
 The `mysql-asymmetric-fencing` job creates two individually
