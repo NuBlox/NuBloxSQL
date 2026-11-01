@@ -122,14 +122,17 @@ try{
     assert.equal(db.info.version,version);
     assert.equal(db.info.transport,'verified-tls');
     report.environment.serverVersion=db.info.version;
+    stage='create-authority-table';
     await db.query('CREATE TABLE '+tab(authority)+
       ' (authority_id INT NOT NULL PRIMARY KEY,epoch BIGINT UNSIGNED NOT NULL,'+
       'holder VARCHAR(32) NOT NULL) ENGINE=InnoDB');
     setup=true;
+    stage='create-operation-table';
     await db.query('CREATE TABLE '+tab(operations)+
       ' (operation_token CHAR(36) NOT NULL PRIMARY KEY,'+
       'epoch BIGINT UNSIGNED NOT NULL,holder VARCHAR(32) NOT NULL,'+
       'payload INT NOT NULL) ENGINE=InnoDB');
+    stage='seed-authority-row';
     await db.query('INSERT INTO '+tab(authority)+
       ' (authority_id,epoch,holder) VALUES (1,1,?)',[nameA]);
     // Routine is security-definer; USER() is the *authenticated login*.
@@ -153,10 +156,13 @@ try{
       ' (operation_token,epoch,holder,payload) VALUES '+
       "(requested_token,requested_epoch,SUBSTRING_INDEX(USER(),'@',1),"+
       'requested_payload);COMMIT;END';
+    stage='create-guarded-routine';
     await db.query(sql);
     for(const [user,password] of [[nameA,passA],[nameB,passB]]){
+      stage='create-restricted-principal';
       await db.query("CREATE USER '"+user+"'@'%' IDENTIFIED WITH "+
         "caching_sha2_password BY '"+password+"' REQUIRE SSL");
+      stage='grant-restricted-execute';
       await db.query('GRANT EXECUTE ON PROCEDURE '+tab(procedure)+
         " TO '"+user+"'@'%'");
     }
@@ -275,6 +281,12 @@ try{
 }catch(error){
   report.status='failed';
   report.failureStage=stage;
+  // Only MySQL's numeric error ID and validated five-character SQLSTATE.
+  // Never persist server messages or failing SQL: fixture setup has secrets.
+  report.failureVendorCode=Number.isInteger(error?.vendorCode)?
+    error.vendorCode:null;
+  report.failureSqlState=/^[A-Z0-9]{5}$/.test(error?.sqlState??'')?
+    error.sqlState:null;
   report.failureCode=/^[A-Z_]{2,40}$/.test(error?.code??'')?
     error.code:'QUALIFICATION_FAILED';
   process.exitCode=1;
@@ -340,6 +352,8 @@ try{
     restartRetainedEpoch:report.restart.persistedEpoch===3,
     staleWriterRejected:report.restart.staleWriterRejected,
     fixtureCleaned:report.cleanup.fixtureDropped,
-    failureCode:report.failureCode,failureStage:report.failureStage??null
+    failureCode:report.failureCode,failureStage:report.failureStage??null,
+    failureVendorCode:report.failureVendorCode??null,
+    failureSqlState:report.failureSqlState??null
   }));
 }
