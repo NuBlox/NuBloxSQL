@@ -33,6 +33,22 @@ owner and has permission to restart dependent services.
 | Certificate verification / TLS authentication failure | Block connection, review CA trust anchor, hostname/SAN, credential rotation and server configuration | Certificate and account validation succeed; **never downgrade to plaintext** |
 | Repeated crash, corruption or loss of server | Stop write traffic, escalate to database operators; isolate failed node, preserve evidence and recover using the customer's documented restore/failover process | Database integrity confirmed, application outcome reconciliation finished and driver health probes succeed |
 
+## Rejoining a former primary after promotion
+
+A former primary must **not** simply restart as a writable server
+after another node has accepted new transactions. Even if the server
+is healthy, it may be stale. In the disposable CI rejoin profile,
+the old source has `super_read_only=ON` persisted before the crash;
+after restart an attempted client write is rejected. Only then is
+reverse GTID auto-positioned replication configured, checked and
+caught up to the promoted source's executed GTID history. The old
+node remains read-only throughout.
+
+Do not apply this fixture procedure blindly to customer systems.
+Actual rejoin requires the supported topology controller, external
+fencing, divergent GTID examination, data-integrity checks, operator
+authorisation and a documented re-seeding path when histories conflict.
+
 ## GTID catch-up does not replace fencing authority
 
 The disposable MySQL qualification profile can reproduce real
