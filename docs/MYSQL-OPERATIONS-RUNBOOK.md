@@ -33,6 +33,23 @@ owner and has permission to restart dependent services.
 | Certificate verification / TLS authentication failure | Block connection, review CA trust anchor, hostname/SAN, credential rotation and server configuration | Certificate and account validation succeed; **never downgrade to plaintext** |
 | Repeated crash, corruption or loss of server | Stop write traffic, escalate to database operators; isolate failed node, preserve evidence and recover using the customer's documented restore/failover process | Database integrity confirmed, application outcome reconciliation finished and driver health probes succeed |
 
+## Explicit endpoint cutover requires proven data continuity
+
+An alternate MySQL host responding to `SELECT 1` or passing its
+native health probe is **not proof** that it contains the committed
+application data from a failed primary. Do not promote, replay writes,
+or reopen business workflows merely because a replacement connection
+succeeds. An authorised topology controller and database operator
+must independently verify replication and durable transaction state,
+prevent concurrent primaries (fencing), reconcile affected business
+tokens and explicitly approve new writes.
+
+The disposable two-node CI safety scenario intentionally has **no
+replication**. It proves that a healthy second MySQL server lacking
+the committed token causes cutover to be blocked, while the failed
+primary is restarted and its durable token can still be found. This
+is a safety regression, not an operable automatic failover system.
+
 ## Single-node crash at COMMIT
 
 Disposable CI qualification now sends one bound InnoDB write and COMMIT,
