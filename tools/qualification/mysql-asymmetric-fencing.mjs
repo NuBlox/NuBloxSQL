@@ -131,6 +131,10 @@ try{
       "CREATE USER 'nublox_repl'@'%' IDENTIFIED BY 'fixture-repl-only'");
     await db.query(
       "GRANT REPLICATION SLAVE ON *.* TO 'nublox_repl'@'%'");
+    // Source-created read-only observer user replicates to the standby
+    // before its super_read_only setting is enabled.
+    await db.query(
+      "CREATE USER 'nublox_probe'@'%' IDENTIFIED BY 'fixture-probe-only'");
   });
   stage='replica-settings';
   await session(replica,async db=>{
@@ -265,11 +269,6 @@ try{
     '--protocol=tcp','--connect-timeout=2',
     '-u','nublox_probe','-h',address,'-N','-B','-e','SELECT 1'
   ],15000);
-  // Read-only probe users are created only for the disposable test.
-  await session(source,db=>db.query(
-    "CREATE USER 'nublox_probe'@'%' IDENTIFIED BY 'fixture-probe-only'"));
-  await session(replica,db=>db.query(
-    "CREATE USER 'nublox_probe'@'%' IDENTIFIED BY 'fixture-probe-only'"));
   assert.equal(await probe(observerSourceNet,sourceIP),'1');
   report.observers.sourceObserverCanReachSource=true;
   assert.equal(await probe(observerReplicaNet,replicaIP),'1');
