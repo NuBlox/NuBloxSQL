@@ -62,6 +62,23 @@ A checksum/registry allowlist is not a substitute for audit, provenance,
 a reviewed dependency update, independent security evaluation or legal
 distribution approval. G7 and G10 remain **partial/not met** respectively.
 
+## Asymmetric observer visibility and test-controlled hard fencing
+
+An additional pinned MySQL 8.4.13 CI gate now uses independent
+network-scoped observer clients with conflicting views of which
+MySQL node is reachable. The test proves that a stale candidate
+cannot be promoted on local health alone, persists a read-only
+fence on the current source, kills its actual server process, then
+requires that promotion remain blocked while GTIDs are missing.
+Following a read-only restart, GTID replication must recover and
+both nodes must remain non-writable. A separate same-run evidence
+decision verifies network views, source fencing and cleanup.
+
+This advances the G11 qualification matrix beyond symmetric
+client reachability, but does not implement production distributed
+fencing or authoritative leader election. The two-server test is
+not an availability SLA or commercial HA approval.
+
 ## Split-brain safety during a replication-link partition
 
 An additional disposable MySQL 8.4.13 CI gate now partitions only the
