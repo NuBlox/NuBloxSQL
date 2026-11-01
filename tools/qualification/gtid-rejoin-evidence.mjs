@@ -30,7 +30,7 @@ export function validateFormerPrimaryRejoinEvidence(report,context={}){
   return Object.freeze({
     schemaVersion:1,kind:'mysql-gtid-rejoin-decision',
     status:'passed',revision:base.revision,runId:base.runId,
-    version:base.version,primaryFenced:true,
+    version:base.version,primaryFenced:true,replicaCaughtUp:true,
     formerPrimaryRestartedReadOnly:true,reverseReplicationCaughtUp:true,
     originalTokenCount:1,promotedTokenCount:1,
     formerPrimaryRejectedWrites:1,
