@@ -83,6 +83,46 @@ COMMIT, validate replica durability, customer transaction isolation,
 external side effects or a multi-node failover. Write-path resilience and
 G4/G11 therefore remain **partial/not met** for a commercial release.
 
+## Asymmetric client views and externally enforced source fencing
+
+The `mysql-asymmetric-fencing` job creates two individually
+isolated **observer** Docker networks in addition to the pinned
+MySQL 8.4.13 replication fixture. Each observer authenticates to
+only its own reachable MySQL endpoint and cannot access the other
+endpoint's observer-network address. The observer paths intentionally
+disagree about which database is reachable. Neither a successful
+connection nor a locally healthy database authorises promotion.
+
+After GTID catch-up is established, the test disconnects the private
+replication network, commits one additional business token on the
+original primary, and verifies that the stale read-only replica lacks
+the token and the source GTID barrier times out. The replica must
+reject client writes and the promotion decision must be blocked.
+
+The source is then **write-fenced** with
+`SET PERSIST super_read_only=ON` and a real client INSERT must
+be rejected. CI sends a genuine Docker `SIGKILL` to that source
+and confirms the process has stopped. Even after the hard kill,
+promotion remains blocked because the candidate still lacks GTIDs.
+On restarting the original source, the persisted write fence must
+remain in effect and another client write must be rejected.
+The replication network is reconnected and the replica must catch up
+to the original committed GTID set. Both servers must remain
+read-only after this particular recovery test; there is no
+automatic promotion, write replay or second writable primary.
+
+A separate same-run evidence job rejects unverified observer views,
+missing hard kill, an unsafe restart, incomplete GTID catch-up
+or unremoved test infrastructure. All tests operate exclusively on
+disposable, independently labelled Docker fixtures.
+
+**Scope:** observer reachability asymmetry and one replication-link
+partition on a single Docker host, with an explicitly controlled
+process kill and persisted SQL write fence. This is not a distributed
+consensus protocol, an external fencing authority suitable for
+production, a quorum election, network packet-level fault matrix,
+or general split-brain prevention. Commercial G11 remains unmet.
+
 ## Live GTID network partition and split-brain refusal
 
 The pinned `mysql-gtid-network-partition` CI profile exercises two real
