@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
-import {execFile} from 'node:child_process';
+import {execFile,spawn} from 'node:child_process';
 import {promisify} from 'node:util';
 import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
@@ -30,6 +30,29 @@ const docker=promisify(execFile);
 const dockerRun=async(args,timeout=30000)=>
   (await docker('docker',args,{timeout,maxBuffer:128*1024})).stdout.trim();
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+/** Setup/teardown DDL unsupported by MySQL COM_STMT_PREPARE (error 1295)
+ * is performed only with the disposable MySQL image's own CLI.
+ * No source SQL, credentials or stderr enter CI reports. Application
+ * fenced writes and all authority reads still exercise NuBloxSQL. */
+async function fixtureAdminSql(sql,{routine=false}={}){
+  const input=routine?
+    'DELIMITER //\n'+sql+'//\nDELIMITER ;\n':
+    sql+';\n';
+  await new Promise((resolve,reject)=>{
+    const proc=spawn('docker',[
+      'exec','-i','-e','MYSQL_PWD=test-password','nubloxsql-mysql-tls',
+      'mysql','--protocol=tcp','-h127.0.0.1','-uroot',
+      '--database=nublox_test'
+    ],{stdio:['pipe','ignore','ignore'],timeout:20000});
+    proc.on('error',()=>reject(Error('Disposable MySQL CLI provisioning failed')));
+    proc.on('close',code=>code===0?resolve():
+      reject(Error('Disposable MySQL CLI rejected fixture DDL')));
+    proc.stdin.on('error',()=>{});
+    proc.stdin.end(input);
+  });
+}
+
 const ca=readFileSync(process.env.NUBLOX_TLS_CA_FILE,'utf8');
 const target=(user,password)=>({
   engine:'mysql',host:'127.0.0.1',port:3307,user,password,
@@ -157,13 +180,13 @@ try{
       "(requested_token,requested_epoch,SUBSTRING_INDEX(USER(),'@',1),"+
       'requested_payload);COMMIT;END';
     stage='create-guarded-routine';
-    await db.query(sql);
+    await fixtureAdminSql(sql,{routine:true});
     for(const [user,password] of [[nameA,passA],[nameB,passB]]){
       stage='create-restricted-principal';
-      await db.query("CREATE USER '"+user+"'@'%' IDENTIFIED WITH "+
+      await fixtureAdminSql("CREATE USER '"+user+"'@'%' IDENTIFIED WITH "+
         "caching_sha2_password BY '"+password+"' REQUIRE SSL");
       stage='grant-restricted-execute';
-      await db.query('GRANT EXECUTE ON PROCEDURE '+tab(procedure)+
+      await fixtureAdminSql('GRANT EXECUTE ON PROCEDURE '+tab(procedure)+
         " TO '"+user+"'@'%'");
     }
   });
@@ -309,7 +332,7 @@ try{
   if(setup&&report.cleanup.mysqlRestored){
     try{
       await inSession(admin,async db=>{
-        await db.query('DROP PROCEDURE IF EXISTS '+tab(procedure));
+        await fixtureAdminSql('DROP PROCEDURE IF EXISTS '+tab(procedure));
         for(const t of [operations,authority])
           await db.query('DROP TABLE IF EXISTS '+tab(t));
       });
@@ -323,7 +346,7 @@ try{
     try{
       await inSession(admin,async db=>{
         for(const name of [nameA,nameB])
-          await db.query("DROP USER IF EXISTS '"+name+"'@'%'");
+          await fixtureAdminSql("DROP USER IF EXISTS '"+name+"'@'%'");
       });
       report.cleanup.principalsRemoved=true;
     }catch{
