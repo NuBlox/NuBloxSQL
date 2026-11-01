@@ -62,6 +62,24 @@ A checksum/registry allowlist is not a substitute for audit, provenance,
 a reviewed dependency update, independent security evaluation or legal
 distribution approval. G7 and G10 remain **partial/not met** respectively.
 
+## Read-only former-primary recovery and GTID rejoin
+
+The pinned disposable MySQL 8.4.13 qualification now includes a
+recovered former-primary scenario. The old source persists its
+`super_read_only` fence **before** process termination, remains stopped
+while a caught-up replica is explicitly promoted, and restarts in
+read-only mode after the promoted node commits a new operation token.
+A client INSERT on the recovered server must fail; it must then
+configure reverse GTID auto-positioned replication, receive the
+promoted commit, and retain both original and new tokens without ever
+becoming writable. The promoted source remains the sole writable
+instance. Independent same-run evidence and negative tests are required.
+
+This strengthens controlled recovery engineering coverage for G11,
+but does not implement customer fencing authority, automatic
+former-primary rejoin, split-brain detection under arbitrary
+network partitions or production availability guarantees.
+
 ## Real MySQL GTID replication and controlled fixture promotion
 
 A pinned, isolated two-container MySQL 8.4.13 CI profile now

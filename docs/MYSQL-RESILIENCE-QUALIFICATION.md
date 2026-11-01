@@ -83,6 +83,40 @@ COMMIT, validate replica durability, customer transaction isolation,
 external side effects or a multi-node failover. Write-path resilience and
 G4/G11 therefore remain **partial/not met** for a commercial release.
 
+## Former-primary restart and read-only GTID rejoin
+
+The `mysql-gtid-former-primary-rejoin` CI profile extends the existing
+GTID replication/fenced-promotion experiment. Before killing the old source,
+it applies `SET PERSIST super_read_only=ON`, verifies its runtime
+`super_read_only` and `read_only` state, and then fences the process.
+After a caught-up replica is explicitly promoted and accepts a new business
+token, the original source is **restarted without dropping its persistent
+fence**.
+
+The runner requires the recovered instance to start healthy but with both
+read-only flags still enabled. It submits an actual bound INSERT as the
+administrative test user and requires a database-level rejection and no
+durable row. It configures GTID `SOURCE_AUTO_POSITION=1` in the reverse
+direction, verifies both replication threads, and waits for the promoted
+source's full executed GTID set. Only after the wait succeeds does it
+verify the original and promoted business tokens on the old instance,
+which must remain `super_read_only=ON`. The promoted instance must
+remain writable. Both disposable containers and their isolated network
+are then removed.
+
+An independent evidence gate requires the same Git revision and run,
+both original GTID/fenced-promotion prerequisites, persisted write fencing,
+a rejected former-primary client write, live reverse replication, exact
+GTID catch-up, both tokens, one writable primary and complete disposal.
+Negative tests reject writable restarts, skipped write rejection,
+missing GTID catch-up and duplicate application writes.
+
+This is **controlled CI former-primary rejoin qualification**, not a
+general-purpose source election, commercial automatic failover or a
+production re-seeding system. Incorrectly configured customer nodes
+can still become split-brain without external fencing authority,
+topology ownership and explicit operator approvals. G11 remains open.
+
 ## GTID replication and test-only source-fenced promotion
 
 A separate CI-only `mysql-gtid-fenced-promotion` profile provisions **two
