@@ -83,6 +83,46 @@ COMMIT, validate replica durability, customer transaction isolation,
 external side effects or a multi-node failover. Write-path resilience and
 G4/G11 therefore remain **partial/not met** for a commercial release.
 
+## GTID replication and test-only source-fenced promotion
+
+A separate CI-only `mysql-gtid-fenced-promotion` profile provisions **two
+disposable MySQL 8.4.13 containers** with distinct server IDs and UUIDs,
+GTID mode, row-based binary logging and an isolated Docker network.
+It creates a dedicated replication user, enables
+`CHANGE REPLICATION SOURCE TO ... SOURCE_AUTO_POSITION=1`, starts
+the replica, and verifies both replication threads and read-only
+standby settings.
+
+The profile commits a bound business-operation token on the source,
+captures its complete executed GTID set, requires the replica's
+`WAIT_FOR_EXECUTED_GTID_SET(..., 20)` to report successful
+application, and independently checks that the token is present on
+the read-only replica. **Only then** does the test SIGKILL and
+verify fencing of the old source and apply a separate explicitly
+approved *fixture-only* promotion decision. It stops and clears the
+replication channel, enables writes on the previously read-only
+replica and proves a new token can be committed while the original
+token remains present. The former source must stay stopped.
+The containers and private Docker network are removed rather than
+restarting a now-divergent former primary.
+
+The test rejects a lagged replica, a missing GTID application barrier,
+an unfenced old primary, missing explicit test approval, duplicate
+business writes and either server accepting unapproved promotion.
+A dependent evidence job rechecks the exact run, commit, server
+identity, caught-up GTIDs, fence, acknowledged writes, no replay
+and isolated resource disposal before retaining a reduced report.
+
+This is **a genuine replication and controlled promotion experiment**,
+but not a production HA implementation: the Driver still exposes
+endpoint-bound pools and does not provide topology discovery, fencing
+authority, automatic promotion, cross-region consensus, RPO/RTO
+guarantees or restoration/rejoining of the old primary. Only a
+disposable CI fixture can authorise this promotion. G11 is still open.
+
+References: MySQL 8.4 manual, GTID replication setup, SOURCE_AUTO_POSITION
+and WAIT_FOR_EXECUTED_GTID_SET.
+
 ## Two-node cutover safety: an independent standby is not an HA replica
 
 The `mysql-two-node-cutover` job uses **two separate, disposable MySQL

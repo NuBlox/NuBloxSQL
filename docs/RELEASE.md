@@ -62,6 +62,25 @@ A checksum/registry allowlist is not a substitute for audit, provenance,
 a reviewed dependency update, independent security evaluation or legal
 distribution approval. G7 and G10 remain **partial/not met** respectively.
 
+## Real MySQL GTID replication and controlled fixture promotion
+
+A pinned, isolated two-container MySQL 8.4.13 CI profile now
+provisions source/replica GTID replication rather than assuming
+a healthy second server is current. It waits for a source GTID
+barrier, verifies an acknowledged business-token commit is present
+on the read-only replica, kills and fences the original source,
+and then permits an **explicit test-only promotion** of the
+caught-up replica. The new promoted node must preserve the
+original token and acknowledge exactly one new write, while the
+former source remains stopped. A second job independently verifies
+the retained same-run evidence.
+
+This improves G11 engineering evidence but does **not** supply a
+production failover controller, synchronous data-loss prevention,
+authorised customer fencing, former-primary rejoin, cloud topology
+support, availability SLA or generally safe automatic routing.
+Commercial G11 approval remains **not met**.
+
 ## Independent MySQL endpoint cutover must fail closed
 
 A two-node pinned MySQL 8.4.13 qualification now provisions independent,

@@ -33,6 +33,22 @@ owner and has permission to restart dependent services.
 | Certificate verification / TLS authentication failure | Block connection, review CA trust anchor, hostname/SAN, credential rotation and server configuration | Certificate and account validation succeed; **never downgrade to plaintext** |
 | Repeated crash, corruption or loss of server | Stop write traffic, escalate to database operators; isolate failed node, preserve evidence and recover using the customer's documented restore/failover process | Database integrity confirmed, application outcome reconciliation finished and driver health probes succeed |
 
+## GTID catch-up does not replace fencing authority
+
+The disposable MySQL qualification profile can reproduce real
+source-to-replica GTID catch-up, then promote a read-only replica
+only after the old source is demonstrably stopped and the test has
+explicitly authorised that promotion. Promotion is never
+inferred from server health or from a replication checkpoint alone.
+
+For any actual customer system, only its approved topology controller
+and database operators may decide or perform promotion. Require
+a supported election/fencing mechanism, durable transaction
+reconciliation, replicas demonstrably caught up to the chosen
+recovery point, and controlled restoration of the old primary
+before accepting writes. The NuBloxSQL client **does not yet
+perform automatic HA failover**.
+
 ## Explicit endpoint cutover requires proven data continuity
 
 An alternate MySQL host responding to `SELECT 1` or passing its
