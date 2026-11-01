@@ -62,6 +62,24 @@ A checksum/registry allowlist is not a substitute for audit, provenance,
 a reviewed dependency update, independent security evaluation or legal
 distribution approval. G7 and G10 remain **partial/not met** respectively.
 
+## Split-brain safety during a replication-link partition
+
+An additional disposable MySQL 8.4.13 CI gate now partitions only the
+source-to-replica Docker replication network while both database
+endpoints remain independently healthy and reachable. A new committed
+source write is deliberately missing from the read-only replica and
+the full source GTID barrier times out. The test verifies that direct
+writes to the replica fail and an explicit fail-closed policy blocks
+unsafe promotion and SQL replay while the old source is unfenced.
+After the transport heals, the replica must catch up, preserve both
+business tokens and remain read-only with the original source still
+writable. Same-run independent evidence validation is required.
+
+This strengthens **one specific partition safety path**, not a
+production election protocol, lossless replication contract, topology
+fencing authority or general multi-node high availability.
+Commercial gate G11 remains **not met**.
+
 ## Read-only former-primary recovery and GTID rejoin
 
 The pinned disposable MySQL 8.4.13 qualification now includes a

@@ -709,3 +709,115 @@ jobs:
           path: artifacts/qualification-matrix/mysql-gtid-rejoin-decision-*.json
           if-no-files-found: error
           retention-days: 60
+
+  gtid-network-partition:
+    name: mysql-gtid-network-partition
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      NUBLOX_LIVE_MYSQL: '1'
+      NUBLOX_QUALIFICATION_MYSQL_VERSION: '8.4.13'
+      MYSQL_PASSWORD: test-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked workspace, compile and reject unsafe promotions
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          node --test tools/qualification/gtid-partition-evidence.test.mjs
+      - name: Provision two uniquely identified GTID-enabled MySQL 8.4.13 containers
+        shell: bash
+        run: |
+          set -euo pipefail
+          network="nublox-gtid-${{ github.run_id }}"
+          docker network create "$network"
+          source_id="$(docker run -d \
+            --name "nublox-gtid-source-${{ github.run_id }}" \
+            --network bridge \
+            --label "nublox.qual.run=${{ github.run_id }}" \
+            --label nublox.qual.role=source \
+            -p 127.0.0.1:3306:3306 \
+            -e MYSQL_ROOT_PASSWORD=test-password -e MYSQL_ROOT_HOST=% \
+            --health-cmd='mysqladmin ping -h 127.0.0.1 -u root --password=test-password' \
+            --health-interval=5s --health-timeout=5s --health-retries=40 \
+            mysql:8.4.13 --server-id=101 --gtid-mode=ON \
+            --enforce-gtid-consistency=ON --log-bin=mysql-bin --binlog-format=ROW)"
+          replica_id="$(docker run -d \
+            --name "nublox-gtid-replica-${{ github.run_id }}" \
+            --network bridge \
+            --label "nublox.qual.run=${{ github.run_id }}" \
+            --label nublox.qual.role=replica \
+            -p 127.0.0.1:3307:3306 \
+            -e MYSQL_ROOT_PASSWORD=test-password -e MYSQL_ROOT_HOST=% \
+            --health-cmd='mysqladmin ping -h 127.0.0.1 -u root --password=test-password' \
+            --health-interval=5s --health-timeout=5s --health-retries=40 \
+            mysql:8.4.13 --server-id=102 --gtid-mode=ON \
+            --enforce-gtid-consistency=ON --log-bin=mysql-bin --binlog-format=ROW \
+            --relay-log-recovery=ON)"
+          docker network connect --alias nublox-gtid-source "$network" "$source_id"
+          docker network connect --alias nublox-gtid-replica "$network" "$replica_id"
+          echo "NUBLOX_GTID_NETWORK=$network" >> "$GITHUB_ENV"
+          echo "NUBLOX_GTID_SOURCE_CONTAINER=$source_id" >> "$GITHUB_ENV"
+          echo "NUBLOX_GTID_REPLICA_CONTAINER=$replica_id" >> "$GITHUB_ENV"
+          for id in "$source_id" "$replica_id"; do
+            ready=false
+            for i in {1..90}; do
+              status="$(docker inspect -f '{{.State.Health.Status}}' "$id")"
+              if [[ "$status" == healthy ]]; then ready=true; break; fi
+              if [[ "$status" == unhealthy ]]; then break; fi
+              sleep 2
+            done
+            test "$ready" = true
+          done
+      - name: Test actual GTID partition and blocked unsafe promotion
+        env:
+          NUBLOX_ALLOW_DESTRUCTIVE_MYSQL_FIXTURE: '1'
+        run: node tools/qualification/mysql-gtid-partition.mjs
+      - name: Remove only test-owned disposable Docker fixtures
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f "nublox-gtid-source-${{ github.run_id }}" \
+            "nublox-gtid-replica-${{ github.run_id }}" 2>/dev/null || true
+          docker network rm "nublox-gtid-${{ github.run_id }}" 2>/dev/null || true
+      - name: Retain redacted original partition report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-gtid-partition-${{ github.run_id }}
+          path: artifacts/qualification/mysql-gtid-partition-${{ github.run_id }}.json
+          if-no-files-found: error
+          retention-days: 60
+
+  gtid-network-partition-evidence:
+    name: mysql-gtid-network-partition-evidence
+    if: ${{ always() }}
+    needs: [gtid-network-partition]
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require passed GTID partition blocking and catch-up
+        run: test "${{ needs.gtid-network-partition.result }}" = success
+      - name: Retrieve exact-run original partition report
+        uses: actions/download-artifact@v4
+        with:
+          name: mysql-gtid-partition-${{ github.run_id }}
+          path: artifacts/gtid-promotion-original
+      - name: Independently reject stale or unsafe promotion evidence
+        run: |
+          node --test tools/qualification/gtid-partition-evidence.test.mjs
+          node tools/qualification/verify-gtid-partition.mjs artifacts/gtid-promotion-original
+      - name: Retain independently verified partition-blocked decision
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-gtid-partition-decision-${{ github.run_id }}
+          path: artifacts/qualification-matrix/mysql-gtid-partition-decision-*.json
+          if-no-files-found: error
+          retention-days: 60
