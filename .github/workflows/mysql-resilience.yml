@@ -374,3 +374,116 @@ jobs:
           path: artifacts/qualification-matrix/mysql-commit-crash-decision-*.json
           if-no-files-found: error
           retention-days: 60
+
+  two-node-cutover:
+    name: mysql-two-node-cutover
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      primary:
+        image: mysql:8.4.13
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: nublox_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
+      standby:
+        image: mysql:8.4.13
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: nublox_test
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
+    env:
+      NUBLOX_LIVE_MYSQL: '1'
+      NUBLOX_QUALIFICATION_MYSQL_VERSION: '8.4.13'
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test-password
+      MYSQL_DATABASE: nublox_test
+      NUBLOX_PRIMARY_PORT: '3306'
+      NUBLOX_STANDBY_PORT: '3307'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install the locked workspace and compile
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Run fail-closed unreplicated-cutover policy regressions
+        run: node --test tools/qualification/two-node-cutover-evidence.test.mjs
+      - name: Authorise only two individually identified disposable MySQL services
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t ids < <(docker ps -q --filter 'ancestor=mysql:8.4.13')
+          test "${#ids[@]}" -eq 2
+          primary=''
+          standby=''
+          for id in "${ids[@]}"; do
+            ports="$(docker port "$id" 3306/tcp)"
+            if grep -q ':3306$' <<< "$ports"; then
+              test -z "$primary"
+              primary="$id"
+            fi
+            if grep -q ':3307$' <<< "$ports"; then
+              test -z "$standby"
+              standby="$id"
+            fi
+          done
+          test -n "$primary" && test -n "$standby" && test "$primary" != "$standby"
+          echo "NUBLOX_PRIMARY_CONTAINER=$primary" >> "$GITHUB_ENV"
+          echo "NUBLOX_STANDBY_CONTAINER=$standby" >> "$GITHUB_ENV"
+      - name: Crash primary, reject unsafe cutover and reconcile after restore
+        env:
+          NUBLOX_ALLOW_DESTRUCTIVE_MYSQL_FIXTURE: '1'
+        run: node tools/qualification/mysql-two-node-cutover.mjs
+      - name: Retain original two-node safety report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-two-node-cutover-${{ github.run_id }}
+          path: artifacts/qualification/mysql-two-node-cutover-${{ github.run_id }}.json
+          if-no-files-found: error
+          retention-days: 60
+
+  two-node-cutover-evidence:
+    name: mysql-two-node-cutover-evidence
+    if: ${{ always() }}
+    needs: [two-node-cutover]
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require passed real primary crash and cutover policy
+        run: test "${{ needs.two-node-cutover.result }}" = success
+      - name: Download original report from this exact run
+        uses: actions/download-artifact@v4
+        with:
+          name: mysql-two-node-cutover-${{ github.run_id }}
+          path: artifacts/two-node-cutover-source
+      - name: Independently verify blocked unsafe promotion and no replay
+        run: |
+          node --test tools/qualification/two-node-cutover-evidence.test.mjs
+          node tools/qualification/verify-two-node-cutover.mjs artifacts/two-node-cutover-source
+      - name: Retain reduced fail-closed cutover decision
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-two-node-cutover-decision-${{ github.run_id }}
+          path: artifacts/qualification-matrix/mysql-two-node-cutover-decision-*.json
+          if-no-files-found: error
+          retention-days: 60

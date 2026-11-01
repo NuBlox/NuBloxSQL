@@ -62,6 +62,24 @@ A checksum/registry allowlist is not a substitute for audit, provenance,
 a reviewed dependency update, independent security evaluation or legal
 distribution approval. G7 and G10 remain **partial/not met** respectively.
 
+## Independent MySQL endpoint cutover must fail closed
+
+A two-node pinned MySQL 8.4.13 qualification now provisions independent,
+nonreplicated database containers. After committing a business token on
+one node it crashes that primary during an in-flight read, confirms old
+pool retirement and connects freshly to the healthy alternate node.
+The alternate node lacks the committed token, so application-managed
+cutover is **blocked**: no automatic transaction replay, write
+resumption or standby promotion is permitted. The original node is
+restarted, original committed state is reconciled and both fixtures
+are cleaned up. A dependent job checks the retained same-run
+evidence and malicious/partial evidence fixtures are unit-tested.
+
+**This does not establish multi-node high availability or replication.**
+It demonstrates a critical no-data-loss safety prerequisite for G11,
+which remains **not met** pending genuine replication, failover and
+fencing qualification on supported topologies.
+
 ## Genuine MySQL server-crash COMMIT qualification
 
 A dedicated PR/main CI job now crashes a pinned disposable MySQL

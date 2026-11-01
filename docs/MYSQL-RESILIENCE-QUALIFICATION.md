@@ -83,6 +83,38 @@ COMMIT, validate replica durability, customer transaction isolation,
 external side effects or a multi-node failover. Write-path resilience and
 G4/G11 therefore remain **partial/not met** for a commercial release.
 
+## Two-node cutover safety: an independent standby is not an HA replica
+
+The `mysql-two-node-cutover` job uses **two separate, disposable MySQL
+8.4.13 containers**, on independent loopback ports 3306 and 3307. Both
+container identities, server versions and internal server UUIDs must differ
+appropriately before a test-owned committed InnoDB operation token is
+established on the original primary. The second instance is intentionally
+**not configured for replication**.
+
+The runner kills the actual primary process during a dispatched read,
+proves that the old native pooled session fails and is discarded, and
+establishes a fresh authenticated connection to the separate standby.
+Despite its passing health check, the standby **does not possess** the
+committed business token. The explicit cutover policy therefore refuses
+promotion or resumed writes and forbids automatic replay. After the
+original container recovers, the primary must still hold exactly one
+durable token. Test-owned tables and pool slots must be cleaned up.
+
+The separate `mysql-two-node-cutover-evidence` job independently
+verifies the exact-run report, the two distinct pinned MySQL endpoints,
+the real crash, original write count, absent standby data, blocked
+cutover, zero replay, restored original primary and resource cleanup.
+Pure negative tests reject forged promotions, replay, wrong versions,
+missing crashes and incomplete cleanup.
+
+**This is a fail-closed topology boundary test, not replication,
+automatic promotion, a high-availability implementation or a valid
+customer failover claim.** A real HA milestone requires verified
+replication consistency, authoritative topology election/fencing,
+safe promotion and recovery-point evidence under both network
+partitions and leader crashes. G11 remains open.
+
 ## Real MySQL server crash during an unacknowledged COMMIT
 
 The `mysql-commit-server-crash` CI job now uses an isolated, pinned
