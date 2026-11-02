@@ -40,6 +40,40 @@ on identical dedicated hardware, full dependency locks, confidence intervals
 and a broader workload mix before a commercial claim is defensible. No
 third-party comparator is bundled with `@nublox/driver`.
 
+## Strict certificate-verified TLS competitor qualification
+
+The [verified-TLS CI comparison](../../../.github/workflows/mysql-comparison-tls.yml)
+reuses the **same native-vs-mysql2 paired benchmark** on pinned MySQL
+**8.4.13**, with `require_secure_transport=ON`, a disposable certificate
+authority and the same bound SQL for each client. NuBloxSQL uses its
+`verified-tls` security profile. The isolated comparison-only
+`mysql2@3.24.6` peer explicitly sets `ssl.ca`,
+`rejectUnauthorized: true` and **`verifyIdentity: true`**. Merely
+providing a CA is not sufficient evidence of hostname verification.
+
+Before timing, the runner proves that both clients use a nonempty server
+`Ssl_cipher`, the server requires TLS, and both clients refuse an
+unrelated CA. It never benchmarks a plaintext client alongside a TLS
+client. For connection-handshake parity, mysql2 receives an independent
+SSL options object per connection so its documented TLS session-ticket
+reuse does not silently confer a connection-timing advantage. These
+are deliberately controlled comparative semantics, not a claim that
+session resumption is undesirable in a deployed application.
+
+Two independent consecutive samples with alternating vendor order are
+retained. A separate evidence-validation job verifies source revision,
+same Actions run, two exact original reports, pinned MySQL/Node/mysql2
+versions, transport-security checks, matched configuration and complete
+paired trials before independently recomputing latency ratios. A
+two-run shared-CI sample must remain **inconclusive**; no superiority
+or service-level claim can be made. Real customer claims require a
+repeated dedicated-hardware benchmark across TLS, pooled workloads,
+larger result sets, prepared statements and representative cloud latency.
+
+The existing isolated plaintext comparator remains unchanged for
+diagnostic before/after comparison. Its results must not be aggregated
+with verified-TLS reports.
+
 ## Paired-round variance analysis
 
 The concurrent comparison report now includes an `analysis` section in
