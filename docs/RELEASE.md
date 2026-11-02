@@ -67,10 +67,14 @@ session and reports `TRANSACTION_OUTCOME_UNKNOWN`; no subsequent synthetic
 `COMMIT` or automatic write replay is permitted. New deterministic and live
 InnoDB regression tests demonstrate a durable INSERT surviving DDL's implicit
 commit, followed by reconciliation through a fresh pooled connection. This
-improves detection, **not** rollback guarantees: MySQL DDL and certain
-administrative operations commit before execution, stored routines may change
-transaction boundaries, and no status-after-success check can detect all
-nested or failed-statement cases. Applications must avoid these operations
+improves detection, **not** rollback guarantees. For a recoverable SQL
+error in a managed transaction, the native client now issues one same-session
+COM_PING status probe: if the transaction is no longer active or cannot be
+verified, the driver discards the connection and reports an unknown outcome.
+This closes the failed-DDL pre-commit gap while preserving normal SQL errors
+when the server confirms an active transaction. MySQL DDL and administrative
+operations can commit before execution, and routines can alter transaction
+boundaries beyond what status probes alone can prove. Applications must avoid these operations
 inside managed transactions and reconcile uncertain outcomes. G4 remains
 **partial / pending**, not commercially signed off.
 
