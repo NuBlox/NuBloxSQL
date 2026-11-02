@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {PacketStream} from '../dist/vendors/mysql/protocol/framing.js';
 import {MysqlSession} from '../dist/vendors/mysql/adapter.js';
+import {fail} from '../dist/core/errors.js';
 
 class FakeSocket extends EventEmitter{
   destroyed=false;
@@ -87,4 +88,75 @@ test('missing final scoped transaction status revokes connection instead of assu
   }),error=>error.code==='TRANSACTION_OUTCOME_UNKNOWN');
   assert.deepEqual(controls,['START TRANSACTION']);
   assert.equal(session.closed,true);
+});
+
+
+test('SQL ERR while server remains in the transaction keeps original error and rolls back',async()=>{
+  const {session,controls,socket}=fixture([]);
+  const original=fail('DATABASE_ERROR','duplicate key');
+  session.executeNativeResults=async()=>{throw original;};
+  const pings=[];
+  session.send=async packet=>{pings.push(Buffer.from(packet));};
+  session.get=async()=>Buffer.from([0,0,0,1,0,0,0]); // OK, IN_TRANS
+  await assert.rejects(session.transaction(async tx=>{
+    await tx.query('INSERT duplicate');
+  }),error=>error===original);
+  assert.deepEqual(pings,[Buffer.from([0x0e])],'one COM_PING on the original socket');
+  assert.deepEqual(controls,['START TRANSACTION','ROLLBACK']);
+  assert.equal(session.closed,false);
+  await session.close();
+  assert.equal(socket.destroyed,true);
+});
+
+test('SQL ERR after implicit commit is reported unknown without issuing ROLLBACK',async()=>{
+  for(const method of ['query','queryResults']){
+    const {session,controls,socket}=fixture([]);
+    session.executeNativeResults=async()=>{throw fail('DATABASE_ERROR','DDL rejected');};
+    const pings=[];
+    session.send=async packet=>{pings.push(Buffer.from(packet));};
+    session.get=async()=>Buffer.from([0,0,0,2,0,0,0]); // OK, AUTOCOMMIT; no IN_TRANS
+    await assert.rejects(session.transaction(async tx=>{
+      await tx[method]('ALTER TABLE failed');
+    }),error=>error.code==='TRANSACTION_OUTCOME_UNKNOWN');
+    assert.deepEqual(pings,[Buffer.from([0x0e])]);
+    assert.deepEqual(controls,['START TRANSACTION']);
+    assert.equal(session.closed,true);
+    assert.equal(socket.destroyed,true);
+  }
+});
+
+test('a failed transaction-state probe never reports definite rollback',async()=>{
+  const {session,controls,socket}=fixture([]);
+  session.executeNativeResults=async()=>{throw fail('DATABASE_ERROR','SQL rejected');};
+  session.send=async()=>{};
+  session.get=async()=>{throw fail('CONNECTION_CLOSED','missing PING response');};
+  await assert.rejects(session.transaction(async tx=>{
+    await tx.query('ALTER TABLE failed');
+  }),error=>error.code==='TRANSACTION_OUTCOME_UNKNOWN'&&
+    /could not be verified/.test(error.message));
+  assert.deepEqual(controls,['START TRANSACTION']);
+  assert.equal(session.closed,true);
+  assert.equal(socket.destroyed,true);
+});
+
+test('callback may handle recoverable SQL ERR and still commit its active transaction',async()=>{
+  const {session,controls}=fixture([]);
+  const original=fail('DATABASE_ERROR','constraint violation');
+  let executions=0;
+  session.executeNativeResults=async()=>{
+    executions++;
+    if(executions===1)throw original;
+    return [row(1)];
+  };
+  session.send=async()=>{};
+  session.get=async()=>Buffer.from([0,0,0,1,0,0,0]);
+  const value=await session.transaction(async tx=>{
+    await assert.rejects(tx.queryResults('INSERT rejected'),error=>error===original);
+    await tx.query('SELECT succeeding');
+    return 'committed';
+  });
+  assert.equal(value,'committed');
+  assert.deepEqual(controls,['START TRANSACTION','COMMIT']);
+  assert.equal(session.closed,false);
+  await session.close();
 });
