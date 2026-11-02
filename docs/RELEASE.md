@@ -58,6 +58,19 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## All-settled pool shutdown disposal barrier (G6)
+
+The bounded connection pool no longer uses fail-fast `Promise.all` for
+native session shutdown: a single rejected close must not settle the shared
+`close()` barrier while another physical connection is still closing. It now
+awaits all currently owned and already-discarding session closures, preserves
+the first native disposal error for the caller, never retries a failed close,
+and counts native slots until each closure finishes. Deterministic regression
+tests inject an early failed close plus a slower independent close, including
+a session already being discarded. Late noncooperative dialing remains an
+explicitly bounded best-effort shutdown limitation; no guarantee of graceful
+server drain or production readiness is inferred. G6 stays incomplete.
+
 ## Cursor cleanup error precedence (G4/G6)
 
 A secondary failed `COM_STMT_CLOSE` after cursor work must not overwrite the

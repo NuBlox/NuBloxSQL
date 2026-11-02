@@ -390,14 +390,23 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
     this.idle.length=0;
     const live=[...this.sessions];
     this.sessions.clear();
-    this.sizeCount-=live.length; // outstanding connects decrement when they settle
     this.discarded+=live.length;
-    // Closing may be asynchronous. The shared promise ensures a second
-    // caller never observes completion before transport disposal finishes.
-    this.closePromise=Promise.all([
-      ...this.disposing,
-      ...live.map(session=>Promise.resolve().then(()=>session.close()))
-    ]).then(()=>undefined);
+    // Keep native capacity reserved until each physical close has settled,
+    // even when another close fails. A rejected Promise.all would otherwise
+    // end the shared shutdown barrier while other sockets are still open.
+    const ownedCloses=live.map(session=>
+      Promise.resolve().then(()=>session.close()).finally(()=>{
+        this.sizeCount--;
+      })
+    );
+    this.closePromise=Promise.allSettled([
+      ...this.disposing,...ownedCloses
+    ]).then(results=>{
+      // Observe every disposal before surfacing the first cleanup failure.
+      // No retry: a failed native close cannot be assumed idempotent.
+      const rejected=results.find(result=>result.status==='rejected');
+      if(rejected)throw rejected.reason;
+    });
     return this.closePromise;
   }
 }
