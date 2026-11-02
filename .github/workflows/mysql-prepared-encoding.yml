@@ -40,7 +40,7 @@ jobs:
       - name: Run controlled BAAB encoder microprofile
         shell: bash
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASELINE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
           node tools/qualification/profile-prepared-encoder.mjs \
