@@ -631,20 +631,49 @@ export class MysqlSession implements RelationalSession {
             throw error;
           }
         };
+        // ERR packets have no transaction-status flags. A failed DDL
+        // statement can have committed earlier InnoDB work *before* returning
+        // DATABASE_ERROR. Verify the actual server state on this same socket
+        // before allowing the normal callback-error ROLLBACK path.
+        const executeScoped=async(
+          sql:string,values:readonly BindValue[]
+        ):Promise<QueryResult[]>=>{
+          let results:QueryResult[];
+          try{
+            results=await this.executeResults(sql,values);
+          }catch(error){
+            if(!(error instanceof DriverError&&error.code==='DATABASE_ERROR')||this.closed)
+              throw error;
+            try{
+              this.stream.reset();
+              await this.send(Buffer.from([0x0e])); // Native COM_PING
+              assertStillInTransaction([acknowledgedOk(await this.get())]);
+            }catch(probeError){
+              if(probeError instanceof DriverError&&
+                 probeError.code==='TRANSACTION_OUTCOME_UNKNOWN')
+                throw probeError;
+              const uncertain=fail('TRANSACTION_OUTCOME_UNKNOWN',
+                'MySQL transaction state could not be verified after SQL error; previous writes may already be durable');
+              this.destroy(uncertain);
+              throw uncertain;
+            }
+            // The native transaction remained open. The application may
+            // handle the original SQL error or allow normal ROLLBACK.
+            throw error;
+          }
+          assertStillInTransaction(results);
+          return results;
+        };
         const transaction:RelationalTransaction=Object.freeze({
           query:(sql:string,values:readonly BindValue[]=[])=>schedule(async()=>{
-            const results=await this.executeResults(sql,values);
-            assertStillInTransaction(results);
+            const results=await executeScoped(sql,values);
             if(results.length!==1)
               throw fail('UNSUPPORTED_FEATURE',
                 'Statement returned multiple results; use queryResults or executeResults');
             return results[0];
           }),
-          queryResults:(sql:string,values:readonly BindValue[]=[])=>schedule(async()=>{
-            const results=await this.executeResults(sql,values);
-            assertStillInTransaction(results);
-            return results;
-          })
+          queryResults:(sql:string,values:readonly BindValue[]=[])=>schedule(
+            ()=>executeScoped(sql,values))
         });
         let value:T;
         try {
