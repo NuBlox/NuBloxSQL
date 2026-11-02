@@ -11,15 +11,18 @@ export function requestedWriteSoakDuration(event,hours){
     return Number(hours)*3600000;
   throw Error('Invalid endurance event or manual duration');
 }
-export function selectWriteSoakReport(files,runId){
+export function selectWriteSoakReport(files,runId,transport='isolated-local'){
+  assert.ok(transport==='isolated-local'||transport==='verified-tls');
   assert.match(runId??'',/^\d{1,15}$/);
   assert.ok(Array.isArray(files));
   const matches=files.filter(x=>typeof x==='string'&&x.endsWith('.json'));
-  assert.deepEqual(matches,['mysql-write-soak-'+runId+'.json'],
+  const prefix=transport==='verified-tls'?'mysql-write-soak-tls-':'mysql-write-soak-';
+  assert.deepEqual(matches,[prefix+runId+'.json'],
     'Exactly one same-run native report is required');
   return matches[0];
 }
-export function validateWriteSoakEvidence(report,{revision,runId,event,hours}){
+export function validateWriteSoakEvidence(report,{revision,runId,event,hours,transport='isolated-local'}){
+  assert.ok(transport==='isolated-local'||transport==='verified-tls');
   assert.match(revision??'',/^[a-f0-9]{40}$/);
   assert.match(runId??'',/^\d{1,15}$/);
   const duration=requestedWriteSoakDuration(event,hours);
@@ -28,9 +31,21 @@ export function validateWriteSoakEvidence(report,{revision,runId,event,hours}){
   const env=report.environment;
   assert.ok(object(env)&&env.revision===revision&&env.runId===runId&&
     env.event===event&&env.ci===true&&env.platform==='linux'&&env.arch==='x64'&&
-    /^v22\./.test(env.node??'')&&env.transport==='isolated-local'&&
+    /^v22\./.test(env.node??'')&&env.transport===transport&&
     /^8\.4\.13(?:[-+].*)?$/.test(env.serverVersion??''),
     'Pinned same-run version and runtime required');
+  if(transport==='verified-tls'){
+    assert.equal(env.clientPrincipal,'nublox_write_test',
+      'Require restricted TLS write identity');
+    assert.deepEqual(env.tlsChecks,{
+      trustedIdentity:true,unrelatedCaRejected:true,
+      wrongHostnameRejected:true,invalidPasswordRejected:true,
+      serverRequiresTls:true,restrictedDdlRejected:true
+    },'TLS identity, authentication and least-privilege checks required');
+  }else{
+    assert.ok(env.clientPrincipal===undefined||env.clientPrincipal===null);
+    assert.ok(env.tlsChecks===undefined||env.tlsChecks===null);
+  }
   assert.deepEqual(report.options,{durationMs:duration,concurrency:4,
     maxTransactions:100000000},'Write soak options differ from approved CI matrix');
   assert.deepEqual(report.errors,{unexpected:0,codes:[]});
@@ -71,7 +86,7 @@ export function validateWriteSoakEvidence(report,{revision,runId,event,hours}){
   assert.deepEqual(r.memoryTrend,memory,'Inconsistent process memory growth summary');
   return Object.freeze({
     schemaVersion:1,kind:'mysql-write-soak-evidence',status:'passed',
-    revision,runId,event,mysqlVersion:'8.4.13',
+    revision,runId,event,mysqlVersion:'8.4.13',transport,
     requestedDurationMs:duration,observedDurationMs:w.observedDurationMs,
     committedTransactions:committed,rolledBackTransactions:rolledBack,
     verifiedReads:verified,finalCounterSum:w.finalCounterSum,

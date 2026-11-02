@@ -12,6 +12,34 @@ adds repeated failures, bounded pool-queue pressure, and a much longer
 uninterrupted read-only workload. It does not replace the current-release
 matrix or any legacy regression suite.
 
+## Certificate-verified TLS write endurance
+
+The [verified-TLS workflow](../.github/workflows/mysql-write-soak-tls.yml)
+reuses the bounded InnoDB write/rollback workload on a separate,
+disposable MySQL **8.4.13** fixture. The server requires TLS and presents
+a temporary certificate signed by a test CA with a checked hostname.
+A distinct **SELECT/UPDATE-only** account with `REQUIRE SSL` performs
+pooled application writes. The fixture administrator is used only for
+creating, seeding, independently auditing and removing test tables.
+The restricted account cannot create tables.
+
+The preflight proves a valid verified-TLS connection and rejects an
+unrelated CA, wrong hostname and incorrect password. It checks
+`require_secure_transport=ON` and that the restricted user cannot
+create a table. The dependent evidence validator accepts the original
+same-revision, same-run report only when all TLS security checks, full
+requested duration, committed-write reconciliation, deliberate rollbacks,
+process memory observations, pool cleanup and test table removal succeed.
+Isolated-local evidence cannot be misrepresented as TLS evidence.
+
+Pull-request and main checks use **10-second smoke runs**. Sunday scheduled
+jobs request **30 minutes**, and manual dispatch permits **one or two hours**.
+Only successful full-duration original runner and independent evidence
+artifacts count as endurance qualification; a configured workflow alone
+does not establish endurance. This is isolated MySQL 8.4.13 qualification,
+not multi-day/customer cloud coverage, certificate rotation, external
+penetration testing, or commercial release authorisation.
+
 ## Durable transactional write endurance
 
 The separate [MySQL write-soak workflow](../.github/workflows/mysql-write-soak.yml)

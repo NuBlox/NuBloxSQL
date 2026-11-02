@@ -7,15 +7,16 @@ import {selectWriteSoakReport,validateWriteSoakEvidence} from './write-soak-evid
 try{
   assert.equal(process.argv.length,3,'Artifact directory required');
   const directory=resolve(process.argv[2]),runId=process.env.GITHUB_RUN_ID;
-  const filename=join(directory,selectWriteSoakReport(readdirSync(directory),runId));
+  const transport=process.env.NUBLOX_WRITE_SOAK_PROFILE??'isolated-local';
+  const filename=join(directory,selectWriteSoakReport(readdirSync(directory),runId,transport));
   assert.ok(statSync(filename).isFile()&&statSync(filename).size<=256*1024);
   const decision=validateWriteSoakEvidence(JSON.parse(readFileSync(filename,'utf8')),{
     revision:process.env.GITHUB_SHA,runId,event:process.env.GITHUB_EVENT_NAME,
-    hours:process.env.NUBLOX_ENDURANCE_HOURS
+    hours:process.env.NUBLOX_ENDURANCE_HOURS,transport
   });
   const dir=resolve('artifacts/qualification-matrix');
   mkdirSync(dir,{recursive:true});
-  writeFileSync(join(dir,'mysql-write-soak-decision-'+runId+'.json'),
+  writeFileSync(join(dir,'mysql-write-soak-'+(transport==='verified-tls'?'tls-':'')+'decision-'+runId+'.json'),
     JSON.stringify(decision,null,2)+'\n',{mode:0o600});
   console.log(JSON.stringify(decision));
 }catch{

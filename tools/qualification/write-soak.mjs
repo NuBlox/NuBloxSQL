@@ -34,6 +34,27 @@ export function checkWriteSoakEnvironment(env){
   assert.match(env.GITHUB_RUN_ID??'',/^\d{1,15}$/);
   return 'nublox_write_soak_'+env.GITHUB_RUN_ID;
 }
+
+/** Restrict TLS write tests to a disposable Actions-only fixture and login. */
+export function checkVerifiedTlsWriteSoakEnvironment(env){
+  assert.equal(env.CI,'true');
+  assert.equal(env.GITHUB_ACTIONS,'true');
+  assert.equal(env.NUBLOX_LIVE_MYSQL_TLS,'1');
+  assert.equal(env.NUBLOX_ALLOW_WRITE_MYSQL_FIXTURE,'1');
+  assert.equal(env.NUBLOX_TEST_MYSQL_VERSION,'8.4.13');
+  assert.equal(env.NUBLOX_QUALIFICATION_MYSQL_VERSION,'8.4.13');
+  assert.equal(env.MYSQL_DATABASE,'nublox_test');
+  assert.equal(env.MYSQL_TLS_PORT,'3307');
+  assert.equal(env.MYSQL_WRITE_USER,'nublox_write_test');
+  assert.equal(env.MYSQL_USER,'root');
+  assert.ok(typeof env.MYSQL_WRITE_PASSWORD==='string'&&env.MYSQL_WRITE_PASSWORD.length>=8);
+  assert.ok(typeof env.NUBLOX_TLS_CA_FILE==='string'&&env.NUBLOX_TLS_CA_FILE.length>0);
+  assert.ok(typeof env.NUBLOX_TLS_OTHER_CA_FILE==='string'&&env.NUBLOX_TLS_OTHER_CA_FILE.length>0);
+  assert.match(env.GITHUB_SHA??'',/^[a-f0-9]{40}$/);
+  assert.match(env.GITHUB_RUN_ID??'',/^\d{1,15}$/);
+  return 'nublox_write_soak_'+env.GITHUB_RUN_ID;
+}
+
 const toCount=value=>{
   const count=Number(value);
   assert.ok(Number.isSafeInteger(count)&&count>=0,'Invalid MySQL numeric result');
@@ -42,7 +63,7 @@ const toCount=value=>{
 const memory=()=>process.memoryUsage();
 export async function runWriteSoak({
   connect,createPool,target,table,options,now=()=>performance.now(),
-  memoryUsage=memory
+  memoryUsage=memory,administratorTarget=target
 }){
   assert.match(table??'',/^nublox_write_soak_\d{1,15}$/);
   assert.equal(typeof connect,'function');
@@ -63,7 +84,7 @@ export async function runWriteSoak({
   }));
   const deliberate=new Error('Expected rollback');
   try{
-    admin=await connect(target);
+    admin=await connect(administratorTarget);
     assert.match(admin.info.version,/^8\.4\.13(?:[-+].*)?$/,'Unqualified MySQL version');
     await admin.query(sql.create);
     tableCreated=true;

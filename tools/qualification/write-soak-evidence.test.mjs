@@ -75,3 +75,37 @@ test('reject stale, shortened, duplicate, secret-bearing or forged release evide
   for(const invalid of [['workflow_dispatch','0'],['unexpected','1']])
     assert.throws(()=>requestedWriteSoakDuration(...invalid));
 });
+
+test('verified TLS write evidence cannot be replaced by local or forged TLS checks',()=>{
+  const checks={trustedIdentity:true,unrelatedCaRejected:true,
+    wrongHostnameRejected:true,invalidPasswordRejected:true,
+    serverRequiresTls:true,restrictedDdlRejected:true};
+  const tlsSample=()=>{
+    const report=structuredClone(sample());
+    report.environment.transport='verified-tls';
+    report.environment.clientPrincipal='nublox_write_test';
+    report.environment.tlsChecks={...checks};
+    return report;
+  };
+  assert.equal(validateWriteSoakEvidence(tlsSample(),
+    {...ctx,transport:'verified-tls'}).transport,'verified-tls');
+  assert.equal(selectWriteSoakReport(['mysql-write-soak-tls-12345.json'],runId,
+    'verified-tls'),'mysql-write-soak-tls-12345.json');
+  assert.throws(()=>validateWriteSoakEvidence(tlsSample(),ctx));
+  assert.throws(()=>validateWriteSoakEvidence(sample(),
+    {...ctx,transport:'verified-tls'}));
+  for(const key of Object.keys(checks)){
+    const modified=tlsSample();
+    modified.environment.tlsChecks[key]=false;
+    assert.throws(()=>validateWriteSoakEvidence(modified,
+      {...ctx,transport:'verified-tls'}));
+  }
+  for(const field of ['clientPrincipal','tlsChecks']){
+    const modified=tlsSample();
+    delete modified.environment[field];
+    assert.throws(()=>validateWriteSoakEvidence(modified,
+      {...ctx,transport:'verified-tls'}));
+  }
+  assert.throws(()=>selectWriteSoakReport(['mysql-write-soak-12345.json'],
+    runId,'verified-tls'));
+});
