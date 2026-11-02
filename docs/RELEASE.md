@@ -58,6 +58,22 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## Durable transactional write qualification (new evidence stream)
+
+The [write-endurance workflow](../.github/workflows/mysql-write-soak.yml)
+adds real MySQL **InnoDB committed-write and intentional-rollback** endurance
+testing, independent follow-up reads, final durable counter reconciliation,
+bounded resource trends, pool teardown and cleanup of its disposable
+per-run table. Short PR/main smoke checks run automatically. Weekly
+30-minute and manually requested one/two-hour runs require successful
+original observations plus a separate same-run evidence validator.
+
+A configured scheduled job, passing mock test or short PR smoke is **not**
+evidence of multi-hour endurance. The work does not qualify verified-TLS
+writes, managed cloud, independent security or customer data safety.
+**G6 remains in progress** until representative long-duration reports are
+retained and independently approved. See [resilience details](MYSQL-RESILIENCE-QUALIFICATION.md).
+
 ## Reproducible workspace dependency gate
 
 The experimental driver is now built from a **committed npm v3 lockfile**
