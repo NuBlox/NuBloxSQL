@@ -434,3 +434,124 @@ test('shutdown waits for a discarded native session still closing',{timeout:4000
     await pool.close();
   }
 });
+
+
+test('shutdown waits for every native close even after another close rejects',{timeout:4000},async()=>{
+  let created=0,releaseWork,workEntered=0,readyWork;
+  const bothEntered=new Promise(resolve=>{readyWork=resolve;});
+  const workGate=new Promise(resolve=>{releaseWork=resolve;});
+  const sessions=[];
+  const pool=new ConnectionPool(async()=>{
+    const session=fake(++created);
+    sessions.push(session);
+    return session;
+  },{maxConnections:2,acquireTimeoutMs:1500});
+  const users=Array.from({length:2},()=>pool.withConnection(async lease=>{
+    await lease.query('SELECT 1');
+    if(++workEntered===2)readyWork();
+    await workGate;
+  }));
+  try{
+    await bothEntered;
+    releaseWork();
+    await Promise.all(users);
+    assert.equal(pool.stats.idle,2);
+    assert.equal(pool.stats.size,2);
+    let releaseSlow,slowStarted;
+    const slowGate=new Promise(resolve=>{releaseSlow=resolve;});
+    const enteredClose=new Promise(resolve=>{slowStarted=resolve;});
+    const original=new Error('native close failed');
+    let firstCloses=0,secondCloses=0;
+    sessions[0].close=async()=>{
+      firstCloses++;
+      sessions[0].closed=true;
+      throw original;
+    };
+    sessions[1].close=async()=>{
+      secondCloses++;
+      slowStarted();
+      await slowGate;
+      sessions[1].closed=true;
+    };
+    const closing=pool.close();
+    await enteredClose;
+    const repeated=pool.close();
+    assert.strictEqual(closing,repeated);
+    let settled=false;
+    void closing.then(()=>{settled=true;},()=>{settled=true;});
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(settled,false,'one close failure cannot end the shutdown barrier early');
+    assert.equal(pool.stats.size,1,'slow physical transport still occupies capacity');
+    assert.equal(pool.stats.idle,0);
+    await assert.rejects(pool.withConnection(async()=>{}),
+      error=>error.code==='CONNECTION_CLOSED');
+    releaseSlow();
+    await assert.rejects(closing,error=>error===original);
+    await assert.rejects(repeated,error=>error===original);
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.stats.active,0);
+    assert.equal(firstCloses,1);
+    assert.equal(secondCloses,1);
+    assert.equal(sessions[1].closed,true);
+  }finally{
+    releaseWork?.();
+    await Promise.allSettled(users);
+    await pool.close().catch(()=>{});
+  }
+});
+
+test('shutdown also awaits a previously discarded socket after an owned close fails',{timeout:4000},async()=>{
+  let created=0,discardStarted,releaseDiscard;
+  const discardEntered=new Promise(resolve=>{discardStarted=resolve;});
+  const discardGate=new Promise(resolve=>{releaseDiscard=resolve;});
+  const original=new Error('owned native close failed');
+  const pool=new ConnectionPool(async()=>{
+    const session=fake(++created);
+    if(session.id===1){
+      session.close=async()=>{
+        discardStarted();
+        await discardGate;
+        session.closed=true;
+      };
+    }else{
+      session.close=async()=>{
+        session.closed=true;
+        throw original;
+      };
+    }
+    return session;
+  },{maxConnections:2,acquireTimeoutMs:1000});
+  // Hold both slots concurrently so shutdown sees one already-discarding
+  // transport and one idle, independently owned native socket.
+  let firstRelease,secondReady;
+  const firstGate=new Promise(resolve=>{firstRelease=resolve;});
+  const first=pool.withConnection(async lease=>{
+    secondReady?.();
+    await firstGate;
+    throw new Error('discard this session');
+  });
+  void first.catch(()=>{});
+  try{
+    while(pool.stats.active===0)
+      await new Promise(resolve=>setImmediate(resolve));
+    const second=await pool.withConnection(async lease=>lease.query('SELECT 2'));
+    assert.ok(second.rows.length===1);
+    firstRelease();
+    await discardEntered;
+    const closing=pool.close();
+    let finished=false;
+    void closing.then(()=>{finished=true;},()=>{finished=true;});
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(finished,false,'an earlier disposal must still join shutdown');
+    releaseDiscard();
+    await assert.rejects(first,/discard this session/);
+    await assert.rejects(closing,error=>error===original);
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.stats.discarded,2);
+  }finally{
+    firstRelease?.();
+    releaseDiscard?.();
+    await first.catch(()=>{});
+    await pool.close().catch(()=>{});
+  }
+});
