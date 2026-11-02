@@ -126,13 +126,14 @@ live('unawaited prepared statement execution prevents returning pooled connectio
  let first;
  let background;
  try{
-  first=await pool.withConnection(async session=>{
-   const id=(await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+  await assert.rejects(pool.withConnection(async session=>{
+   first=(await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
    const statement=await session.prepare('SELECT SLEEP(?) AS nap');
    background=statement.execute([0.4]);
    void background.catch(()=>{});
-   return id;
-  });
+   return 'unsafe callback success';
+  }),error=>error.code==='CONNECTION_CLOSED'&&
+    /unfinished database operations/.test(error.message));
   await assert.rejects(background,e=>e instanceof Error);
   const next=await pool.withConnection(async session=>
     (await session.query('SELECT CONNECTION_ID() AS id')).rows[0].id);
