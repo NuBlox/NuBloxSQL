@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {connectDatabase,createDatabasePool} from '../dist/index.js';
 
 const live=process.env.NUBLOX_LIVE_MYSQL==='1'?test:test.skip;
+const SERVER_IN_TRANS=1;
 const target={
   engine:'mysql',host:'127.0.0.1',port:Number(process.env.MYSQL_PORT||3306),
   user:process.env.MYSQL_USER||'root',password:process.env.MYSQL_PASSWORD||'test-password',
@@ -209,20 +210,20 @@ live('per-session command queue rejects overload without destroying an active tr
 
 live('transaction queue bounds 1024 waiting commands without sending or replaying SQL',{timeout:10000},async()=>{
  const db=await connectDatabase(target);
- const original=db.execute.bind(db);
+ const original=db.executeResults.bind(db);
  let releaseFirst,enteredFirst;
  const firstStarted=new Promise(resolve=>{enteredFirst=resolve;});
  const gate=new Promise(resolve=>{releaseFirst=resolve;});
  let executed=0;
  // Deterministic test-only fault injection holds the first scoped command.
  // Transaction START/COMMIT still use the real MySQL Classic connection.
- db.execute=async()=>{
+ db.executeResults=async()=>{
   executed++;
   if(executed===1){
    enteredFirst();
    await gate;
   }
-  return {rows:[],columns:[],affectedRows:0,insertId:0};
+  return [{rows:[],columns:[],affectedRows:0,insertId:0,status:SERVER_IN_TRANS}];
  };
  try{
   const committed=await db.transaction(async tx=>{
@@ -242,19 +243,19 @@ live('transaction queue bounds 1024 waiting commands without sending or replayin
   assert.equal((await db.query('SELECT ? AS recovered',[61])).rows[0].recovered,61n);
  }finally{
   releaseFirst?.();
-  db.execute=original;
+  db.executeResults=original;
   await db.close();
  }
 });
 
 live('transaction backlog is rejected after disconnect and cannot execute late SQL',{timeout:10000},async()=>{
  const db=await connectDatabase(target);
- const original=db.execute.bind(db);
+ const original=db.executeResults.bind(db);
  let releaseFirst,enteredFirst;
  const firstStarted=new Promise(resolve=>{enteredFirst=resolve;});
  const gate=new Promise(resolve=>{releaseFirst=resolve;});
  let executed=0;
- db.execute=async(...args)=>{
+ db.executeResults=async(...args)=>{
   executed++;
   if(executed===1){
    enteredFirst();
@@ -279,7 +280,7 @@ live('transaction backlog is rejected after disconnect and cannot execute late S
   assert.equal(executed,1,'no queued transaction query may execute after disconnect');
  }finally{
   releaseFirst?.();
-  db.execute=original;
+  db.executeResults=original;
   await db.close();
  }
 });
