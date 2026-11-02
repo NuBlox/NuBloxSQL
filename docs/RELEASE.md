@@ -58,6 +58,26 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## Prepared execution buffer allocation (G5)
+
+The native [COM_STMT_EXECUTE encoder](../packages/driver/src/vendors/mysql/protocol/commands.ts)
+now calculates a bounded command size and writes the header, NULL bitmap,
+parameter types and values directly into **one final output allocation**.
+Existing value/type/range encoders are preserved. The implementation
+checks the 32 MiB command ceiling before allocating its output and writes
+every byte of the allocated buffer.
+
+The [wire-equivalence regression](../packages/driver/tests/mysql-prepared-encoding-fastpath.test.mjs)
+compares exact output bytes with the prior encoder for all supported binding
+types, NULL bitmap boundaries, binary/Unicode values, cursor mode and
+deterministic mutated parameter lists. A separate [BAAB baseline/candidate
+microprofile](../.github/workflows/mysql-prepared-encoding.yml) compiles
+the exact PR base and proposed driver on the same CI runner and measures
+synthetic packet encoding with identical inputs. These measurements can
+identify allocation overhead but are **not** wire-network response latency
+or comparative mysql2 performance proof. All existing live MySQL and
+verified-TLS qualification checks must still pass. **G5 remains open.**
+
 ## Strict verified-TLS competitive evidence (G5)
 
 A separate [MySQL TLS competitor workflow](../.github/workflows/mysql-comparison-tls.yml)
