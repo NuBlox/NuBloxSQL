@@ -317,10 +317,12 @@ export class MysqlSession implements RelationalSession {
   ):Promise<QueryResult[]>{
     const prepared=await this.prepareNative(sql);
     let executionFailed=false;
+    let executionError:unknown;
     try{
       return await this.executeNativeResults(prepared.id,prepared.parameterCount,params);
     }catch(error){
       executionFailed=true;
+      executionError=error;
       // A partially consumed result can never be returned to the pool.
       // Preserve the original RESOURCE_LIMIT / protocol error instead of
       // replacing it with a later COM_STMT_CLOSE stream-reset failure.
@@ -338,9 +340,13 @@ export class MysqlSession implements RelationalSession {
           // statement lifetime and wire state are no longer trustworthy.
           // Never lend this connection again, even when the failure itself
           // has a normally recoverable DriverError code.
-          this.destroy(error instanceof DriverError?error:undefined);
-          // If execution itself already failed, preserve that diagnostic;
-          // cleanup failure must not overwrite the application's SQL error.
+          // An active operation is also raced against its interruption guard.
+          // Give that guard the original SQL diagnostic when there was one;
+          // otherwise it could surface the later cleanup failure first.
+          const cause=executionFailed&&executionError instanceof DriverError
+            ?executionError
+            :error instanceof DriverError?error:undefined;
+          this.destroy(cause);
           if(!executionFailed)throw error;
         }
       }
