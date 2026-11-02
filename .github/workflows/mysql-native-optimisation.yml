@@ -6,6 +6,8 @@ on:
       - 'packages/driver/src/vendors/mysql/types.ts'
       - 'packages/driver/src/vendors/mysql/adapter.ts'
       - 'packages/driver/tests/mysql-decoder-classification.test.mjs'
+      - 'packages/driver/tests/mysql-binary-scalar-fastpath.test.mjs'
+      - 'tools/qualification/profile-binary-scalars.mjs'
       - 'packages/driver/tests/mysql-serial-fastpath.test.mjs'
       - 'tools/qualification/compare-internal-runs.mjs'
       - 'tools/qualification/compare-internal-runs.test.mjs'
@@ -30,7 +32,7 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build
-          node --test tools/qualification/internal-profile.test.mjs tools/qualification/compare-internal-runs.test.mjs packages/driver/tests/mysql-decoder-classification.test.mjs packages/driver/tests/mysql-serial-fastpath.test.mjs
+          node --test tools/qualification/internal-profile.test.mjs tools/qualification/compare-internal-runs.test.mjs packages/driver/tests/mysql-decoder-classification.test.mjs packages/driver/tests/mysql-serial-fastpath.test.mjs packages/driver/tests/mysql-binary-scalar-fastpath.test.mjs
       - name: Build exact base revision on the same runner
         shell: bash
         env:
@@ -68,6 +70,16 @@ jobs:
           node tools/qualification/compare-internal-runs.mjs \
             "$REPORT_DIR/baseline-1.json" "$REPORT_DIR/candidate-1.json" \
             "$REPORT_DIR/candidate-2.json" "$REPORT_DIR/baseline-2.json"
+      - name: Measure numeric-only binary row decoding against exact base
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          node tools/qualification/profile-binary-scalars.mjs \
+            --baseline="$RUNNER_TEMP/nublox-profile-baseline/packages/driver/dist/vendors/mysql/types.js" \
+            --candidate="$PWD/packages/driver/dist/vendors/mysql/types.js" \
+            --iterations=20000
       - name: Retain complete measured evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,5 +88,6 @@ jobs:
           path: |
             artifacts/qualification/ab/*.json
             artifacts/qualification/native-internal-ab-*.json
+            artifacts/qualification/mysql-numeric-decode-ab-*.json
           if-no-files-found: warn
           retention-days: 14
