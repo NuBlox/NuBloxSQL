@@ -90,7 +90,7 @@ live('COMMIT never sent: missing acknowledgement is still unknown, reconcile tok
       const db=await connectDatabase(target);
       const nativeSend=db.stream.send.bind(db.stream);
       db.stream.send=async frame=>{
-        const commit=frame[0]===0x03&&frame.subarray(1).toString('ascii')==='COMMIT';
+        const commit=frame[0]===0x03&&frame.subarray(1).toString('ascii')==='COMMIT AND NO CHAIN NO RELEASE';
         if(commit&&armed){
           attempted++;
           armed=false;
