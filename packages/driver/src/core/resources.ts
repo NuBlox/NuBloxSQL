@@ -1,4 +1,4 @@
-import {fail,type DriverError} from './errors.js';
+import {fail} from './errors.js';
 
 /** An operation deadline starts when its command obtains the session, not while queued. */
 export interface OperationOptions {
@@ -38,7 +38,7 @@ export function operationOptions(options:OperationOptions,defaultTimeout:number)
  * reuse of a potentially desynchronised native database protocol session. */
 export class OperationGuard {
   readonly interrupted:Promise<never>;
-  private reject!: (error:DriverError)=>void;
+  private reject!: (error:unknown)=>void;
   private timer:NodeJS.Timeout;
   private readonly onAbort=():void=>
     this.interrupt(fail('CANCELLED','Database operation cancelled'));
@@ -57,7 +57,7 @@ export class OperationGuard {
     );
     if(signal?.aborted)this.onAbort();
   }
-  interrupt(error:DriverError):void {
+  interrupt(error:unknown):void {
     if(this.stopped)return;
     this.stopped=true;
     // Reject the operation before disposing the network; network exceptions

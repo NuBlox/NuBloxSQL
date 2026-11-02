@@ -32,6 +32,8 @@ export class MysqlSession implements RelationalSession {
   private readonly queue:QueuedJob[]=[];
   private busy=false;
   private activeGuard:OperationGuard|null=null;
+  /** Explicit error that revoked the session, for cursor cleanup races. */
+  private terminalCause:unknown;
   private readonly statements=new Set<MysqlPreparedStatement>();
   /** The active server cursor is revoked on any fatal transport loss. */
   private readonly cursors=new Set<MysqlCursor>();
@@ -58,8 +60,9 @@ export class MysqlSession implements RelationalSession {
     this.stream.onFatal(error=>this.destroy(error instanceof DriverError?error:undefined));
   }
 
-  private destroy(cause?:DriverError):void {
+  private destroy(cause?:unknown):void {
     if(this.closed)return;
+    this.terminalCause=cause;
     this.closed=true;
     // A transport failure can occur while an exclusive transaction/cursor
     // callback is awaiting application work rather than a packet read.
@@ -150,7 +153,7 @@ export class MysqlSession implements RelationalSession {
                     'ROLLBACK acknowledgement was not confirmed; transaction outcome is unknown')
                 :error instanceof DriverError
                   ?error // preserve RESOURCE_LIMIT, CANCELLED, TIMEOUT, server codes
-                  :this.closed
+                  :this.closed&&error!==this.terminalCause
                     ?fail('CONNECTION_CLOSED','Native MySQL connection terminated during operation')
                     :error;
               if(ambiguousCommit||ambiguousRollback||!(mapped instanceof DriverError&&
@@ -394,6 +397,8 @@ export class MysqlSession implements RelationalSession {
     return this.serial(async()=>{
       const {id,parameterCount}=await this.prepareNative(sql);
       let cursor:MysqlCursor|undefined;
+      let operationFailed=false;
+      let operationError:unknown;
       try{
         if(!Array.isArray(params)||params.length!==parameterCount)
           throw fail('INVALID_INPUT','Cursor prepared statement parameter count mismatch');
@@ -474,6 +479,10 @@ export class MysqlSession implements RelationalSession {
           // A detached task inherits context but must not retain the lock.
           context.active=false;
         }
+      }catch(error){
+        operationFailed=true;
+        operationError=error;
+        throw error;
       }finally{
         if(cursor){
           // An application callback may THROW while an unawaited next() is
@@ -492,8 +501,13 @@ export class MysqlSession implements RelationalSession {
         if(!this.closed){
           try{await this.closeNative(id);}
           catch(error){
-            this.destroy(error instanceof DriverError?error:undefined);
-            throw error;
+            // Failed COM_STMT_CLOSE revokes the session, but it must not
+            // replace the original cursor/application diagnostic. The
+            // original error also wins the active guard-interruption race.
+            const cause=operationFailed?operationError:
+              error instanceof DriverError?error:undefined;
+            this.destroy(cause);
+            if(!operationFailed)throw error;
           }
         }
       }

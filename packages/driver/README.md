@@ -103,6 +103,8 @@ try {await pending;}catch(error) {
 
 The CI suite verifies these states using real MySQL 8.4.11 instances, including TLS-connected cancellation and a fresh authenticated reconnection. Advanced pooling policies, server-side kill/cancel, and independent per-query cancellation inside transactions are outside the current release scope.
 
+**Cursor cleanup error precedence:** If cursor work or its application callback fails and the subsequent native `COM_STMT_CLOSE` also fails, NuBloxSQL preserves the initial error—including an ordinary application `Error`—while permanently revoking the native session. An otherwise successful cursor whose close fails still rejects with the cleanup error. The pool replaces the unsafe connection without retrying SQL. This does not establish rollback of partially completed cursor operations.
+
 ## Deterministic native protocol fault injection
 
 MySQL Classic frame corruption and network termination are distinct outcomes:
