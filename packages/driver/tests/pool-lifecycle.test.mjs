@@ -555,3 +555,64 @@ test('shutdown also awaits a previously discarded socket after an owned close fa
     await pool.close().catch(()=>{});
   }
 });
+
+test('premature pool callback completion rejects instead of reporting phantom success',
+  {timeout:4000},async()=>{
+  let created=0,started,released,unblock;
+  const operationStarted=new Promise(resolve=>{started=resolve;});
+  const operationGate=new Promise(resolve=>{unblock=resolve;});
+  const sessions=[];
+  const pool=new ConnectionPool(async()=>{
+    const session=fake(++created);
+    sessions.push(session);
+    if(session.id===1){
+      session.query=async()=>{
+        started();
+        await operationGate;
+        if(session.closed)throw Error('write connection closed before completion');
+        return {rows:[],columns:[],affectedRows:1,insertId:0};
+      };
+    }
+    return session;
+  },{maxConnections:1,acquireTimeoutMs:1000});
+  let detached;
+  try{
+    await assert.rejects(pool.withConnection(async lease=>{
+      detached=lease.query('INSERT INTO business_table VALUES (1)');
+      void detached.catch(()=>{});
+      await operationStarted;
+      return 'false success';
+    }),error=>error.code==='CONNECTION_CLOSED'&&/unfinished database operations/.test(error.message));
+    assert.equal(sessions[0].closed,true);
+    assert.equal(pool.stats.discarded,1);
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.stats.idle,0);
+    unblock();
+    await assert.rejects(detached,/write connection closed/);
+    const id=await pool.withConnection(async lease=>
+      (await lease.query('SELECT id')).rows[0].id);
+    assert.equal(id,2,'the unfinished operation is never replayed on a replacement socket');
+    assert.equal(created,2);
+    assert.equal(pool.stats.healthFailures,0);
+  }finally{
+    unblock?.();
+    await detached?.catch(()=>{});
+    await pool.close();
+  }
+});
+
+test('completed awaited work remains successful and a leased connection stays reusable',async()=>{
+  let created=0;
+  const pool=new ConnectionPool(async()=>fake(++created),{maxConnections:1});
+  try{
+    const first=await pool.withConnection(async lease=>
+      (await lease.query('SELECT id')).rows[0].id);
+    const second=await pool.withConnection(async lease=>
+      (await lease.query('SELECT id')).rows[0].id);
+    assert.equal(first,1);
+    assert.equal(second,first);
+    assert.equal(created,1);
+    assert.equal(pool.stats.discarded,0);
+    assert.equal(pool.stats.idle,1);
+  }finally{await pool.close();}
+});
