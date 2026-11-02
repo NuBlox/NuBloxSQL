@@ -66,7 +66,7 @@ test('reject stale, shortened, duplicate, secret-bearing or forged release evide
     x=>{x.workload.latency.count=1;}
   ];
   for(const change of mutations){
-    const report=sample();change(report);
+    const report=structuredClone(sample());change(report);
     assert.throws(()=>validateWriteSoakEvidence(report,ctx));
   }
   for(const files of [[],['other.json'],['mysql-write-soak-1.json'],
