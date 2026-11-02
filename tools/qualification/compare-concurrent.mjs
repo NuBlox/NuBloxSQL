@@ -93,6 +93,7 @@ const report={
   schemaVersion:1,kind:'mysql-concurrent-prepared-comparison',status:'running',
   environment:{
     timestamp:new Date().toISOString(),revision:process.env.GITHUB_SHA??null,
+    runId:process.env.GITHUB_RUN_ID??null,
     node:process.version,platform:platform(),arch:arch(),cpuCount:cpus().length,
     ci:Boolean(process.env.CI),transport:tls?'verified-tls':'isolated-local',
     serverVersion:null,peerVersion,tlsChecks:null
