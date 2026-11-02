@@ -240,6 +240,9 @@ live('transaction queue bounds 1024 waiting commands without sending or replayin
   });
   assert.equal(committed,'committed');
   assert.equal(db.closed,false);
+  // The recovery assertion must use the real MySQL executor, not the
+  // deterministic backlog-counting stub above.
+  db.executeResults=original;
   assert.equal((await db.query('SELECT ? AS recovered',[61])).rows[0].recovered,61n);
  }finally{
   releaseFirst?.();
