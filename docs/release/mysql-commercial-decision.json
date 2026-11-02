@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "package": "@nublox/driver",
+  "candidateVersion": "0.1.0-dev.0",
+  "classification": "engineering-preview",
+  "decision": "blocked",
+  "evaluationAuthorized": false,
+  "productionAuthorized": false,
+  "publicationAuthorized": false,
+  "proposedProfile": {
+    "vendor": "mysql",
+    "serverVersion": "8.4.13",
+    "nodeMajor": 22,
+    "platform": "linux-x64",
+    "transport": "verified-tls"
+  },
+  "approvedProfiles": [],
+  "gates": [
+    {
+      "id": "G1",
+      "status": "pending"
+    },
+    {
+      "id": "G2",
+      "status": "pending"
+    },
+    {
+      "id": "G3",
+      "status": "pending"
+    },
+    {
+      "id": "G4",
+      "status": "pending"
+    },
+    {
+      "id": "G5",
+      "status": "pending"
+    },
+    {
+      "id": "G6",
+      "status": "pending"
+    },
+    {
+      "id": "G7",
+      "status": "pending"
+    },
+    {
+      "id": "G8",
+      "status": "pending"
+    },
+    {
+      "id": "G9",
+      "status": "pending"
+    },
+    {
+      "id": "G10",
+      "status": "pending"
+    },
+    {
+      "id": "G11",
+      "status": "pending"
+    }
+  ],
+  "approvals": {
+    "productOwner": "pending",
+    "independentSecurity": "pending",
+    "legal": "pending",
+    "supportOperations": "pending"
+  },
+  "trackingIssue": "https://github.com/NuBlox/NuBloxSQL/issues/421"
+}
