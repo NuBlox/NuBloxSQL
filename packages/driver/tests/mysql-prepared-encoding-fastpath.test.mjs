@@ -32,7 +32,7 @@ const candidates=[
   Buffer.from([0,0xff,0x80,0x00]),
   0,-0,1,-1,127,-127,255,256,32767,65535,
   Number.MAX_SAFE_INTEGER,Number.MIN_SAFE_INTEGER,
-  1.125,-0.0625,2.5e90,-2.3e-40,
+  1.125,-0.0625,2.5e-90,-2.3e-40,
   0n,-1n,-(2n**63n),2n**63n-1n,2n**63n,2n**64n-1n
 ];
 test('single allocation encodes exact original Classic protocol bytes across types and cursor flags',()=>{
