@@ -16,6 +16,8 @@ export class PacketStream {
   private socket:Socket|null=null;
   private readonly queue:Buffer[]=[];
   private readonly waiters:Waiter[]=[];
+  /** Socket close/error may occur without invoking an outstanding write callback. */
+  private readonly pendingWrites=new Set<(error:Error)=>void>();
   private queuedBytes=0;
   private sequence=0;
   private failure:Error|null=null;
@@ -157,6 +159,9 @@ export class PacketStream {
     this.queue.length=0;
     this.queuedBytes=0;
     for(const waiter of this.waiters.splice(0))waiter.reject(error);
+    // Do not leave send() pending forever when Node never calls a write
+    // callback after the underlying socket has been destroyed.
+    for(const rejectWrite of [...this.pendingWrites])rejectWrite(error);
     this.fatalListener?.(error);
   }
   async read():Promise<Buffer> {
@@ -167,6 +172,34 @@ export class PacketStream {
       return body;
     }
     return new Promise<Buffer>((resolve,reject)=>this.waiters.push({resolve,reject}));
+  }
+  /** Resolve on the write callback, or reject on either callback failure or
+   * stream abort. Node does not guarantee a callback on every destroyed write. */
+  private writeFrame(socket:Socket,frame:Buffer):Promise<void>{
+    if(this.failure)return Promise.reject(this.failure);
+    return new Promise<void>((resolve,reject)=>{
+      let settled=false;
+      const rejectWrite=(error:Error):void=>{
+        if(settled)return;
+        settled=true;
+        this.pendingWrites.delete(rejectWrite);
+        reject(error);
+      };
+      this.pendingWrites.add(rejectWrite);
+      try{
+        socket.write(frame,error=>{
+          if(error){rejectWrite(error);return;}
+          if(this.failure){rejectWrite(this.failure);return;}
+          if(settled)return;
+          settled=true;
+          this.pendingWrites.delete(rejectWrite);
+          resolve();
+        });
+      }catch(error){
+        rejectWrite(error instanceof Error?error:
+          new Error('Native MySQL socket write failed'));
+      }
+    });
   }
   async send(body:Buffer):Promise<void> {
     if(this.failure)throw this.failure;
@@ -189,17 +222,13 @@ export class PacketStream {
           const frame=Buffer.allocUnsafe(4+length);
           header.copy(frame);
           if(length)body.copy(frame,4,offset,offset+length);
-          await new Promise<void>((resolve,reject)=>
-            socket.write(frame,error=>error?reject(error):resolve()));
+          await this.writeFrame(socket,frame);
         }else{
           // Larger frames retain the original zero-copy payload slice.
-          await new Promise<void>((resolve,reject)=>
-            socket.write(header,error=>error?reject(error):resolve()));
+          await this.writeFrame(socket,header);
           // Do not send the payload if its header write lost the socket.
           if(this.failure)throw this.failure;
-          await new Promise<void>((resolve,reject)=>
-            socket.write(body.subarray(offset,offset+length),
-              error=>error?reject(error):resolve()));
+          await this.writeFrame(socket,body.subarray(offset,offset+length));
         }
         if(this.failure)throw this.failure;
         offset+=length;

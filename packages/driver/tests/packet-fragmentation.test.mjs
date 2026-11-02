@@ -293,3 +293,60 @@ test('an asynchronously closed socket cannot complete an outbound send successfu
   assert.equal(socket.destroyed,true);
   stream.destroy();
 });
+
+
+test('socket close settles an in-flight small write without a callback',async()=>{
+  class StalledSocket extends CaptureSocket {
+    callbacks=[];
+    write(data,callback){
+      this.writes.push(data);
+      this.callbacks.push(callback);
+      return true;
+    }
+  }
+  const socket=new StalledSocket(),stream=new PacketStream(socket);
+  const errors=[];
+  stream.onFatal(error=>errors.push(error));
+  const pending=stream.send(Buffer.from('command'));
+  assert.equal(socket.writes.length,1);
+  socket.emit('close');
+  await assert.rejects(pending,error=>error.message.includes('closed'));
+  assert.equal(socket.destroyed,true);
+  assert.equal(errors.length,1);
+  // A late successful write callback cannot resurrect the failed exchange.
+  socket.callbacks[0]?.();
+  await assert.rejects(stream.send(Buffer.from('another')));
+  assert.equal(socket.writes.length,1);
+  stream.destroy();
+});
+
+test('socket close before a large header callback never sends its payload',async()=>{
+  class StalledHeaderSocket extends CaptureSocket {
+    callback;
+    write(data,callback){
+      this.writes.push(data);
+      this.callback=callback;
+      return true;
+    }
+  }
+  const socket=new StalledHeaderSocket(),stream=new PacketStream(socket);
+  const pending=stream.send(Buffer.alloc(4097,0x7a));
+  assert.deepEqual(socket.writes,[header(4097,0)]);
+  socket.emit('close');
+  await assert.rejects(pending,error=>error.message.includes('closed'));
+  socket.callback?.();
+  assert.equal(socket.writes.length,1);
+  assert.equal(socket.destroyed,true);
+  stream.destroy();
+});
+
+test('explicit stream destruction interrupts a stalled transport write',async()=>{
+  class StalledSocket extends CaptureSocket {
+    write(data){this.writes.push(data);return true;}
+  }
+  const socket=new StalledSocket(),stream=new PacketStream(socket);
+  const pending=stream.send(Buffer.from('unacknowledged'));
+  stream.destroy();
+  await assert.rejects(pending,error=>error.message.includes('closed'));
+  assert.equal(socket.destroyed,true);
+});
