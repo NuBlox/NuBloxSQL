@@ -49,7 +49,7 @@ live('explicit COMMIT inside managed callback is detected instead of claiming a 
   const db=await connectDatabase(target);
   try{
     await assert.rejects(db.transaction(async tx=>{
-      await tx.query('SELECT ? AS before',[5]);
+      await tx.query('SELECT ? AS before_commit',[5]);
       await tx.query('COMMIT');
     }),error=>error.code==='TRANSACTION_OUTCOME_UNKNOWN');
     assert.equal(db.closed,true);
