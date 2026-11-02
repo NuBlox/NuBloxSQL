@@ -68,6 +68,31 @@ function temporal(c:Cursor,column:MysqlColumn):string{
   value+=' '+pad(hour)+':'+pad(minute)+':'+pad(second);
   return value+fraction(microseconds,column.decimals);
 }
+/** Decode fixed-width numeric values in place without creating a transient
+ * Buffer.subarray for every cell. Bounds and signedness exactly match
+ * Cursor.take(n).read*LE: malformed packets must still fail closed. */
+function fixedScalar(cursor:Cursor,type:number,unsigned:boolean):number|bigint{
+  const bytes=type===T.TINY?1
+    :type===T.SHORT||type===T.YEAR?2
+      :type===T.LONG||type===T.INT24||type===T.FLOAT?4:8;
+  const offset=cursor.p;
+  if(bytes>cursor.remaining())throw Error('Malformed MySQL packet');
+  let result:number|bigint;
+  if(type===T.TINY)
+    result=unsigned?cursor.b.readUInt8(offset):cursor.b.readInt8(offset);
+  else if(type===T.SHORT||type===T.YEAR)
+    result=unsigned?cursor.b.readUInt16LE(offset):cursor.b.readInt16LE(offset);
+  else if(type===T.LONG||type===T.INT24)
+    result=unsigned?cursor.b.readUInt32LE(offset):cursor.b.readInt32LE(offset);
+  else if(type===T.LONGLONG)
+    result=unsigned?cursor.b.readBigUInt64LE(offset):cursor.b.readBigInt64LE(offset);
+  else if(type===T.FLOAT)
+    result=cursor.b.readFloatLE(offset);
+  else
+    result=cursor.b.readDoubleLE(offset);
+  cursor.p=offset+bytes;
+  return result;
+}
 /** MySQL binary prepared-statement row. Integer/bit/decimal/temporal fidelity
  * is deliberate: exact decimals => string, 64-bit integers => bigint, binary
  * bytes => Buffer, and dates/times => timezone-free strings. */
@@ -84,22 +109,10 @@ export function binaryValues(buf:Buffer,cols:readonly MysqlColumn[]):unknown[]{
     }
     const type=column.type;
     let value:unknown;
-    if(type===T.TINY){
-      const bytes=cursor.take(1);
-      value=column.unsigned?bytes.readUInt8():bytes.readInt8();
-    }else if(type===T.SHORT||type===T.YEAR){
-      const bytes=cursor.take(2);
-      value=column.unsigned?bytes.readUInt16LE():bytes.readInt16LE();
-    }else if(type===T.LONG||type===T.INT24){
-      const bytes=cursor.take(4);
-      value=column.unsigned?bytes.readUInt32LE():bytes.readInt32LE();
-    }else if(type===T.LONGLONG){
-      const bytes=cursor.take(8);
-      value=column.unsigned?bytes.readBigUInt64LE():bytes.readBigInt64LE();
-    }else if(type===T.FLOAT){
-      value=cursor.take(4).readFloatLE();
-    }else if(type===T.DOUBLE){
-      value=cursor.take(8).readDoubleLE();
+    if(type===T.TINY||type===T.SHORT||type===T.YEAR||
+      type===T.LONG||type===T.INT24||type===T.LONGLONG||
+      type===T.FLOAT||type===T.DOUBLE){
+      value=fixedScalar(cursor,type,column.unsigned);
     }else if(type===T.DATE||type===T.TIME||
       type===T.DATETIME||type===T.TIMESTAMP){
       value=temporal(cursor,column);
