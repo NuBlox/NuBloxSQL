@@ -12,6 +12,39 @@ adds repeated failures, bounded pool-queue pressure, and a much longer
 uninterrupted read-only workload. It does not replace the current-release
 matrix or any legacy regression suite.
 
+## Durable transactional write endurance
+
+The separate [MySQL write-soak workflow](../.github/workflows/mysql-write-soak.yml)
+now covers a missing production-critical dimension: sustained **committed
+InnoDB writes** alongside intentional transaction rollbacks. Existing mixed
+workloads are read-only; this is additional, not a replacement.
+
+The runner requires a disposable pinned MySQL **8.4.13** GitHub Actions
+service, explicit write-fixture consent, a numeric run ID, exact commit
+identity, the `nublox_test` database and loopback transport. The test
+creates and ultimately drops a uniquely named table with one counter per
+worker. Four workers use row-locked transactions and bound increments.
+Every eleventh transaction intentionally rolls back. The driver is never
+allowed to replay a failed/ambiguous write.
+
+After each transaction, a distinct pool checkout verifies the committed
+counter or unchanged value following rollback. After the pool has fully
+closed, an independent non-pooled connection reconciles every durable
+counter against confirmed commits. Tests must also prove balanced
+transaction counts, complete fixture removal, bounded latency sampling,
+observed heap/RSS trends and no outstanding pooled sessions.
+
+PR and main checks run **10-second integration smoke tests**. The weekly
+scheduled run requests **30 minutes**, while manual dispatch offers
+**one or two hours**. An independent dependent CI job validates the original
+same-run JSON, actual elapsed duration, server and Node versions, revision,
+transaction and per-worker totals, cleanup and memory sampling.
+A green configuration alone is never evidence of a completed long run;
+only a successful live runner and matching independent evidence report count.
+Customer-specific workloads, TLS write endurance, multi-day testing,
+failure during COMMIT, managed cloud and an external security review are
+still outside this qualification. **G6 remains in progress.**
+
 ## Real destructive outage qualification
 
 Only a disposable GitHub Actions MySQL **8.4.13** container is targeted.
