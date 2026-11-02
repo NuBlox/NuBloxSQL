@@ -1,0 +1,57 @@
+name: MySQL prepared-execute encoder before-after evidence
+
+on:
+  pull_request:
+    paths:
+      - 'packages/driver/src/vendors/mysql/protocol/commands.ts'
+      - 'packages/driver/tests/mysql-prepared-encoding-fastpath.test.mjs'
+      - 'tools/qualification/profile-prepared-encoder.mjs'
+      - '.github/workflows/mysql-prepared-encoding.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prepared-encoding:
+    name: mysql-prepared-wire-equivalence-and-ab
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build candidate and prove exact wire parity
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          node --test packages/driver/tests/mysql-prepared-encoding-fastpath.test.mjs
+      - name: Build exact pull-request baseline on this runner
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git worktree add --detach "$RUNNER_TEMP/nublox-prepared-base" "$BASE_SHA"
+          npm ci --prefix "$RUNNER_TEMP/nublox-prepared-base" --no-audit --no-fund
+          npm run build --prefix "$RUNNER_TEMP/nublox-prepared-base"
+      - name: Run controlled BAAB encoder microprofile
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          node tools/qualification/profile-prepared-encoder.mjs \
+            --baseline="$RUNNER_TEMP/nublox-prepared-base/packages/driver/dist/vendors/mysql/protocol/commands.js" \
+            --candidate="$PWD/packages/driver/dist/vendors/mysql/protocol/commands.js" \
+            --iterations=75000
+      - name: Retain original measured before-after evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-prepared-encoder-ab-${{ github.run_id }}
+          path: artifacts/qualification/mysql-prepared-encoder-ab-*.json
+          if-no-files-found: error
+          retention-days: 60
