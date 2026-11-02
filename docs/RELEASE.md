@@ -58,6 +58,20 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## No phantom success for unfinished pooled work (G4/G6)
+
+An exclusive `withConnection()` callback previously could return a value
+while a query, statement operation, transaction or cursor started through its
+lease was still pending. Although the pool discarded the unsafe connection,
+the caller could mistakenly observe successful callback completion. The pool
+now rejects such premature completion as `CONNECTION_CLOSED` with an
+explicit warning that SQL effects may be unknown, and irrevocably discards
+the native connection without replay. Already-awaited work remains eligible
+for normal reset and reuse. Synthetic gated-I/O and live MySQL tests exercise
+premature success, delayed native SQL, physical replacement and normal reuse.
+This is a fail-closed improvement, not evidence that an interrupted write did
+not commit. G4 and G6 remain partial/in progress.
+
 ## All-settled pool shutdown disposal barrier (G6)
 
 The bounded connection pool no longer uses fail-fast `Promise.all` for
