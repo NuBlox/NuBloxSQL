@@ -12,9 +12,12 @@ import {connectDatabase} from '../../packages/driver/dist/index.js';
 import {runComparison} from './comparison/core.mjs';
 import {analyseComparison} from './comparison/analyse.mjs';
 import {integerOption,safeError} from './metrics.mjs';
+import {createTlsComparisonProfile,verifyTlsComparisonProfile}
+  from './comparison/tls-profile.mjs';
 
-if(process.env.NUBLOX_LIVE_MYSQL!=='1'||process.env.NUBLOX_LIVE_MYSQL_TLS==='1')
-  throw Error('Concurrent comparison needs explicit isolated loopback MySQL');
+const tls=process.env.NUBLOX_LIVE_MYSQL_TLS==='1';
+if(!tls&&process.env.NUBLOX_LIVE_MYSQL!=='1')
+  throw Error('Concurrent comparison needs explicit isolated MySQL opt-in');
 const opts={};
 for(const arg of process.argv.slice(2)){
   const match=/^--(iterations|concurrency|rounds)=([0-9]+)$/.exec(arg);
@@ -26,7 +29,12 @@ const iterations=integerOption(opts.iterations??48,{name:'iterations',min:4,max:
 const concurrency=integerOption(opts.concurrency??4,{name:'concurrency',min:1,max:8});
 const rounds=integerOption(opts.rounds??4,{name:'rounds',min:2,max:8});
 const port=integerOption(process.env.MYSQL_PORT??3306,{name:'port',min:1,max:65535});
-const target={
+const profile=tls?createTlsComparisonProfile(
+  process.env,
+  readFileSync(process.env.NUBLOX_TLS_CA_FILE,'utf8'),
+  readFileSync(process.env.NUBLOX_TLS_OTHER_CA_FILE,'utf8')
+):null;
+const target=profile?.nativeTarget??{
   engine:'mysql',host:'127.0.0.1',port,
   user:process.env.MYSQL_USER??'root',
   password:process.env.MYSQL_PASSWORD??'test-password',
@@ -60,7 +68,7 @@ const native={
 };
 const competitor={
   async open(){
-    const db=await mysql2.createConnection({
+    const db=await mysql2.createConnection(profile?profile.peerOptions():{
       host:target.host,port,user:target.user,password:target.password,
       database:target.database,connectTimeout:30000,
       multipleStatements:false,ssl:false
@@ -85,9 +93,10 @@ const report={
   schemaVersion:1,kind:'mysql-concurrent-prepared-comparison',status:'running',
   environment:{
     timestamp:new Date().toISOString(),revision:process.env.GITHUB_SHA??null,
+    runId:process.env.GITHUB_RUN_ID??null,
     node:process.version,platform:platform(),arch:arch(),cpuCount:cpus().length,
-    ci:Boolean(process.env.CI),transport:'isolated-local',
-    serverVersion:null,peerVersion
+    ci:Boolean(process.env.CI),transport:tls?'verified-tls':'isolated-local',
+    serverVersion:null,peerVersion,tlsChecks:null
   },
   configuration:{
     iterations,concurrency,rounds,
@@ -99,6 +108,10 @@ const report={
 };
 let reference;
 try{
+  if(profile)report.environment.tlsChecks=await verifyTlsComparisonProfile({
+    connectNative:connectDatabase,connectPeer:config=>mysql2.createConnection(config),
+    profile
+  });
   reference=await connectDatabase(target);
   report.environment.serverVersion=reference.info.version;
   await reference.close();
@@ -117,7 +130,7 @@ try{
   const folder=resolve('artifacts/qualification');
   mkdirSync(folder,{recursive:true});
   const runId=String(process.env.GITHUB_RUN_ID??'local').replace(/[^A-Za-z0-9-]/g,'');
-  const reportPath=resolve(folder,`comparison-concurrent-${runId}-${Date.now()}.json`);
+  const reportPath=resolve(folder,`comparison-concurrent-${tls?'tls-':''}${runId}-${Date.now()}.json`);
   writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n',{mode:0o600});
   console.log(JSON.stringify({
     report:reportPath,status:report.status,

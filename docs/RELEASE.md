@@ -58,6 +58,25 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## Strict verified-TLS competitive evidence (G5)
+
+A separate [MySQL TLS competitor workflow](../.github/workflows/mysql-comparison-tls.yml)
+compares NuBloxSQL and an independently installed, pinned `mysql2@3.24.6`
+using the same MySQL 8.4.13 TLS-required fixture and bound query. Both
+clients must verify the certificate authority and server identity,
+present a nonempty TLS cipher and reject an unrelated CA; mysql2 has
+`verifyIdentity: true` explicitly. Reused mysql2 session tickets are
+disabled within the comparison harness by constructing a fresh SSL
+configuration for each connection. Both client orders alternate,
+with original trials and a separate same-run evidence verification.
+
+The current GitHub workflow collects **only two small exploratory
+runs** on shared runner hardware and cannot certify any performance
+advantage. A commercial claim requires representative customer
+workloads, controlled dedicated environments, many reproducible
+independent samples and reviewed uncertainty bounds. **G5 remains
+in progress.**
+
 ## Verified-TLS transactional write evidence
 
 A separate [TLS write qualification workflow](../.github/workflows/mysql-write-soak-tls.yml)

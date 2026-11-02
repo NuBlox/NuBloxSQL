@@ -5,6 +5,7 @@
  */
 import {analyseComparison} from './analyse.mjs';
 import {COMPARISON_WORKLOADS} from './core.mjs';
+import {EXPECTED_TLS_CHECKS} from './tls-profile.mjs';
 
 const round=n=>Math.round(n*1e6)/1e6;
 const fail=()=>{throw Error('Invalid or incomparable MySQL performance evidence');};
@@ -47,6 +48,8 @@ const fingerprint=report=>JSON.stringify({
   cpuCount:report.environment.cpuCount,
   serverVersion:report.environment.serverVersion,
   transport:report.environment.transport,
+  tlsChecks:report.environment.transport==='verified-tls'
+    ?report.environment.tlsChecks:null,
   peerVersion:report.environment.peerVersion,
   iterations:report.configuration.iterations,
   concurrency:report.configuration.concurrency,
@@ -66,6 +69,11 @@ export function analyzeReports(reports){
     if(!report?.environment||!report?.configuration||report.schemaVersion!==1||
       report.kind!=='mysql-concurrent-prepared-comparison'||report.status!=='passed'||
       fingerprint(report)!==identity||
+      (report.environment.transport==='verified-tls'&&(
+        !/^8\.4\.13(?:[-+].*)?$/.test(report.environment.serverVersion??'')||
+        report.environment.peerVersion!=='3.24.6'||
+        JSON.stringify(report.environment.tlsChecks)!==
+          JSON.stringify(EXPECTED_TLS_CHECKS)))||
       typeof report.environment.timestamp!=='string'||
       !Number.isFinite(Date.parse(report.environment.timestamp))||
       timestamps.has(report.environment.timestamp)||
