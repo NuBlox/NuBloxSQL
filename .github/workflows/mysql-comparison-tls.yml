@@ -1,0 +1,102 @@
+name: MySQL verified-TLS concurrent competitor qualification
+
+on:
+  pull_request:
+    paths:
+      - 'tools/qualification/**'
+      - 'packages/driver/**'
+      - '.github/workflows/mysql-comparison-tls.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tls-comparison:
+    name: mysql-verified-tls-comparison
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NUBLOX_LIVE_MYSQL_TLS: '1'
+      NUBLOX_TEST_MYSQL_VERSION: '8.4.13'
+      NUBLOX_QUALIFICATION_MYSQL_VERSION: '8.4.13'
+      MYSQL_TLS_PORT: '3307'
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test-password
+      MYSQL_DATABASE: nublox_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Provision isolated CA-verified MySQL 8.4.13 requiring TLS
+        run: bash packages/driver/tests/fixtures/start-mysql-tls.sh
+      - name: Compile native driver and install isolated pinned mysql2 peer
+        run: |
+          npm ci --no-audit --no-fund
+          npm install --no-save --package-lock=false --ignore-scripts \
+            --prefix tools/qualification/mysql2-isolated mysql2@3.24.6
+          npm run build
+      - name: Run TLS comparator and independent evidence negative regressions
+        run: |
+          node --test tools/qualification/comparison-tls-profile.test.mjs \
+            tools/qualification/comparison-tls-evidence.test.mjs \
+            tools/qualification/compare-analysis.test.mjs \
+            tools/qualification/comparison-concurrent.test.mjs
+      - name: Compare both certificate-verified clients in alternating rounds twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qualification/compare-concurrent.mjs \
+            --iterations=12 --concurrency=2 --rounds=2
+          node tools/qualification/compare-concurrent.mjs \
+            --iterations=12 --concurrency=2 --rounds=2
+          reports=(artifacts/qualification/comparison-concurrent-tls-*.json)
+          test "${#reports[@]}" -eq 2
+          node tools/qualification/analyze-concurrent.mjs "${reports[@]}"
+      - name: Preserve only original matched TLS peer comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-verified-tls-comparison-${{ github.run_id }}
+          path: artifacts/qualification/comparison-concurrent-tls-*.json
+          if-no-files-found: error
+          retention-days: 60
+      - name: Destroy disposable TLS fixture and ephemeral private keys
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f nubloxsql-mysql-tls >/dev/null 2>&1 || true
+          rm -rf "$RUNNER_TEMP/nubloxsql-mysql-tls"
+
+  independent-tls-evidence:
+    name: mysql-verified-tls-comparison-evidence
+    if: always()
+    needs: [tls-comparison]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Refuse failed or skipped original comparison
+        run: test "${{ needs.tls-comparison.result }}" = success
+      - name: Download original same-run TLS comparison artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mysql-verified-tls-comparison-${{ github.run_id }}
+          path: artifacts/original-verified-tls-comparisons
+      - name: Independently validate identities, rounds and both client reports
+        run: |
+          node --test tools/qualification/comparison-tls-evidence.test.mjs
+          node tools/qualification/verify-concurrent-tls-evidence.mjs \
+            artifacts/original-verified-tls-comparisons
+      - name: Retain redacted diagnostic-only evidence decision
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-verified-tls-comparison-decision-${{ github.run_id }}
+          path: artifacts/qualification-matrix/mysql-verified-tls-comparison-*.json
+          if-no-files-found: error
+          retention-days: 60
