@@ -86,7 +86,7 @@ try{
     const send=db.stream.send.bind(db.stream);
     db.stream.send=async frame=>{
       const committing=frame[0]===0x03&&
-        frame.subarray(1).toString('ascii')==='COMMIT';
+        frame.subarray(1).toString('ascii')==='COMMIT AND NO CHAIN NO RELEASE';
       if(armed&&committing){
         armed=false;
         report.fault.commitWriteCount++;

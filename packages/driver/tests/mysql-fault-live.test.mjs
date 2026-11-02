@@ -57,7 +57,7 @@ live('a lost COMMIT acknowledgement returns unknown outcome and never retries th
   const wire=db.stream;
   const originalSend=wire.send.bind(wire);
   wire.send=async body=>{
-   const committing=body[0]===0x03&&body.subarray(1).toString('ascii')==='COMMIT';
+   const committing=body[0]===0x03&&body.subarray(1).toString('ascii')==='COMMIT AND NO CHAIN NO RELEASE';
    if(committing){commitCommands++;db.socket.pause();}
    await originalSend(body);
    if(committing)db.socket.destroy(); // block any trustworthy COMMIT response

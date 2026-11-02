@@ -574,11 +574,28 @@ export class MysqlSession implements RelationalSession {
     this.stream.reset();
     if(command==='COMMIT')this.commitAwaitingAck=true;
     if(command==='ROLLBACK')this.rollbackAwaitingAck=true;
-    await this.send(Buffer.concat([Buffer.from([3]),Buffer.from(command,'ascii')]));
-    // Only a complete Protocol 4.1 OK confirms transaction control.
-    // On a missing/truncated acknowledgement, the outer transaction
-    // lifecycle must not claim that COMMIT or ROLLBACK is definite.
+    // The server's completion_type setting can silently transform COMMIT or
+    // ROLLBACK into AND CHAIN (new transaction) or RELEASE (disconnect).
+    // Explicit clauses override that ambient session setting, preserving
+    // the driver's ownership of the transaction and physical connection.
+    const sql=command==='START TRANSACTION'
+      ?command
+      :command+' AND NO CHAIN NO RELEASE';
+    await this.send(Buffer.concat([Buffer.from([3]),Buffer.from(sql,'ascii')]));
+    // Only a complete Protocol 4.1 OK with the expected server-side
+    // transaction state confirms a managed transaction boundary.
     const result=acknowledgedOk(await this.get());
+    const active=!!((result.status??0)&SERVER_STATUS_IN_TRANS);
+    const expectedActive=command==='START TRANSACTION';
+    if(active!==expectedActive){
+      const error=expectedActive
+        ?fail('PROTOCOL_ERROR',
+          'MySQL did not confirm the start of a managed transaction')
+        :fail('TRANSACTION_OUTCOME_UNKNOWN',
+          command+' acknowledgement did not confirm transaction completion');
+      this.destroy(error);
+      throw error;
+    }
     if(command==='COMMIT')this.commitAwaitingAck=false;
     if(command==='ROLLBACK')this.rollbackAwaitingAck=false;
     return result;

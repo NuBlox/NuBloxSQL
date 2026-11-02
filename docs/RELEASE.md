@@ -58,6 +58,18 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## Explicit transaction completion under nondefault MySQL settings (G4)
+
+The native driver now uses `COMMIT AND NO CHAIN NO RELEASE` and `ROLLBACK
+AND NO CHAIN NO RELEASE`. This overrides server/session `completion_type`
+settings rather than allowing an acknowledged managed transaction to start
+another transaction or disconnect the socket. The driver validates native
+`SERVER_STATUS_IN_TRANS` on `START TRANSACTION`, `COMMIT` and `ROLLBACK`,
+rejecting contradictory states with fail-closed disposal. Synthetic protocol
+and live MySQL tests cover CHAIN and RELEASE policy, both successful commit
+and application-error rollback, and ambiguous completion. The G4 gate remains
+partial: these checks do not establish the outcome of a lost acknowledgement.
+
 ## Managed transaction-boundary detection (G4)
 
 Scoped `tx.query()` and `tx.queryResults()` now require the final native

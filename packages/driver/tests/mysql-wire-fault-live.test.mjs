@@ -138,7 +138,7 @@ live('lost ROLLBACK acknowledgement cannot trigger a second rollback or a false 
   const originalSend=wire.send.bind(wire);
   let rollbackCommands=0;
   wire.send=async body=>{
-    if(body[0]===0x03&&body.subarray(1).toString('ascii')==='ROLLBACK')
+    if(body[0]===0x03&&body.subarray(1).toString('ascii')==='ROLLBACK AND NO CHAIN NO RELEASE')
       rollbackCommands++;
     return originalSend(body);
   };
@@ -186,7 +186,7 @@ live('truncated ROLLBACK OK never certifies rollback or permits socket reuse',as
   const wire=db.stream,originalSend=wire.send.bind(wire);
   let rollbacks=0;
   wire.send=async body=>{
-   if(body[0]===3&&body.subarray(1).toString('ascii')==='ROLLBACK')rollbacks++;
+   if(body[0]===3&&body.subarray(1).toString('ascii')==='ROLLBACK AND NO CHAIN NO RELEASE')rollbacks++;
    return originalSend(body);
   };
   try{
