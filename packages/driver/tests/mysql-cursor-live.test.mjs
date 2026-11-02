@@ -368,16 +368,20 @@ live('pool replaces a cursor session while retaining its original callback error
   const {connectMysql}=await import('../dist/vendors/mysql/adapter.js');
   const {fail}=await import('../dist/core/errors.js');
   const primary=new Error('Caller rejected cursor result');
-  let created=0,firstId;
+  let created=0,firstId,firstNative;
   const pool=new ConnectionPool(async signal=>{
     const db=await connectMysql(target,signal);
-    if(++created===1)
-      db.closeNative=async()=>{throw fail('DATABASE_ERROR','Unconfirmed cursor close');};
+    if(++created===1)firstNative=db;
     return db;
   },{maxConnections:1,acquireTimeoutMs:5000,healthCheckTimeoutMs:1500});
   try{
     await assert.rejects(pool.withConnection(async lease=>{
       firstId=(await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+      // The preceding SELECT also uses an implicit prepared-statement close.
+      // Inject the fault only for the cursor's own native cleanup.
+      firstNative.closeNative=async()=>{
+        throw fail('DATABASE_ERROR','Unconfirmed cursor close');
+      };
       await lease.withCursor('SELECT ? AS value',[174],async cursor=>{
         assert.equal((await cursor.next()).value.row.value,174n);
         throw primary;
