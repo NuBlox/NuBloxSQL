@@ -348,6 +348,12 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
     const scope={active:true};
     try{
       const result=await this.leaseContext.run(scope,()=>work(lease));
+      // A callback result is NOT proof that its unawaited I/O completed.
+      // The connection will be discarded, but reporting callback success
+      // would conceal an uncertain write or a command that never ran.
+      if(pending.size)
+        throw fail('CONNECTION_CLOSED',
+          'Pool callback returned with unfinished database operations; SQL outcome may be unknown');
       succeeded=true;
       return result;
     }catch(error){
