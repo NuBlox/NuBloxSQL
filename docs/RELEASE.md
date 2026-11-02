@@ -58,6 +58,22 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## Verified-TLS transactional write evidence
+
+A separate [TLS write qualification workflow](../.github/workflows/mysql-write-soak-tls.yml)
+now exercises actual MySQL 8.4.13 InnoDB commits and rollbacks over
+certificate-verified TLS with a restricted **SELECT/UPDATE REQUIRE SSL**
+application identity. Its fixture administrator is separate from pooled
+application connections. Bad CA, wrong hostname, incorrect password,
+unencrypted-transport policy and denied DDL have explicit negative checks.
+Independent same-run evidence validates final durable counters, time,
+resource cleanup and security assertions.
+
+**G3/G6/G8 remain incomplete.** A passing short smoke test is not a
+long-duration, multi-environment, independent security or customer-production
+approval. The [resilience register](MYSQL-RESILIENCE-QUALIFICATION.md)
+defines the narrower engineering evidence.
+
 ## Durable transactional write qualification (new evidence stream)
 
 The [write-endurance workflow](../.github/workflows/mysql-write-soak.yml)

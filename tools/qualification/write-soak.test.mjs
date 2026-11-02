@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {parseWriteSoakOptions,checkWriteSoakEnvironment,runWriteSoak}
+import {parseWriteSoakOptions,checkWriteSoakEnvironment,
+  checkVerifiedTlsWriteSoakEnvironment,runWriteSoak}
   from './write-soak.mjs';
 
 const env={
@@ -85,6 +86,7 @@ const options=parseWriteSoakOptions(['--durationMs=400','--concurrency=2',
 test('mixed committed writes and deliberate rollback preserve durable state',async()=>{
   const f=fixture();
   const result=await runWriteSoak({...f,target:{engine:'mysql'},
+    administratorTarget:{engine:'mysql',role:'administrator'},
     table:'nublox_write_soak_12345',options});
   assert.ok(result.observedDurationMs>=400);
   assert.ok(result.committedTransactions>=2);
@@ -102,5 +104,23 @@ test('unexpected counter or silently swallowed rollback is fatal and cleaned up'
       table:'nublox_write_soak_12345',options}));
     assert.equal(f.state.dropped,true);
     assert.equal(f.state.closed,true);
+  }
+});
+
+test('verified TLS write fixture requires pinned server, CI and restricted identity',()=>{
+  const secure={...env,NUBLOX_LIVE_MYSQL_TLS:'1',NUBLOX_TEST_MYSQL_VERSION:'8.4.13',
+    MYSQL_TLS_PORT:'3307',MYSQL_USER:'root',MYSQL_WRITE_USER:'nublox_write_test',
+    MYSQL_WRITE_PASSWORD:'test-write-password',
+    NUBLOX_TLS_CA_FILE:'/tmp/ca.pem',
+    NUBLOX_TLS_OTHER_CA_FILE:'/tmp/unrelated-ca.pem'};
+  assert.equal(checkVerifiedTlsWriteSoakEnvironment(secure),'nublox_write_soak_12345');
+  for(const key of ['CI','GITHUB_ACTIONS','NUBLOX_LIVE_MYSQL_TLS',
+    'NUBLOX_ALLOW_WRITE_MYSQL_FIXTURE','NUBLOX_TEST_MYSQL_VERSION',
+    'NUBLOX_QUALIFICATION_MYSQL_VERSION','MYSQL_DATABASE','MYSQL_TLS_PORT',
+    'MYSQL_USER','MYSQL_WRITE_USER','MYSQL_WRITE_PASSWORD',
+    'NUBLOX_TLS_CA_FILE','NUBLOX_TLS_OTHER_CA_FILE','GITHUB_RUN_ID','GITHUB_SHA']){
+    const invalid=key==='MYSQL_WRITE_PASSWORD'||key.endsWith('_CA_FILE')?'':'wrong';
+    assert.throws(()=>checkVerifiedTlsWriteSoakEnvironment({...secure,[key]:invalid}),
+      'Rejected '+key);
   }
 });
