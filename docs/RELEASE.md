@@ -58,6 +58,16 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## Cursor cleanup error precedence (G4/G6)
+
+A secondary failed `COM_STMT_CLOSE` after cursor work must not overwrite the
+original cursor or application exception. The driver now preserves the first
+failure across operation-guard interruption while permanently revoking the
+physical connection. Live regression tests cover typed SQL diagnostics,
+ordinary callback exceptions, no cleanup replay and pooled replacement. The
+existing successful-operation cleanup error behaviour remains unchanged.
+G4/G6 still require independent qualification and are not release-approved.
+
 ## Explicit transaction completion under nondefault MySQL settings (G4)
 
 The native driver now uses `COMMIT AND NO CHAIN NO RELEASE` and `ROLLBACK
