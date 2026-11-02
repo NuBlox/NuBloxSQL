@@ -218,3 +218,33 @@ live('pool rejects unsafe lifecycle options before opening sockets',async()=>{
   assert.throws(()=>createDatabasePool(target,options),e=>e.code==='INVALID_INPUT');
  }
 });
+
+live('unawaited SQL at pool callback return is never reported as successful or reused',
+  {timeout:15000},async()=>{
+  const pool=createDatabasePool(target,{maxConnections:1,acquireTimeoutMs:5000});
+  let detached,firstId;
+  try{
+    await assert.rejects(pool.withConnection(async lease=>{
+      firstId=await idOf(lease);
+      detached=lease.query('SELECT SLEEP(3) AS delayed');
+      // Attach an observer so the deliberately detached query does not
+      // produce an unhandled rejection after the native socket is revoked.
+      void detached.catch(()=>{});
+      return 'prematurely finished';
+    }),error=>error.code==='CONNECTION_CLOSED'&&
+      /unfinished database operations/.test(error.message));
+    assert.ok(pool.stats.discarded>=1);
+    assert.equal(pool.stats.size,0);
+    await assert.rejects(detached);
+    const nextId=await pool.withConnection(async lease=>{
+      assert.equal((await lease.query('SELECT ? AS healthy',[75])).rows[0].healthy,75n);
+      return idOf(lease);
+    });
+    assert.notEqual(nextId,firstId,'unawaited SQL must never reach the next borrower');
+    assert.equal(pool.stats.pending,0);
+    assert.ok(pool.stats.size<=1);
+  }finally{
+    await detached?.catch(()=>{});
+    await pool.close();
+  }
+});
