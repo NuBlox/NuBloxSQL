@@ -58,6 +58,22 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## Managed transaction-boundary detection (G4)
+
+Scoped `tx.query()` and `tx.queryResults()` now require the final native
+MySQL server result to report `SERVER_STATUS_IN_TRANS`. If a statement
+implicitly or explicitly ends the managed transaction, the driver revokes the
+session and reports `TRANSACTION_OUTCOME_UNKNOWN`; no subsequent synthetic
+`COMMIT` or automatic write replay is permitted. New deterministic and live
+InnoDB regression tests demonstrate a durable INSERT surviving DDL's implicit
+commit, followed by reconciliation through a fresh pooled connection. This
+improves detection, **not** rollback guarantees: MySQL DDL and certain
+administrative operations commit before execution, stored routines may change
+transaction boundaries, and no status-after-success check can detect all
+nested or failed-statement cases. Applications must avoid these operations
+inside managed transactions and reconcile uncertain outcomes. G4 remains
+**partial / pending**, not commercially signed off.
+
 ## Numeric binary-row decoding optimisation (G5)
 
 The MySQL [binary result decoder](../packages/driver/src/vendors/mysql/types.ts)

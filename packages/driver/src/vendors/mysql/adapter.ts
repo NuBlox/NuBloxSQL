@@ -23,6 +23,8 @@ type ValidMysqlTarget=MysqlTarget&{timeoutMs:number};
 type TransactionOutcome<T>={success:true;value:T}|{success:false;error:unknown};
 type QueuedJob={start:()=>void;reject:(error:DriverError)=>void};
 const MAX_PENDING_COMMANDS=1024;
+/** MySQL Classic SERVER_STATUS_IN_TRANS, set while the server owns a transaction. */
+const SERVER_STATUS_IN_TRANS=0x0001;
 
 export class MysqlSession implements RelationalSession {
   readonly info:Readonly<SessionInfo>;
@@ -613,9 +615,36 @@ export class MysqlSession implements RelationalSession {
           void request.then(()=>{pending.delete(request);},()=>{pending.delete(request);});
           return request;
         };
+        // A server may implicitly commit on DDL, administrative SQL or an
+        // explicit COMMIT executed by the application. A syntactically valid
+        // reply is not proof that this managed transaction is still open.
+        // Inspect the final server-reported status of every scoped result.
+        const assertStillInTransaction=(results:readonly QueryResult[]):void=>{
+          const status=results.at(-1)?.status;
+          if(typeof status!=='number'||(status&SERVER_STATUS_IN_TRANS)===0){
+            const error=fail('TRANSACTION_OUTCOME_UNKNOWN',
+              'MySQL ended the managed transaction before driver COMMIT; previous writes may already be durable');
+            // The active operation is raced against its interruption guard.
+            // Give both paths the same precise outcome instead of allowing a
+            // generic CONNECTION_CLOSED to win when the socket is revoked.
+            this.destroy(error);
+            throw error;
+          }
+        };
         const transaction:RelationalTransaction=Object.freeze({
-          query:(sql:string,values:readonly BindValue[]=[])=>schedule(()=>this.execute(sql,values)),
-          queryResults:(sql:string,values:readonly BindValue[]=[])=>schedule(()=>this.executeResults(sql,values))
+          query:(sql:string,values:readonly BindValue[]=[])=>schedule(async()=>{
+            const results=await this.executeResults(sql,values);
+            assertStillInTransaction(results);
+            if(results.length!==1)
+              throw fail('UNSUPPORTED_FEATURE',
+                'Statement returned multiple results; use queryResults or executeResults');
+            return results[0];
+          }),
+          queryResults:(sql:string,values:readonly BindValue[]=[])=>schedule(async()=>{
+            const results=await this.executeResults(sql,values);
+            assertStillInTransaction(results);
+            return results;
+          })
         });
         let value:T;
         try {
