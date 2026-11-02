@@ -119,7 +119,8 @@ test('verified TLS write fixture requires pinned server, CI and restricted ident
     'NUBLOX_QUALIFICATION_MYSQL_VERSION','MYSQL_DATABASE','MYSQL_TLS_PORT',
     'MYSQL_USER','MYSQL_WRITE_USER','MYSQL_WRITE_PASSWORD',
     'NUBLOX_TLS_CA_FILE','NUBLOX_TLS_OTHER_CA_FILE','GITHUB_RUN_ID','GITHUB_SHA']){
-    assert.throws(()=>checkVerifiedTlsWriteSoakEnvironment({...secure,[key]:'wrong'}),
+    const invalid=key==='MYSQL_WRITE_PASSWORD'||key.endsWith('_CA_FILE')?'':'wrong';
+    assert.throws(()=>checkVerifiedTlsWriteSoakEnvironment({...secure,[key]:invalid}),
       'Rejected '+key);
   }
 });
