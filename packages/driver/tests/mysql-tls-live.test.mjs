@@ -358,7 +358,7 @@ live('verified TLS loss after COMMIT send reports an unknown transaction outcome
  const send=stream.send.bind(stream);
  let commits=0;
  stream.send=async bytes=>{
-  const isCommit=bytes[0]===3&&bytes.subarray(1).toString('ascii')==='COMMIT';
+  const isCommit=bytes[0]===3&&bytes.subarray(1).toString('ascii')==='COMMIT AND NO CHAIN NO RELEASE';
   if(isCommit){commits++;db.socket.pause();}
   await send(bytes);
   if(isCommit)db.socket.destroy();
