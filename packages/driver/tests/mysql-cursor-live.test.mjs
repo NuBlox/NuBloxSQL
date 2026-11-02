@@ -319,3 +319,76 @@ live('cancel or timeout during stalled cursor close retires socket without a lat
   }
  }
 });
+
+
+live('cursor cleanup failure preserves primary SQL diagnostic and revokes the session',
+  {timeout:10000},async()=>{
+  const {fail}=await import('../dist/core/errors.js');
+  const db=await connectDatabase(target);
+  const originalClose=db.closeNative.bind(db);
+  const primary=fail('DATABASE_ERROR','Primary cursor callback failure');
+  let closes=0;
+  db.closeNative=async()=>{closes++;throw fail('RESOURCE_LIMIT','Secondary cursor close failure');};
+  try{
+    await assert.rejects(db.withCursor('SELECT ? AS cursor_value',[171],async cursor=>{
+      assert.equal((await cursor.next()).value.row.cursor_value,171n);
+      throw primary;
+    },{fetchSize:1}),error=>error===primary);
+    assert.equal(closes,1);
+    assert.equal(db.closed,true);
+    await assert.rejects(db.query('SELECT 1'),error=>error.code==='CONNECTION_CLOSED');
+  }finally{db.closeNative=originalClose;await db.close();}
+});
+
+live('cursor cleanup failure preserves ordinary application Error across guard interruption',
+  {timeout:10000},async()=>{
+  const {fail}=await import('../dist/core/errors.js');
+  const db=await connectDatabase(target);
+  const originalClose=db.closeNative.bind(db);
+  const primary=new Error('Application failed while processing cursor rows');
+  let closes=0;
+  db.closeNative=async()=>{closes++;throw fail('DATABASE_ERROR','Secondary cursor close failure');};
+  try{
+    await assert.rejects(db.withCursor('SELECT ? AS cursor_value',[172],async cursor=>{
+      assert.equal((await cursor.next()).value.row.cursor_value,172n);
+      throw primary;
+    },{fetchSize:1}),error=>error===primary);
+    assert.equal(closes,1);
+    assert.equal(db.closed,true);
+    const replacement=await connectDatabase(target);
+    try{
+      assert.equal((await replacement.query('SELECT ? AS recovered',[173])).rows[0].recovered,173n);
+    }finally{await replacement.close();}
+  }finally{db.closeNative=originalClose;await db.close();}
+});
+
+live('pool replaces a cursor session while retaining its original callback error',
+  {timeout:10000},async()=>{
+  const {ConnectionPool}=await import('../dist/core/pooling.js');
+  const {connectMysql}=await import('../dist/vendors/mysql/adapter.js');
+  const {fail}=await import('../dist/core/errors.js');
+  const primary=new Error('Caller rejected cursor result');
+  let created=0,firstId;
+  const pool=new ConnectionPool(async signal=>{
+    const db=await connectMysql(target,signal);
+    if(++created===1)
+      db.closeNative=async()=>{throw fail('DATABASE_ERROR','Unconfirmed cursor close');};
+    return db;
+  },{maxConnections:1,acquireTimeoutMs:5000,healthCheckTimeoutMs:1500});
+  try{
+    await assert.rejects(pool.withConnection(async lease=>{
+      firstId=(await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id;
+      await lease.withCursor('SELECT ? AS value',[174],async cursor=>{
+        assert.equal((await cursor.next()).value.row.value,174n);
+        throw primary;
+      },{fetchSize:1});
+    }),error=>error===primary);
+    assert.ok(pool.stats.discarded>=1);
+    const nextId=await pool.withConnection(async lease=>
+      (await lease.query('SELECT CONNECTION_ID() AS id')).rows[0].id);
+    assert.notEqual(nextId,firstId);
+    assert.equal(created,2);
+    assert.equal(pool.stats.pending,0);
+    assert.ok(pool.stats.size<=1);
+  }finally{await pool.close();}
+});
