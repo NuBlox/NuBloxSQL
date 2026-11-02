@@ -622,9 +622,13 @@ export class MysqlSession implements RelationalSession {
         const assertStillInTransaction=(results:readonly QueryResult[]):void=>{
           const status=results.at(-1)?.status;
           if(typeof status!=='number'||(status&SERVER_STATUS_IN_TRANS)===0){
-            this.destroy();
-            throw fail('TRANSACTION_OUTCOME_UNKNOWN',
+            const error=fail('TRANSACTION_OUTCOME_UNKNOWN',
               'MySQL ended the managed transaction before driver COMMIT; previous writes may already be durable');
+            // The active operation is raced against its interruption guard.
+            // Give both paths the same precise outcome instead of allowing a
+            // generic CONNECTION_CLOSED to win when the socket is revoked.
+            this.destroy(error);
+            throw error;
           }
         };
         const transaction:RelationalTransaction=Object.freeze({
