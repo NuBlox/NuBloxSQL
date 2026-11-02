@@ -1,4 +1,4 @@
-import {fail,type DriverError} from './errors.js';
+import {fail} from './errors.js';
 
 /** An operation deadline starts when its command obtains the session, not while queued. */
 export interface OperationOptions {
