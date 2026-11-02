@@ -58,6 +58,29 @@ licence; there is **no general downstream commercial grant**.
 Statuses must be changed only after linking independent evidence.
 No arbitrary throughput, latency or uptime claim is authorised by a green PR.
 
+## Numeric binary-row decoding optimisation (G5)
+
+The MySQL [binary result decoder](../packages/driver/src/vendors/mysql/types.ts)
+now reads fixed-width signed/unsigned integers, bigint, float and double
+directly from the validated packet offset instead of creating a transient
+`Buffer.subarray` for each numeric cell. Before each read it verifies that
+the full field is present, preserving the previous fail-closed truncation
+behaviour. NULL bitmaps, string collations, decimal, JSON, BLOB, temporal
+values and public result shapes are unchanged.
+
+The [scalar compatibility tests](../packages/driver/tests/mysql-binary-scalar-fastpath.test.mjs)
+independently reproduce the former slice-based parser across signedness and
+numeric boundaries, 64-column NULL bitmap positions, deterministic 1,500-row
+mutations and deliberately shortened frames. Existing real-MySQL type,
+prepared-statement, cursor and failure tests remain release requirements.
+
+The [internal native before/after workflow](../.github/workflows/mysql-native-optimisation.yml)
+builds the exact PR baseline and candidate and measures both general mixed
+decoding and a targeted in-process numeric microprofile with alternating
+baseline/candidate order and identical packets. These timings are
+**diagnostic only** and must not be represented as network/query latency,
+independent performance superiority or commercial qualification. **G5 stays open.**
+
 ## Prepared execution buffer allocation (G5)
 
 The native [COM_STMT_EXECUTE encoder](../packages/driver/src/vendors/mysql/protocol/commands.ts)
