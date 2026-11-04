@@ -53,6 +53,7 @@ test('bounded sampled memory from full-duration series and independently derived
   assert.equal(evidence.heapUsedGrowthBytes,0);
   assert.equal(evidence.rssGrowthBytes,0);
   assert.equal(evidence.observationElapsedMs,7_200_000);
+  assert.equal(evidence.maxSampleGapMs,30_000);
 });
 test('steady growth trips conservative guardrails, not silence or hard-coded claims',()=>{
   assert.throws(()=>validateMemoryTimeline(
@@ -65,6 +66,33 @@ test('steady growth trips conservative guardrails, not silence or hard-coded cla
     fixture(1_800_000,{heapStep:100_000,rssStep:200_000}),
     {minDurationMs:1_800_000}));
 });
+test('long-duration evidence rejects missing sampler windows even when sample count is sufficient',()=>{
+  const missingTicks=structuredClone(fixture(1_800_000));
+  // Only three lost ticks: the original 75% sample-count check would pass,
+  // but a four-interval blind spot cannot prove uninterrupted observation.
+  missingTicks.samples.splice(8,3);
+  missingTicks.count=missingTicks.samples.length;
+  assert.ok(missingTicks.count>=Math.floor(1_800_000/30000*0.75));
+  assert.throws(()=>validateMemoryTimeline(missingTicks,
+    {minDurationMs:1_800_000}),/missing observation window/);
+
+  // A concentrated set of samples plus one late sample must also fail:
+  // elapsed time and a numerically sufficient sample count alone are unsafe.
+  const clustered=new BoundedMemoryTimeline();
+  for(let i=0;i<60;i++)clustered.record(i*1000,mem(40_000_000,90_000_000));
+  clustered.record(1_800_000,mem(40_000_000,90_000_000));
+  assert.throws(()=>validateMemoryTimeline(clustered.summary(),
+    {minDurationMs:1_800_000}),/missing observation window/);
+
+  // Short integration smoke tests only sample start and finish; their
+  // separate duration gate is intentionally unaffected.
+  const short=new BoundedMemoryTimeline();
+  short.record(0,mem(40_000_000,90_000_000));
+  short.record(10_000,mem(40_000_000,90_000_000));
+  assert.equal(validateMemoryTimeline(short.summary(),
+    {minDurationMs:10_000}).maxSampleGapMs,10_000);
+});
+
 test('missing, truncated and tampered timeline fails closed',()=>{
   assert.throws(()=>validateMemoryTimeline({}, {minDurationMs:1_800_000}));
   const short=fixture(1_800_000);

@@ -117,9 +117,21 @@ export function validateMemoryTimeline(trace,{minDurationMs=0}={}){
   const first=trace.samples[0],last=trace.samples.at(-1);
   assert.ok(first.elapsedMs<=1000&&last.elapsedMs>=minDurationMs,
     'Incomplete pooled-memory observation window');
-  // Missed sampler ticks fail rather than silently claiming dense coverage.
+  // Validate the actual distribution of samples, not just their total
+  // count. Without an inter-sample bound, many samples clustered at the
+  // beginning plus one final sample can falsely claim continuous coverage.
+  let maxSampleGapMs=0;
+  for(let i=1;i<trace.samples.length;i++){
+    const gap=trace.samples[i].elapsedMs-trace.samples[i-1].elapsedMs;
+    maxSampleGapMs=Math.max(maxSampleGapMs,gap);
+    if(minDurationMs>=1_800_000)
+      assert.ok(gap>0&&gap<=3*trace.intervalMs,
+        'Long-running memory trace contains a missing observation window');
+  }
+  // Short smoke tests have a start/end pair without scheduled intermediate
+  // samples. Only endurance evidence enforces uninterrupted observation.
   if(minDurationMs>=1_800_000){
-    assert.ok(trace.count>=Math.floor(minDurationMs/30000*0.75),
+    assert.ok(trace.count>=Math.floor(minDurationMs/trace.intervalMs*0.75),
       'Insufficient duration-wide memory observations');
   }
   // Conservative guardrails: a trip warrants investigation, not automatic
@@ -131,6 +143,7 @@ export function validateMemoryTimeline(trace,{minDurationMs=0}={}){
     samples:trace.count,
     heapUsedGrowthBytes:trace.trend.heapUsedGrowthBytes,
     rssGrowthBytes:trace.trend.rssGrowthBytes,
-    observationElapsedMs:last.elapsedMs-first.elapsedMs
+    observationElapsedMs:last.elapsedMs-first.elapsedMs,
+    maxSampleGapMs
   });
 }

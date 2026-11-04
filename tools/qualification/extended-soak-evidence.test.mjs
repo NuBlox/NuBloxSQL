@@ -39,6 +39,7 @@ test('scheduled 30-minute evidence is same-revision, complete and redacted',()=>
   assert.equal(proof.completedOperations,6000);
   assert.equal(proof.poolSlotsAfterClose,0);
   assert.equal(proof.memorySamples,61);
+  assert.equal(proof.memoryMaxSampleGapMs,30_000);
   assert.equal(proof.heapUsedGrowthBytes,0);
   assert.equal(proof.rssGrowthBytes,0);
   assert.equal(proof.status,'passed');
@@ -96,6 +97,13 @@ test('reject leaked pool sessions, waiters and absent process measurements',()=>
   reject(r=>{r.resources.memoryTimeline.samples[5].rssBytes=Infinity;});
   reject(r=>{r.resources.memoryTimeline.trend.heapUsedGrowthBytes=1000;});
   reject(r=>{r.resources.memoryTimeline.samples.length=1;});
+  // Drop three interior samples without violating the old total-count floor.
+  // The validator must detect the missing two-minute observation window.
+  reject(r=>{
+    const timeline=r.resources.memoryTimeline;
+    timeline.samples.splice(9,3);
+    timeline.count=timeline.samples.length;
+  });
 });
 test('reject duplicate, stale or missing persisted run artifacts',()=>{
   assert.equal(selectExtendedSoakReport(['soak-local-12345-1790000.json'],runId),

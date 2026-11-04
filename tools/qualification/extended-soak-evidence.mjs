@@ -61,6 +61,7 @@ export function validateExtendedSoakEvidence(report,{revision,runId,eventName,ho
     completedOperations:pool.completed,expectedSqlErrors:errors.expectedSqlErrors,
     poolSlotsAfterClose:after.size,
     memorySamples:memoryTrend.samples,
+    memoryMaxSampleGapMs:memoryTrend.maxSampleGapMs,
     heapUsedGrowthBytes:memoryTrend.heapUsedGrowthBytes,
     rssGrowthBytes:memoryTrend.rssGrowthBytes
   });
