@@ -68,12 +68,19 @@ test('steady growth trips conservative guardrails, not silence or hard-coded cla
 });
 test('long-duration evidence rejects missing sampler windows even when sample count is sufficient',()=>{
   const missingTicks=structuredClone(fixture(1_800_000));
-  // Only three lost ticks: the original 75% sample-count check would pass,
-  // but a four-interval blind spot cannot prove uninterrupted observation.
+  // Only three lost ticks: the old 75% sample-count test would pass.
+  // Recompute the honest trend for the altered series: the new continuity
+  // guard, not a stale derived window size, must cause rejection.
   missingTicks.samples.splice(8,3);
-  missingTicks.count=missingTicks.samples.length;
-  assert.ok(missingTicks.count>=Math.floor(1_800_000/30000*0.75));
-  assert.throws(()=>validateMemoryTimeline(missingTicks,
+  const verified=new BoundedMemoryTimeline();
+  for(const sample of missingTicks.samples)
+    verified.record(sample.elapsedMs,{
+      heapUsed:sample.heapUsedBytes,rss:sample.rssBytes,
+      external:sample.externalBytes,arrayBuffers:sample.arrayBuffersBytes
+    });
+  const corrected=verified.summary();
+  assert.ok(corrected.count>=Math.floor(1_800_000/30000*0.75));
+  assert.throws(()=>validateMemoryTimeline(corrected,
     {minDurationMs:1_800_000}),/missing observation window/);
 
   // A concentrated set of samples plus one late sample must also fail:

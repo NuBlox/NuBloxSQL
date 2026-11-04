@@ -97,13 +97,20 @@ test('reject leaked pool sessions, waiters and absent process measurements',()=>
   reject(r=>{r.resources.memoryTimeline.samples[5].rssBytes=Infinity;});
   reject(r=>{r.resources.memoryTimeline.trend.heapUsedGrowthBytes=1000;});
   reject(r=>{r.resources.memoryTimeline.samples.length=1;});
-  // Drop three interior samples without violating the old total-count floor.
-  // The validator must detect the missing two-minute observation window.
-  reject(r=>{
-    const timeline=r.resources.memoryTimeline;
-    timeline.samples.splice(9,3);
-    timeline.count=timeline.samples.length;
-  });
+});
+test('independent long-soak evidence rejects an honest trend with missing sampling windows',()=>{
+  const report=structuredClone(fixture());
+  const source=report.resources.memoryTimeline.samples.filter((_,i)=>i<9||i>=12);
+  const rebuilt=new BoundedMemoryTimeline();
+  for(const sample of source)
+    rebuilt.record(sample.elapsedMs,{
+      heapUsed:sample.heapUsedBytes,rss:sample.rssBytes,
+      external:sample.externalBytes,arrayBuffers:sample.arrayBuffersBytes
+    });
+  report.resources.memoryTimeline=rebuilt.summary();
+  assert.ok(report.resources.memoryTimeline.count>=45);
+  assert.throws(()=>validateExtendedSoakEvidence(report,base),
+    /missing observation window/);
 });
 test('reject duplicate, stale or missing persisted run artifacts',()=>{
   assert.equal(selectExtendedSoakReport(['soak-local-12345-1790000.json'],runId),
