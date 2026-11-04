@@ -757,13 +757,26 @@ export class MysqlSession implements RelationalSession {
     return outcome.value;
   }
 
+  /** A valid OK response does not make a pooled socket safe if the server
+   * still reports an active transaction. Never hand it to another borrower. */
+  private confirmPoolTransactionClosed(
+    result:QueryResult,operation:'health check'|'reset'
+  ):void{
+    if(typeof result.status!=='number'||(result.status&SERVER_STATUS_IN_TRANS)!==0){
+      const error=fail('PROTOCOL_ERROR',
+        'MySQL pool '+operation+' did not confirm an inactive transaction');
+      this.destroy(error);
+      throw error;
+    }
+  }
+
   /** Native COM_PING checks protocol synchronization on the exact borrowed socket.
    * No application statement is replayed if the probe fails. */
   async healthCheckForPool(timeoutMs:number):Promise<void>{
     await this.serial(async()=>{
       this.stream.reset();
       await this.send(Buffer.from([0x0e])); // COM_PING
-      acknowledgedOk(await this.get());
+      this.confirmPoolTransactionClosed(acknowledgedOk(await this.get()),'health check');
     },{timeoutMs});
   }
 
@@ -773,7 +786,7 @@ export class MysqlSession implements RelationalSession {
     return this.serial(async()=>{
       this.stream.reset();
       await this.send(Buffer.from([0x1f])); // COM_RESET_CONNECTION
-      acknowledgedOk(await this.get());
+      this.confirmPoolTransactionClosed(acknowledgedOk(await this.get()),'reset');
       for(const statement of this.statements)statement.invalidate();
       this.statements.clear();
     });

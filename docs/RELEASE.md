@@ -72,6 +72,18 @@ premature success, delayed native SQL, physical replacement and normal reuse.
 This is a fail-closed improvement, not evidence that an interrupted write did
 not commit. G4 and G6 remain partial/in progress.
 
+## Fail-closed MySQL pool transaction state (G4/G6)
+
+The native `COM_PING` checkout probe and `COM_RESET_CONNECTION` lease
+reset now require their complete MySQL OK acknowledgements to report no
+`SERVER_STATUS_IN_TRANS` flag. A contradictory status revokes the physical
+connection as a protocol failure; checkout may replace it before application
+work, while a failed reset rejects the completed lease rather than presenting
+a false safe-reuse outcome. No application SQL is replayed. Deterministic
+native-packet and pool-replacement tests exercise valid and invalid statuses.
+This is a defensive consistency check, not proof that an untrusted server
+accurately represents its transaction state or evidence of commercial readiness.
+
 ## All-settled pool shutdown disposal barrier (G6)
 
 The bounded connection pool no longer uses fail-fast `Promise.all` for
