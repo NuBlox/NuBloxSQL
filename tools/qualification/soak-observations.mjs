@@ -147,3 +147,92 @@ export function validateMemoryTimeline(trace,{minDurationMs=0}={}){
     maxSampleGapMs
   });
 }
+
+/** Bounded successful-SQL-progress samples, excluding attempted or unverified
+ * work. Records contain only aggregate counters and monotonic elapsed time. */
+export class BoundedProgressTimeline {
+  #samples=[];
+  constructor({intervalMs=30000,capacity=256}={}){
+    assert.ok(Number.isSafeInteger(intervalMs)&&intervalMs>=1000);
+    assert.ok(Number.isSafeInteger(capacity)&&capacity>=4&&capacity<=1024);
+    this.intervalMs=intervalMs;
+    this.capacity=capacity;
+  }
+  record(elapsedMs,completed){
+    assert.ok(Number.isFinite(elapsedMs)&&elapsedMs>=0,'Invalid SQL progress timestamp');
+    assert.ok(Number.isSafeInteger(completed)&&completed>=0,
+      'Invalid completed SQL operation counter');
+    const last=this.#samples.at(-1);
+    if(last)assert.ok(elapsedMs>=last.elapsedMs&&completed>=last.completed,
+      'Nonmonotonic SQL progress');
+    assert.ok(this.#samples.length<this.capacity,'SQL progress trace exceeds capacity');
+    this.#samples.push({elapsedMs:round(elapsedMs),completed});
+  }
+  summary(){
+    assert.ok(this.#samples.length>=2,'Insufficient SQL progress observations');
+    const samples=this.#samples.map(sample=>Object.freeze({...sample}));
+    let lastProgressAt=samples[0].elapsedMs,maxUnverifiedProgressMs=0;
+    for(let i=1;i<samples.length;i++){
+      const current=samples[i];
+      maxUnverifiedProgressMs=Math.max(maxUnverifiedProgressMs,
+        current.elapsedMs-lastProgressAt);
+      if(current.completed>samples[i-1].completed)lastProgressAt=current.elapsedMs;
+    }
+    return Object.freeze({
+      kind:'pooled-sql-progress-timeline',intervalMs:this.intervalMs,
+      capacity:this.capacity,count:samples.length,
+      samples:Object.freeze(samples),
+      progress:Object.freeze({
+        startCompleted:samples[0].completed,
+        endCompleted:samples.at(-1).completed,
+        maxUnverifiedProgressMs:round(maxUnverifiedProgressMs)
+      })
+    });
+  }
+}
+
+/** Independently verify sampled SQL work against a verified workload total and
+ * the same timestamps as the separately validated memory timeline. */
+export function validateProgressTimeline(trace,{
+  minDurationMs=0,expectedCompleted,memoryTimeline
+}={}){
+  assert.ok(trace?.kind==='pooled-sql-progress-timeline'&&
+    trace.intervalMs===30000&&trace.capacity===256&&
+    Number.isSafeInteger(trace.count)&&trace.count>=2&&
+    trace.count<=trace.capacity&&Array.isArray(trace.samples)&&
+    trace.samples.length===trace.count,'Invalid bounded SQL progress timeline');
+  assert.ok(Number.isSafeInteger(expectedCompleted)&&expectedCompleted>=1,
+    'Verified completed SQL work total is required');
+  assert.ok(memoryTimeline?.kind==='pooled-memory-timeline'&&
+    Array.isArray(memoryTimeline.samples)&&
+    memoryTimeline.samples.length===trace.count,
+    'SQL progress observations must match memory observation count');
+  const verifier=new BoundedProgressTimeline({
+    intervalMs:trace.intervalMs,capacity:trace.capacity
+  });
+  for(let i=0;i<trace.samples.length;i++){
+    const sample=trace.samples[i];
+    assert.ok(sample&&typeof sample==='object'&&
+      sample.elapsedMs===memoryTimeline.samples[i]?.elapsedMs,
+      'SQL progress observations must match memory timestamps');
+    verifier.record(sample.elapsedMs,sample.completed);
+  }
+  const recalculated=verifier.summary();
+  assert.deepEqual(trace.progress,recalculated.progress,
+    'SQL progress metadata fails independent recalculation');
+  const first=trace.samples[0],last=trace.samples.at(-1);
+  assert.ok(first.elapsedMs<=1000&&last.elapsedMs>=minDurationMs&&
+    first.completed===0&&last.completed===expectedCompleted,
+    'Incomplete SQL progress observations or mismatched total');
+  if(minDurationMs>=1_800_000){
+    assert.ok(trace.count>=Math.floor(minDurationMs/trace.intervalMs*0.75),
+      'Missing sustained SQL progress observations');
+    assert.ok(recalculated.progress.maxUnverifiedProgressMs<=3*trace.intervalMs,
+      'Sustained SQL workload has a gap without confirmed progress');
+  }
+  return Object.freeze({
+    samples:trace.count,completed:expectedCompleted,
+    maxUnverifiedProgressMs:recalculated.progress.maxUnverifiedProgressMs,
+    observedDurationMs:last.elapsedMs-first.elapsedMs
+  });
+}

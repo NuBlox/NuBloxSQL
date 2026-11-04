@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {BoundedLatencySamples,BoundedMemoryTimeline,validateMemoryTimeline}
+import {BoundedLatencySamples,BoundedMemoryTimeline,validateMemoryTimeline,
+  BoundedProgressTimeline,validateProgressTimeline}
   from './soak-observations.mjs';
 
 test('soak latency memory is bounded while reporting the true throughput count',()=>{
@@ -122,4 +123,68 @@ test('missing, truncated and tampered timeline fails closed',()=>{
   const oversized=new BoundedMemoryTimeline({capacity:4});
   for(let i=0;i<4;i++)oversized.record(i*1000,mem(10000,20000));
   assert.throws(()=>oversized.record(5000,mem(10000,20000)),/capacity/);
+});
+
+test('successful SQL work is independently counted throughout a long read soak',()=>{
+  const memory=new BoundedMemoryTimeline(),progress=new BoundedProgressTimeline();
+  for(let t=0;t<=1_800_000;t+=30000){
+    memory.record(t,mem(40_000_000,90_000_000));
+    progress.record(t,t/3000);
+  }
+  const trace=progress.summary();
+  const result=validateProgressTimeline(trace,{
+    minDurationMs:1_800_000,expectedCompleted:600,
+    memoryTimeline:memory.summary()
+  });
+  assert.equal(result.samples,61);
+  assert.equal(result.maxUnverifiedProgressMs,30_000);
+  assert.equal(result.completed,600);
+  assert.ok(Object.isFrozen(trace.samples));
+  assert.ok(Object.isFrozen(trace.samples[0]));
+});
+
+test('a long SQL stall fails even when memory observations and final totals are healthy',()=>{
+  const memory=new BoundedMemoryTimeline(),progress=new BoundedProgressTimeline();
+  for(let t=0;t<=1_800_000;t+=30000){
+    memory.record(t,mem(40_000_000,90_000_000));
+    const completed=t<300_000?Math.floor(t/3000):
+      t<=450_000?100:100+Math.floor((t-450_000)/3000);
+    progress.record(t,completed);
+  }
+  const trace=progress.summary();
+  assert.ok(trace.progress.endCompleted>0);
+  assert.throws(()=>validateProgressTimeline(trace,{
+    minDurationMs:1_800_000,expectedCompleted:trace.progress.endCompleted,
+    memoryTimeline:memory.summary()
+  }),/gap without confirmed progress/);
+});
+
+test('short SQL smokes remain valid while invalid and forged progress is rejected',()=>{
+  const memory=new BoundedMemoryTimeline(),progress=new BoundedProgressTimeline();
+  memory.record(0,mem(10_000,20_000));
+  memory.record(10_000,mem(10_000,20_000));
+  progress.record(0,0);progress.record(10_000,15);
+  const m=memory.summary(),trace=progress.summary();
+  assert.equal(validateProgressTimeline(trace,{
+    minDurationMs:10_000,expectedCompleted:15,memoryTimeline:m
+  }).completed,15);
+  assert.throws(()=>progress.record(11_000,14),/Nonmonotonic/);
+  assert.throws(()=>progress.record(11_000,-1));
+  assert.throws(()=>progress.record(11_000,1.5));
+  assert.throws(()=>validateProgressTimeline(trace,{
+    minDurationMs:10_000,expectedCompleted:16,memoryTimeline:m
+  }),/mismatched total/);
+  const forged=structuredClone(trace);
+  forged.progress.endCompleted=99;
+  assert.throws(()=>validateProgressTimeline(forged,{
+    minDurationMs:10_000,expectedCompleted:15,memoryTimeline:m
+  }),/independent recalculation/);
+  const misaligned=structuredClone(trace);
+  misaligned.samples[1].elapsedMs=11_000;
+  assert.throws(()=>validateProgressTimeline(misaligned,{
+    minDurationMs:10_000,expectedCompleted:15,memoryTimeline:m
+  }),/memory timestamps/);
+  assert.throws(()=>validateProgressTimeline({},{
+    minDurationMs:10_000,expectedCompleted:15,memoryTimeline:m
+  }));
 });

@@ -1,6 +1,6 @@
 /** Same-run independent validation of disposable InnoDB write-endurance evidence. */
 import assert from 'node:assert/strict';
-import {validateMemoryTimeline} from './soak-observations.mjs';
+import {validateMemoryTimeline,validateProgressTimeline} from './soak-observations.mjs';
 
 const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const whole=x=>Number.isSafeInteger(x)&&x>=0;
@@ -84,12 +84,20 @@ export function validateWriteSoakEvidence(report,{revision,runId,event,hours,tra
     after.pending===0&&after.connecting===0,'Pooled native resources remain open');
   const memory=validateMemoryTimeline(r.memoryTimeline,{minDurationMs:duration});
   assert.deepEqual(r.memoryTrend,memory,'Inconsistent process memory growth summary');
+  const progress=validateProgressTimeline(r.progressTimeline,{
+    minDurationMs:duration,expectedCompleted:w.completedTransactions,
+    memoryTimeline:r.memoryTimeline
+  });
+  assert.deepEqual(r.progressEvidence,progress,'Inconsistent SQL work progress summary');
   return Object.freeze({
     schemaVersion:1,kind:'mysql-write-soak-evidence',status:'passed',
     revision,runId,event,mysqlVersion:'8.4.13',transport,
     requestedDurationMs:duration,observedDurationMs:w.observedDurationMs,
     committedTransactions:committed,rolledBackTransactions:rolledBack,
     verifiedReads:verified,finalCounterSum:w.finalCounterSum,
-    memorySamples:memory.samples,poolSlotsAfterClose:0,tableDropped:true
+    memorySamples:memory.samples,
+    progressSamples:progress.samples,
+    maxUnverifiedProgressMs:progress.maxUnverifiedProgressMs,
+    poolSlotsAfterClose:0,tableDropped:true
   });
 }

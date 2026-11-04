@@ -101,6 +101,21 @@ native-packet and pool-replacement tests exercise valid and invalid statuses.
 This is a defensive consistency check, not proof that an untrusted server
 accurately represents its transaction state or evidence of commercial readiness.
 
+## Independently checked SQL-work progress during extended MySQL soaks (G6)
+
+Sustained pooled-read and durable InnoDB write-soak runners now retain
+bounded 30-second aggregate samples of verified successful SQL work
+alongside their existing process memory samples. Independent evidence
+validation requires matching timestamps, strictly nondecreasing
+operation counters, and exact reconciliation with the completed workload
+count. Runs of 30 minutes or longer fail if more than 90 seconds of
+sampled time passes without newly confirmed SQL completion. A process
+that remains alive and reports plausible heap/RSS observations cannot
+therefore substitute for a stalled database workload. Short CI runs
+retain start/end-only observations and do not prove multi-hour endurance.
+These safeguards improve G6 evidence integrity; actual sustained and
+independently reviewed production-readiness evidence remains outstanding.
+
 ## No false callback success after pool shutdown (G6)
 
 A pool shutdown now invalidates the observable `lease.closed` property
