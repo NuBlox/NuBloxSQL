@@ -45,6 +45,23 @@ a permitted administrator to add the complete reviewed status-check matrix
 to protected `main`. Pre-commercial and independent security/legal/support
 gates remain open.
 
+## Bound-parameter allocation safety before MySQL COM_STMT_EXECUTE (G2/G6)
+
+MySQL's native prepared command now computes the full length of all bound
+parameters, null bitmaps, type flags and variable-length prefixes before
+encoding even its first potentially large string or binary value. Inputs
+that exceed the existing 32 MiB logical-command limit—either individually
+or in aggregate—fail before allocating rejected payload copies or writing
+to the socket. The same single-value bound protects direct protocol encoder
+calls. Exact-limit valid packets retain byte-for-byte Classic encoding;
+the native session remains reusable after a locally rejected bound value.
+Unit regressions cover an exact-limit payload, a one-byte overage, large
+UTF-8/BLOB values, and an aggregate overage; live MySQL tests check a
+rejected prepared statement followed by a successful execution on the
+same authenticated connection. This limits avoidable memory amplification
+from rejected commands; it is **not** a total-process memory quota, general
+OOM guarantee or commercial qualification sign-off.
+
 ## Current verified engineering scope
 
 The current implementation is a first-party MySQL Classic protocol client,

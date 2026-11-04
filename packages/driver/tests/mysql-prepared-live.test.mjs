@@ -55,6 +55,29 @@ live('native statement remains allocated once across repeated execution and is r
  }finally{await db.close();}
 });
 
+live('oversized aggregate bound payload is rejected before SQL without poisoning native session',async()=>{
+  const db=await connectDatabase(target);
+  const oversized=Buffer.alloc(12*1024*1024,0x31);
+  try{
+    const id=await db.query('SELECT CONNECTION_ID() AS id');
+    const statement=await db.prepare('SELECT ? AS first, ? AS second, ? AS third');
+    try{
+      await assert.rejects(
+        statement.execute([oversized,oversized,oversized]),
+        error=>error.code==='INVALID_INPUT'
+      );
+      assert.equal(db.closed,false);
+      const small=await statement.execute([1,2,3]);
+      assert.deepEqual([
+        small.rows[0].first,small.rows[0].second,small.rows[0].third
+      ],[1n,2n,3n]);
+      const afterward=await db.query('SELECT CONNECTION_ID() AS id');
+      assert.equal(afterward.rows[0].id,id.rows[0].id,
+        'rejected oversized input must not transmit or retire native connection');
+    }finally{await statement.close();}
+  }finally{await db.close();}
+});
+
 live('prepared statement errors remain structured and recoverable',async()=>{
  const db=await connectDatabase(target);
  try{
