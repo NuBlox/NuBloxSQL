@@ -72,6 +72,23 @@ premature success, delayed native SQL, physical replacement and normal reuse.
 This is a fail-closed improvement, not evidence that an interrupted write did
 not commit. G4 and G6 remain partial/in progress.
 
+## Detached managed transaction commands cannot claim success (G4)
+
+Managed MySQL `transaction(callback)` now reports
+`TRANSACTION_OUTCOME_UNKNOWN`, rather than a generic closed-session error,
+when the callback returns or throws while scoped SQL remains unsettled.
+The native connection is revoked without sending a misleading COMMIT or
+retrying SQL. The original uncertain outcome is preserved across the
+session-interruption race. An outstanding scoped operation that settles
+*after* callback lifetime also rejects with an uncertain-outcome diagnostic:
+its late server response cannot be interpreted as confirmation that its
+owning transaction committed. Normal fully awaited transactions and
+confirmed callback-error rollbacks are unchanged. Deterministic gated I/O
+tests cover callback success, callback error, delayed native success and
+delayed native failure. A live InnoDB test checks that a write acknowledged
+by MySQL but abandoned by its callback cannot report completed success.
+G4 remains incomplete and externally reviewed commercial sign-off is pending.
+
 ## Fail-closed MySQL pool transaction state (G4/G6)
 
 The native `COM_PING` checkout probe and `COM_RESET_CONNECTION` lease

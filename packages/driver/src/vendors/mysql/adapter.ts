@@ -636,10 +636,25 @@ export class MysqlSession implements RelationalSession {
           // per-session limit to prevent unbounded memory growth.
           if(pending.size>=MAX_PENDING_COMMANDS)
             return Promise.reject(fail('RESOURCE_LIMIT','Too many pending MySQL transaction commands'));
-          const request=transactionTail.then(()=>{
+          const request=transactionTail.then(async()=>{
             if(!transactionActive||this.closed)
               throw fail('CONNECTION_CLOSED','Transaction scope has ended');
-            return run();
+            let result:R;
+            try{
+              result=await run();
+            }catch(error){
+              // A detached command may finish only after its callback exited
+              // and the owning socket was revoked. Its original server error
+              // is no longer proof of a safely managed transaction outcome.
+              if(!transactionActive)
+                throw fail('TRANSACTION_OUTCOME_UNKNOWN',
+                  'Transaction command settled after scope exit; SQL outcome may be unknown');
+              throw error;
+            }
+            if(!transactionActive)
+              throw fail('TRANSACTION_OUTCOME_UNKNOWN',
+                'Transaction command completed after scope exit; SQL outcome may be unknown');
+            return result;
           });
           transactionTail=request.then(()=>{},()=>{});
           pending.add(request);
@@ -712,15 +727,23 @@ export class MysqlSession implements RelationalSession {
           transactionActive=false;
           context.active=false;
           if(pending.size){
-            this.destroy();
-            throw fail('CONNECTION_CLOSED','Transaction callback returned with unfinished operations');
+            const uncertain=fail('TRANSACTION_OUTCOME_UNKNOWN',
+              'Transaction callback returned with unfinished operations; SQL outcome may be unknown');
+            this.destroy(uncertain);
+            throw uncertain;
           }
         }catch(error){
           transactionActive=false;
           context.active=false;
           if(pending.size){
-            this.destroy();
-            throw fail('CONNECTION_CLOSED','Transaction callback failed with unfinished operations');
+            // Preserve the precise cause across the active-guard interruption
+            // race; do not let a second catch replace it with CONNECTION_CLOSED.
+            const uncertain=error instanceof DriverError&&
+                error.code==='TRANSACTION_OUTCOME_UNKNOWN'?error:
+              fail('TRANSACTION_OUTCOME_UNKNOWN',
+                'Transaction callback failed with unfinished operations; SQL outcome may be unknown');
+            this.destroy(uncertain);
+            throw uncertain;
           }
           if(this.closed)throw error;
           try{

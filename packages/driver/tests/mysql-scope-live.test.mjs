@@ -287,3 +287,47 @@ live('transaction backlog is rejected after disconnect and cannot execute late S
   await db.close();
  }
 });
+
+
+live('detached transaction write cannot report success after native MySQL acknowledgement',
+  {timeout:15000},async()=>{
+  const db=await connectDatabase(target);
+  const nativeExecute=db.executeResults.bind(db);
+  let started,release,detached;
+  const acknowledged=new Promise(resolve=>{started=resolve;});
+  const gate=new Promise(resolve=>{release=resolve;});
+  let writes=0;
+  try{
+    await db.query('CREATE TEMPORARY TABLE nublox_detached_tx_probe (id INT PRIMARY KEY) ENGINE=InnoDB');
+    // The native INSERT reaches InnoDB and its reply is received; the test
+    // deliberately delays returning that reply to the scoped command.
+    db.executeResults=async(sql,values)=>{
+      const result=await nativeExecute(sql,values);
+      writes++;
+      started();
+      await gate;
+      return result;
+    };
+    const transaction=db.transaction(async tx=>{
+      detached=tx.query('INSERT INTO nublox_detached_tx_probe (id) VALUES (?)',[943]);
+      void detached.catch(()=>{});
+      await acknowledged;
+      return 'false-success';
+    });
+    await assert.rejects(transaction,error=>
+      error.code==='TRANSACTION_OUTCOME_UNKNOWN'&&/unfinished operations/.test(error.message));
+    assert.equal(db.closed,true,'native socket must be revoked before reuse');
+    release();
+    await assert.rejects(detached,error=>error.code==='TRANSACTION_OUTCOME_UNKNOWN');
+    assert.equal(writes,1,'never replay detached SQL');
+    const fresh=await connectDatabase(target);
+    try{
+      assert.equal((await fresh.query('SELECT 1 AS healthy')).rows[0].healthy,1n);
+    }finally{await fresh.close();}
+  }finally{
+    release?.();
+    db.executeResults=nativeExecute;
+    await detached?.catch(()=>{});
+    await db.close();
+  }
+});
