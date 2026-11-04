@@ -51,6 +51,38 @@ test('MySQL protocol 4.1 metadata keeps physical column origin, name and alias',
  assert.throws(()=>field(Buffer.concat([definition('x'),Buffer.from([0])])),/Trailing/);
 });
 
+test('ColumnDefinition41 rejects NULL markers in all six required metadata strings',async()=>{
+ const names=['def','test','alias','physical','display','actual'];
+ const fixed=Buffer.concat([
+   Buffer.from([12]),u16(63),u32(20),Buffer.from([T.LONGLONG]),
+   u16(0),Buffer.from([0,0,0])
+ ]);
+ const payload=(nullIndex=-1,empty=false)=>Buffer.concat([
+   ...names.map((value,index)=>
+     index===nullIndex?Buffer.from([0xfb]):
+       sized(Buffer.from(empty&&index>0?'':value))
+   ),
+   fixed
+ ]);
+ for(let index=0;index<names.length;index++){
+   const packet=payload(index);
+   assert.throws(()=>field(packet),
+     error=>error.code==='PROTOCOL_ERROR',
+     'NULL marker rejected in field '+index);
+   const get=async()=>packet;
+   await assert.rejects(readMetadata(get,1),
+     error=>error.code==='PROTOCOL_ERROR',
+     'metadata reader must reject field '+index);
+ }
+ // An empty name/origin string uses length 0x00, not the NULL marker 0xfb.
+ const empty=field(payload(-1,true));
+ assert.equal(empty.name,'');
+ assert.equal(empty.originalName,'');
+ assert.equal(empty.schema,'');
+ assert.equal(empty.table,'');
+ assert.equal(empty.originalTable,'');
+});
+
 test('EOF flags and warnings are parsed strictly: no silent extra results',()=>{
  const eof=Buffer.from([0xfe,5,0,2,0]);
  assert.deepEqual(eofStatus(eof),{warnings:5,status:2});
