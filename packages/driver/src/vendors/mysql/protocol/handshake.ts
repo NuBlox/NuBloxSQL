@@ -22,7 +22,11 @@ export function greeting(buf:Buffer):MysqlGreeting{
     c.two(); // server status flags
     const serverCapabilities=(lowerCapabilities|(c.two()<<16))>>>0;
     const challengeLength=c.byte();
-    c.take(10); // reserved bytes
+    // Protocol::HandshakeV10 reserves ten bytes and requires every byte to be
+    // zero. Reject malformed greetings before sending client credentials.
+    const reserved=c.take(10);
+    if(reserved.some(byte=>byte!==0))
+      throw fail('PROTOCOL_ERROR','Malformed MySQL greeting reserved bytes');
     // This native client requires CLIENT_PLUGIN_AUTH; modern supported
     // plugins use 20 challenge bytes plus one final NUL (length 21).
     if(!(serverCapabilities&F.PLUGIN_AUTH)||challengeLength!==21)
