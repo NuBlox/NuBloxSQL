@@ -10,6 +10,7 @@ This pack is the starting point for commissioning independent assessors. It is *
 
 | Document | Purpose |
 | --- | --- |
+| [NO-COST-ASSURANCE.md](NO-COST-ASSURANCE.md) | Owner-led zero-specialist-fee assurance checks, live endurance commands and limits |
 | [ASSESSMENT-SCOPE.md](ASSESSMENT-SCOPE.md) | Proposed product boundary, environment, safe access and exclusions |
 | [INDEPENDENT-TEST-PLAN.md](INDEPENDENT-TEST-PLAN.md) | Repeatable independent engineering and security acceptance tests |
 | [REQUEST-FOR-QUOTATION.md](REQUEST-FOR-QUOTATION.md) | Scope and evaluation criteria for assessor/legal proposals |
@@ -27,6 +28,10 @@ This pack is the starting point for commissioning independent assessors. It is *
 
 The above profile mirrors the existing blocked decision manifest and may be changed only through a reviewed scope/release change. It is **not** a promise that this profile is currently commercially supported.
 
+## Internal evidence before paid commissioning
+
+Work through the [no-cost engineering assurance programme](NO-COST-ASSURANCE.md) first, including CodeQL, real long-duration SQL workloads, reproducible benchmark data and a recorded gap register. This can materially reduce subsequent specialist review scope, but it does not meet the existing **independent** release conditions or authorise pilot distribution.
+
 ## Recommended commissioning sequence
 
 1. **Owner action:** appoint a named product/release owner and a confidential security and support escalation contact. Confirm the legal entity that will contract with reviewers.
@@ -39,7 +44,7 @@ The above profile mirrors the existing blocked decision manifest and may be chan
 
 ## Certification versus assessment
 
-A source-assisted penetration test and an independent driver engineering review are product-specific **assessments**; neither is, by itself, a government or ISO certification. **Cyber Essentials Plus** and **ISO/IEC 27001** address organisational security controls and may be procured separately to satisfy customer requirements. NCSC [penetration-testing guidance](https://www.ncsc.gov.uk/guidance/penetration-testing) covers how to commission qualified testers; [CHECK](https://www.ncsc.gov.uk/schemes/check/information-for-buyers) is especially relevant for public-sector/CNI work and is not generally required for private-sector penetration tests. IASME explains [Cyber Essentials Plus](https://ce-knowledge-hub.iasme.co.uk/space/CEKH/4412801084); UKAS [CertCheck](https://www.ukas.com/certcheck/) can verify accredited management-system certifications.
+For a native client library, independent **source-assisted protocol security review, malformed-server fuzzing and recovery verification** are more relevant than simply buying a conventional network penetration test. [NCSC guidance](https://www.ncsc.gov.uk/guidance/penetration-testing) explicitly cautions against using conventional penetration testing as product-specific testing. Neither a specialist technical review nor a deployed-system penetration test is, by itself, a government or ISO certification. **Cyber Essentials Plus** and **ISO/IEC 27001** address organisational security controls and may be procured separately to satisfy customer requirements. NCSC [penetration-testing guidance](https://www.ncsc.gov.uk/guidance/penetration-testing) covers how to commission qualified testers; [CHECK](https://www.ncsc.gov.uk/schemes/check/information-for-buyers) is especially relevant for public-sector/CNI work and is not generally required for private-sector penetration tests. IASME explains [Cyber Essentials Plus](https://ce-knowledge-hub.iasme.co.uk/space/CEKH/4412801084); UKAS [CertCheck](https://www.ukas.com/certcheck/) can verify accredited management-system certifications.
 
 ## Engineering integrity check
 

@@ -5,6 +5,10 @@ A passing CI job or npm package does not grant commercial redistribution rights
 or establish a production service-level commitment. This register is a
 release-decision gate, not a marketing checklist.
 
+## No-cost engineering assurance before external review
+
+The [self-funded assurance plan](assurance/NO-COST-ASSURANCE.md) identifies which G1–G11 engineering checks can be run using our existing MySQL CI, a new public-repository [CodeQL scan](../.github/workflows/codeql.yml), package audits, long-duration qualification and independently reproducible test evidence **without specialist fees**. These checks can substantially reduce the need for repeat work by a paid assessor. The project currently imposes stricter independent-review conditions for a commercial release; they are **policy conditions, not a universal statutory requirement to purchase a penetration test**. Internal checks remain internal checks, must never masquerade as third-party results, and do not override the fail-closed commercial decision or customer-rights restrictions.
+
 ## External assurance procurement and review pack (G1–G11)
 
 A [reviewer-ready external assurance pack](assurance/README.md) now defines

@@ -1,6 +1,6 @@
 # Independent commercial release acceptance and sign-off checklist
 
-**This is an UNAPPROVED template. No human signature has been collected.** Completion requires a reviewable, externally evidenced release decision by actual accountable people. The existing [decision manifest](../release/mysql-commercial-decision.json) still blocks customer evaluation, production and publication.
+**This is an UNAPPROVED template. No human signature has been collected.** Completion currently requires a reviewable, externally evidenced release decision by actual accountable people **under our self-imposed commercial-release policy**. These are product governance conditions, not a general legal requirement that every software vendor pay for penetration testing. The existing [decision manifest](../release/mysql-commercial-decision.json) still blocks customer evaluation, production and publication.
 
 ## Required first-release identity — blank until frozen
 
@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | G1 | Independent end-to-end integration on each claimed profile | **PENDING** |
 | G2 | Native protocol/type/malformed-packet/prepared/cursor conformance and fuzz findings | **PENDING** |
-| G3 | Independent source-assisted security report, high/critical retests, TLS/least-privilege sign-off | **PENDING** |
+| G3 | Independent native-client protocol security/source review and threat-driven fuzzing, high/critical retests, TLS/least-privilege sign-off (not merely a conventional network pen test) | **PENDING** |
 | G4 | Uncertain-write, cancellation/timeout, fault injection and no automatic replay evidence | **PENDING** |
 | G5 | Independently reproducible competitor-neutral benchmark and restrictions on claims | **PENDING** |
 | G6 | Completed multi-hour **and overnight** read/write soak, heap/RSS/progress trends, leak and cleanup assessment | **PENDING** |
