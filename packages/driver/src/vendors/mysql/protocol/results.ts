@@ -21,17 +21,22 @@ export function errorPacket(buf:Buffer):{code:number;state:string;message:string
 }
 export function field(buf:Buffer):MysqlColumn{
   const c=new Cursor(buf);
-  c.lstr(); // catalog ("def")
+  const catalog=c.lstr(); // normally "def"
   const schema=c.lstr();
   const table=c.lstr();
   const originalTable=c.lstr();
   const name=c.lstr();
   const originalName=c.lstr();
+  // ColumnDefinition41 declares six length-encoded strings, not nullable
+  // result values. A 0xfb NULL marker here would violate the wire contract.
+  // Empty strings remain valid for expression columns without table origin.
+  if(catalog===null||schema===null||table===null||
+     originalTable===null||name===null||originalName===null)
+    throw fail('PROTOCOL_ERROR','NULL marker in MySQL column definition');
   const fixed=c.len();
   if(fixed!==12)throw Error('Invalid MySQL 4.1 column metadata length');
   const charset=c.two(),length=c.four(),type=c.byte(),flags=c.two(),decimals=c.byte();
   c.take(2);
-  if(name===null)throw Error('Missing MySQL column name');
   if(c.remaining()!==0)throw Error('Trailing MySQL column definition bytes');
   return {name,schema,table,originalName,originalTable,charset,length,type,flags,decimals,unsigned:!!(flags&32)};
 }
