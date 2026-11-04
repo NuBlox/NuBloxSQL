@@ -298,6 +298,7 @@ live('detached transaction write cannot report success after native MySQL acknow
   const gate=new Promise(resolve=>{release=resolve;});
   let writes=0;
   try{
+    await db.query('CREATE TEMPORARY TABLE nublox_detached_tx_probe (id INT PRIMARY KEY) ENGINE=InnoDB');
     // The native INSERT reaches InnoDB and its reply is received; the test
     // deliberately delays returning that reply to the scoped command.
     db.executeResults=async(sql,values)=>{
@@ -308,7 +309,7 @@ live('detached transaction write cannot report success after native MySQL acknow
       return result;
     };
     const transaction=db.transaction(async tx=>{
-      detached=tx.query('SELECT ? AS acknowledged_write',[943]);
+      detached=tx.query('INSERT INTO nublox_detached_tx_probe (id) VALUES (?)',[943]);
       void detached.catch(()=>{});
       await acknowledged;
       return 'false-success';
