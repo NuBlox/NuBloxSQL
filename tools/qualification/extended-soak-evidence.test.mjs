@@ -39,6 +39,7 @@ test('scheduled 30-minute evidence is same-revision, complete and redacted',()=>
   assert.equal(proof.completedOperations,6000);
   assert.equal(proof.poolSlotsAfterClose,0);
   assert.equal(proof.memorySamples,61);
+  assert.equal(proof.memoryMaxSampleGapMs,30_000);
   assert.equal(proof.heapUsedGrowthBytes,0);
   assert.equal(proof.rssGrowthBytes,0);
   assert.equal(proof.status,'passed');
@@ -96,6 +97,20 @@ test('reject leaked pool sessions, waiters and absent process measurements',()=>
   reject(r=>{r.resources.memoryTimeline.samples[5].rssBytes=Infinity;});
   reject(r=>{r.resources.memoryTimeline.trend.heapUsedGrowthBytes=1000;});
   reject(r=>{r.resources.memoryTimeline.samples.length=1;});
+});
+test('independent long-soak evidence rejects an honest trend with missing sampling windows',()=>{
+  const report=structuredClone(fixture());
+  const source=report.resources.memoryTimeline.samples.filter((_,i)=>i<9||i>=12);
+  const rebuilt=new BoundedMemoryTimeline();
+  for(const sample of source)
+    rebuilt.record(sample.elapsedMs,{
+      heapUsed:sample.heapUsedBytes,rss:sample.rssBytes,
+      external:sample.externalBytes,arrayBuffers:sample.arrayBuffersBytes
+    });
+  report.resources.memoryTimeline=rebuilt.summary();
+  assert.ok(report.resources.memoryTimeline.count>=45);
+  assert.throws(()=>validateExtendedSoakEvidence(report,base),
+    /missing observation window/);
 });
 test('reject duplicate, stale or missing persisted run artifacts',()=>{
   assert.equal(selectExtendedSoakReport(['soak-local-12345-1790000.json'],runId),

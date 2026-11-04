@@ -106,6 +106,14 @@ server version, all numbered crash reports, pool-capacity invariants,
 original recovery assertions, and that there is no stale, duplicated or
 missing evidence. Failed or skipped upstream tests fail the decision.
 
+Long-running memory evidence now also checks sample continuity: a reported
+30-minute or longer soak is rejected when successive samples are separated
+by more than three scheduled 30-second intervals, even if total sample
+count and start/end timestamps appear sufficient. The independent decision
+includes the observed maximum sample gap. This detects missing observation
+windows, not every kind of stall or memory leak. Short CI smokes retain their
+start/end-only sampling contract.
+
 Memory snapshots show process observations, not evidence of zero
 allocations or a statistically sound absence of leaks. Pool disposal
 and bounded pending checkouts are enforced invariants. Tests do not

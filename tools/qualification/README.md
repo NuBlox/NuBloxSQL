@@ -40,6 +40,11 @@ A separate 30-minute weekly pooled soak, and optional one/two-hour
 manual soak, preserve elapsed-duration, expected error recovery,
 observed memory peaks and zero native pool capacity after close.
 The two-hour configuration is **not** proof of a completed two-hour run.
+For a report covering 30 minutes or more, evidence validation now also
+requires continuity across the full sampled heap/RSS timeline: no gap may
+exceed three 30-second sampling intervals. Dense clusters of samples
+cannot make up for a long unobserved period. This is an observation
+integrity check, not proof of continuous SQL throughput or absence of leaks.
 Neither script may be aimed at shared or production databases.
 
 ## Running
