@@ -248,3 +248,38 @@ live('unawaited SQL at pool callback return is never reported as successful or r
     await pool.close();
   }
 });
+
+live('pool shutdown during an awaiting callback revokes its lease and rejects late success',
+  {timeout:15000},async()=>{
+  const pool=createDatabasePool(target,{maxConnections:1});
+  let entered,release,lease;
+  const started=new Promise(resolve=>{entered=resolve;});
+  const gate=new Promise(resolve=>{release=resolve;});
+  const active=pool.withConnection(async borrowed=>{
+    lease=borrowed;
+    assert.equal((await borrowed.query('SELECT 1 AS healthy')).rows[0].healthy,1n);
+    entered();
+    await gate;
+    return 'incorrectly-confirmed-result';
+  });
+  void active.catch(()=>{});
+  try{
+    await started;
+    assert.equal(lease.closed,false);
+    const closing=pool.close();
+    assert.equal(lease.closed,true);
+    await assert.rejects(lease.query('SELECT 1'),error=>
+      error.code==='CONNECTION_CLOSED');
+    release();
+    await assert.rejects(active,error=>
+      error.code==='CONNECTION_CLOSED'&&
+      /closed before callback completion/.test(error.message));
+    await closing;
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.stats.active,0);
+  }finally{
+    release?.();
+    await active.catch(()=>{});
+    await pool.close();
+  }
+});

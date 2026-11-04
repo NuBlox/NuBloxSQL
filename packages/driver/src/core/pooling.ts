@@ -305,8 +305,11 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
     const activeSession=session;
     let valid=true;
     const pending=new Set<Promise<unknown>>();
+    // A shutdown revokes the lease synchronously, before native socket
+    // disposal can complete on a later microtask.
+    const revoked=():boolean=>!valid||this.stopped||activeSession.closed;
     const guard=():void=>{
-      if(!valid||this.stopped||activeSession.closed)
+      if(revoked())
         throw fail('CONNECTION_CLOSED','Pooled session lease is no longer valid');
     };
     const track=<R>(operation:()=>Promise<R>):Promise<R>=>{
@@ -318,7 +321,7 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
     };
     const lease:PooledRelationalSession=Object.freeze({
       get info(){return activeSession.info;},
-      get closed(){return !valid||activeSession.closed;},
+      get closed(){return revoked();},
       query:(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={})=>
         track(()=>activeSession.query(sql,parameters,options)),
       queryResults:(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={})=>
@@ -354,6 +357,12 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
       if(pending.size)
         throw fail('CONNECTION_CLOSED',
           'Pool callback returned with unfinished database operations; SQL outcome may be unknown');
+      // close() may have revoked the leased socket while the callback was
+      // awaiting unrelated application work. A returned value must not be
+      // represented as success after that ownership boundary was lost.
+      if(revoked())
+        throw fail('CONNECTION_CLOSED',
+          'Pooled connection closed before callback completion; SQL outcome may be unknown');
       succeeded=true;
       return result;
     }catch(error){
