@@ -28,6 +28,23 @@ The authoritative outstanding work and independent sign-off criteria remain in
 authorisation requires a separate reviewed implementation, package/version
 transition, per-profile evidence, product decision and approved customer terms.
 
+## Minimum mandatory protected-branch CI coverage (G1/G3/G7)
+
+The GitHub `main` ruleset currently requires the check named `docs`, but
+does not yet individually require the native MySQL and security workflow
+contexts. To prevent this one mandatory check from passing based solely on
+skip-gated database tests, its job now starts a throwaway pinned MySQL 8.4.13
+service, installs stored-procedure fixtures, executes the full native MySQL
+test suite on Node 24 with `NUBLOX_LIVE_MYSQL=1`, blocks high/critical npm
+advisories, and runs the same package/commercial preflight. A failing real
+MySQL test now fails the currently required `docs` check. The other matrix
+and verified-TLS workflows remain distinct evidence; this change does
+**not** imply their statuses are individually required by the ruleset.
+Issue [#328](https://github.com/NuBlox/NuBloxSQL/issues/328) still requires
+a permitted administrator to add the complete reviewed status-check matrix
+to protected `main`. Pre-commercial and independent security/legal/support
+gates remain open.
+
 ## Current verified engineering scope
 
 The current implementation is a first-party MySQL Classic protocol client,

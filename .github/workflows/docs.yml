@@ -12,6 +12,22 @@ jobs:
   docs:
     name: docs
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # This is currently the only branch-rule-required status on main.
+    # It must qualify real MySQL, not merely syntax and skip-gated tests.
+    services:
+      mysql:
+        image: mysql:8.4.13
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: nublox_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -66,6 +82,15 @@ jobs:
           test -f packages/driver/tests/mysql-tls-live.test.mjs
           bash -n packages/driver/tests/fixtures/start-mysql-tls.sh
           npm ci --no-audit --no-fund
-          npm test
+          npm audit --audit-level=high
+          # Run the REQUIRED branch-protection check against a real, disposable
+          # pinned MySQL LTS server; skip-gated tests alone are not sufficient.
+          mapfile -t mysql_containers < <(docker ps -q --filter 'ancestor=mysql:8.4.13')
+          test "${#mysql_containers[@]}" -eq 1
+          docker exec -i -e MYSQL_PWD=test-password "${mysql_containers[0]}" \
+            mysql --protocol=tcp -h127.0.0.1 -uroot nublox_test \
+            < packages/driver/tests/fixtures/multi-results.sql
+          NUBLOX_LIVE_MYSQL=1 MYSQL_USER=root MYSQL_PASSWORD=test-password \
+            MYSQL_DATABASE=nublox_test npm test
           npm run release:verify
-          echo 'Definition and experimental driver baseline: PASS'
+          echo 'Required docs: package, advisory, native MySQL, and documentation checks PASS'
