@@ -93,6 +93,52 @@ test('seeded variable-length packets cannot differ at any byte',()=>{
       'wire mismatch round '+round);
   }
 });
+test('oversized prepared binds fail before any large UTF-8/BLOB allocation',()=>{
+  const overLimitText='x'.repeat(LIMIT);
+  const tooLargeBinary=Buffer.alloc(LIMIT);
+  const reusableBinary=Buffer.alloc(12*1024*1024,0x61);
+  // Track the exact oversized payload sources: rejection must happen at the
+  // sizing stage, before Buffer.from copies any of these buffers/strings.
+  const original=Buffer.from;
+  let copied=0;
+  Buffer.from=function(input,...rest){
+    if(input===overLimitText||input===tooLargeBinary||input===reusableBinary)
+      copied++;
+    return original.call(Buffer,input,...rest);
+  };
+  try{
+    assert.throws(()=>valuePacket(overLimitText),/parameter exceeds/);
+    assert.throws(()=>valuePacket(tooLargeBinary),/parameter exceeds/);
+    assert.throws(()=>execute(44,[overLimitText]),/parameter exceeds/);
+    assert.throws(()=>execute(44,[tooLargeBinary]),/parameter exceeds/);
+    // Each BLOB fits alone, but three cannot fit in one 32 MiB COM_STMT_EXECUTE.
+    assert.throws(()=>execute(44,[reusableBinary,reusableBinary,reusableBinary]),
+      /Command exceeds limit/);
+    assert.equal(copied,0,'no rejected BLOB or text may be copied during preflight');
+  }finally{
+    Buffer.from=original;
+  }
+});
+
+test('prepared command limit includes parameter flags, null bitmap and length prefixes',()=>{
+  // Near the boundary one BLOB is valid only if its complete command frame
+  // (fixed header + null bitmap/type flags + 9-byte size prefix) fits.
+  const overhead=10+1+1+2+9;
+  const allowed=Buffer.alloc(LIMIT-overhead,0x51);
+  const encoded=execute(100,[allowed]);
+  assert.equal(encoded.length,LIMIT);
+  assert.equal(encoded[0],0x17);
+  assert.equal(encoded[10],0,'non-NULL BLOB has a zeroed NULL bitmap');
+  assert.equal(encoded[11],1,'parameter type markers are required');
+  assert.equal(encoded[12],T.BLOB);
+  assert.equal(encoded[13],0);
+  assert.equal(encoded[14],254,'large BLOB uses the 9-byte length prefix');
+  assert.equal(encoded.readBigUInt64LE(15),BigInt(allowed.length));
+  assert.equal(encoded.at(-1),0x51);
+  assert.throws(()=>execute(100,[Buffer.alloc(LIMIT-overhead+1)]),
+    /Command exceeds limit/);
+});
+
 test('invalid bindings and parameter ceiling fail as before without emitting a wire packet',()=>{
   const invalid=[NaN,Infinity,-Infinity,Number.MAX_SAFE_INTEGER+1,
     Number.MIN_SAFE_INTEGER-1,2n**64n,-(2n**63n)-1n,
