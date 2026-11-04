@@ -14,7 +14,7 @@ const frame=(payload,sequence)=>join(
 
 function greetingBody({
   authLength=21,separator=0,terminator=0,plugin='caching_sha2_password',
-  advertisePlugin=true,extra=Buffer.alloc(0)
+  advertisePlugin=true,reserved=Buffer.alloc(10),extra=Buffer.alloc(0)
 }={}){
   let capabilities=F.LONG_PASSWORD|F.LONG_FLAG|F.PROTOCOL_41|
     F.TRANSACTIONS|F.SECURE_CONNECTION|F.MULTI_RESULTS|F.PS_MULTI_RESULTS;
@@ -26,7 +26,7 @@ function greetingBody({
     Buffer.from([10]),Buffer.from('8.4.11-test'),Buffer.from([0]),
     Buffer.from([1,0,0,0]),Buffer.alloc(8,0x31),Buffer.from([separator]),
     low,Buffer.from([45,2,0]),high,Buffer.from([authLength]),
-    Buffer.alloc(10),Buffer.alloc(12,0x32),Buffer.from([terminator]),
+    reserved,Buffer.alloc(12,0x32),Buffer.from([terminator]),
     Buffer.from(plugin),Buffer.from([0]),extra
   );
 }
@@ -94,7 +94,8 @@ test('advertised zero or inconsistent greeting auth lengths fail closed',()=>{
 test('greetings reject absent plugin capability, invalid terminators and unexpected bytes',()=>{
   for(const malformed of [
     {advertisePlugin:false},{separator:9},{terminator:0x55},
-    {plugin:''},{extra:Buffer.from([9,9])}
+    {plugin:''},{reserved:Buffer.from([0,0,0,0,0,1,0,0,0,0])},
+    {extra:Buffer.from([9,9])}
   ]){
     assert.throws(()=>greeting(greetingBody(malformed)),
       error=>error.code==='PROTOCOL_ERROR');
@@ -114,6 +115,21 @@ test('malformed greeting is rejected and transport closed before any login',{tim
     await assert.rejects(connection,e=>e.code==='PROTOCOL_ERROR');
     await disconnected;
     assert.equal(server.received,0,'never send credentials to malformed handshake');
+    assert.equal(socket.destroyed,true);
+  }finally{await server.close();}
+});
+
+test('nonzero reserved greeting bytes cause disconnect before any login',{timeout:4000},async()=>{
+  const server=await peer(greetingBody({
+    reserved:Buffer.from([0,0,0,0,0,0,0,0,0,0x80])
+  }));
+  try{
+    const connection=connectMysql(target(server.port));
+    const socket=await server.accepted;
+    const disconnected=once(socket,'close');
+    await assert.rejects(connection,e=>e.code==='PROTOCOL_ERROR');
+    await disconnected;
+    assert.equal(server.received,0,'never send credentials to a malformed greeting');
     assert.equal(socket.destroyed,true);
   }finally{await server.close();}
 });
