@@ -5,6 +5,20 @@ A passing CI job or npm package does not grant commercial redistribution rights
 or establish a production service-level commitment. This register is a
 release-decision gate, not a marketing checklist.
 
+## External assurance procurement and review pack (G1–G11)
+
+A [reviewer-ready external assurance pack](assurance/README.md) now defines
+the first proposed native MySQL qualification profile, test instructions,
+supplier RFQ, findings/evidence custody and human release sign-offs.
+Its machine-readable [assurance intake baseline](assurance/external-assurance-intake.json)
+intentionally records **no** commissioned assessor, frozen candidate, independent
+report or customer rights. Run `npm run assurance:verify`; the mandatory
+`npm run release:verify` also validates complete gate-to-source traceability,
+every local evidence-preparation reference and the blocked commercial
+decision. This validation proves **document integrity only**, not that an
+assessment was commissioned or completed. Independent review and owner/legal/
+security/support approval remain outstanding under [issue #421](https://github.com/NuBlox/NuBloxSQL/issues/421).
+
 ## Machine-readable commercial decision (fail closed)
 
 The reviewed [MySQL commercial decision manifest](release/mysql-commercial-decision.json)

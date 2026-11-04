@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "kind": "nubloxsql-external-assurance-intake",
+  "status": "preparation-only",
+  "package": {
+    "name": "@nublox/driver",
+    "version": "0.1.0-dev.0"
+  },
+  "proposedProfile": {
+    "vendor": "mysql",
+    "serverVersion": "8.4.13",
+    "nodeMajor": 22,
+    "platform": "linux-x64",
+    "transport": "verified-tls"
+  },
+  "candidate": {
+    "sourceRevision": null,
+    "packageSha256": null,
+    "frozen": false
+  },
+  "rights": {
+    "evaluationAuthorized": false,
+    "productionAuthorized": false,
+    "publicationAuthorized": false
+  },
+  "workstreams": [
+    {
+      "id": "security",
+      "gates": [
+        "G3",
+        "G4"
+      ],
+      "status": "not-commissioned",
+      "assessor": null,
+      "contractRef": null,
+      "reportRef": null
+    },
+    {
+      "id": "database-engineering",
+      "gates": [
+        "G1",
+        "G2",
+        "G4",
+        "G6",
+        "G8",
+        "G11"
+      ],
+      "status": "not-commissioned",
+      "assessor": null,
+      "contractRef": null,
+      "reportRef": null
+    },
+    {
+      "id": "benchmarking",
+      "gates": [
+        "G5"
+      ],
+      "status": "not-commissioned",
+      "assessor": null,
+      "contractRef": null,
+      "reportRef": null
+    },
+    {
+      "id": "legal",
+      "gates": [
+        "G10"
+      ],
+      "status": "not-commissioned",
+      "assessor": null,
+      "contractRef": null,
+      "reportRef": null
+    },
+    {
+      "id": "operations",
+      "gates": [
+        "G9",
+        "G11"
+      ],
+      "status": "not-commissioned",
+      "assessor": null,
+      "contractRef": null,
+      "reportRef": null
+    },
+    {
+      "id": "release-governance",
+      "gates": [
+        "G7",
+        "G8",
+        "G9",
+        "G10"
+      ],
+      "status": "not-commissioned",
+      "assessor": null,
+      "contractRef": null,
+      "reportRef": null
+    }
+  ],
+  "gates": [
+    {
+      "id": "G1",
+      "status": "pending-external-review",
+      "sourcePaths": [
+        ".github/workflows/driver.yml",
+        "packages/driver/tests/mysql-prepared-live.test.mjs"
+      ],
+      "independentEvidenceRefs": [],
+      "independentReviewer": null,
+      "reviewSignoffRef": null
+    },
+    {
+      "id": "G2",
+      "status": "pending-external-review",
+      "sourcePaths": [
+        "packages/driver/src/vendors/mysql/protocol/framing.ts",
+        "packages/driver/tests/packet-fragmentation.test.mjs"
+      ],
+      "independentEvidenceRefs": [],
+      "independentReviewer": null,
+      "reviewSignoffRef": null
+    },
+    {
+      "id": "G3",
+      "status": "pending-external-review",
+      "sourcePaths": [
+        "SECURITY.md",
+        "docs/MYSQL-SECURITY-THREAT-MODEL.md",
+        ".github/workflows/mysql-restricted-principal.yml"
+      ],
+      "independentEvidenceRefs": [],
+      "independentReviewer": null,
+      "reviewSignoffRef": null
+    },
+    {
+      "id": "G4",
+      "status": "pending-external-review",
+      "sourcePaths": [
+        "packages/driver/tests/mysql-transaction-detached-outcome.test.mjs",
+        "docs/MYSQL-OPERATIONS-RUNBOOK.md"
+      ],
+      "independentEvidenceRefs": [],
+      "independentReviewer": null,
+      "reviewSignoffRef": null
+    },
+    {
+      "id": "G5",
+      "status": "pending-external-review",
+      "sourcePaths": [
+        "tools/qualification/README.md",
+        ".github/workflows/mysql-comparison-concurrent.yml"
+      ],
+      "independentEvidenceRefs": [],
+      "independentReviewer": null,
+      "reviewSignoffRef": null
+    },
+    {
+      "id": "G6",
+      "status": "pending-external-review",
+      "sourcePaths": [
+        "docs/MYSQL-RESILIENCE-QUALIFICATION.md",
+        ".github/workflows/mysql-resilience.yml",
+        ".github/workflows/mysql-write-soak-tls.yml"
+      ],
+      "independentEvidenceRefs": [],
+      "independentReviewer": null,
+      "reviewSignoffRef": null
+    },
+    {
+      "id": "G7",
+      "status": "pending-external-review",
+      "sourcePaths": [
+        "docs/RELEASE-CANDIDATE-PROVENANCE.md",
+        ".github/workflows/release-provenance.yml"
+      ],
+      "independentEvidenceRefs": [],
+      "independentReviewer": null,
+      "reviewSignoffRef": null
+    },
+    {
+      "id": "G8",
+      "status": "pending-external-review",
+      "sourcePaths": [
+        "docs/MYSQL-CURRENT-RELEASE-QUALIFICATION.md",
+        ".github/workflows/mysql-current-support.yml"
+      ],
+      "independentEvidenceRefs": [],
+      "independentReviewer": null,
+      "reviewSignoffRef": null
+    },
+    {
+      "id": "G9",
+      "status": "pending-external-review",
+      "sourcePaths": [
+        "SECURITY.md",
+        "docs/MYSQL-OPERATIONS-RUNBOOK.md"
+      ],
+      "independentEvidenceRefs": [],
+      "independentReviewer": null,
+      "reviewSignoffRef": null
+    },
+    {
+      "id": "G10",
+      "status": "pending-external-review",
+      "sourcePaths": [
+        "LICENSE",
+        "docs/release/mysql-commercial-decision.json"
+      ],
+      "independentEvidenceRefs": [],
+      "independentReviewer": null,
+      "reviewSignoffRef": null
+    },
+    {
+      "id": "G11",
+      "status": "pending-external-review",
+      "sourcePaths": [
+        "docs/MYSQL-OPERATIONS-RUNBOOK.md",
+        ".github/workflows/mysql-resilience.yml"
+      ],
+      "independentEvidenceRefs": [],
+      "independentReviewer": null,
+      "reviewSignoffRef": null
+    }
+  ],
+  "trackingIssue": "https://github.com/NuBlox/NuBloxSQL/issues/421"
+}
