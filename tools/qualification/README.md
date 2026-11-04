@@ -40,6 +40,13 @@ A separate 30-minute weekly pooled soak, and optional one/two-hour
 manual soak, preserve elapsed-duration, expected error recovery,
 observed memory peaks and zero native pool capacity after close.
 The two-hour configuration is **not** proof of a completed two-hour run.
+Pooled-read and transactional-write soaks now record a second bounded
+30-second timeline of verified completed SQL operations alongside heap/RSS.
+For at least 30 minutes of evidence, the independent validator refuses
+counter reversals, timestamps that differ from memory samples, final
+counters that disagree with checked operations, and observation windows
+longer than 90 seconds without new verified SQL work. Short PR smokes
+retain their start/end-only observations and do not count as endurance.
 For a report covering 30 minutes or more, evidence validation now also
 requires continuity across the full sampled heap/RSS timeline: no gap may
 exceed three 30-second sampling intervals. Dense clusters of samples

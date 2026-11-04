@@ -1,17 +1,28 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {BoundedMemoryTimeline,validateMemoryTimeline} from './soak-observations.mjs';
+import {BoundedMemoryTimeline,BoundedProgressTimeline,
+  validateMemoryTimeline,validateProgressTimeline} from './soak-observations.mjs';
 import {requestedWriteSoakDuration,selectWriteSoakReport,validateWriteSoakEvidence}
   from './write-soak-evidence.mjs';
 const revision='a'.repeat(40),runId='12345';
 function sample(event='push',hours='0'){
   const ms=requestedWriteSoakDuration(event,hours);
-  const timer=new BoundedMemoryTimeline();
+  const timer=new BoundedMemoryTimeline(),progress=new BoundedProgressTimeline();
   const snapshot={heapUsed:25000000,rss:95000000,external:1000000,arrayBuffers:100000};
-  for(let stamp=0;stamp<=ms;stamp+=30000)timer.record(stamp,snapshot);
-  if(ms%30000!==0)timer.record(ms,snapshot);
+  for(let stamp=0;stamp<=ms;stamp+=30000){
+    timer.record(stamp,snapshot);
+    progress.record(stamp,Math.floor(132*stamp/ms));
+  }
+  if(ms%30000!==0){
+    timer.record(ms,snapshot);
+    progress.record(ms,132);
+  }
   const memoryTimeline=timer.summary();
   const memoryTrend=validateMemoryTimeline(memoryTimeline,{minDurationMs:ms});
+  const progressTimeline=progress.summary();
+  const progressEvidence=validateProgressTimeline(progressTimeline,{
+    minDurationMs:ms,expectedCompleted:132,memoryTimeline
+  });
   const workers=Array.from({length:4},(_,worker)=>({
     worker,committed:30,rolledBack:3,verified:33,finalCounter:30
   }));
@@ -28,7 +39,7 @@ function sample(event='push',hours='0'){
       latency:{count:132,latencySamples:132,latencySampleCapacity:4096},
       resources:{poolBeforeClose:{size:4,pending:0,active:0},
         poolAfterClose:{size:0,idle:0,active:0,pending:0,connecting:0},
-        memoryTimeline,memoryTrend}}
+        memoryTimeline,memoryTrend,progressTimeline,progressEvidence}}
   };
 }
 const ctx={revision,runId,event:'push',hours:'0'};
@@ -39,6 +50,8 @@ test('same-run smoke and full-duration scheduled/manual evidence is independentl
       ...ctx,event,hours});
     assert.equal(verified.status,'passed');
     assert.equal(verified.tableDropped,true);
+    assert.ok(verified.progressSamples>=2);
+    assert.ok(verified.maxUnverifiedProgressMs<=90_000);
   }
   assert.equal(selectWriteSoakReport(['mysql-write-soak-12345.json'],runId),
     'mysql-write-soak-12345.json');
@@ -62,6 +75,10 @@ test('reject stale, shortened, duplicate, secret-bearing or forged release evide
     x=>{x.workload.finalCounterSum=119;},
     x=>{x.workload.resources.poolAfterClose.size=1;},
     x=>{x.workload.resources.memoryTimeline.trend.heapUsedGrowthBytes=99999;},
+    x=>{delete x.workload.resources.progressTimeline;},
+    x=>{x.workload.resources.progressTimeline.progress.endCompleted=99;},
+    x=>{x.workload.resources.progressTimeline.samples.at(-1).completed=131;},
+    x=>{x.workload.resources.progressTimeline.samples[1].elapsedMs+=1000;},
     x=>{x.errors.unexpected=1;},
     x=>{x.workload.latency.count=1;}
   ];
@@ -108,4 +125,25 @@ test('verified TLS write evidence cannot be replaced by local or forged TLS chec
   }
   assert.throws(()=>selectWriteSoakReport(['mysql-write-soak-12345.json'],
     runId,'verified-tls'));
+});
+
+test('write-soak evidence rejects long-duration SQL stagnation',()=>{
+  const report=structuredClone(sample('schedule'));
+  const timeline=new BoundedProgressTimeline();
+  for(const observation of report.workload.resources.memoryTimeline.samples){
+    const t=observation.elapsedMs;
+    const completed=t<240_000?Math.floor(132*t/1_800_000):
+      t<=390_000?17:Math.floor(132*t/1_800_000);
+    timeline.record(t,completed);
+  }
+  report.workload.resources.progressTimeline=timeline.summary();
+  const resources=report.workload.resources;
+  // Recompute an honest derived summary before exercising the long-duration
+  // stall check: never let a mismatched fixture summary mask the real error.
+  resources.progressEvidence=validateProgressTimeline(resources.progressTimeline,{
+    minDurationMs:0,expectedCompleted:132,memoryTimeline:resources.memoryTimeline
+  });
+  assert.throws(()=>validateWriteSoakEvidence(report,{
+    ...ctx,event:'schedule'
+  }),/gap without confirmed progress/);
 });

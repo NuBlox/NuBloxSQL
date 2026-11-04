@@ -114,6 +114,17 @@ includes the observed maximum sample gap. This detects missing observation
 windows, not every kind of stall or memory leak. Short CI smokes retain their
 start/end-only sampling contract.
 
+**Sampled SQL progress across long G6 runs.** Sustained pooled-read and
+InnoDB committed-write/intentional-rollback soaks now persist a second
+bounded, 30-second timeline of **successfully verified database work**,
+timestamp-aligned with their existing heap/RSS samples. The independent
+validator reconciles each final completed-operation count with the
+workload result, rejects any nonmonotonic totals or mismatched timestamps,
+and refuses >=30-minute evidence when a 90-second observation window
+contains no newly confirmed successful SQL work. These are samples of
+verified completed operations, not a claim of continuous packet flow,
+zero stalls or multi-hour results from a short PR smoke.
+
 Memory snapshots show process observations, not evidence of zero
 allocations or a statistically sound absence of leaks. Pool disposal
 and bounded pending checkouts are enforced invariants. Tests do not

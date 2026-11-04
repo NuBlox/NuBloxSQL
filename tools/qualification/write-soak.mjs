@@ -5,7 +5,8 @@
 import assert from 'node:assert/strict';
 import {performance} from 'node:perf_hooks';
 import {integerOption} from './metrics.mjs';
-import {BoundedLatencySamples,BoundedMemoryTimeline,validateMemoryTimeline} from './soak-observations.mjs';
+import {BoundedLatencySamples,BoundedMemoryTimeline,BoundedProgressTimeline,
+  validateMemoryTimeline,validateProgressTimeline} from './soak-observations.mjs';
 
 export function parseWriteSoakOptions(args){
   const allowed=new Set(['durationMs','concurrency','maxTransactions']),given={};
@@ -93,10 +94,16 @@ export async function runWriteSoak({
     pool=createPool(target,{maxConnections:options.concurrency,
       acquireTimeoutMs:12000,idleTimeoutMs:60000,healthCheckTimeoutMs:2000});
     const samples=new BoundedLatencySamples(),timeline=new BoundedMemoryTimeline();
+    const progressTimeline=new BoundedProgressTimeline();
     let attempts=0,completed=0,failure=null;
     const start=now();
     timeline.record(0,memoryUsage());
-    timer=setInterval(()=>timeline.record(now()-start,memoryUsage()),30000);
+    progressTimeline.record(0,completed);
+    timer=setInterval(()=>{
+      const elapsed=now()-start;
+      timeline.record(elapsed,memoryUsage());
+      progressTimeline.record(elapsed,completed);
+    },30000);
     timer.unref();
     const workers=Array.from({length:options.concurrency},(_,worker)=>(async()=>{
       let iteration=0;
@@ -146,6 +153,7 @@ export async function runWriteSoak({
     clearInterval(timer);timer=null;
     const elapsed=now()-start;
     timeline.record(elapsed,memoryUsage());
+    progressTimeline.record(elapsed,completed);
     if(failure)throw failure;
     assert.ok(elapsed>=options.durationMs,'Soak ended before requested duration');
     assert.ok(attempts<options.maxTransactions,'Soak hit operation ceiling');
@@ -178,13 +186,18 @@ export async function runWriteSoak({
     const memoryTimeline=timeline.summary();
     const memoryTrend=validateMemoryTimeline(memoryTimeline,
       {minDurationMs:options.durationMs});
+    const progressTrace=progressTimeline.summary();
+    const progressEvidence=validateProgressTimeline(progressTrace,{
+      minDurationMs:options.durationMs,expectedCompleted:completed,memoryTimeline
+    });
     result={serverVersion:admin.info.version,requestedDurationMs:options.durationMs,
       observedDurationMs:elapsed,attemptedTransactions:attempts,
       completedTransactions:completed,committedTransactions:committed,
       rolledBackTransactions:rolledBack,verifiedReads:completed,
       finalCounterSum:finalSum,workers:summary,latency:samples.summarize(elapsed),
       resources:{poolBeforeClose:beforeClose,poolAfterClose:afterClose,
-        memoryTimeline,memoryTrend}};
+        memoryTimeline,memoryTrend,
+        progressTimeline:progressTrace,progressEvidence}};
   }finally{
     if(timer)clearInterval(timer);
     try{if(pool)await pool.close();}

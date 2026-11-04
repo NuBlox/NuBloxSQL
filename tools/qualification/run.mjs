@@ -9,7 +9,7 @@ import {resolve} from 'node:path';
 import {cpus,platform,arch} from 'node:os';
 import {connectDatabase,createDatabasePool} from '../../packages/driver/dist/index.js';
 import {parseArgs,summarize,safeError} from './metrics.mjs';
-import {BoundedLatencySamples,BoundedMemoryTimeline} from './soak-observations.mjs';
+import {BoundedLatencySamples,BoundedMemoryTimeline,BoundedProgressTimeline} from './soak-observations.mjs';
 import {qualifyAuthentication} from './authentication.mjs';
 
 const mode=process.argv[2];
@@ -114,9 +114,15 @@ async function poolRun(durationBounded){
   const samples=durationBounded?new BoundedLatencySamples():[];
   const start=performance.now();
   const memoryTimeline=durationBounded?new BoundedMemoryTimeline():null;
-  if(memoryTimeline)memoryTimeline.record(0,process.memoryUsage());
+  const progressTimeline=durationBounded?new BoundedProgressTimeline():null;
+  if(memoryTimeline){
+    memoryTimeline.record(0,process.memoryUsage());
+    progressTimeline.record(0,samples.count);
+  }
   const memoryTimer=memoryTimeline?setInterval(()=>{
-    memoryTimeline.record(performance.now()-start,process.memoryUsage());
+    const elapsed=performance.now()-start;
+    memoryTimeline.record(elapsed,process.memoryUsage());
+    progressTimeline.record(elapsed,samples.count);
   },30000):null;
   memoryTimer?.unref();
   let next=0,failed=false;
@@ -155,8 +161,11 @@ async function poolRun(durationBounded){
   }finally{
     if(memoryTimer){
       clearInterval(memoryTimer);
-      memoryTimeline.record(performance.now()-start,process.memoryUsage());
+      const elapsed=performance.now()-start;
+      memoryTimeline.record(elapsed,process.memoryUsage());
+      progressTimeline.record(elapsed,samples.count);
       report.resources.memoryTimeline=memoryTimeline.summary();
+      report.resources.progressTimeline=progressTimeline.summary();
     }
   }
   const completed=durationBounded?samples.count:samples.length;

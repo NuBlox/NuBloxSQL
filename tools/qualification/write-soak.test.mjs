@@ -94,6 +94,9 @@ test('mixed committed writes and deliberate rollback preserve durable state',asy
   assert.equal(result.committedTransactions,result.finalCounterSum);
   assert.equal(result.verifiedReads,result.completedTransactions);
   assert.equal(result.resources.poolAfterClose.size,0);
+  assert.equal(result.resources.progressEvidence.completed,result.completedTransactions);
+  assert.equal(result.resources.progressTimeline.progress.endCompleted,
+    result.completedTransactions);
   assert.equal(result.tableDropped,true);
   assert.equal(f.state.dropped,true);
 });

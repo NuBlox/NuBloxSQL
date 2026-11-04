@@ -2,14 +2,17 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {validateExtendedSoakEvidence,selectExtendedSoakReport}
   from './extended-soak-evidence.mjs';
-import {BoundedMemoryTimeline} from './soak-observations.mjs';
+import {BoundedMemoryTimeline,BoundedProgressTimeline} from './soak-observations.mjs';
 
 const sha='a'.repeat(40),runId='12345';
 function fixture(durationMs=1_800_000){
   const timeline=new BoundedMemoryTimeline();
-  for(let t=0;t<=durationMs;t+=30000)
+  const progress=new BoundedProgressTimeline();
+  for(let t=0;t<=durationMs;t+=30000){
     timeline.record(t,{heapUsed:40_000_000,rss:90_000_000,
       external:3_000_000,arrayBuffers:2_000_000});
+    progress.record(t,Math.floor(6000*t/durationMs));
+  }
   return {
     schemaVersion:1,kind:'soak',status:'passed',
     environment:{revision:sha,ci:true,platform:'linux',arch:'x64',
@@ -19,6 +22,7 @@ function fixture(durationMs=1_800_000){
     workloads:{pool:{elapsedMs:durationMs+5,count:6000,completed:6000,
         workerCount:4,operationsPerSecond:30},reconnect:{count:6}},
     resources:{memoryTimeline:timeline.summary(),
+      progressTimeline:progress.summary(),
       poolBeforeClose:{size:4,pending:0},
       poolAfterClose:{size:0,active:0,idle:0,connecting:0,pending:0,
         created:4,discarded:4},heapPeakBytes:30_000_000,
@@ -40,6 +44,8 @@ test('scheduled 30-minute evidence is same-revision, complete and redacted',()=>
   assert.equal(proof.poolSlotsAfterClose,0);
   assert.equal(proof.memorySamples,61);
   assert.equal(proof.memoryMaxSampleGapMs,30_000);
+  assert.equal(proof.progressSamples,61);
+  assert.equal(proof.maxUnverifiedProgressMs,30_000);
   assert.equal(proof.heapUsedGrowthBytes,0);
   assert.equal(proof.rssGrowthBytes,0);
   assert.equal(proof.status,'passed');
@@ -97,6 +103,9 @@ test('reject leaked pool sessions, waiters and absent process measurements',()=>
   reject(r=>{r.resources.memoryTimeline.samples[5].rssBytes=Infinity;});
   reject(r=>{r.resources.memoryTimeline.trend.heapUsedGrowthBytes=1000;});
   reject(r=>{r.resources.memoryTimeline.samples.length=1;});
+  reject(r=>{delete r.resources.progressTimeline;});
+  reject(r=>{r.resources.progressTimeline.progress.endCompleted++;});
+  reject(r=>{r.resources.progressTimeline.samples[3].elapsedMs+=5000;});
 });
 test('independent long-soak evidence rejects an honest trend with missing sampling windows',()=>{
   const report=structuredClone(fixture());
@@ -121,4 +130,19 @@ test('reject duplicate, stale or missing persisted run artifacts',()=>{
     'soak-local-12345-1790000.json','soak-local-12345-1800000.json'],runId));
   assert.throws(()=>selectExtendedSoakReport([
     'soak-local-12345-1790000.json','unreviewed.json'],runId));
+});
+
+test('long-read evidence rejects a sampled-but-stalled SQL workload',()=>{
+  const report=structuredClone(fixture());
+  const timeline=new BoundedProgressTimeline();
+  for(const sample of report.resources.memoryTimeline.samples){
+    const t=sample.elapsedMs;
+    const verified=t<300_000?Math.floor(6000*t/1_800_000):
+      t<=450_000?1000:Math.floor(6000*t/1_800_000);
+    timeline.record(t,verified);
+  }
+  report.resources.progressTimeline=timeline.summary();
+  assert.equal(report.resources.progressTimeline.progress.endCompleted,6000);
+  assert.throws(()=>validateExtendedSoakEvidence(report,base),
+    /gap without confirmed progress/);
 });
