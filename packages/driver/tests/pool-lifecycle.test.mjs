@@ -616,3 +616,106 @@ test('completed awaited work remains successful and a leased connection stays re
     assert.equal(pool.stats.idle,1);
   }finally{await pool.close();}
 });
+ 
+test('shutdown immediately marks an active lease closed and cannot return callback success',
+  {timeout:4000},async()=>{
+  const session=fake(1);
+  let entered,releaseWork,closeStarted,releaseClose;
+  const callbackStarted=new Promise(resolve=>{entered=resolve;});
+  const workGate=new Promise(resolve=>{releaseWork=resolve;});
+  const nativeClosing=new Promise(resolve=>{closeStarted=resolve;});
+  const closeGate=new Promise(resolve=>{releaseClose=resolve;});
+  let closes=0,lease;
+  session.close=async()=>{
+    closes++;
+    closeStarted();
+    await closeGate;
+    session.closed=true;
+  };
+  const pool=new ConnectionPool(async()=>session,{maxConnections:1});
+  const active=pool.withConnection(async borrowed=>{
+    lease=borrowed;
+    assert.equal((await borrowed.query('SELECT 1')).rows[0].id,1);
+    entered();
+    await workGate;
+    return 'must-not-succeed-after-shutdown';
+  });
+  void active.catch(()=>{});
+  try{
+    await callbackStarted;
+    assert.equal(lease.closed,false);
+    const shuttingDown=pool.close();
+    await nativeClosing;
+    assert.equal(session.closed,false,'native close is deliberately blocked');
+    assert.equal(lease.closed,true,'lease reflects synchronous shutdown, not late native close');
+    await assert.rejects(lease.query('SELECT 1'),e=>e.code==='CONNECTION_CLOSED');
+    releaseWork();
+    await assert.rejects(active,e=>e.code==='CONNECTION_CLOSED'&&
+      /Pool closed before callback completion/.test(e.message));
+    assert.equal(pool.stats.size,1,'slot remains reserved until native close settles');
+    releaseClose();
+    await shuttingDown;
+    assert.equal(closes,1,'shutdown owns exactly one native disposal');
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.stats.active,0);
+    assert.equal(pool.stats.pending,0);
+  }finally{
+    releaseWork?.();
+    releaseClose?.();
+    await active.catch(()=>{});
+    await pool.close();
+  }
+});
+
+test('callback can report handled native loss without reusing the session',async()=>{
+  const session=fake(2);
+  let entered,release;
+  const ready=new Promise(resolve=>{entered=resolve;});
+  const gate=new Promise(resolve=>{release=resolve;});
+  const pool=new ConnectionPool(async()=>session,{maxConnections:1});
+  const active=pool.withConnection(async lease=>{
+    assert.equal((await lease.query('SELECT 1')).rows[0].id,2);
+    entered();
+    await gate;
+    return {nativeClosed:lease.closed,action:'reconcile separately'};
+  });
+  void active.catch(()=>{});
+  try{
+    await ready;
+    session.closed=true; // native fatal event while callback waits on JavaScript
+    release();
+    assert.deepEqual(await active,{nativeClosed:true,action:'reconcile separately'});
+    assert.equal(pool.stats.size,0);
+    assert.equal(pool.stats.discarded,1);
+  }finally{
+    release?.();
+    await active.catch(()=>{});
+    await pool.close();
+  }
+});
+
+test('original callback failure survives a simultaneous pool shutdown',async()=>{
+  const session=fake(3);
+  const original=new Error('specific application failure');
+  let entered,release;
+  const ready=new Promise(resolve=>{entered=resolve;});
+  const gate=new Promise(resolve=>{release=resolve;});
+  const pool=new ConnectionPool(async()=>session,{maxConnections:1});
+  const active=pool.withConnection(async()=>{
+    entered();
+    await gate;
+    throw original;
+  });
+  void active.catch(()=>{});
+  try{
+    await ready;
+    await pool.close();
+    release();
+    await assert.rejects(active,error=>error===original);
+    assert.equal(pool.stats.size,0);
+  }finally{
+    release?.();
+    await active.catch(()=>{});
+    await pool.close();
+  }
+});

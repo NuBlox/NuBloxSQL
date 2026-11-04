@@ -101,6 +101,23 @@ native-packet and pool-replacement tests exercise valid and invalid statuses.
 This is a defensive consistency check, not proof that an untrusted server
 accurately represents its transaction state or evidence of commercial readiness.
 
+## No false callback success after pool shutdown (G6)
+
+A pool shutdown now invalidates the observable `lease.closed` property
+synchronously, including while native socket disposal is still pending.
+If an active `withConnection()` callback later returns from unrelated
+application work after pool-initiated shutdown, it rejects with
+`CONNECTION_CLOSED` and an explicit warning that SQL outcomes may
+be unknown. A callback that catches a native query failure may still
+return its own recovery result; the disconnected session is discarded. It does not return the callback's nominal
+success value. Already-failed callbacks preserve their original errors;
+previously completed callbacks remain successful even if shutdown
+starts while their native reset is in progress. Native disposal is owned
+by the existing single shared shutdown barrier. Deterministic gated
+shutdown, handled-native-loss and original-error regressions plus live
+MySQL qualification exercise the race. This advances G6 reliability but
+does not establish a service-level or commercial production guarantee.
+
 ## All-settled pool shutdown disposal barrier (G6)
 
 The bounded connection pool no longer uses fail-fast `Promise.all` for
