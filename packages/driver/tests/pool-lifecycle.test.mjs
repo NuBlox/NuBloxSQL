@@ -651,7 +651,7 @@ test('shutdown immediately marks an active lease closed and cannot return callba
     await assert.rejects(lease.query('SELECT 1'),e=>e.code==='CONNECTION_CLOSED');
     releaseWork();
     await assert.rejects(active,e=>e.code==='CONNECTION_CLOSED'&&
-      /closed before callback completion/.test(e.message));
+      /Pool closed before callback completion/.test(e.message));
     assert.equal(pool.stats.size,1,'slot remains reserved until native close settles');
     releaseClose();
     await shuttingDown;
@@ -667,7 +667,7 @@ test('shutdown immediately marks an active lease closed and cannot return callba
   }
 });
 
-test('remote session loss during callback cannot be mistaken for successful lease work',async()=>{
+test('callback can report handled native loss without reusing the session',async()=>{
   const session=fake(2);
   let entered,release;
   const ready=new Promise(resolve=>{entered=resolve;});
@@ -677,15 +677,14 @@ test('remote session loss during callback cannot be mistaken for successful leas
     assert.equal((await lease.query('SELECT 1')).rows[0].id,2);
     entered();
     await gate;
-    return 'must-not-succeed-after-disconnect';
+    return {nativeClosed:lease.closed,action:'reconcile separately'};
   });
   void active.catch(()=>{});
   try{
     await ready;
     session.closed=true; // native fatal event while callback waits on JavaScript
     release();
-    await assert.rejects(active,e=>e.code==='CONNECTION_CLOSED'&&
-      /closed before callback completion/.test(e.message));
+    assert.deepEqual(await active,{nativeClosed:true,action:'reconcile separately'});
     assert.equal(pool.stats.size,0);
     assert.equal(pool.stats.discarded,1);
   }finally{

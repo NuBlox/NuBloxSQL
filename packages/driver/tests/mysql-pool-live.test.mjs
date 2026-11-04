@@ -143,7 +143,8 @@ live('closing a pool rejects waiting callers and closes active native sessions',
   await assert.rejects(pool.withConnection(async()=>1),e=>e.code==='CONNECTION_CLOSED');
  }finally{
   unblock();
-  await held;
+  await assert.rejects(held,e=>e.code==='CONNECTION_CLOSED'&&
+    /Pool closed before callback completion/.test(e.message));
   await pool.close();
  }
  assert.equal(pool.stats.size,0);
@@ -273,7 +274,7 @@ live('pool shutdown during an awaiting callback revokes its lease and rejects la
     release();
     await assert.rejects(active,error=>
       error.code==='CONNECTION_CLOSED'&&
-      /closed before callback completion/.test(error.message));
+      /Pool closed before callback completion/.test(error.message));
     await closing;
     assert.equal(pool.stats.size,0);
     assert.equal(pool.stats.active,0);

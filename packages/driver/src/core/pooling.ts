@@ -360,9 +360,12 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
       // close() may have revoked the leased socket while the callback was
       // awaiting unrelated application work. A returned value must not be
       // represented as success after that ownership boundary was lost.
-      if(revoked())
+      // A callback can handle a native query failure and report its own
+      // recovery result; release() still discards the poisoned connection.
+      // Pool-wide shutdown, however, revokes the callback's ownership.
+      if(this.stopped)
         throw fail('CONNECTION_CLOSED',
-          'Pooled connection closed before callback completion; SQL outcome may be unknown');
+          'Pool closed before callback completion; SQL outcome may be unknown');
       succeeded=true;
       return result;
     }catch(error){
