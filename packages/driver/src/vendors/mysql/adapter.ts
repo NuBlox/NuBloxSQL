@@ -2,13 +2,13 @@ import net, {type Socket} from 'node:net';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import tls from 'node:tls';
 import {PacketStream} from './protocol/framing.js';
-import {Cursor,cstr,LIMIT,u32} from './protocol/primitives.js';
+import {cstr,LIMIT,u32} from './protocol/primitives.js';
 import {greeting,flags,login,sslRequest,authSwitchRequest,cachingSha2AuthMore,authenticationOk,type MysqlGreeting} from './protocol/handshake.js';
 import {assertSupportedAuthPlugin,token} from './auth/plugins.js';
 import {execute,fetchRows} from './protocol/commands.js';
 import {MysqlCursor} from './cursor.js';
 import {MysqlPreparedStatement} from './prepared.js';
-import {ok,acknowledgedOk,prepareOk,eofStatus,assertSingleResult} from './protocol/results.js';
+import {ok,acknowledgedOk,prepareOk,eofStatus,assertSingleResult,binaryResultColumnCount} from './protocol/results.js';
 import {binaryValues,columnKeys,objectRow} from './types.js';
 import {serverPacket,eof,isOk} from './errors.js';
 import {validate} from './configuration.js';
@@ -263,9 +263,7 @@ export class MysqlSession implements RelationalSession {
         next=await readResultPacket();
         continue;
       }
-      const raw=new Cursor(next),count=raw.len();
-      if(count===null||count<1||count>MAX_COLUMNS)
-        throw Error('Invalid prepared result column count');
+      const count=binaryResultColumnCount(next);
       const {columns,status:metadataStatus}=await readMetadataWithStatus(
         ()=>readResultPacket(),count,true
       );
@@ -416,9 +414,15 @@ export class MysqlSession implements RelationalSession {
           ok(first);
           throw fail('UNSUPPORTED_FEATURE','Cursor requires a row-producing SELECT statement');
         }
-        const raw=new Cursor(first),count=raw.len();
-        if(count===null||count<1||count>MAX_COLUMNS)
-          throw Error('Invalid cursor result column count');
+        let count:number;
+        try{count=binaryResultColumnCount(first);}
+        catch(error){
+          // The server may already be sending column metadata after this
+          // malformed header. Revoke the socket before cleanup could send
+          // COM_STMT_CLOSE into unread response traffic.
+          this.destroy(error instanceof DriverError?error:undefined);
+          throw error;
+        }
         // After the result-set header, a server ERR during metadata cannot
         // establish that the remainder of COM_STMT_EXECUTE was consumed.
         // Never send COM_STMT_CLOSE into that uncertain response.
