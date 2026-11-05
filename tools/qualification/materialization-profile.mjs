@@ -44,11 +44,11 @@ function fixtures(textBytes){
     :Buffer.alloc(textBytes,0x55)));
   return [
     {name:'numeric8',columns:numericCols,
-      packet:Buffer.concat([Buffer.from([0,0]),...numericCells])},
+      packet:Buffer.concat([Buffer.from([0,0,0]),...numericCells])},
     {name:'nullable64',columns:nullCols,
       packet:Buffer.concat([Buffer.from([0]),nullBitmap])},
     {name:'textBinary8',columns:mixedCols,
-      packet:Buffer.concat([Buffer.from([0,0]),...mixedCells])}
+      packet:Buffer.concat([Buffer.from([0,0,0]),...mixedCells])}
   ];
 }
 
