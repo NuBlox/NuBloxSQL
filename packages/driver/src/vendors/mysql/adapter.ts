@@ -433,7 +433,19 @@ export class MysqlSession implements RelationalSession {
             throw error;
           }
         };
-        const {columns,status}=await readMetadataWithStatus(cursorMetadata,count);
+        let metadata:Awaited<ReturnType<typeof readMetadataWithStatus>>;
+        try{
+          metadata=await readMetadataWithStatus(cursorMetadata,count);
+        }catch(error){
+          // A malformed column definition, EOF boundary or cumulative
+          // metadata limit can leave later packets in flight. The cursor
+          // must never send COM_STMT_CLOSE or return this socket to a pool.
+          const failure=error instanceof DriverError?error:
+            fail('PROTOCOL_ERROR','Malformed MySQL cursor metadata');
+          this.destroy(failure);
+          throw failure;
+        }
+        const {columns,status}=metadata;
         if(!(status&0x40))
           throw fail('UNSUPPORTED_FEATURE','MySQL did not open a native server-side cursor');
         const keys=columnKeys(columns);
