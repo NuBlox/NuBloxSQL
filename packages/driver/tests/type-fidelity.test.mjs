@@ -38,6 +38,26 @@ test('MySQL TEXT and BLOB share type codes but different collation semantics',()
  assert.equal(row.latin1_text,'café');
  assert.equal(row.null_text,null);
 });
+test('binary result NULL bitmap rejects reserved leading bits at byte boundaries',()=>{
+ for(const count of [1,5,6,7,8,14]){
+  const columns=Array.from({length:count},(_,i)=>col('value'+i,T.TINY));
+  const allNull=wireRow(columns,Array(count).fill(null));
+  assert.deepEqual(Object.values(binaryRow(allNull,columns)),Array(count).fill(null));
+  for(const bits of [0x01,0x02,0x03]){
+   const malformed=Buffer.from(allNull);
+   malformed[1]|=bits;
+   assert.throws(()=>binaryRow(malformed,columns),/NULL bitmap reserved bits/,
+    'reserved bits '+bits+' must fail for '+count+' columns');
+  }
+ }
+ const columns=[col('first',T.TINY),col('second',T.TINY)];
+ const mixed=wireRow(columns,[Buffer.from([42]),null]);
+ assert.equal(binaryRow(mixed,columns).first,42);
+ const bad=Buffer.from(mixed);
+ bad[1]|=0x02;
+ assert.throws(()=>binaryRow(bad,columns),/NULL bitmap reserved bits/);
+});
+
 test('JSON, legacy/new DECIMAL and binary BIT preserve exact wire values',()=>{
  const cols=[
   col('json_doc',T.JSON,{charset:63}),
