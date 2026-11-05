@@ -191,3 +191,32 @@ test('compact all-NULL rows cannot exceed the buffered result-cell limit',async(
   await assert.rejects(f.session.query('SELECT 1'),
     error=>error.code==='CONNECTION_CLOSED');
 });
+
+test('decoded text can exhaust heap estimate before the valid wire response limit',async()=>{
+  // ASCII remains small on the wire but is budgeted conservatively as
+  // two bytes per JavaScript string code unit, plus result-object storage.
+  const length=MAX_PACKET_BYTES-80;
+  const textColumn=Buffer.concat([
+    ...['def','','','','text_value',''].map(value=>sized(Buffer.from(value))),
+    Buffer.from([12]),u16(45),u32(MAX_PACKET_BYTES),
+    Buffer.from([T.VAR_STRING]),u16(0),Buffer.from([0,0,0])
+  ]);
+  const largeRow=Buffer.concat([
+    Buffer.from([0,0]),sized(Buffer.alloc(length,0x61))
+  ]);
+  const totalWireBytes=1+textColumn.length+metadataEof.length+
+    largeRow.length+lastResultEof.length;
+  assert.ok(totalWireBytes<MAX_PACKET_BYTES,
+    'the response must be legal under the independent wire budget');
+  const f=fixture([Buffer.from([1]),textColumn,metadataEof,largeRow,lastResultEof]);
+  await assert.rejects(f.session.query('SELECT giant_text'),
+    error=>error.code==='RESOURCE_LIMIT'&&
+      /materialized result exceeds memory budget/.test(error.message));
+  assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17],
+    'reject oversized decoded result without COM_STMT_CLOSE');
+  assert.equal(f.preparedClosed,false);
+  assert.equal(f.session.closed,true);
+  assert.equal(f.socket.destroyed,true);
+  await assert.rejects(f.session.query('SELECT 1'),
+    error=>error.code==='CONNECTION_CLOSED');
+});
