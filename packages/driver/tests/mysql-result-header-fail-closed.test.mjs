@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {PacketStream} from '../dist/vendors/mysql/protocol/framing.js';
 import {MysqlSession} from '../dist/vendors/mysql/adapter.js';
+import {T,sized,u16,u32} from '../dist/vendors/mysql/protocol/primitives.js';
 
 class FixtureSocket extends EventEmitter{
   destroyed=false;
@@ -16,6 +17,7 @@ class FixtureSocket extends EventEmitter{
 }
 
 function fixture(header){
+  const replies=Array.isArray(header)?[...header]:[header];
   const socket=new FixtureSocket();
   const stream=new PacketStream(socket);
   const session=new MysqlSession(stream,socket,{
@@ -33,7 +35,10 @@ function fixture(header){
     sent.push(Buffer.from([0x19]));
   };
   stream.send=async packet=>sent.push(Buffer.from(packet));
-  stream.read=async()=>Buffer.from(header);
+  stream.read=async()=>{
+    if(!replies.length)throw Error('Unexpected fixture packet read');
+    return Buffer.from(replies.shift());
+  };
   return {socket,session,sent,get preparedClosed(){return preparedClosed;}};
 }
 
@@ -65,5 +70,32 @@ test('cursor never sends COM_STMT_CLOSE after a malformed binary result header',
     assert.equal(f.preparedClosed,false);
     assert.equal(f.session.closed,true);
     assert.equal(f.socket.destroyed,true);
+  }
+});
+
+const validColumn=Buffer.concat([
+  ...['def','','','','value',''].map(value=>sized(Buffer.from(value))),
+  Buffer.from([12]),u16(45),u32(1),Buffer.from([T.TINY]),
+  u16(0),Buffer.from([0,0,0])
+]);
+
+test('malformed cursor column metadata and EOF fail closed before statement cleanup',async()=>{
+  for(const packets of [
+    [Buffer.from([1]),Buffer.from([0xfb])],
+    [Buffer.from([1]),validColumn,Buffer.from([0xfe])]
+  ]){
+    const f=fixture(packets);
+    let callbackCalled=false;
+    await assert.rejects(f.session.withCursor('SELECT 1',[],async()=>{
+      callbackCalled=true;
+    }),error=>error.code==='PROTOCOL_ERROR');
+    assert.equal(callbackCalled,false);
+    assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17],
+      'never send COM_STMT_CLOSE into an incomplete metadata response');
+    assert.equal(f.preparedClosed,false);
+    assert.equal(f.session.closed,true);
+    assert.equal(f.socket.destroyed,true);
+    await assert.rejects(f.session.query('SELECT 2'),
+      error=>error.code==='CONNECTION_CLOSED');
   }
 });
