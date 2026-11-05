@@ -16,6 +16,7 @@
     "soak:mysql": "npm run build && node tools/qualification/run.mjs soak",
     "compare:mysql": "npm run build && node tools/qualification/compare.mjs",
     "profile:mysql-internals": "npm run build && node tools/qualification/profile-internals.mjs",
+    "profile:mysql-materialization": "npm run build && node --expose-gc tools/qualification/profile-materialization.mjs",
     "release:verify": "npm run verify:lock && npm run build && node tools/release/verify-commercial-decision.mjs && node tools/release/verify-external-assurance.mjs && node tools/release/verify.mjs && node tools/release/verify-api-contract.mjs",
     "profile:mysql-live": "npm run build && node tools/qualification/profile-live.mjs",
     "verify:api": "npm run build && node tools/release/verify-api-contract.mjs",

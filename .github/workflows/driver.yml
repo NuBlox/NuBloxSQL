@@ -72,6 +72,8 @@ jobs:
           NUBLOX_LIVE_MYSQL: '1'
           MYSQL_USER: root
           MYSQL_PASSWORD: test-password
+      - name: Measure decoded MySQL result memory with explicit GC
+        run: npm run profile:mysql-materialization -- --rows=250 --rounds=3 --textBytes=2048
       - name: Retain reproducible MySQL qualification evidence
         if: always()
         uses: actions/upload-artifact@v4

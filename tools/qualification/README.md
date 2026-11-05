@@ -386,3 +386,34 @@ artifacts; no arbitrary speed thresholds gate merges.
 Only aggregated measurements, numeric validation counts, runtime details,
 and redacted error codes are written. SQL, results and credentials do not
 enter the JSON report. No additional published driver dependency is required.
+
+## GC-controlled materialized-result memory evidence
+
+The buffered MySQL result API retains both named `rows` and positional
+`rowValues`. The existing 32 MiB total wire response, 1,000,000-cell and
+64 MiB **estimated** retained-result limits do not themselves measure V8 heap
+and Buffer allocation. The native decoder's materialization profile measures
+real retained result objects for three synthetic, deterministic workloads:
+8 numeric columns, 64 all-NULL columns, and 8 mixed text/Buffer columns.
+
+```bash
+npm run profile:mysql-materialization -- --rows=250 --rounds=3 --textBytes=2048
+```
+
+The command builds the driver and starts Node with `--expose-gc`.
+GC runs immediately before and after constructing each retained result.
+Evidence in `artifacts/qualification/mysql-materialization-memory-*.json`
+contains per-round before/after/delta bytes for `heapUsed`, `rss`,
+`external` and `arrayBuffers` alongside the driver's **estimated retained
+bytes**. The three scenarios rotate order between rounds to expose
+order/GC sensitivity. No database connection, SQL string, credentials or
+customer records are loaded. MySQL 8.4 CI runs this profile and uploads the
+JSON with the existing qualification artifacts.
+
+Measurements are diagnostics only. RSS and heap deltas can be negative or
+noisy after GC, heap/external/array-buffer values overlap and must not be
+added together, and a synthetic row packet is not the real server's
+allocation lifecycle. Neither a favourable estimate-to-heap ratio nor
+a single run establishes commercial readiness or a defensible default
+limit. Repeat on pinned hardware and corroborate with `profile:mysql-live`
+before changing the 64 MiB estimated budget.
