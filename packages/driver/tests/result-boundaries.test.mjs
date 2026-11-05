@@ -4,7 +4,8 @@ import {T,sized,u16,u32} from '../dist/vendors/mysql/protocol/primitives.js';
 import {binaryValues,binaryRow,columnKeys,objectRow} from '../dist/vendors/mysql/types.js';
 import {eofStatus,assertSingleResult,acknowledgedOk,prepareOk,ok,field,errorPacket} from '../dist/vendors/mysql/protocol/results.js';
 import {serverPacket} from '../dist/vendors/mysql/errors.js';
-import {readMetadata} from '../dist/vendors/mysql/metadata.js';
+import {readMetadata,readMetadataWithStatus} from '../dist/vendors/mysql/metadata.js';
+import {MAX_PACKET_BYTES} from '../dist/core/resources.js';
 
 const column=name=>({name,type:T.LONGLONG,charset:63,unsigned:false,
  schema:'test',table:'t',length:20,flags:0,decimals:0});
@@ -81,6 +82,22 @@ test('ColumnDefinition41 rejects NULL markers in all six required metadata strin
  assert.equal(empty.schema,'');
  assert.equal(empty.table,'');
  assert.equal(empty.originalTable,'');
+});
+
+test('cumulative column metadata bytes are limited before a second oversized definition is decoded',async()=>{
+ // One column definition remains below the logical-packet ceiling; two
+ // such definitions exceed the aggregate metadata budget. Reuse the wire
+ // buffer to keep the test itself from allocating multiple huge payloads.
+ const packet=definition('x'.repeat(Math.ceil(MAX_PACKET_BYTES/2)),'original');
+ assert.ok(packet.length<MAX_PACKET_BYTES);
+ assert.ok(packet.length*2>MAX_PACKET_BYTES);
+ let received=0;
+ await assert.rejects(readMetadataWithStatus(async()=>{
+   received++;
+   return packet;
+ },2),error=>error.code==='RESOURCE_LIMIT'&&
+   /metadata exceeds byte limit/.test(error.message));
+ assert.equal(received,2);
 });
 
 test('EOF flags and warnings are parsed strictly: no silent extra results',()=>{
