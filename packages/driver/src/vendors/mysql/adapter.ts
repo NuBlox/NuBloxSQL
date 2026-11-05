@@ -7,6 +7,7 @@ import {greeting,flags,login,sslRequest,authSwitchRequest,cachingSha2AuthMore,au
 import {assertSupportedAuthPlugin,token} from './auth/plugins.js';
 import {execute,fetchRows} from './protocol/commands.js';
 import {MysqlCursor} from './cursor.js';
+import {MysqlMaterializationBudget} from './materialization.js';
 import {MysqlPreparedStatement} from './prepared.js';
 import {ok,acknowledgedOk,prepareOk,eofStatus,assertSingleResult,binaryResultColumnCount} from './protocol/results.js';
 import {binaryValues,columnKeys,objectRow} from './types.js';
@@ -236,6 +237,7 @@ export class MysqlSession implements RelationalSession {
     this.stream.reset();
     await this.send(command);
     const results:QueryResult[]=[];
+    const materialization=new MysqlMaterializationBudget();
     let totalRows=0,totalCells=0,responseBytes=0;
     let responseStarted=false;
     // An ERR as the *first* response is a normal recoverable SQL failure.
@@ -274,6 +276,7 @@ export class MysqlSession implements RelationalSession {
         ()=>readResultPacket(),count,true
       );
       const keys=columnKeys(columns);
+      materialization.columns(columns,keys);
       const rows:Array<Record<string,unknown>>=[];
       const rowValues:unknown[][]=[];
       for(;;){
@@ -301,7 +304,11 @@ export class MysqlSession implements RelationalSession {
         totalCells+=columns.length;
         if(totalCells>MAX_RESULT_CELLS)
           throw fail('RESOURCE_LIMIT','Combined result sets exceed materialized cell limit');
+        // Estimate retained arrays/objects before allocating another row.
+        // Decoded strings and binary views add cost beyond cell cardinality.
+        materialization.beforeRow(columns.length);
         const values=binaryValues(packet,columns);
+        materialization.decoded(values);
         rowValues.push(values);
         rows.push(objectRow(values,keys));
       }

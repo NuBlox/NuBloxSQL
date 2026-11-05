@@ -10,6 +10,9 @@ export const MAX_PACKET_BYTES=32*1024*1024;
 export const MAX_RESULT_ROWS=10_000;
 /** Bound buffered row-value slots and row-object entries separately from wire bytes. */
 export const MAX_RESULT_CELLS=1_000_000;
+/** Estimated retained JS result footprint. V8 object sizes vary; this is
+ * an operational budget independent of both wire bytes and cell count. */
+export const MAX_MATERIALIZED_RESULT_BYTES=64*1024*1024;
 /** Total result sets from one prepared execution (including final OK). */
 export const MAX_RESULT_SETS=32;
 export const MAX_COLUMNS=4096;
