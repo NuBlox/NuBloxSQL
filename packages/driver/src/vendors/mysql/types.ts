@@ -100,6 +100,10 @@ export function binaryValues(buf:Buffer,cols:readonly MysqlColumn[]):unknown[]{
   const cursor=new Cursor(buf);
   if(cursor.byte()!==0)throw Error('Invalid MySQL binary result row');
   const bitmap=cursor.take(Math.ceil((cols.length+2)/8));
+  // Binary result rows offset column NULL bits by two. The leading bits
+  // have no column and must not carry values in a valid MySQL row.
+  if((bitmap[0]&0x03)!==0)
+    throw Error('Invalid MySQL binary result NULL bitmap reserved bits');
   const values:unknown[]=[];
   for(let i=0;i<cols.length;i++){
     const column=cols[i];
