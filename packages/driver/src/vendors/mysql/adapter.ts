@@ -236,7 +236,7 @@ export class MysqlSession implements RelationalSession {
     this.stream.reset();
     await this.send(command);
     const results:QueryResult[]=[];
-    let totalRows=0,totalBytes=0;
+    let totalRows=0,responseBytes=0;
     let responseStarted=false;
     // An ERR as the *first* response is a normal recoverable SQL failure.
     // Once metadata/rows/results have begun, any server ERR leaves the
@@ -246,6 +246,12 @@ export class MysqlSession implements RelationalSession {
       try{
         const packet=await this.get();
         responseStarted=true;
+        // Bound the entire response, not just row bodies. Metadata, column
+        // counts, EOF boundaries and subsequent result sets all contribute
+        // to memory pressure before queryResults can return to the caller.
+        responseBytes+=packet.length;
+        if(responseBytes>LIMIT)
+          throw fail('RESOURCE_LIMIT','Combined MySQL result response exceeds byte limit');
         return packet;
       }catch(error){
         if(responseStarted)this.destroy(error instanceof DriverError?error:undefined);
@@ -286,9 +292,8 @@ export class MysqlSession implements RelationalSession {
           next=await readResultPacket();
           break;
         }
-        totalBytes+=packet.length;
-        if(++totalRows>MAX_RESULT_ROWS||totalBytes>LIMIT)
-          throw fail('RESOURCE_LIMIT','Combined result sets exceed safety limits');
+        if(++totalRows>MAX_RESULT_ROWS)
+          throw fail('RESOURCE_LIMIT','Combined result sets exceed row limit');
         const values=binaryValues(packet,columns);
         rowValues.push(values);
         rows.push(objectRow(values,keys));
