@@ -4,7 +4,7 @@ import {EventEmitter} from 'node:events';
 import {PacketStream} from '../dist/vendors/mysql/protocol/framing.js';
 import {MysqlSession} from '../dist/vendors/mysql/adapter.js';
 import {T,sized,u16,u32} from '../dist/vendors/mysql/protocol/primitives.js';
-import {MAX_PACKET_BYTES} from '../dist/core/resources.js';
+import {MAX_PACKET_BYTES,MAX_RESULT_CELLS} from '../dist/core/resources.js';
 
 class FixtureSocket extends EventEmitter{
   destroyed=false;
@@ -147,6 +147,44 @@ test('multi-result metadata is limited across the entire server response',async(
       /Combined MySQL result response exceeds byte limit/.test(error.message));
   assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17],
     'no COM_STMT_CLOSE may be sent into an unfinished multi-result response');
+  assert.equal(f.preparedClosed,false);
+  assert.equal(f.session.closed,true);
+  assert.equal(f.socket.destroyed,true);
+  await assert.rejects(f.session.query('SELECT 1'),
+    error=>error.code==='CONNECTION_CLOSED');
+});
+
+test('compact all-NULL rows cannot exceed the buffered result-cell limit',async()=>{
+  // A 1,000-column NULL row consumes only a 127-byte wire bitmap, but
+  // materializes 1,000 array elements and 1,000 row-object properties.
+  // The 1,001st row crosses the 1,000,000-cell execution-wide ceiling.
+  const columnCount=1000;
+  assert.equal(MAX_RESULT_CELLS,1_000_000);
+  const cols=Array.from({length:columnCount},(_,i)=>Buffer.concat([
+    sized(Buffer.from('def')),sized(Buffer.alloc(0)),sized(Buffer.alloc(0)),
+    sized(Buffer.alloc(0)),sized(Buffer.from('field_'+i)),
+    sized(Buffer.alloc(0)),
+    Buffer.from([12]),u16(63),u32(1),Buffer.from([T.TINY]),
+    u16(0),Buffer.from([0,0,0])
+  ]));
+  const bitmap=Buffer.alloc(Math.ceil((columnCount+2)/8),0xff);
+  bitmap[0]&=0xfc; // the two leading bitmap bits are reserved
+  const row=Buffer.concat([Buffer.from([0]),bitmap]);
+  const wireBytes=(1001*row.length)+cols.reduce((n,col)=>n+col.length,0);
+  assert.ok(wireBytes<MAX_PACKET_BYTES,
+    'the wire-byte limit must not be the reason this fixture fails');
+  const f=fixture([
+    Buffer.from([0xfc,columnCount&255,columnCount>>8]),
+    ...cols,
+    metadataEof,
+    ...Array(1001).fill(row),
+    lastResultEof
+  ]);
+  await assert.rejects(f.session.queryResults('SELECT many_nulls'),
+    error=>error.code==='RESOURCE_LIMIT'&&
+      /materialized cell limit/.test(error.message));
+  assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17],
+    'do not send COM_STMT_CLOSE into an unfinished server response');
   assert.equal(f.preparedClosed,false);
   assert.equal(f.session.closed,true);
   assert.equal(f.socket.destroyed,true);

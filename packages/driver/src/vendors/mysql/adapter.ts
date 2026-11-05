@@ -15,7 +15,7 @@ import {validate} from './configuration.js';
 import {mysqlCapabilities} from './capabilities.js';
 import {readMetadata,readMetadataWithStatus} from './metadata.js';
 import {DriverError,fail} from '../../core/errors.js';
-import {MAX_RESULT_ROWS,MAX_RESULT_SETS,MAX_PARAMETERS,MAX_COLUMNS,MAX_PREPARED_STATEMENTS,operationOptions,OperationGuard,type OperationOptions} from '../../core/resources.js';
+import {MAX_RESULT_ROWS,MAX_RESULT_CELLS,MAX_RESULT_SETS,MAX_PARAMETERS,MAX_COLUMNS,MAX_PREPARED_STATEMENTS,operationOptions,OperationGuard,type OperationOptions} from '../../core/resources.js';
 import type {BindValue,MysqlTarget,QueryResult,SessionInfo} from '../../core/contracts.js';
 import type {RelationalSession,RelationalTransaction,RelationalCursorRow,CursorOptions} from '../../models/relational.js';
 
@@ -236,7 +236,7 @@ export class MysqlSession implements RelationalSession {
     this.stream.reset();
     await this.send(command);
     const results:QueryResult[]=[];
-    let totalRows=0,responseBytes=0;
+    let totalRows=0,totalCells=0,responseBytes=0;
     let responseStarted=false;
     // An ERR as the *first* response is a normal recoverable SQL failure.
     // Once metadata/rows/results have begun, any server ERR leaves the
@@ -294,6 +294,13 @@ export class MysqlSession implements RelationalSession {
         }
         if(++totalRows>MAX_RESULT_ROWS)
           throw fail('RESOURCE_LIMIT','Combined result sets exceed row limit');
+        // Every decoded value is retained twice: in positional rowValues
+        // and the object-row index. Even all-NULL results can expand far
+        // beyond their compact wire bitmap; bound materialized cardinality
+        // across every result set before allocating another row.
+        totalCells+=columns.length;
+        if(totalCells>MAX_RESULT_CELLS)
+          throw fail('RESOURCE_LIMIT','Combined result sets exceed materialized cell limit');
         const values=binaryValues(packet,columns);
         rowValues.push(values);
         rows.push(objectRow(values,keys));

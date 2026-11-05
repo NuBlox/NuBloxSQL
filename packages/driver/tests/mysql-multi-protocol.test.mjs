@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {F,size} from '../dist/vendors/mysql/protocol/primitives.js';
 import {flags} from '../dist/vendors/mysql/protocol/handshake.js';
 import {ok,assertSingleResult,binaryResultColumnCount} from '../dist/vendors/mysql/protocol/results.js';
-import {MAX_RESULT_SETS,MAX_RESULT_ROWS,MAX_PACKET_BYTES} from '../dist/core/resources.js';
+import {MAX_RESULT_SETS,MAX_RESULT_ROWS,MAX_RESULT_CELLS,MAX_PACKET_BYTES} from '../dist/core/resources.js';
 
 test('prepared CALL multi-result flags are negotiated without unsafe multi-statements',()=>{
  const server=0xffffffff;
@@ -27,6 +27,7 @@ test('multi-result OK parser admits SERVER_MORE_RESULTS only with explicit opt-i
 test('combined multi-result caps are explicit and cannot be silently disabled',()=>{
  assert.equal(MAX_RESULT_SETS,32);
  assert.equal(MAX_RESULT_ROWS,10_000);
+ assert.equal(MAX_RESULT_CELLS,1_000_000);
  assert.equal(MAX_PACKET_BYTES,32*1024*1024);
 });
 
