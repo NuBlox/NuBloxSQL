@@ -14,6 +14,9 @@ import type {MysqlColumn} from '../../core/contracts.js';
 export class MysqlMaterializationBudget {
   private used=0;
 
+  /** Diagnostic-only estimate; never interpret as actual V8 heap usage. */
+  get estimatedBytes():number {return this.used;}
+
   private add(bytes:number):void {
     if(!Number.isSafeInteger(bytes)||bytes<0||
        bytes>MAX_MATERIALIZED_RESULT_BYTES-this.used)
