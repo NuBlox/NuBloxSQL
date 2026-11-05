@@ -1,4 +1,5 @@
 import {Cursor} from './primitives.js';
+import {MAX_COLUMNS} from '../../../core/resources.js';
 import {DriverError,fail} from '../../../core/errors.js';
 import type {MysqlColumn,QueryResult} from '../../../core/contracts.js';
 /** A negotiated CLIENT_PROTOCOL_41 error is FF + LE16 code + '#' +
@@ -19,6 +20,24 @@ export function errorPacket(buf:Buffer):{code:number;state:string;message:string
     message:buf.toString('utf8',9)
   };
 }
+/** COM_STMT_EXECUTE binary result-set header when optional metadata has
+ * not been negotiated: one non-NULL length-encoded column count, with no
+ * additional bytes. Malformed headers cannot be used to start metadata reads. */
+export function binaryResultColumnCount(packet:Buffer):number{
+  try{
+    const c=new Cursor(packet);
+    const count=c.len();
+    if(count===null||count===0||c.remaining()!==0)
+      throw fail('PROTOCOL_ERROR','Malformed MySQL binary result column count');
+    if(count>MAX_COLUMNS)
+      throw fail('RESOURCE_LIMIT','MySQL result column count exceeds supported limit');
+    return count;
+  }catch(error){
+    if(error instanceof DriverError)throw error;
+    throw fail('PROTOCOL_ERROR','Malformed MySQL binary result column count');
+  }
+}
+
 export function field(buf:Buffer):MysqlColumn{
   const c=new Cursor(buf);
   const catalog=c.lstr(); // normally "def"
