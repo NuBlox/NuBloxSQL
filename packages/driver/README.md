@@ -68,7 +68,9 @@ try {
   includes **both explicit `prepare()` handles and retained implicit cache
   entries**. Explicit handles stay independently owned; when they need
   capacity the implicit cache evicts first. A fully occupied explicit
-  statement budget rejects new implicit preparation with `RESOURCE_LIMIT`.
+  statement budget rejects new implicit preparation with `RESOURCE_LIMIT` and
+  conservatively retires that session under the existing in-command resource
+  limit safety policy.
 - **Pool security is unchanged.** `COM_RESET_CONNECTION` at the end of each
   lease revokes every prepared statement. The implicit cache is cleared
   after that reset; SQL statements **never survive a pool lease boundary**,
