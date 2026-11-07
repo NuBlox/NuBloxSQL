@@ -34,6 +34,62 @@ The `ca` option is a PEM certificate **string**, not a file path. `serverName` s
 
 Native bound parameters: null, boolean, UTF-8 string, binary Uint8Array, finite number (safe integer or double) and 64-bit bigint. Values are never interpolated into user SQL. Results are limited to 10,000 rows or 32 MiB of serialized row packets; a single logical MySQL message is capped at 32 MiB. Transactions use the callback-scoped `tx.query` method, not the parent session. Parent-session commands attempted within transaction or cursor callbacks now fail promptly with typed `INVALID_INPUT` rather than deadlocking.
 
+### Opt-in prepared statement reuse (experimental)
+
+The default `query(sql,parameters)` behaviour still prepares a native
+statement, executes it and closes it for each call. For repeated statements,
+use `statementCacheSize` on the **connection target**:
+
+```js
+const db=await connectDatabase({
+  ...target,
+  statementCacheSize:8 // exact SQL keys, 0–16, default 0 (disabled)
+});
+try {
+  for(const id of [1,2,3])
+    await db.query('SELECT name FROM customers WHERE id = ?',[id]);
+}finally {
+  await db.close();
+}
+```
+
+- This is a **connection-local, successful-execution LRU cache** of native
+  `COM_STMT_PREPARE` handles. It reuses an existing server statement ID for
+  the **identical SQL text** on subsequent `query()` or `queryResults()`
+  calls, including operations inside the same managed transaction.
+  Parameter values are always bound by `COM_STMT_EXECUTE`; SQL and values
+  are **never interpolated**. No SQL normalisation is performed.
+- Up to 16 reusable handles can be retained per native connection.
+  Entries are refreshed **only after completed successful executions**.
+  On capacity pressure the least-recently used handle is explicitly closed;
+  failed executions are removed and never replayed automatically.
+  Closed or unusable sockets discard all cache entries.
+- The global native connection ceiling of 128 server prepared handles
+  includes **both explicit `prepare()` handles and retained implicit cache
+  entries**. Explicit handles stay independently owned; when they need
+  capacity the implicit cache evicts first. A fully occupied explicit
+  statement budget rejects new implicit preparation with `RESOURCE_LIMIT`.
+- **Pool security is unchanged.** `COM_RESET_CONNECTION` at the end of each
+  lease revokes every prepared statement. The implicit cache is cleared
+  after that reset; SQL statements **never survive a pool lease boundary**,
+  even if the underlying TCP connection is reused. Caching benefits
+  repeated operations *within* one lease and direct long-lived sessions.
+- Native server automatic-reprepare behaviour may be triggered by metadata
+  changes; if it fails, the corresponding execution error is returned and
+  the cached handle is closed. The driver **does not retry** statements
+  automatically after a database error, disconnect, interruption or
+  ambiguous transaction outcome. Changing session SQL modes or encodings
+  while reusing prepared handles is an application responsibility; prefer
+  a fresh session for different execution environments.
+- `queryText()`, `prepare()` and native cursors maintain their existing
+  separate lifecycle semantics. This cache does not yet offer a production
+  performance guarantee; confirm throughput and server-side
+  `max_prepared_stmt_count` under your own workload.
+
+See the MySQL server's
+[prepared statement cache and automatic reprepare](https://dev.mysql.com/doc/refman/8.4/en/statement-caching.html)
+documentation.
+
 ### Native Classic protocol fragmentation (experimental)
 
 - MySQL's 4-byte physical-frame header has a 24-bit payload length, capped at **16,777,215 bytes**. Native commands and result rows can span multiple frames; the Driver sends/reassembles these fragments while validating a monotonically incrementing (wrapping) sequence number.
