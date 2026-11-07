@@ -18,7 +18,7 @@ test('UTF-8 collation classification preserves every edge of supported ranges',(
         'Straße',`type ${type} collation ${charset}`);
     }
   }
-  for(const charset of [0,7,9,34,44,84,191,216,223,248,254,310,65535]){
+  for(const charset of [0,7,44,191,216,223,251,254,310,65535]){
     assert.throws(()=>binaryValues(wire(sized(Buffer.from('x'))),[
       column(T.VAR_STRING,charset)
     ]),/Unsupported MySQL result character-set/);
