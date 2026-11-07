@@ -417,3 +417,29 @@ allocation lifecycle. Neither a favourable estimate-to-heap ratio nor
 a single run establishes commercial readiness or a defensible default
 limit. Repeat on pinned hardware and corroborate with `profile:mysql-live`
 before changing the 64 MiB estimated budget.
+
+### Initial row/cell calibration and cross-runtime evidence
+
+The 5 November 2026 Node 22 native-CI profile measured 250-row
+`numeric8` heaps of roughly 179–255 KiB versus 158 KiB estimated, and
+250-row `nullable64` heaps around 938–966 KiB versus 798 KiB estimated.
+This prompted a conservative change from 128 to **192 estimated bytes per
+row** and from 48 to **64 bytes per retained cell**. Both estimates apply to
+the positional array and named-object representation; binary payload and
+decoded strings continue to have separate charges. The existing 64 MiB
+budget remains unchanged. These figures are estimates, not actual or
+guaranteed V8 allocation costs.
+
+Each profile now emits `calibrationSummary` with minimum, median, maximum
+observed memory deltas, and the median heap-to-estimate ratio for each
+scenario, while keeping heap, RSS, external and ArrayBuffer measurements
+separate. Process metrics overlap and **must never be added together**.
+A ratio can fluctuate or be negative due to GC and runner noise; it is
+descriptive evidence, not a release gate.
+
+Besides the existing native MySQL Node 22 profile, the driver package
+security workflow now runs identical profiles on **Node 22 and Node 24**,
+retaining separately named JSON artifacts. Compare reports only with
+matching row counts, text sizes, rounds and runtime specifications. Further
+repeated runs and real-server corroboration are required before changing
+the 64 MiB global result limit.
