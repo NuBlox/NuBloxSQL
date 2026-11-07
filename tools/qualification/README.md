@@ -483,3 +483,36 @@ large multi-result memory headroom. Continue to use the 64 MiB conservative
 estimated retention cap, 32 MiB wire limit and other resource caps until
 repeatable multi-environment data warrants a reviewed change. The production
 release gate is separate.
+
+
+## Repeated-query recovery and larger multi-result qualification
+
+The native MySQL retained-result profiler also exercises the bounded
+`nublox_memory_results(?,?)` fixture installed by the existing
+`packages/driver/tests/fixtures/multi-results.sql` setup. It returns
+**two ordered result sets** (one text, one binary) plus a terminal status,
+with server-side limits of 500 rows and 4096 bytes per field.
+All returned ordinals, text, Buffer contents and positional row values are
+verified. Each call stays within the driver's existing wire, row, cell and
+materialized-result limits.
+
+```bash
+NUBLOX_LIVE_MYSQL=1 npm run profile:mysql-retention -- \
+  --rows=250 --rowBytes=2048 --rounds=3 --recoveryCycles=8
+```
+
+In addition to held-result measurements, `recoveryCycles` (3–24,
+default 8) performs repeated executions of both the one-set text/BLOB
+query and the larger multi-result procedure on **one physical connection**.
+Result objects are validated and discarded in a separate asynchronous
+scope, then an explicit GC runs before recording each post-release memory
+snapshot. The report includes per-cycle `before`, `after`, signed
+`deltaBytes`, and signed first-to-last post-GC drift for heap, RSS,
+external and ArrayBuffer memory, with no query data retained as evidence.
+
+These are process-wide GC observations, **not leak-free certification**:
+negative deltas are possible, socket buffers and allocators may retain
+capacity, forced GC does not promise object reclamation, and relatively
+few cycles cannot establish long-duration memory stability. There is no
+arbitrary zero-growth CI threshold. Compare repeated runs on pinned
+hardware and real operation durations before drawing product conclusions.
