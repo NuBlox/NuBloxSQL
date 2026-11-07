@@ -242,7 +242,8 @@ live('failed unacknowledged cached eviction revokes the socket, never reuses it'
     assert.equal((await db.query('SELECT ? AS first',[1])).rows[0].first,1n);
     db.closeNative=async()=>{throw Error('injected close transport failure');};
     await assert.rejects(db.query('SELECT ? AS second',[2]),
-      /injected close transport failure/);
+      error=>error.code==='CONNECTION_CLOSED',
+      'an uncertain native close must be classified as a closed connection');
     assert.equal(db.closed,true,
       'COM_STMT_CLOSE uncertainty must retire the native session');
     await assert.rejects(db.query('SELECT ? AS first',[3]),
