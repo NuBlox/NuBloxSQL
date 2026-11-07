@@ -129,3 +129,40 @@ live('abort during row-stream execution retires uncertain native session',
     assert.equal(db.closed,true);
   }finally{await db.close();}
 });
+
+live('detached Readable consumption cannot report success or reuse an in-flight cursor',
+  {timeout:12000},async()=>{
+  const db=await connectDatabase(target);
+  const original=db.send.bind(db);
+  let notify,release;
+  const started=new Promise(resolve=>{notify=resolve;});
+  const gate=new Promise(resolve=>{release=resolve;});
+  let delayed=false;
+  db.send=async packet=>{
+    if(packet[0]===0x1c&&!delayed){
+      delayed=true;
+      notify();
+      await gate;
+    }
+    return original(packet);
+  };
+  try{
+    const task=db.withRowStream('SELECT ? AS result UNION ALL SELECT ?',
+      [41,42],async stream=>{
+        // Deliberately start reading but leave the reader detached.
+        void (async()=>{for await(const _ of stream){} })().catch(()=>{});
+        await started;
+        return 'must not report success';
+      },{fetchSize:1,highWaterMark:1});
+    await assert.rejects(task,error=>error.code==='CONNECTION_CLOSED');
+    assert.equal(db.closed,true,
+      'unfinished native fetch must revoke the physical connection');
+    release();
+    await assert.rejects(db.query('SELECT 1'),
+      error=>error.code==='CONNECTION_CLOSED');
+  }finally{
+    release?.();
+    db.send=original;
+    await db.close();
+  }
+});
