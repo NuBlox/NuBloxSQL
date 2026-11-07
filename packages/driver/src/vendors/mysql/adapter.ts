@@ -407,7 +407,7 @@ export class MysqlSession implements RelationalSession {
    */
   private async executeTextResults(sql:string):Promise<QueryResult[]>{
     this.assertOpen();
-    if(typeof sql!=='string'||!sql.trim()||sql.includes('\\0')||
+    if(typeof sql!=='string'||!sql.trim()||sql.includes('\0')||
        Buffer.byteLength(sql,'utf8')+1>LIMIT)
       throw fail('INVALID_INPUT','Invalid MySQL text-protocol SQL statement');
     const command=Buffer.concat([Buffer.from([0x03]),Buffer.from(sql,'utf8')]);
