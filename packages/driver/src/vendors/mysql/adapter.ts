@@ -10,6 +10,7 @@ import {MysqlCursor} from './cursor.js';
 import {cursorRowStream} from '../../core/row-stream.js';
 import {MysqlMaterializationBudget} from './materialization.js';
 import {MysqlPreparedStatement} from './prepared.js';
+import {MysqlStatementCache,type CachedMysqlStatement} from './statement-cache.js';
 import {ok,acknowledgedOk,prepareOk,eofStatus,assertSingleResult,binaryResultColumnCount} from './protocol/results.js';
 import {binaryValues,columnKeys,objectRow} from './types.js';
 import {textValues} from './text-results.js';
@@ -38,6 +39,8 @@ export class MysqlSession implements RelationalSession {
   /** Explicit error that revoked the session, for cursor cleanup races. */
   private terminalCause:unknown;
   private readonly statements=new Set<MysqlPreparedStatement>();
+  /** Cache belongs only to this authenticated physical session. */
+  private readonly statementCache:MysqlStatementCache;
   /** The active server cursor is revoked on any fatal transport loss. */
   private readonly cursors=new Set<MysqlCursor>();
   private preparing=0;
@@ -54,6 +57,7 @@ export class MysqlSession implements RelationalSession {
     private readonly target:ValidMysqlTarget,
     hello:MysqlGreeting
   ){
+    this.statementCache=new MysqlStatementCache(target.statementCacheSize??0);
     this.info=Object.freeze({
       engine:'mysql',model:'relational',version:hello.version,
       transport:target.security,authPlugin:hello.plugin,capabilities:mysqlCapabilities
@@ -77,6 +81,7 @@ export class MysqlSession implements RelationalSession {
     );
     for(const statement of this.statements)statement.invalidate();
     this.statements.clear();
+    this.statementCache.clear();
     for(const cursor of this.cursors)cursor.invalidate();
     this.cursors.clear();
     const queued=this.queue.splice(0);
@@ -336,9 +341,99 @@ export class MysqlSession implements RelationalSession {
     await this.send(Buffer.concat([Buffer.from([0x19]),u32(id)]));
   }
 
+  /**
+   * Only implicit query(sql,params) participates in this opt-in cache.
+   * Every operation is already inside the session's serial FIFO, so an LRU
+   * entry can never execute simultaneously on two database commands.
+   */
+  private async closeCachedOldest():Promise<void>{
+    const oldest=this.statementCache.removeOldest();
+    if(!oldest)return;
+    try{
+      await this.closeNative(oldest.id);
+    }catch(error){
+      // COM_STMT_CLOSE is unacknowledged. Failure during an eviction means
+      // the server's handle state is uncertain; never reuse this session.
+      this.destroy(error instanceof DriverError?error:undefined);
+      throw error;
+    }
+  }
+
+  /** Reserve server handle capacity for direct or implicit prepares.
+   * Other callers may have reserved explicit handles while queued. */
+  private async reservePreparedCapacity(extra:number):Promise<void>{
+    while(this.statementCache.size&&
+      this.statements.size+this.preparing+this.statementCache.size+extra>
+        MAX_PREPARED_STATEMENTS)
+      await this.closeCachedOldest();
+    if(this.statements.size+this.preparing+this.statementCache.size+extra>
+       MAX_PREPARED_STATEMENTS)
+      throw fail('RESOURCE_LIMIT','Too many open native MySQL statements');
+  }
+
+  private async executeCachedResults(
+    sql:string,params:readonly BindValue[]
+  ):Promise<QueryResult[]>{
+    let prepared:CachedMysqlStatement|undefined=this.statementCache.get(sql);
+    const reused=prepared!==undefined;
+    if(!prepared){
+      await this.reservePreparedCapacity(1);
+      prepared=await this.prepareNative(sql);
+    }
+    let executionFailed=false,executionError:unknown,successful=false;
+    try{
+      const result=await this.executeNativeResults(
+        prepared.id,prepared.parameterCount,params);
+      successful=true;
+      return result;
+    }catch(error){
+      executionFailed=true;
+      executionError=error;
+      // Retire any session with a partially consumed response, but retain
+      // a socket after recoverable server/bind errors. No SQL auto-replay.
+      if(!(error instanceof DriverError&&
+           (error.code==='DATABASE_ERROR'||error.code==='INVALID_INPUT')))
+        this.destroy(error instanceof DriverError?error:undefined);
+      throw error;
+    }finally{
+      if(!this.closed){
+        try{
+          if(successful){
+            if(!reused&&
+               this.statements.size+this.preparing+
+                 this.statementCache.size>=MAX_PREPARED_STATEMENTS){
+              // A queued explicit prepare reserved the final slot while
+              // this query executed. Close rather than consuming its slot.
+              await this.closeNative(prepared.id);
+            }else{
+              const removed=this.statementCache.remember(sql,prepared);
+              if(removed){
+                try{await this.closeNative(removed.id);}
+                catch(error){
+                  this.destroy(error instanceof DriverError?error:undefined);
+                  throw error;
+                }
+              }
+            }
+          }else{
+            this.statementCache.drop(sql);
+            await this.closeNative(prepared.id);
+          }
+        }catch(error){
+          const cause=executionFailed&&executionError instanceof DriverError
+            ?executionError:error instanceof DriverError?error:undefined;
+          this.destroy(cause);
+          if(!executionFailed)throw error;
+        }
+      }
+    }
+  }
+
   private async executeResults(
     sql:string,params:readonly BindValue[]
   ):Promise<QueryResult[]>{
+    if(this.statementCache.capacity>0)
+      return this.executeCachedResults(sql,params);
     const prepared=await this.prepareNative(sql);
     let executionFailed=false;
     let executionError:unknown;
@@ -707,6 +802,7 @@ export class MysqlSession implements RelationalSession {
     this.preparing++;
     try{
       return await this.serial(async()=>{
+        await this.reservePreparedCapacity(0);
         const {id,parameterCount}=await this.prepareNative(sql);
         let statement!:MysqlPreparedStatement;
         statement=new MysqlPreparedStatement(
@@ -1007,6 +1103,9 @@ export class MysqlSession implements RelationalSession {
       this.confirmPoolTransactionClosed(acknowledgedOk(await this.get()),'reset');
       for(const statement of this.statements)statement.invalidate();
       this.statements.clear();
+      // COM_RESET_CONNECTION revoked every session-owned server statement
+      // ID, including implicit cache entries. Never reuse them across leases.
+      this.statementCache.clear();
     });
   }
 
