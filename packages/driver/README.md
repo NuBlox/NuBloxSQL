@@ -62,6 +62,60 @@ result.rows[0]['id#2'];           // 34n
 - For statements without row sets (DML/DDL), `rowValues` and `columnKeys` are not present. Existing callers that use unique column names and `result.rows` remain source-compatible.
 - The parser validates MySQL ColumnDefinition41 and EOF packets and rejects unsupported `SERVER_MORE_RESULTS_EXISTS` and stored-procedure OUT-parameter result boundaries. A failed protocol boundary closes the native session rather than returning an incomplete result.
 
+### Native unparameterized MySQL Text Protocol (experimental)
+
+`queryText(sql, options?)` and `queryTextResults(sql, options?)` send
+MySQL's native **COM_QUERY** command, without creating a server-side
+prepared statement. These support commands and diagnostics that MySQL
+does not permit via `COM_STMT_PREPARE` (for example
+`SHOW COUNT(*) WARNINGS`), as well as text-protocol SELECT results
+and stored-procedure result sets.
+
+```js
+// SQL text is developer-authored and contains no untrusted values.
+const count = await db.queryText('SHOW COUNT(*) WARNINGS');
+const sets = await db.queryTextResults('CALL nublox_multi_result(41)');
+await db.transaction(async tx => {
+  const r = await tx.queryText('SELECT 1 AS value');
+  console.log(r.rows[0].value);
+});
+await pool.withConnection(async lease => {
+  const r = await lease.queryText('SHOW COUNT(*) WARNINGS');
+  console.log(r.rows);
+});
+```
+
+**Security boundary:** `queryText` deliberately has **no bound-value
+argument and no automatic interpolation or escaping**. It sends the
+provided SQL bytes verbatim. Only use trusted, application-authored SQL.
+For any untrusted input or dynamic *values*, use prepared
+`query(sql, parameters)` instead. Do not splice application/user
+strings into `queryText`. Identifier quoting, general-purpose SQL
+construction and a safe query builder are separate future work.
+
+- The client decodes Classic Text Resultset rows (length-encoded values
+  and `0xfb` NULL) using ColumnDefinition41 metadata, preserving numeric
+  widths, exact `bigint` and decimal strings, binary `Buffer` values,
+  UTF-8 character set validation, collision-free column aliases, and
+  literal time/zero-date representations.
+- `queryText()` expects exactly one completed result; if multiple
+  results occur it drains the response first and then raises
+  `UNSUPPORTED_FEATURE`, preserving a healthy session.
+  `queryTextResults()` returns the bounded collection of all results.
+- The same cumulative ceilings apply to **text and prepared** materialised
+  results: 32 MiB wire-response bytes, 10,000 rows, 1,000,000 decoded cells,
+  32 result sets and 64 MiB estimated retained memory. Malformed metadata,
+  unsafe response boundaries, unexpected LOCAL INFILE requests and
+  over-limit responses cause fail-closed session revocation.
+- Callback-scoped `tx.queryText` and `tx.queryTextResults` are serialised
+  alongside prepared commands. They verify the MySQL server remains inside
+  the managed transaction and report `TRANSACTION_OUTCOME_UNKNOWN` if
+  SQL implicitly commits or ends it unexpectedly.
+- Cancellation, deadlines, verified TLS and pool reset follow the same
+  existing contract: in-flight cancellation closes the physical connection.
+- This does **not** enable CLIENT_MULTI_STATEMENTS, LOCAL INFILE uploads,
+  unbounded streaming COM_QUERY results or parameter substitution.
+
 ### Binary result data fidelity
 
 - Signed/unsigned TINYINT, SMALLINT, INT and BIGINT respect native width. BIGINT values are returned as **bigint**, not lossy JavaScript numbers.
