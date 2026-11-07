@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {MysqlStatementCache} from '../dist/vendors/mysql/statement-cache.js';
+import {MysqlStatementCache,cacheableMysqlSql,MAX_CACHED_SQL_BYTES} from '../dist/vendors/mysql/statement-cache.js';
 import {validate} from '../dist/vendors/mysql/configuration.js';
 
 const prepared=(id)=>({id,parameterCount:id%3});
@@ -63,4 +63,15 @@ test('refresh is explicit and permits new handle replacement without leaking LRU
   assert.equal(replaced,undefined);
   assert.equal(cache.get('SELECT ? ')?.id,4);
   assert.equal(cache.size,2);
+});
+
+test('implicit cache never retains oversized SQL keys or lossy UTF-8 lengths',()=>{
+  assert.equal(MAX_CACHED_SQL_BYTES,8192);
+  assert.equal(cacheableMysqlSql('x'.repeat(8192)),true);
+  assert.equal(cacheableMysqlSql('x'.repeat(8193)),false);
+  assert.equal(cacheableMysqlSql('é'.repeat(4096)),true);
+  assert.equal(cacheableMysqlSql('é'.repeat(4097)),false);
+  assert.equal(cacheableMysqlSql(null),false);
+  assert.equal(cacheableMysqlSql({toString(){throw Error('unsafe coercion');}}),
+    false);
 });
