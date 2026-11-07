@@ -120,7 +120,7 @@ live('abort during row-stream execution retires uncertain native session',
   {timeout:10000},async()=>{
   const db=await connectDatabase(target);
   const controller=new AbortController();
-  const job=db.withRowStream('SELECT SLEEP(?) AS delayed',[3],async stream=>{
+  const job=db.withRowStream('SELECT SLEEP(?) AS sleep_value',[3],async stream=>{
     for await(const _ of stream){}
   },{fetchSize:1,highWaterMark:1,signal:controller.signal});
   setTimeout(()=>controller.abort(),100);
