@@ -151,8 +151,8 @@ export function liveRetentionScenarios(config){
         [config.rows,config.rowBytes]),
     verify:r=>validateLargeMultiResults(r,config),
     expectedPayloadBytes:config.rows*config.rowBytes*2}
-  ];}
-
+  ];
+}
 
 /** Run in one isolated MySQL fixture session, not concurrently with other
  * measured work; a successful query is retained across its after-GC sample. */
