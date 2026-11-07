@@ -1,5 +1,14 @@
 import {fail} from '../../core/errors.js';
 
+/** Never retain giant SQL strings in a cache: 16 * 8 KiB is a hard
+ * upper bound on UTF-8 key bytes per physical connection. Bigger statements
+ * still execute using the existing uncached prepared lifecycle. */
+export const MAX_CACHED_SQL_BYTES=8*1024;
+export function cacheableMysqlSql(sql:unknown):sql is string{
+  return typeof sql==='string'&&
+    Buffer.byteLength(sql,'utf8')<=MAX_CACHED_SQL_BYTES;
+}
+
 export interface CachedMysqlStatement {
   readonly id:number;
   readonly parameterCount:number;
