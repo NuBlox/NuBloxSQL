@@ -15,12 +15,14 @@ test('exact SQL cache is disabled unless explicitly configured',()=>{
   const off=new MysqlStatementCache(0);
   assert.throws(()=>off.remember('SELECT ?',prepared(1)),
     error=>error.code==='INVALID_INPUT');
-  for(const value of [-1,17,NaN,Infinity,1.5,'3',null,undefined]){
+  for(const value of [-1,17,NaN,Infinity,1.5,'3',null]){
     assert.throws(()=>new MysqlStatementCache(value),
       error=>error.code==='INVALID_INPUT');
     assert.throws(()=>validate({...target,statementCacheSize:value}),
       error=>error.code==='INVALID_INPUT');
   }
+  assert.equal(validate({...target,statementCacheSize:undefined})
+    .statementCacheSize,undefined,'optional undefined retains disabled default');
   for(const value of [0,1,8,16]){
     assert.equal(validate({...target,statementCacheSize:value})
       .statementCacheSize,value);
