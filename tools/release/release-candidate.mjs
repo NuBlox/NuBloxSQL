@@ -16,11 +16,16 @@ const manifest=JSON.parse(readFileSync(resolve(root,'packages/driver/package.jso
 const preflight=JSON.parse(readFileSync(resolve(root,'artifacts/release/preflight.json')));
 const apiContract=JSON.parse(readFileSync(resolve(root,
   'artifacts/release/public-api-contract.json')));
+const baseline=JSON.parse(readFileSync(resolve(root,
+  'tools/release/public-api-baseline.json')));
+assert.equal(apiContract.baselineSha256,
+  createHash('sha256').update(JSON.stringify(baseline)).digest('hex'),
+  'Candidate API report does not match the reviewed public baseline');
 const sha256=createHash('sha256').update(readFileSync(archive)).digest('hex');
 const report=validateReleaseCandidate({
   filename,sizeBytes:statSync(archive).size,sha256,
   revision:process.env.GITHUB_SHA,manifest,preflight,apiContract,
-  node:process.version
+  expectedApiExports:baseline.exports.length,node:process.version
 });
 writeFileSync(join(out,'release-candidate.json'),
   JSON.stringify(report,null,2)+'\n',{mode:0o600});
