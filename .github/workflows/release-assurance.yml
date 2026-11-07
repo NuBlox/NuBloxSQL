@@ -30,6 +30,16 @@ jobs:
         run: npm run release:verify
       - name: Run independent consumer and core regression tests
         run: npm test
+      - name: Profile calibrated materialization on Node ${{ matrix.node }}
+        run: npm run profile:mysql-materialization -- --rows=250 --rounds=3 --textBytes=2048
+      - name: Retain cross-runtime materialization evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-memory-node-${{ matrix.node }}-${{ github.run_id }}
+          path: artifacts/qualification/mysql-materialization-memory-*.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Retain non-sensitive package preflight summary
         if: always()
         uses: actions/upload-artifact@v4

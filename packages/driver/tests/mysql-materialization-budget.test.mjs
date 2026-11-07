@@ -21,7 +21,7 @@ test('materialized result budget is separate from the 32 MiB wire limit',()=>{
 
 test('many narrow wire rows cannot produce unbounded wide JS objects',()=>{
   const budget=new MysqlMaterializationBudget();
-  const rowEstimate=128+48*4096;
+  const rowEstimate=192+64*4096;
   const allowed=Math.floor(MAX_MATERIALIZED_RESULT_BYTES/rowEstimate);
   for(let i=0;i<allowed;i++)budget.beforeRow(4096);
   assert.throws(()=>budget.beforeRow(4096),
@@ -40,5 +40,27 @@ test('decoded strings and retained binary data count beyond row object overhead'
   const rounds=Math.floor(MAX_MATERIALIZED_RESULT_BYTES/(large.length*2));
   for(let i=0;i<rounds;i++)budget.decoded([large]);
   assert.throws(()=>budget.decoded([large]),
+    error=>error.code==='RESOURCE_LIMIT');
+});
+
+test('calibrated row and column charges are deterministic and bounded',()=>{
+  const budget=new MysqlMaterializationBudget();
+  // A fixed row charge plus 64 bytes for each positional cell and named
+  // property, before text/Buffer/bigint charges are added.
+  budget.beforeRow(0);
+  assert.equal(budget.estimatedBytes,192);
+  budget.beforeRow(8);
+  assert.equal(budget.estimatedBytes,192+(192+64*8));
+  budget.decoded([123n,'Hi',Buffer.from([0,1,2])]);
+  assert.equal(budget.estimatedBytes,
+    192+(192+64*8)+16+2*2+64+3);
+});
+
+test('calibration prevents wide all-NULL rows escaping the estimated budget',()=>{
+  const budget=new MysqlMaterializationBudget();
+  const estimate=192+64*64;
+  const allowed=Math.floor(MAX_MATERIALIZED_RESULT_BYTES/estimate);
+  for(let i=0;i<allowed;i++)budget.beforeRow(64);
+  assert.throws(()=>budget.beforeRow(64),
     error=>error.code==='RESOURCE_LIMIT');
 });
