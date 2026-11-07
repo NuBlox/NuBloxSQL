@@ -142,7 +142,10 @@ live('explicit handles retain ownership when implicit cache is evicted for capac
     assert.equal((await holders[0].execute([89])).rows[0].explicit_handle,89n);
     await assert.rejects(db.query('SELECT ? AS new_implicit',[90]),
       error=>error.code==='RESOURCE_LIMIT');
-    assert.equal(db.closed,false);
+    assert.equal(db.closed,true,
+      'exhausted statement budget remains fail-closed inside serial operations');
+    assert.ok(holders.every(statement=>statement.closed),
+      'all explicit handles must be invalidated by connection revocation');
   }finally{
     await Promise.all(holders.map(s=>s.close()));
     await db.close();
