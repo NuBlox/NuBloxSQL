@@ -516,3 +516,48 @@ capacity, forced GC does not promise object reclamation, and relatively
 few cycles cannot establish long-duration memory stability. There is no
 arbitrary zero-growth CI threshold. Compare repeated runs on pinned
 hardware and real operation durations before drawing product conclusions.
+
+
+## Sustained MySQL result-memory recovery and session continuity
+
+The fast 8-cycle retention check remains part of the normal MySQL profile.
+For stronger evidence on a **single long-lived physical connection**, run:
+
+```bash
+NUBLOX_LIVE_MYSQL=1 npm run profile:mysql-recovery-soak -- \
+  --rows=250 --rowBytes=2048 --cycles=96 --checkpointEvery=8
+```
+
+The standalone, opt-in profile uses the same existing isolated MySQL fixtures
+but executes **two fully validated queries per cycle**: one result set with
+text and binary values, and a stored procedure returning a text result set,
+a binary result set and terminal status. The driver retains no query results
+between commands. Scenario order alternates across cycles. The profile checks
+the server's `CONNECTION_ID()` before the run and at every checkpoint,
+rejecting any loss or replacement of the physical session.
+
+Options are limited to 20–500 rows, 256–4096 bytes per text/binary value,
+16–128 cycles and 1–32 cycles per checkpoint. The checkpoint count must
+be even and at least four; the total selected field payload is bounded to
+**512 MiB** over the entire qualification. The pinned CI run performs
+96 cycles (192 completed queries), with **12 post-GC checkpoints**. A second
+32-cycle run uses the pinned **certificate-verified TLS** fixture, exercising
+the same recovery contract under encrypted transport.
+
+Only numeric counts, post-GC process-memory snapshots and relative trends
+are retained in `artifacts/qualification/mysql-recovery-soak-*.json`.
+The report includes elapsed runtime, exact completed cycle/query/row/set
+counts, signed first-to-last deltas and **early-versus-late median** changes
+for `heapUsed`, `rss`, `external` and `arrayBuffers` independently.
+Measurements intentionally exclude the byte contents of rows, SQL, session
+identifiers, passwords and TLS certificates. Each connection is always
+closed, including if a payload, memory metric or session check fails.
+
+**Limits:** This is a bounded operation-count qualification, not a guaranteed
+duration-based soak or a leak-free certificate. Post-GC process metrics
+include V8/runtime and network-buffer effects, and must not be summed.
+Negative and positive drift are both possible; there is **no arbitrary
+growth threshold** that could fail a correct PR on noisy shared runners.
+Repeated dedicated-hardware measurements and production-shaped workloads
+remain necessary before asserting durable memory stability or adjusting
+the runtime's 64 MiB estimated result budget.
