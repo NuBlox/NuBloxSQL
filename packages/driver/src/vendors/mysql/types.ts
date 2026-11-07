@@ -7,7 +7,7 @@ const western=new TextDecoder('windows-1252',{fatal:true});
 
 /** MySQL reports the output collation identifier in column metadata.
  * A binary collation (63) describes raw bytes, not UTF-8 text. */
-function textValue(bytes:Buffer,charset:number):string{
+export function textValue(bytes:Buffer,charset:number):string{
   // Identifiers used by utf8mb3 and utf8mb4 collations in MySQL 8.x.
   // Avoid allocating a transient classification array for every text cell.
   if(charset===33||charset===45||charset===46||charset===83||charset===255||
