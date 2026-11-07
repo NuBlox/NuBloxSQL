@@ -136,18 +136,9 @@ function estimateResults(sets){
   return budget.estimatedBytes;
 }
 
-/** Run in one isolated MySQL fixture session, not concurrently with other
- * measured work; a successful query is retained across its after-GC sample. */
-export async function profileLiveRetention({
-  connect,target,options={},gc=global.gc,memoryUsage=process.memoryUsage,
-  now=()=>performance.now()
-}={}){
-  const config=liveRetentionOptions(options);
-  if(typeof connect!=='function'||!target||
-     typeof gc!=='function'||typeof memoryUsage!=='function'||
-     typeof now!=='function')
-    throw new Error('Live retention profile requires connection and --expose-gc');
-  const scenarios=[
+/** Shared, deterministic read-only scenarios for the live memory profiles. */
+export function liveRetentionScenarios(config){
+  return [
     {name:'textBlobRows',run:db=>db.query(textAndBlobSql,
       [config.rowBytes,config.rowBytes,config.rows]),
     verify:r=>validateTextAndBlob(r,config),
@@ -161,6 +152,20 @@ export async function profileLiveRetention({
     verify:r=>validateLargeMultiResults(r,config),
     expectedPayloadBytes:config.rows*config.rowBytes*2}
   ];
+}
+
+/** Run in one isolated MySQL fixture session, not concurrently with other
+ * measured work; a successful query is retained across its after-GC sample. */
+export async function profileLiveRetention({
+  connect,target,options={},gc=global.gc,memoryUsage=process.memoryUsage,
+  now=()=>performance.now()
+}={}){
+  const config=liveRetentionOptions(options);
+  if(typeof connect!=='function'||!target||
+     typeof gc!=='function'||typeof memoryUsage!=='function'||
+     typeof now!=='function')
+    throw new Error('Live retention profile requires connection and --expose-gc');
+  const scenarios=liveRetentionScenarios(config);
   const samples=[];
   let serverVersion=null;
   const db=await connect(target);
@@ -255,7 +260,7 @@ export async function profileLiveRetention({
 
 /** Ensure QueryResult objects are out of scope before post-release GC.
  * Do not return arrays, rows or closures referencing result contents. */
-async function executeAndRelease(db,scenario){
+export async function executeAndRelease(db,scenario){
   const results=await scenario.run(db);
   scenario.verify(results);
   const sets=Array.isArray(results)?results:[results];
