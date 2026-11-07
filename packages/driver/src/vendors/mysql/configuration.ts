@@ -13,7 +13,7 @@ export function validate(target:MysqlTarget):MysqlTarget & {timeoutMs:number}{
 
   const {
     host,port,user,password,database,security,ca,serverName,
-    timeoutMs=15000
+    timeoutMs=15000,statementCacheSize=0
   }=target;
 
   if(typeof host!=='string'||!host||containsNul(host)||
@@ -22,7 +22,9 @@ export function validate(target:MysqlTarget):MysqlTarget & {timeoutMs:number}{
     typeof password!=='string'||containsNul(password)||
     (database!==undefined&&
       (typeof database!=='string'||!database||containsNul(database)))||
-    !validDeadline(timeoutMs))
+    !validDeadline(timeoutMs)||
+    !Number.isSafeInteger(statementCacheSize)||
+    statementCacheSize<0||statementCacheSize>16)
     throw fail('INVALID_INPUT','Invalid MySQL connection target');
 
   if(security!=='verified-tls'&&security!=='isolated-local')

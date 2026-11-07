@@ -1,7 +1,7 @@
 /** Stable public connection and result contracts. */
 export type BindValue=null|boolean|string|number|bigint|Uint8Array;
 export type MysqlSecurity='verified-tls'|'isolated-local';
-export interface MysqlTarget {engine:'mysql';host:string;port:number;user:string;password:string;database?:string;security:MysqlSecurity;ca?:string;serverName?:string;timeoutMs?:number;}
+export interface MysqlTarget {engine:'mysql';host:string;port:number;user:string;password:string;database?:string;security:MysqlSecurity;ca?:string;serverName?:string;timeoutMs?:number;/** Native prepared handles retained for repeated query(sql,params), 0–16 (default 0). */statementCacheSize?:number;}
 export type DatabaseTarget=MysqlTarget;
 export interface MysqlColumn {name:string;schema:string|null;table:string|null;originalTable?:string|null;originalName?:string|null;charset:number;length:number;type:number;flags:number;decimals:number;unsigned:boolean;}
 /**

@@ -39,7 +39,7 @@ type _ErrorSqlState=Assert<Equal<DriverError['sqlState'],string|null>>;
 const target:MysqlTarget={
   engine:'mysql',host:'localhost',port:3306,user:'app',password:'redacted',
   security:'verified-tls',ca:'test-only-cert',serverName:'localhost',
-  timeoutMs:3000
+  timeoutMs:3000,statementCacheSize:8
 };
 const alsoTarget:DatabaseTarget=target;
 const timeout:OperationOptions={signal:new AbortController().signal,timeoutMs:5000};
@@ -111,6 +111,8 @@ async function consumerUsage(session:RelationalSession,pool:DatabasePool,
 
 // @ts-expect-error only MySQL is currently a supported target
 const unsupported:DatabaseTarget={...target,engine:'postgres'};
+// @ts-expect-error statement cache size must be numeric
+const invalidCache:MysqlTarget={...target,statementCacheSize:'8'};
 // @ts-expect-error security modes are intentionally restricted
 const insecure:MysqlTarget={...target,security:'plaintext'};
 // @ts-expect-error database parameters cannot be arbitrary nested objects
@@ -131,4 +133,5 @@ const arbitraryError=new DriverError('SOME_NEW_ERROR','message');
 import {connectPostgres} from '@nublox/driver';
 
 void [unsupported,insecure,badValue,missingPoolSize,invalidCursor,arbitraryError,
-  consumerUsage,connectPostgres,options,alsoTarget,invalidStream,invalidTextBind];
+  consumerUsage,connectPostgres,options,alsoTarget,invalidStream,invalidTextBind,
+  invalidCache];
