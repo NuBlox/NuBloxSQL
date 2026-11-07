@@ -9,7 +9,7 @@ import {safeError} from './metrics.mjs';
 
 const raw={};
 for(const arg of process.argv.slice(2)){
-  const match=/^--(rows|rowBytes|rounds)=([0-9]+)$/.exec(arg);
+  const match=/^--(rows|rowBytes|rounds|recoveryCycles)=([0-9]+)$/.exec(arg);
   if(!match||Object.hasOwn(raw,match[1]))
     throw Error('Invalid or duplicate live retention profile option');
   raw[match[1]]=Number(match[2]);
