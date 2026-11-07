@@ -116,7 +116,7 @@ test('calibration rejects missing, duplicate and incomparable observations',()=>
   assert.throws(()=>summarizeMaterializationSamples([]),/Missing/);
   assert.throws(()=>summarizeMaterializationSamples(base.slice(1)),/Incomplete/);
   assert.throws(()=>summarizeMaterializationSamples([
-    {...base[0],round:1},...base.slice(1)]),/Duplicate|Incomplete/);
+    base[0],{...base[1],round:1},...base.slice(2)]),/Duplicate/);
   assert.throws(()=>summarizeMaterializationSamples([
     {...base[0],estimatedRetainedBytes:101},...base.slice(1)]),/Incomparable/);
   assert.throws(()=>summarizeMaterializationSamples([
