@@ -1,7 +1,7 @@
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {fail} from './errors.js';
 import {validDeadline,type OperationOptions} from './resources.js';
-import type {RelationalSession,RelationalTransaction,RelationalPreparedStatement,RelationalCursor,CursorOptions} from '../models/relational.js';
+import type {RelationalSession,RelationalTransaction,RelationalPreparedStatement,RelationalCursor,CursorOptions,RelationalRowStream,RowStreamOptions} from '../models/relational.js';
 import type {BindValue,QueryResult,SessionInfo} from './contracts.js';
 
 export interface PoolOptions {
@@ -24,6 +24,11 @@ export interface PooledRelationalSession {
     sql:string,parameters:readonly BindValue[],
     work:(cursor:RelationalCursor)=>Promise<T>,
     options?:CursorOptions
+  ):Promise<T>;
+  withRowStream<T>(
+    sql:string,parameters:readonly BindValue[],
+    work:(rows:RelationalRowStream)=>Promise<T>,
+    options?:RowStreamOptions
   ):Promise<T>;
   transaction<T>(work:(transaction:RelationalTransaction)=>Promise<T>,options?:OperationOptions):Promise<T>;
 }
@@ -343,6 +348,10 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
         sql:string,params:readonly BindValue[],
         callback:(cursor:RelationalCursor)=>Promise<R>,options:CursorOptions={}
       )=>track(()=>activeSession.withCursor(sql,params,callback,options)),
+      withRowStream:<R>(
+        sql:string,params:readonly BindValue[],
+        callback:(rows:RelationalRowStream)=>Promise<R>,options:RowStreamOptions={}
+      )=>track(()=>activeSession.withRowStream(sql,params,callback,options)),
       transaction:<R>(callback:(transaction:RelationalTransaction)=>Promise<R>,options:OperationOptions={})=>
         track(()=>activeSession.transaction<R>(callback,options))
     });

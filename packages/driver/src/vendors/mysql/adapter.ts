@@ -7,6 +7,7 @@ import {greeting,flags,login,sslRequest,authSwitchRequest,cachingSha2AuthMore,au
 import {assertSupportedAuthPlugin,token} from './auth/plugins.js';
 import {execute,fetchRows} from './protocol/commands.js';
 import {MysqlCursor} from './cursor.js';
+import {cursorRowStream} from '../../core/row-stream.js';
 import {MysqlMaterializationBudget} from './materialization.js';
 import {MysqlPreparedStatement} from './prepared.js';
 import {ok,acknowledgedOk,prepareOk,eofStatus,assertSingleResult,binaryResultColumnCount} from './protocol/results.js';
@@ -18,7 +19,7 @@ import {readMetadata,readMetadataWithStatus} from './metadata.js';
 import {DriverError,fail} from '../../core/errors.js';
 import {MAX_RESULT_ROWS,MAX_RESULT_CELLS,MAX_RESULT_SETS,MAX_PARAMETERS,MAX_COLUMNS,MAX_PREPARED_STATEMENTS,operationOptions,OperationGuard,type OperationOptions} from '../../core/resources.js';
 import type {BindValue,MysqlTarget,QueryResult,SessionInfo} from '../../core/contracts.js';
-import type {RelationalSession,RelationalTransaction,RelationalCursorRow,CursorOptions} from '../../models/relational.js';
+import type {RelationalSession,RelationalTransaction,RelationalCursorRow,CursorOptions,RelationalRowStream,RowStreamOptions} from '../../models/relational.js';
 
 type ValidMysqlTarget=MysqlTarget&{timeoutMs:number};
 type TransactionOutcome<T>={success:true;value:T}|{success:false;error:unknown};
@@ -547,6 +548,38 @@ export class MysqlSession implements RelationalSession {
         }
       }
     },operation);
+  }
+
+  /** A Node.js Readable with bounded, demand-driven native COM_STMT_FETCH.
+   * The scope owns the stream: after callback completion no borrowed row
+   * iterator may continue issuing protocol commands on this connection. */
+  async withRowStream<T>(
+    sql:string,params:readonly BindValue[],
+    work:(rows:RelationalRowStream)=>Promise<T>,
+    options:RowStreamOptions={}
+  ):Promise<T>{
+    if(typeof work!=='function')
+      throw fail('INVALID_INPUT','Row stream callback is required');
+    if(!options||typeof options!=='object'||Array.isArray(options))
+      throw fail('INVALID_INPUT','Invalid row stream options');
+    const {highWaterMark=8,...cursorOptions}=options;
+    if(!Number.isSafeInteger(highWaterMark)||highWaterMark<1||highWaterMark>32)
+      throw fail('INVALID_INPUT','Row stream highWaterMark must be 1–32 rows');
+    return this.withCursor(sql,params,async cursor=>{
+      const rows=cursorRowStream(cursor,highWaterMark);
+      // Node Readable emits asynchronous errors. Keep an internal listener
+      // through final destruction to avoid unhandled errors from a detached
+      // reader, but never silently report a successful callback after one.
+      let sourceError:unknown;
+      rows.on('error',error=>{sourceError??=error;});
+      try{
+        const result=await work(rows);
+        if(sourceError!==undefined)throw sourceError;
+        return result;
+      }finally{
+        rows.destroy();
+      }
+    },cursorOptions);
   }
 
   /** Create an explicitly owned reusable statement for this session alone. */

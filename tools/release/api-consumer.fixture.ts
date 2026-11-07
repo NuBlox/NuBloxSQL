@@ -10,6 +10,7 @@ import {
   type RelationalSession,type RelationalTransaction,
   type RelationalPreparedStatement,type RelationalCursor,
   type RelationalCursorRow,type CursorOptions,
+  type RelationalRowStream,type RowStreamOptions,
   type OperationOptions,type DatabasePool,type PoolOptions,
   type PoolStats,type PooledRelationalSession
 } from '@nublox/driver';
@@ -43,6 +44,7 @@ const target:MysqlTarget={
 const alsoTarget:DatabaseTarget=target;
 const timeout:OperationOptions={signal:new AbortController().signal,timeoutMs:5000};
 const cursorOptions:CursorOptions={...timeout,fetchSize:16};
+const streamOptions:RowStreamOptions={...cursorOptions,highWaterMark:2};
 const options:PoolOptions={maxConnections:2,acquireTimeoutMs:1200,
   idleTimeoutMs:10000,healthCheckTimeoutMs:2000};
 const _engine:SessionInfo['engine']='mysql';
@@ -73,15 +75,30 @@ async function consumerUsage(session:RelationalSession,pool:DatabasePool,
     for await(const item of iterator)count+=item.values.length;
     return count;
   },cursorOptions);
+  const rowStreamCount:number=await session.withRowStream('SELECT ?',[6],
+    async (stream:RelationalRowStream)=>{
+      const iterator:AsyncIterator<RelationalCursorRow>=
+        stream[Symbol.asyncIterator]();
+      const next=await iterator.next();
+      const columns:readonly MysqlColumn[]=stream.columns;
+      const keys:readonly string[]=stream.columnKeys;
+      const buffered:number=stream.readableLength;
+      void [next,columns,keys,buffered];
+      return 1;
+    },streamOptions);
   const inTransaction:QueryResult=await session.transaction(
     async t=>t.query('SELECT 1'),timeout);
   const p:PooledRelationalSession=await pool.withConnection(async lease=>lease);
   const value:QueryResult=await p.query('SELECT ?',[5],timeout);
+  const poolStreamCount:number=await p.withRowStream('SELECT ?',[7],
+    async rows=>{for await(const item of rows){void item.values;break;}return 1;},
+    streamOptions);
   const poolInfo:Readonly<PoolStats>=pool.stats;
   const isClosed:boolean=pool.closed;
   const info:Readonly<SessionInfo>=session.info;
   void [r,sets,row,tuple,inside,other,elapsed,inTransaction,value,poolInfo,
-    isClosed,info,_engine,_model,_field,_cursorRow,_runtimeClass,_error,alsoTarget];
+    isClosed,info,_engine,_model,_field,_cursorRow,_runtimeClass,_error,alsoTarget,
+    rowStreamCount,poolStreamCount];
   await pool.close();
 }
 
@@ -95,10 +112,12 @@ const badValue:BindValue={inject:'something'};
 const missingPoolSize:PoolOptions={};
 // @ts-expect-error cursor fetchSize cannot be a string
 const invalidCursor:CursorOptions={fetchSize:'25'};
+// @ts-expect-error object-mode stream highWaterMark must be numeric
+const invalidStream:RowStreamOptions={highWaterMark:'8'};
 // @ts-expect-error error identifiers cannot be arbitrary strings
 const arbitraryError=new DriverError('SOME_NEW_ERROR','message');
 // @ts-expect-error the driver does not expose an unreviewed root symbol
 import {connectPostgres} from '@nublox/driver';
 
 void [unsupported,insecure,badValue,missingPoolSize,invalidCursor,arbitraryError,
-  consumerUsage,connectPostgres,options,alsoTarget];
+  consumerUsage,connectPostgres,options,alsoTarget,invalidStream];
