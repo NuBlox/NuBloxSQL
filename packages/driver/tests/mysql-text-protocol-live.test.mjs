@@ -79,6 +79,12 @@ live('native text errors can be recovered without corrupting next command',async
     assert.equal((await db.queryText('SELECT 54 AS healthy')).rows[0].healthy,54n);
     await assert.rejects(db.queryText(''),
       error=>error.code==='INVALID_INPUT');
+    await assert.rejects(db.queryText('SELECT 1',[41]),
+      error=>error.code==='INVALID_INPUT');
+    await assert.rejects(db.queryTextResults('SELECT 1',{parameterValues:[1]}),
+      error=>error.code==='INVALID_INPUT');
+    await assert.rejects(db.queryText('SELECT 1\0 SELECT 2'),
+      error=>error.code==='INVALID_INPUT');
     assert.equal(db.closed,false);
   }finally{await db.close();}
 });
