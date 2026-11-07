@@ -13,7 +13,7 @@ export function validate(target:MysqlTarget):MysqlTarget & {timeoutMs:number}{
 
   const {
     host,port,user,password,database,security,ca,serverName,
-    timeoutMs=15000
+    timeoutMs=15000,statementCacheSize=0
   }=target;
 
   if(typeof host!=='string'||!host||containsNul(host)||
