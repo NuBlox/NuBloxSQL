@@ -33,4 +33,5 @@ const filename=resolve(directory,
   'mysql-materialization-memory-'+runId+'-'+Date.now()+'.json');
 writeFileSync(filename,JSON.stringify(report,null,2)+'\n',{mode:0o600});
 console.log(JSON.stringify({report:filename,kind:report.kind,options:report.options,
-  samples:report.samples,limitations:report.limitations},null,2));
+  samples:report.samples,calibrationSummary:report.calibrationSummary,
+  limitations:report.limitations},null,2));
