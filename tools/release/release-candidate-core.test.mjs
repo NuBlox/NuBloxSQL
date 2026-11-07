@@ -5,14 +5,14 @@ import {validateReleaseCandidate} from './release-candidate-core.mjs';
 const revision='a'.repeat(40),sha='f'.repeat(64),version='0.1.0-dev.0';
 const input=()=>({
   filename:'nublox-driver-'+version+'.tgz',sizeBytes:24000,sha256:sha,
-  revision,node:'v22.18.0',
+  revision,node:'v22.18.0',expectedApiExports:23,
   manifest:{name:'@nublox/driver',version},
   preflight:{status:'passed',kind:'release-package-preflight',
     revision,package:'@nublox/driver',version,runtimeDependencies:0,
     licenseSha256:sha,publicationPerformed:false},
   apiContract:{kind:'public-api-contract',status:'passed',
     revision,package:'@nublox/driver',version,compatibilityFixture:'passed',
-    declarationSha256:sha,baselineSha256:sha,exports:21,
+    declarationSha256:sha,baselineSha256:sha,exports:23,
     publicationPerformed:false}
 });
 
@@ -38,7 +38,9 @@ test('unreviewed package, commit, digest, version and preflight never pass',()=>
     r=>{r.apiContract.revision='b'.repeat(40);},
     r=>{r.preflight.status='failed';},
     r=>{r.apiContract.status='failed';},
-    r=>{r.apiContract.exports=22;},
+    r=>{r.apiContract.exports=21;},
+    r=>{r.expectedApiExports=21;},
+    r=>{r.expectedApiExports=0;},
     r=>{r.preflight.runtimeDependencies=1;},
     r=>{r.apiContract.compatibilityFixture='failed';},
     r=>{r.preflight.publicationPerformed=true;},
