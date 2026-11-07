@@ -11,7 +11,7 @@ import {columnKeys} from '../../packages/driver/dist/vendors/mysql/types.js';
 
 const memoryKeys=['heapUsed','rss','external','arrayBuffers'];
 const ranges={rows:[20,500,250],rowBytes:[256,4096,2048],
-  rounds:[2,4,3]};
+  rounds:[2,4,3],recoveryCycles:[3,24,8]};
 
 export function liveRetentionOptions(raw={}){
   if(raw===null||typeof raw!=='object'||Array.isArray(raw)||
@@ -86,6 +86,36 @@ function validateMultiResults(sets){
     throw new Error('Invalid live retention multi-result response');
 }
 
+
+function validateLargeMultiResults(sets,options){
+  if(!Array.isArray(sets)||sets.length!==3||
+     sets[0]?.columns?.length!==2||sets[1]?.columns?.length!==2||
+     sets[2]?.columns?.length!==0||sets[2]?.rows?.length!==0||
+     sets[0]?.rows?.length!==options.rows||
+     sets[1]?.rows?.length!==options.rows||
+     sets[0]?.rowValues?.length!==options.rows||
+     sets[1]?.rowValues?.length!==options.rows)
+    throw new Error('Invalid live retention large multi-result shape');
+  const expectedText='x'.repeat(options.rowBytes);
+  const expectedBinary=Buffer.alloc(options.rowBytes,0x79);
+  for(let i=0;i<options.rows;i++){
+    const textRow=sets[0].rows[i],textValues=sets[0].rowValues[i];
+    const binaryRow=sets[1].rows[i],binaryValues=sets[1].rowValues[i];
+    if(!textRow||!binaryRow||
+       !Array.isArray(textValues)||textValues.length!==2||
+       !Array.isArray(binaryValues)||binaryValues.length!==2||
+       Number(textRow.ordinal)!==i||Number(binaryRow.ordinal)!==i||
+       textRow.text_value!==expectedText||
+       !Buffer.isBuffer(binaryRow.binary_value)||
+       !binaryRow.binary_value.equals(expectedBinary)||
+       textValues[0]!==textRow.ordinal||
+       textValues[1]!==textRow.text_value||
+       binaryValues[0]!==binaryRow.ordinal||
+       binaryValues[1]!==binaryRow.binary_value)
+      throw new Error('Invalid live retention large multi-result row');
+  }
+}
+
 function estimateResults(sets){
   const budget=new MysqlMaterializationBudget();
   for(const set of sets){
@@ -124,7 +154,12 @@ export async function profileLiveRetention({
     expectedPayloadBytes:config.rows*config.rowBytes*2},
     {name:'storedProcedureMultiResult',run:db=>
       db.queryResults('CALL nublox_multi_result(?)',[41]),
-    verify:validateMultiResults,expectedPayloadBytes:0}
+    verify:validateMultiResults,expectedPayloadBytes:0},
+    {name:'largeMultiResultRows',run:db=>
+      db.queryResults('CALL nublox_memory_results(?,?)',
+        [config.rows,config.rowBytes]),
+    verify:r=>validateLargeMultiResults(r,config),
+    expectedPayloadBytes:config.rows*config.rowBytes*2}
   ];
   const samples=[];
   let serverVersion=null;
@@ -172,17 +207,60 @@ export async function profileLiveRetention({
         // allocations or an unbounded query-result cache.
       }
     }
+    // Release all result references *inside a separate async scope* before
+    // measuring post-GC memory. Reuse the same live physical connection to
+    // reveal potential growth across command and packet cleanup boundaries.
+    // Retain only numeric counts and snapshots, never query data.
+    const recovery=[];
+    for(const scenario of [scenarios[0],scenarios[2]]){
+      const cycles=[];
+      for(let cycle=1;cycle<=config.recoveryCycles;cycle++){
+        gc();
+        const before=snapshot(memoryUsage);
+        const counts=await executeAndRelease(db,scenario);
+        gc();
+        const after=snapshot(memoryUsage);
+        cycles.push({
+          cycle,rows:counts.rows,resultSets:counts.resultSets,
+          before,after,
+          deltaBytes:Object.fromEntries(memoryKeys.map(key=>[
+            key,after[key]-before[key]
+          ]))
+        });
+      }
+      const first=cycles[0].after,last=cycles.at(-1).after;
+      recovery.push({
+        scenario:scenario.name,cycles,
+        firstToLastPostGcDeltaBytes:Object.fromEntries(memoryKeys.map(key=>[
+          key,last[key]-first[key]
+        ]))
+      });
+    }
     return {
-      schemaVersion:1,kind:'mysql-live-result-retention-profile',
-      serverVersion,options:config,samples,
+      schemaVersion:2,kind:'mysql-live-result-retention-profile',
+      serverVersion,options:config,samples,recovery,
       measurement:'forced GC before and after retaining real query results',
       limitations:[
         'Process memory deltas are not attributable exclusively to QueryResult allocations',
         'Heap, RSS, external and ArrayBuffer memory overlap and must not be added',
         'GC and network buffers introduce noise even with a live isolated server',
-        'Fixture stored procedure returns two small sets and one terminal status',
+        'Small and large multi-result procedures return a terminal status packet',
+        'Post-release GC snapshots do not establish absence of retained references or a memory leak',
+        'First-to-last process-memory drift includes V8 heap growth and socket allocator effects',
         'Measured estimates and durations are diagnostic, not production release gates'
       ]
     };
   }finally{await db.close();}
+}
+
+/** Ensure QueryResult objects are out of scope before post-release GC.
+ * Do not return arrays, rows or closures referencing result contents. */
+async function executeAndRelease(db,scenario){
+  const results=await scenario.run(db);
+  scenario.verify(results);
+  const sets=Array.isArray(results)?results:[results];
+  return {
+    rows:sets.reduce((total,set)=>total+set.rows.length,0),
+    resultSets:sets.length
+  };
 }
