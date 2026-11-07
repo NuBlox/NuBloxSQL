@@ -113,6 +113,12 @@
       "imported": "RelationalPreparedStatement"
     },
     {
+      "name": "RelationalRowStream",
+      "kind": "type",
+      "from": "./models/relational.js",
+      "imported": "RelationalRowStream"
+    },
+    {
       "name": "RelationalSession",
       "kind": "type",
       "from": "./models/relational.js",
@@ -123,6 +129,12 @@
       "kind": "type",
       "from": "./models/relational.js",
       "imported": "RelationalTransaction"
+    },
+    {
+      "name": "RowStreamOptions",
+      "kind": "type",
+      "from": "./models/relational.js",
+      "imported": "RowStreamOptions"
     },
     {
       "name": "SessionInfo",
