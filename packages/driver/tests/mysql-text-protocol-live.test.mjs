@@ -152,3 +152,35 @@ live('unexpected LOCAL INFILE request is rejected without transmitting file data
     assert.equal(db.closed,true);
   }finally{db.get=original;await db.close();}
 });
+
+live('malformed mid-response text row retires the native socket',async()=>{
+  const db=await connectDatabase(target);
+  const original=db.get.bind(db);
+  let calls=0;
+  db.get=async()=>{
+    const packet=await original();
+    if(++calls===4)return Buffer.from([0x02,0x31]);
+    return packet;
+  };
+  try{
+    await assert.rejects(db.queryText('SELECT 1 AS value'),
+      error=>error.code==='PROTOCOL_ERROR');
+    assert.equal(calls,4,'must reach a real row after metadata and its EOF');
+    assert.equal(db.closed,true);
+  }finally{db.get=original;await db.close();}
+});
+
+live('text result materialization rejects more than 10000 rows and revokes session',
+  {timeout:35000},async()=>{
+  const db=await connectDatabase(target);
+  const digits='(SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9)';
+  const expression='a.n+10*b.n+100*c.n+1000*d.n+10000*e.n';
+  const sql=`SELECT ${expression} AS value FROM ${digits} a
+  JOIN ${digits} b JOIN ${digits} c JOIN ${digits} d JOIN ${digits} e
+  WHERE ${expression} < 10001 ORDER BY value`;
+  try{
+    await assert.rejects(db.queryText(sql,{timeoutMs:30000}),
+      error=>error.code==='RESOURCE_LIMIT');
+    assert.equal(db.closed,true,'over-limit response must not enter the pool');
+  }finally{await db.close();}
+});
