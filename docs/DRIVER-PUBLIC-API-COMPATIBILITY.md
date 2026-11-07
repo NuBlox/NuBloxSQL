@@ -6,7 +6,7 @@
 
 The published `@nublox/driver` package exposes one documented root import.
 The reviewed [public API baseline](../tools/release/public-api-baseline.json)
-lists its **21 explicit exports**, distinguishing runtime values from
+lists its **23 explicit exports**, distinguishing runtime values from
 TypeScript-only types and identifying the module each originates from.
 Wildcard exports, default exports, alias changes, unexpected subpath
 exports and silent preview-version changes are prohibited by
