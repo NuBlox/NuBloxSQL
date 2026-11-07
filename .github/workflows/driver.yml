@@ -75,7 +75,7 @@ jobs:
       - name: Measure decoded MySQL result memory with explicit GC
         run: npm run profile:mysql-materialization -- --rows=250 --rounds=3 --textBytes=2048
       - name: Profile retained real MySQL text/BLOB and multi-result memory
-        run: npm run profile:mysql-retention -- --rows=250 --rowBytes=2048 --rounds=3
+        run: npm run profile:mysql-retention -- --rows=250 --rowBytes=2048 --rounds=3 --recoveryCycles=8
         env:
           NUBLOX_LIVE_MYSQL: '1'
           MYSQL_USER: root
