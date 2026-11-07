@@ -857,11 +857,13 @@ export class MysqlSession implements RelationalSession {
         // DATABASE_ERROR. Verify the actual server state on this same socket
         // before allowing the normal callback-error ROLLBACK path.
         const executeScoped=async(
-          sql:string,values:readonly BindValue[]
+          sql:string,values:readonly BindValue[],textProtocol=false
         ):Promise<QueryResult[]>=>{
           let results:QueryResult[];
           try{
-            results=await this.executeResults(sql,values);
+            results=textProtocol
+              ?await this.executeTextResults(sql)
+              :await this.executeResults(sql,values);
           }catch(error){
             if(!(error instanceof DriverError&&error.code==='DATABASE_ERROR')||this.closed)
               throw error;
@@ -894,7 +896,15 @@ export class MysqlSession implements RelationalSession {
             return results[0];
           }),
           queryResults:(sql:string,values:readonly BindValue[]=[])=>schedule(
-            ()=>executeScoped(sql,values))
+            ()=>executeScoped(sql,values)),
+          queryText:(sql:string)=>schedule(async()=>{
+            const results=await executeScoped(sql,[],true);
+            if(results.length!==1)
+              throw fail('UNSUPPORTED_FEATURE',
+                'Text SQL returned multiple results; use queryTextResults');
+            return results[0];
+          }),
+          queryTextResults:(sql:string)=>schedule(()=>executeScoped(sql,[],true))
         });
         let value:T;
         try {
