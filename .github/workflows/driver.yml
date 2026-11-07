@@ -127,6 +127,13 @@ jobs:
           MYSQL_TLS_PORT: '3307'
           MYSQL_USER: root
           MYSQL_PASSWORD: test-password
+      - name: Qualify verified-TLS memory recovery and connection continuity
+        run: npm run profile:mysql-recovery-soak -- --rows=100 --rowBytes=1024 --cycles=32 --checkpointEvery=4
+        env:
+          NUBLOX_LIVE_MYSQL_TLS: '1'
+          MYSQL_TLS_PORT: '3307'
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test-password
       - name: Retain TLS authentication qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
