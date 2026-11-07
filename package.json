@@ -19,6 +19,7 @@
     "profile:mysql-materialization": "npm run build && node --expose-gc tools/qualification/profile-materialization.mjs",
     "release:verify": "npm run verify:lock && npm run build && node tools/release/verify-commercial-decision.mjs && node tools/release/verify-external-assurance.mjs && node tools/release/verify.mjs && node tools/release/verify-api-contract.mjs",
     "profile:mysql-live": "npm run build && node tools/qualification/profile-live.mjs",
+    "profile:mysql-retention": "npm run build && node --expose-gc tools/qualification/profile-live-retention.mjs",
     "verify:api": "npm run build && node tools/release/verify-api-contract.mjs",
     "verify:lock": "node tools/release/verify-workspace-lock.mjs",
     "release:production-check": "node tools/release/verify-commercial-decision.mjs --require-production",
