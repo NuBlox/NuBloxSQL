@@ -119,9 +119,10 @@ const badValue:BindValue={inject:'something'};
 const missingPoolSize:PoolOptions={};
 // @ts-expect-error cursor fetchSize cannot be a string
 const invalidCursor:CursorOptions={fetchSize:'25'};
-// @ts-expect-error raw SQL does not accept value substitution or bind arrays
-const invalidTextBind=async (session:RelationalSession)=>
-  session.queryText('SELECT ?', [42]);
+const invalidTextBind=(session:RelationalSession)=>{
+  // @ts-expect-error raw SQL does not accept bound parameter arrays
+  return session.queryText('SELECT ?', [42]);
+};
 // @ts-expect-error object-mode stream highWaterMark must be numeric
 const invalidStream:RowStreamOptions={highWaterMark:'8'};
 // @ts-expect-error error identifiers cannot be arbitrary strings
