@@ -724,7 +724,7 @@ Those commercial release blockers remain open.
 ## Preview public API compatibility gate
 
 The [public API compatibility contract](DRIVER-PUBLIC-API-COMPATIBILITY.md)
-pins **21 named root exports** for `@nublox/driver@0.1.0-dev.0` and
+pins **23 named root exports** for `@nublox/driver@0.1.0-dev.0` and
 their value-vs-type status to an explicitly reviewed baseline. Every
 `npm run release:verify` now builds a strict TypeScript consumer fixture
 against the published declaration entrypoint; incompatible connection,
