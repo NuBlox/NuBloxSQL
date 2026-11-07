@@ -10,7 +10,7 @@ import {MysqlCursor} from './cursor.js';
 import {cursorRowStream} from '../../core/row-stream.js';
 import {MysqlMaterializationBudget} from './materialization.js';
 import {MysqlPreparedStatement} from './prepared.js';
-import {MysqlStatementCache,type CachedMysqlStatement} from './statement-cache.js';
+import {MysqlStatementCache,cacheableMysqlSql,type CachedMysqlStatement} from './statement-cache.js';
 import {ok,acknowledgedOk,prepareOk,eofStatus,assertSingleResult,binaryResultColumnCount} from './protocol/results.js';
 import {binaryValues,columnKeys,objectRow} from './types.js';
 import {textValues} from './text-results.js';
@@ -432,7 +432,7 @@ export class MysqlSession implements RelationalSession {
   private async executeResults(
     sql:string,params:readonly BindValue[]
   ):Promise<QueryResult[]>{
-    if(this.statementCache.capacity>0)
+    if(this.statementCache.capacity>0&&cacheableMysqlSql(sql))
       return this.executeCachedResults(sql,params);
     const prepared=await this.prepareNative(sql);
     let executionFailed=false;
