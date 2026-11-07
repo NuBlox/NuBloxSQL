@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 const hex=(value,length)=>typeof value==='string'&&
   new RegExp('^[0-9a-f]{'+length+'}$').test(value);
 export function validateReleaseCandidate({filename,sizeBytes,sha256,revision,
-  manifest,preflight,apiContract,node}){
+  manifest,preflight,apiContract,node,expectedApiExports}){
   assert.ok(hex(revision,40),'A pinned commit is required for release provenance');
   assert.equal(manifest?.name,'@nublox/driver');
   assert.match(manifest.version??'',/^\d+\.\d+\.\d+-dev\.\d+$/);
@@ -34,7 +34,10 @@ export function validateReleaseCandidate({filename,sizeBytes,sha256,revision,
   assert.equal(apiContract?.publicationPerformed,false);
   assert.ok(hex(apiContract?.declarationSha256,64));
   assert.ok(hex(apiContract?.baselineSha256,64));
-  assert.equal(apiContract?.exports,21);
+  assert.ok(Number.isSafeInteger(expectedApiExports)&&expectedApiExports>=1,
+    'The reviewed API baseline export count is required');
+  assert.equal(apiContract?.exports,expectedApiExports,
+    'Candidate public API export count differs from reviewed baseline');
   assert.match(node??'',/^v22\./,'Release candidate builder must use Node 22');
   return Object.freeze({
     schemaVersion:1,kind:'unpublished-release-candidate',status:'passed',
