@@ -85,7 +85,7 @@ live('invalid binds and recoverable server failures evict without automatic repl
     assert.equal((await db.query('SELECT ? AS value',[2]))
       .rows[0].value,2n);
     assert.equal(prepares,2,'fresh handle after failed input');
-    await assert.rejects(db.query('SELECT ? / ? AS failure',[1,0]),
+    await assert.rejects(db.query('SELECT ? AS failure FROM nublox_statement_cache_missing_table',[1]),
       error=>error.code==='DATABASE_ERROR');
     assert.equal(db.closed,false);
     assert.equal((await db.query('SELECT ? AS value',[3]))
