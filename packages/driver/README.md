@@ -58,7 +58,10 @@ try {
   the **identical SQL text** on subsequent `query()` or `queryResults()`
   calls, including operations inside the same managed transaction.
   Parameter values are always bound by `COM_STMT_EXECUTE`; SQL and values
-  are **never interpolated**. No SQL normalisation is performed.
+  are **never interpolated**. No SQL normalisation is performed. SQL texts
+  longer than **8 KiB UTF-8** bypass the cache and use the ordinary
+  prepare/execute/close lifecycle, bounding retained SQL-key bytes to
+  **128 KiB per connection** (16 × 8 KiB).
 - Up to 16 reusable handles can be retained per native connection.
   Entries are refreshed **only after completed successful executions**.
   On capacity pressure the least-recently used handle is explicitly closed;
