@@ -24,6 +24,7 @@ BEGIN
 END$$
 -- Read-only, bounded large multi-result memory-recovery qualification fixture.
 -- The server rejects uncontrolled input even if the caller misconfigures CI.
+DELIMITER //
 CREATE PROCEDURE nublox_test.nublox_memory_results(IN p_rows INT, IN p_bytes INT)
 BEGIN
   IF p_rows IS NULL OR p_bytes IS NULL OR p_rows NOT BETWEEN 1 AND 500
@@ -44,5 +45,5 @@ BEGIN
   )
   SELECT n AS ordinal, CAST(REPEAT('y',p_bytes) AS BINARY) AS binary_value
   FROM sequence_rows ORDER BY n;
-END$
+END//
 DELIMITER ;
