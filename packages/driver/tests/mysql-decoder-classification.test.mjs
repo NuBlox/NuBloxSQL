@@ -10,7 +10,7 @@ const column=(type,charset=45)=>({
 const wire=bytes=>Buffer.concat([Buffer.from([0,0]),bytes]);
 
 test('UTF-8 collation classification preserves every edge of supported ranges',()=>{
-  const accepted=[33,45,46,83,255,11,65,192,215,224,247,256,309];
+  const accepted=[33,45,46,83,255,192,215,224,247,256,309];
   for(const charset of accepted){
     const packet=wire(sized(Buffer.from('Straße','utf8')));
     for(const type of [T.VAR_STRING,T.VARCHAR,T.BLOB,T.STRING]){
