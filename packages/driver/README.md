@@ -229,6 +229,71 @@ try{
   `tests/fixtures/multi-results.sql`. The MySQL 8.4.11 CI jobs install them
   for normal and verified-TLS protocol qualification.
 
+## Backpressure-aware Node.js row streams (experimental)
+
+`withRowStream()` adds a callback-owned **Node.js object-mode Readable**
+for large, read-only MySQL results, backed by the independently implemented
+native prepared-statement cursor. It does **not** call `query()` or buffer the
+complete result: each downstream read advances the cursor only when demanded.
+
+```js
+import {connectDatabase} from '@nublox/driver';
+import {Writable} from 'node:stream';
+import {pipeline} from 'node:stream/promises';
+
+const db=await connectDatabase(target);
+try {
+  const rowCount=await db.withRowStream(
+    'SELECT id, payload FROM events WHERE id > ? ORDER BY id',
+    [0],
+    async rows=>{
+      console.log(rows.columnKeys); // ['id','payload']
+      let processed=0;
+      await pipeline(rows,new Writable({
+        objectMode:true,
+        async write({row,values},_encoding,done){
+          try {
+            // Await any downstream I/O in your own application.
+            await processEvent(row.id,values[1]);
+            processed++;
+            done();
+          }catch(error){done(error);}
+        }
+      }));
+      return processed;
+    },
+    {fetchSize:32,highWaterMark:2,timeoutMs:30000}
+  );
+  console.log({rowCount});
+} finally {await db.close();}
+```
+
+- The `Readable` exposes `columns`, collision-free `columnKeys`, and
+  forward-only `{row,values}` items. Positional values remain lossless.
+  `fetchSize` (1–256, default 64) bounds each native `COM_STMT_FETCH`
+  batch. `highWaterMark` (1–32, default 8) bounds queued Node object-mode
+  rows **separately**. Object-mode limits count rows, not their bytes.
+- Use `for await...of`, `pipeline`, or a standard Node `Writable`.
+  A slow consumer applies backpressure; no uncontrolled prefetch into a
+  query-wide result array. The underlying server may still materialise
+  cursor results internally and individual native rows remain subject to
+  the existing packet and fetch-batch safety limits.
+- **Ownership is explicit.** The stream must be consumed or processed
+  inside `withRowStream`'s awaited callback. At callback exit it is
+  destroyed and its native prepared statement is closed, including after
+  early `break` or an application exception. Do not let it escape or start
+  detached `pipeline` tasks; unfinished native fetches revoke the
+  connection rather than silently returning a contaminated lease.
+- Pooled clients call
+  `pool.withConnection(async lease=>lease.withRowStream(...))`.
+  No other command on the same connection may run inside the stream
+  callback. `AbortSignal`/timeout interruption closes that native session;
+  the driver never automatically replays an ambiguous operation.
+- This is deliberately **cursor-backed SELECT streaming**, not a general
+  unbuffered `COM_QUERY` result API or a replacement for full
+  multi-result/bulk-transfer support. MySQL cursor constraints and server
+  temporary-table materialisation can affect workload performance.
+
 ## Bounded native read-only cursors (experimental)
 
 `withCursor(sql, params, callback, options?)` uses the MySQL Classic
