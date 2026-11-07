@@ -11,6 +11,14 @@ import type {MysqlColumn} from '../../core/contracts.js';
  * charges are an operational budget, not a measured heap size or an OOM
  * guarantee. The independent wire and row-count limits remain in force.
  */
+// Initial calibration from repeated Node 22 CI runs on 2026-11-05:
+// 64 all-NULL columns retained ~0.94 MiB per 250 rows against a 0.78 MiB
+// estimate, and 8 numeric columns retained ~0.18–0.25 MiB against 0.15 MiB.
+// Charge more for array slots and named row-object properties, without
+// changing the independent 64 MiB cumulative cap. V8 allocation varies.
+const RETAINED_ROW_BYTES=192;
+const RETAINED_CELL_BYTES=64;
+
 export class MysqlMaterializationBudget {
   private used=0;
 
@@ -38,7 +46,7 @@ export class MysqlMaterializationBudget {
 
   /** Preflight fixed per-row and per-cell storage before decoding values. */
   beforeRow(columnCount:number):void {
-    this.add(128+48*columnCount);
+    this.add(RETAINED_ROW_BYTES+RETAINED_CELL_BYTES*columnCount);
   }
 
   /** Decode-time string storage and retained binary views, without copying. */
