@@ -44,12 +44,18 @@ export interface RowStreamOptions extends CursorOptions {
 export interface RelationalTransaction {
   query(sql:string,parameters?:readonly BindValue[]):Promise<QueryResult>;
   queryResults(sql:string,parameters?:readonly BindValue[]):Promise<QueryResult[]>;
+  /** Literal non-prepared SQL; never interpolates or binds user values. */
+  queryText(sql:string):Promise<QueryResult>;
+  queryTextResults(sql:string):Promise<QueryResult[]>;
 }
 export interface RelationalSession {
   readonly info:Readonly<SessionInfo>;
   readonly closed:boolean;
   query(sql:string,parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult>;
   queryResults(sql:string,parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult[]>;
+  /** COM_QUERY literal SQL. Use prepared query() for untrusted data. */
+  queryText(sql:string,options?:OperationOptions):Promise<QueryResult>;
+  queryTextResults(sql:string,options?:OperationOptions):Promise<QueryResult[]>;
   prepare(sql:string,options?:OperationOptions):Promise<RelationalPreparedStatement>;
   withCursor<T>(
     sql:string,parameters:readonly BindValue[],

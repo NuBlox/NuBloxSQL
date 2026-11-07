@@ -19,6 +19,8 @@ export interface PooledRelationalSession {
   readonly closed:boolean;
   query(sql:string,parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult>;
   queryResults(sql:string,parameters?:readonly BindValue[],options?:OperationOptions):Promise<QueryResult[]>;
+  queryText(sql:string,options?:OperationOptions):Promise<QueryResult>;
+  queryTextResults(sql:string,options?:OperationOptions):Promise<QueryResult[]>;
   prepare(sql:string,options?:OperationOptions):Promise<RelationalPreparedStatement>;
   withCursor<T>(
     sql:string,parameters:readonly BindValue[],
@@ -331,6 +333,10 @@ export class ConnectionPool<S extends PoolSession> implements DatabasePool {
         track(()=>activeSession.query(sql,parameters,options)),
       queryResults:(sql:string,parameters:readonly BindValue[]=[],options:OperationOptions={})=>
         track(()=>activeSession.queryResults(sql,parameters,options)),
+      queryText:(sql:string,options:OperationOptions={})=>
+        track(()=>activeSession.queryText(sql,options)),
+      queryTextResults:(sql:string,options:OperationOptions={})=>
+        track(()=>activeSession.queryTextResults(sql,options)),
       prepare:(sql:string,options:OperationOptions={})=>track(async()=>{
         const raw=await activeSession.prepare(sql,options);
         const handle:RelationalPreparedStatement=Object.freeze({

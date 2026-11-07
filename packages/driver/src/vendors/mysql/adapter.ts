@@ -12,6 +12,7 @@ import {MysqlMaterializationBudget} from './materialization.js';
 import {MysqlPreparedStatement} from './prepared.js';
 import {ok,acknowledgedOk,prepareOk,eofStatus,assertSingleResult,binaryResultColumnCount} from './protocol/results.js';
 import {binaryValues,columnKeys,objectRow} from './types.js';
+import {textValues} from './text-results.js';
 import {serverPacket,eof,isOk} from './errors.js';
 import {validate} from './configuration.js';
 import {mysqlCapabilities} from './capabilities.js';
@@ -399,6 +400,122 @@ export class MysqlSession implements RelationalSession {
     return this.serial(()=>this.executeResults(sql,parameters),options);
   }
 
+  /**
+   * COM_QUERY intentionally sends literal SQL with NO value substitution.
+   * Use prepared query(sql, parameters) for every untrusted value. Handle
+   * complete Text Protocol result sets and return their native metadata.
+   */
+  private async executeTextResults(sql:string):Promise<QueryResult[]>{
+    this.assertOpen();
+    if(typeof sql!=='string'||!sql.trim()||sql.includes('\0')||
+       Buffer.byteLength(sql,'utf8')+1>LIMIT)
+      throw fail('INVALID_INPUT','Invalid MySQL text-protocol SQL statement');
+    const command=Buffer.concat([Buffer.from([0x03]),Buffer.from(sql,'utf8')]);
+    this.stream.reset();
+    await this.send(command);
+    const results:QueryResult[]=[];
+    const materialization=new MysqlMaterializationBudget();
+    let totalRows=0,totalCells=0,totalBytes=0,responseStarted=false;
+    // The first server ERR is a normal recoverable SQL error. Later ERR
+    // packets, malformed rows or uncertain result boundaries retire the
+    // socket, never returning partially consumed traffic to a pool.
+    const readPacket=async():Promise<Buffer>=>{
+      try{
+        const packet=await this.get();
+        responseStarted=true;
+        totalBytes+=packet.length;
+        if(totalBytes>LIMIT)
+          throw fail('RESOURCE_LIMIT','Combined MySQL text result response exceeds byte limit');
+        return packet;
+      }catch(error){
+        if(responseStarted)this.destroy(error instanceof DriverError?error:undefined);
+        throw error;
+      }
+    };
+    try{
+      let next=await readPacket();
+      for(;;){
+        if(results.length>=MAX_RESULT_SETS)
+          throw fail('RESOURCE_LIMIT','MySQL text query exceeded result-set limit');
+        if(isOk(next)){
+          const result=ok(next,true);
+          results.push(result);
+          if(!((result.status??0)&0x0008))return results;
+          next=await readPacket();
+          continue;
+        }
+        // A LOCAL INFILE request must never trigger client file reading or
+        // upload, even if a misconfigured server sends one without the flag.
+        if(next[0]===0xfb)
+          throw fail('UNSUPPORTED_FEATURE','MySQL LOCAL INFILE is disabled');
+        // Classic Text and Binary result headers have the same length-
+        // encoded count when optional result metadata was not negotiated.
+        const count=binaryResultColumnCount(next);
+        const {columns,status:metadataStatus}=await readMetadataWithStatus(
+          ()=>readPacket(),count,true
+        );
+        const keys=columnKeys(columns);
+        materialization.columns(columns,keys);
+        const rows:Array<Record<string,unknown>>=[];
+        const rowValues:unknown[][]=[];
+        for(;;){
+          const packet=await readPacket();
+          if(eof(packet)){
+            const end=eofStatus(packet);
+            const result:QueryResult={
+              rows,columns,columnKeys:keys,rowValues,affectedRows:0,insertId:0,
+              status:end.status,warnings:end.warnings
+            };
+            if(metadataStatus&0x1000)result.outParameters=true;
+            results.push(result);
+            if(!(end.status&0x0008)&&!(metadataStatus&0x1000))return results;
+            next=await readPacket();
+            break;
+          }
+          if(++totalRows>MAX_RESULT_ROWS)
+            throw fail('RESOURCE_LIMIT','Combined MySQL text results exceed row limit');
+          totalCells+=columns.length;
+          if(totalCells>MAX_RESULT_CELLS)
+            throw fail('RESOURCE_LIMIT','Combined MySQL text results exceed cell limit');
+          materialization.beforeRow(columns.length);
+          const values=textValues(packet,columns);
+          materialization.decoded(values);
+          rowValues.push(values);
+          rows.push(objectRow(values,keys));
+        }
+      }
+    }catch(error){
+      // Pre-OK server errors have no partially consumed response and can
+      // remain recoverable. Every other failure is unsafe to reuse.
+      if(responseStarted)
+        this.destroy(error instanceof DriverError?error:undefined);
+      throw error;
+    }
+  }
+
+  /** Literal SQL Text Protocol; no interpolated or bound parameters. */
+  async queryText(sql:string,options:OperationOptions={}):Promise<QueryResult>{
+    this.validateLiteralOptions(options);
+    const sets=await this.serial(()=>this.executeTextResults(sql),options);
+    if(sets.length!==1)
+      throw fail('UNSUPPORTED_FEATURE','Text query returned multiple results; use queryTextResults');
+    return sets[0];
+  }
+
+  /** Literal SQL Text Protocol including stored-procedure multi-results. */
+  async queryTextResults(sql:string,options:OperationOptions={}):Promise<QueryResult[]>{
+    this.validateLiteralOptions(options);
+    return this.serial(()=>this.executeTextResults(sql),options);
+  }
+
+  /** Unlike prepared SQL, COM_QUERY cannot accept a values array.
+   * Reject JS callers trying to pass bindings in the options position. */
+  private validateLiteralOptions(options:OperationOptions):void{
+    if(!options||typeof options!=='object'||Array.isArray(options)||
+       Object.keys(options).some(key=>key!=='signal'&&key!=='timeoutMs'))
+      throw fail('INVALID_INPUT','Text-protocol SQL accepts operation options, not bound values');
+  }
+
   /** Native, forward-only server cursor. Keeps the session's exclusive command
    * lock for the entire callback so no other SQL can corrupt fetch state. */
   async withCursor<T>(
@@ -750,11 +867,13 @@ export class MysqlSession implements RelationalSession {
         // DATABASE_ERROR. Verify the actual server state on this same socket
         // before allowing the normal callback-error ROLLBACK path.
         const executeScoped=async(
-          sql:string,values:readonly BindValue[]
+          sql:string,values:readonly BindValue[],textProtocol=false
         ):Promise<QueryResult[]>=>{
           let results:QueryResult[];
           try{
-            results=await this.executeResults(sql,values);
+            results=textProtocol
+              ?await this.executeTextResults(sql)
+              :await this.executeResults(sql,values);
           }catch(error){
             if(!(error instanceof DriverError&&error.code==='DATABASE_ERROR')||this.closed)
               throw error;
@@ -787,7 +906,15 @@ export class MysqlSession implements RelationalSession {
             return results[0];
           }),
           queryResults:(sql:string,values:readonly BindValue[]=[])=>schedule(
-            ()=>executeScoped(sql,values))
+            ()=>executeScoped(sql,values)),
+          queryText:(sql:string)=>schedule(async()=>{
+            const results=await executeScoped(sql,[],true);
+            if(results.length!==1)
+              throw fail('UNSUPPORTED_FEATURE',
+                'Text SQL returned multiple results; use queryTextResults');
+            return results[0];
+          }),
+          queryTextResults:(sql:string)=>schedule(()=>executeScoped(sql,[],true))
         });
         let value:T;
         try {
