@@ -29,8 +29,9 @@ export function recoverySoakOptions(raw={}){
     options[key]=value;
   }
   if(options.cycles%options.checkpointEvery!==0||
-     options.cycles/options.checkpointEvery<4)
-    throw new RangeError('Recovery soak needs at least four evenly spaced checkpoints');
+     options.cycles/options.checkpointEvery<4||
+     (options.cycles/options.checkpointEvery)%2!==0)
+    throw new RangeError('Recovery soak needs at least four even, evenly spaced checkpoints');
   // Two workload shapes, each returning a row of text and a binary value.
   // Worst-case total selected field payload remains bounded across the run.
   if(options.rows*options.rowBytes*4*options.cycles>MAX_SELECTED_BYTES)
