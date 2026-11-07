@@ -167,3 +167,46 @@ live('cancellation invalidates cached handle and native session',
       error=>error.code==='CONNECTION_CLOSED');
   }finally{await db.close();}
 });
+
+live('default uncached query lifecycle remains prepare-execute-close',async()=>{
+  const db=await connectDatabase(base);
+  const originalPrepare=db.prepareNative.bind(db);
+  const originalClose=db.closeNative.bind(db);
+  let prepares=0,closes=0;
+  db.prepareNative=async(...args)=>{prepares++;return originalPrepare(...args);};
+  db.closeNative=async(...args)=>{closes++;return originalClose(...args);};
+  try{
+    for(let i=0;i<3;i++)
+      assert.equal((await db.query('SELECT ? AS default_value',[i]))
+        .rows[0].default_value,BigInt(i));
+    assert.equal(prepares,3);
+    assert.equal(closes,3);
+    assert.equal(db.closed,false);
+  }finally{
+    db.prepareNative=originalPrepare;
+    db.closeNative=originalClose;
+    await db.close();
+  }
+});
+
+live('large literal SQL is executed but never retained as a cache key',async()=>{
+  const db=await connectDatabase(use(2));
+  const originalPrepare=db.prepareNative.bind(db);
+  const originalClose=db.closeNative.bind(db);
+  let prepares=0,closes=0;
+  db.prepareNative=async(...args)=>{prepares++;return originalPrepare(...args);};
+  db.closeNative=async(...args)=>{closes++;return originalClose(...args);};
+  const statement='SELECT ? AS uncached_large /*'+'x'.repeat(8200)+'*/';
+  try{
+    for(let i=0;i<2;i++)
+      assert.equal((await db.query(statement,[i]))
+        .rows[0].uncached_large,BigInt(i));
+    assert.equal(prepares,2);
+    assert.equal(closes,2);
+    assert.equal(db.closed,false);
+  }finally{
+    db.prepareNative=originalPrepare;
+    db.closeNative=originalClose;
+    await db.close();
+  }
+});
