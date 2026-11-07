@@ -39,7 +39,7 @@ Native bound parameters: null, boolean, UTF-8 string, binary Uint8Array, finite 
 - MySQL's 4-byte physical-frame header has a 24-bit payload length, capped at **16,777,215 bytes**. Native commands and result rows can span multiple frames; the Driver sends/reassembles these fragments while validating a monotonically incrementing (wrapping) sequence number.
 - A logical message whose length is an **exact multiple of 16,777,215 bytes** includes the required final **empty frame**. The fragmentation codec never merges independent result rows.
 - Incoming framing uses incremental, bounded subarray accumulation rather than repeatedly concatenating the entire growing receive buffer. Both inbound and outbound logical messages are limited to **32 MiB** for predictable resource use. Over-limit incoming messages cause a fail-closed connection; outbound oversized commands are rejected before writing.
-- This is bounded large-packet transport support; the separate native read-only cursor API below provides bounded row-fetching. `query()` still materialises results in memory and caps rows/aggregate row bytes. Large enterprise exports need a separately qualified streaming/cursor API. Server-side `max_allowed_packet` may impose a lower limit.
+- This is bounded large-packet transport support; the separate native read-only cursor API below provides bounded row-fetching. `query()` still materialises results in memory and caps rows/aggregate row bytes. The callback-owned `withRowStream()` interface below provides bounded client-side streaming via native server cursors; general unbuffered text-protocol streaming remains future work. Server-side `max_allowed_packet` may impose a lower limit.
 
 ### Lossless result shape and duplicate SQL aliases
 
