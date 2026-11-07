@@ -68,6 +68,63 @@ function differences(after,before){
   return Object.fromEntries(METRICS.map(key=>[key,after[key]-before[key]]));
 }
 
+/** Descriptive cross-round calibration, not a heap guarantee or CI gate.
+ * All process memory quantities remain separate; they overlap and must
+ * never be added as though they represent distinct retained allocations. */
+export function summarizeMaterializationSamples(samples){
+  if(!Array.isArray(samples)||!samples.length)
+    throw new Error('Missing materialization profile samples');
+  const scenarios=['numeric8','nullable64','textBinary8'];
+  if(samples.length%scenarios.length!==0)
+    throw new Error('Incomplete materialization profile rounds');
+  const median=values=>{
+    const sorted=[...values].sort((a,b)=>a-b);
+    const middle=Math.floor(sorted.length/2);
+    return sorted.length%2?sorted[middle]:
+      (sorted[middle-1]+sorted[middle])/2;
+  };
+  return scenarios.map(scenario=>{
+    const observations=samples.filter(sample=>sample?.scenario===scenario);
+    if(observations.length<2||
+       observations.length!==samples.length/scenarios.length)
+      throw new Error('Incomplete materialization profile scenario '+scenario);
+    const representative=observations[0];
+    if(!Number.isSafeInteger(representative.estimatedRetainedBytes)||
+       representative.estimatedRetainedBytes<=0||
+       !Number.isSafeInteger(representative.rows)||representative.rows<1)
+      throw new Error('Invalid materialization profile estimate');
+    for(const sample of observations){
+      if(sample.rows!==representative.rows||
+         sample.columns!==representative.columns||
+         sample.estimatedRetainedBytes!==representative.estimatedRetainedBytes||
+         !Number.isSafeInteger(sample.round)||sample.round<1)
+        throw new Error('Incomparable materialization profile samples');
+    }
+    if(new Set(observations.map(sample=>sample.round)).size!==observations.length)
+      throw new Error('Duplicate materialization profile rounds');
+    const measurement={};
+    for(const name of METRICS){
+      const values=observations.map(sample=>sample.deltaBytes?.[name]);
+      if(values.some(value=>!Number.isSafeInteger(value)))
+        throw new Error('Invalid materialization profile memory delta');
+      measurement[name]={
+        minDeltaBytes:Math.min(...values),
+        medianDeltaBytes:median(values),
+        maxDeltaBytes:Math.max(...values)
+      };
+    }
+    return {
+      scenario,rounds:observations.length,rows:representative.rows,
+      columns:representative.columns,
+      estimatedRetainedBytes:representative.estimatedRetainedBytes,
+      measuredDeltaBytes:measurement,
+      medianHeapToEstimateRatio:Number(
+        (measurement.heapUsed.medianDeltaBytes/
+          representative.estimatedRetainedBytes).toFixed(4))
+    };
+  });
+}
+
 /** Measurements are only meaningful when gc is a real forced full collection.
  * Injected sampling functions allow deterministic contract tests. */
 export function profileMaterialization({
@@ -124,6 +181,7 @@ export function profileMaterialization({
     measurement:'forced GC before and after retaining both result representations',
     units:'bytes',
     options:config,samples,
+    calibrationSummary:summarizeMaterializationSamples(samples),
     limitations:[
       'V8 heap, RSS and Buffer/external memory are overlapping metrics; never sum them',
       'RSS and heap delta may be negative or noisy across rounds and runtimes',
