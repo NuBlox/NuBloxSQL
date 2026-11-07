@@ -80,6 +80,12 @@ jobs:
           NUBLOX_LIVE_MYSQL: '1'
           MYSQL_USER: root
           MYSQL_PASSWORD: test-password
+      - name: Qualify sustained memory recovery and connection continuity
+        run: npm run profile:mysql-recovery-soak -- --rows=250 --rowBytes=2048 --cycles=96 --checkpointEvery=8
+        env:
+          NUBLOX_LIVE_MYSQL: '1'
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test-password
       - name: Retain reproducible MySQL qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
