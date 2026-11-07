@@ -17,8 +17,7 @@ type CharsetName=
   'ucs2'|'utf16'|'utf16le'|'utf32';
 
 /** Selected MySQL 8.4/9.x collation identifiers, not ordinal ranges. */
-export const ADDITIONAL_MYSQL_COLLATIONS:readonly (readonly [number,CharsetName])[]=
-  Object.freeze([
+const additionalRows:readonly (readonly [number,CharsetName])[]=[
     [1,'big5'],[84,'big5'],
     [13,'sjis'],[88,'sjis'],
     [95,'cp932'],[96,'cp932'],
@@ -37,7 +36,10 @@ export const ADDITIONAL_MYSQL_COLLATIONS:readonly (readonly [number,CharsetName]
     [54,'utf16'],[55,'utf16'],
     [56,'utf16le'],[62,'utf16le'],
     [60,'utf32'],[61,'utf32']
-  ].map(pair=>Object.freeze(pair))) as readonly (readonly [number,CharsetName])[];
+  ];
+export const ADDITIONAL_MYSQL_COLLATIONS:
+  readonly (readonly [number,CharsetName])[]=
+  Object.freeze(additionalRows.map(pair=>Object.freeze(pair)));
 
 const additional=new Map<number,CharsetName>(ADDITIONAL_MYSQL_COLLATIONS);
 const legacyDecoders:Readonly<Record<string,TextDecoder>>={
