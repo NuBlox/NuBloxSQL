@@ -61,6 +61,8 @@ async function consumerUsage(session:RelationalSession,pool:DatabasePool,
   cursor:RelationalCursor):Promise<void>{
   const r:QueryResult=await session.query('SELECT ? AS value',[42n],timeout);
   const sets:QueryResult[]=await session.queryResults('SELECT ?',[1],timeout);
+  const unprepared:QueryResult=await session.queryText('SHOW COUNT(*) WARNINGS',timeout);
+  const unpreparedSets:QueryResult[]=await session.queryTextResults('SELECT 1',timeout);
   const prepared:RelationalPreparedStatement=await session.prepare('SELECT ?',timeout);
   await prepared.execute([2],timeout);
   await prepared.executeResults([3],timeout);
@@ -70,6 +72,8 @@ async function consumerUsage(session:RelationalSession,pool:DatabasePool,
   await cursor.close();
   const inside:QueryResult=await tx.query('SELECT ?',[3]);
   const other:QueryResult[]=await tx.queryResults('SELECT ?',[4]);
+  const diagnostic:QueryResult=await tx.queryText('SELECT 1');
+  const diagnosticSets:QueryResult[]=await tx.queryTextResults('SELECT 1');
   const elapsed=await session.withCursor('SELECT ?',[5],async iterator=>{
     let count=0;
     for await(const item of iterator)count+=item.values.length;
@@ -90,6 +94,8 @@ async function consumerUsage(session:RelationalSession,pool:DatabasePool,
     async t=>t.query('SELECT 1'),timeout);
   const p:PooledRelationalSession=await pool.withConnection(async lease=>lease);
   const value:QueryResult=await p.query('SELECT ?',[5],timeout);
+  const poolText:QueryResult=await p.queryText('SHOW COUNT(*) WARNINGS',timeout);
+  const poolTextSets:QueryResult[]=await p.queryTextResults('SELECT 1',timeout);
   const poolStreamCount:number=await p.withRowStream('SELECT ?',[7],
     async rows=>{for await(const item of rows){void item.values;break;}return 1;},
     streamOptions);
@@ -98,7 +104,8 @@ async function consumerUsage(session:RelationalSession,pool:DatabasePool,
   const info:Readonly<SessionInfo>=session.info;
   void [r,sets,row,tuple,inside,other,elapsed,inTransaction,value,poolInfo,
     isClosed,info,_engine,_model,_field,_cursorRow,_runtimeClass,_error,alsoTarget,
-    rowStreamCount,poolStreamCount];
+    rowStreamCount,poolStreamCount,unprepared,unpreparedSets,diagnostic,
+    diagnosticSets,poolText,poolTextSets];
   await pool.close();
 }
 
@@ -112,6 +119,9 @@ const badValue:BindValue={inject:'something'};
 const missingPoolSize:PoolOptions={};
 // @ts-expect-error cursor fetchSize cannot be a string
 const invalidCursor:CursorOptions={fetchSize:'25'};
+// @ts-expect-error raw SQL does not accept value substitution or bind arrays
+const invalidTextBind=async (session:RelationalSession)=>
+  session.queryText('SELECT ?', [42]);
 // @ts-expect-error object-mode stream highWaterMark must be numeric
 const invalidStream:RowStreamOptions={highWaterMark:'8'};
 // @ts-expect-error error identifiers cannot be arbitrary strings
@@ -120,4 +130,4 @@ const arbitraryError=new DriverError('SOME_NEW_ERROR','message');
 import {connectPostgres} from '@nublox/driver';
 
 void [unsupported,insecure,badValue,missingPoolSize,invalidCursor,arbitraryError,
-  consumerUsage,connectPostgres,options,alsoTarget,invalidStream];
+  consumerUsage,connectPostgres,options,alsoTarget,invalidStream,invalidTextBind];
