@@ -443,3 +443,43 @@ retaining separately named JSON artifacts. Compare reports only with
 matching row counts, text sizes, rounds and runtime specifications. Further
 repeated runs and real-server corroboration are required before changing
 the 64 MiB global result limit.
+
+## GC-controlled real MySQL QueryResult retention
+
+Use this **read-only** opt-in profile against an isolated MySQL 8.4 server
+with the pinned stored-procedure fixtures already installed. Unlike
+`profile:mysql-materialization`, it exercises the **native wire client**
+and holds each completed `QueryResult` through a forced-GC measurement:
+
+```bash
+export NUBLOX_LIVE_MYSQL=1
+# Set MYSQL_USER, MYSQL_PASSWORD and MYSQL_DATABASE for your isolated fixture.
+npm run profile:mysql-retention -- --rows=250 --rowBytes=2048 --rounds=3
+```
+
+The bounded workload alternates:
+- Ordered, prepared SELECTs of `rows` (20–500) containing both real MySQL
+  text values and binary BLOB values (`rowBytes` 256–4096, each); all values
+  and both retained row representations must validate.
+- `CALL nublox_multi_result(?)` using the isolated CI fixture, which
+  returns two result sets and a terminal status packet.
+
+After untimed warmup, a real session executes two to four rotated rounds.
+Each measured query has a forced GC immediately before execution and after
+the complete result is retained. The report includes per-scenario count of
+sets, rows, cells and expected payload bytes, the native driver's cumulative
+materialized-result estimate and separate before/after/delta values for
+`heapUsed`, `rss`, `external`, `arrayBuffers`. The driver reports no SQL,
+credentials, BLOB bytes or individual field values. Reports are retained
+as `artifacts/qualification/mysql-live-retention-*.json` alongside the
+existing native MySQL qualification evidence.
+
+**Interpretation:** These are process-wide before/after observations on an
+isolated *real* database session, not exact `QueryResult` allocations.
+Socket buffers, prepared-statement lifecycle and GC can all influence them.
+RSS, heap and external/ArrayBuffer metrics overlap; never sum them. The
+multi-result fixture is deliberately small and does **not** establish
+large multi-result memory headroom. Continue to use the 64 MiB conservative
+estimated retention cap, 32 MiB wire limit and other resource caps until
+repeatable multi-environment data warrants a reviewed change. The production
+release gate is separate.
