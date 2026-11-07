@@ -45,7 +45,7 @@ live('COM_QUERY text decoder preserves result columns, duplicates and binary val
     assert.equal(r.rows[0].amount,'12345678901234567890.1200');
     assert.equal(r.rows[0].greeting,'Schöne Grüße');
     assert.match(r.rows[0].json_doc,
-      /^\\{\\s*"big"\\s*:\\s*12345678901234567890\\s*\\}$/,
+      /^\{\s*"big"\s*:\s*12345678901234567890\s*\}$/,
       'JSON must preserve all integer digits despite server whitespace');
     assert.deepEqual(r.rows[0].binary_field,Buffer.from([0,255,128]));
     assert.deepEqual(r.rowValues[0].slice(0,2),[7n,8n]);
