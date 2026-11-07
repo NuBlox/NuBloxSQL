@@ -407,7 +407,7 @@ export class MysqlSession implements RelationalSession {
    */
   private async executeTextResults(sql:string):Promise<QueryResult[]>{
     this.assertOpen();
-    if(typeof sql!=='string'||!sql.trim()||
+    if(typeof sql!=='string'||!sql.trim()||sql.includes('\\0')||
        Buffer.byteLength(sql,'utf8')+1>LIMIT)
       throw fail('INVALID_INPUT','Invalid MySQL text-protocol SQL statement');
     const command=Buffer.concat([Buffer.from([0x03]),Buffer.from(sql,'utf8')]);
@@ -495,6 +495,7 @@ export class MysqlSession implements RelationalSession {
 
   /** Literal SQL Text Protocol; no interpolated or bound parameters. */
   async queryText(sql:string,options:OperationOptions={}):Promise<QueryResult>{
+    this.validateLiteralOptions(options);
     const sets=await this.serial(()=>this.executeTextResults(sql),options);
     if(sets.length!==1)
       throw fail('UNSUPPORTED_FEATURE','Text query returned multiple results; use queryTextResults');
@@ -503,7 +504,16 @@ export class MysqlSession implements RelationalSession {
 
   /** Literal SQL Text Protocol including stored-procedure multi-results. */
   async queryTextResults(sql:string,options:OperationOptions={}):Promise<QueryResult[]>{
+    this.validateLiteralOptions(options);
     return this.serial(()=>this.executeTextResults(sql),options);
+  }
+
+  /** Unlike prepared SQL, COM_QUERY cannot accept a values array.
+   * Reject JS callers trying to pass bindings in the options position. */
+  private validateLiteralOptions(options:OperationOptions):void{
+    if(!options||typeof options!=='object'||Array.isArray(options)||
+       Object.keys(options).some(key=>key!=='signal'&&key!=='timeoutMs'))
+      throw fail('INVALID_INPUT','Text-protocol SQL accepts operation options, not bound values');
   }
 
   /** Native, forward-only server cursor. Keeps the session's exclusive command
