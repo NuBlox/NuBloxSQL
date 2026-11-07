@@ -210,3 +210,45 @@ live('large literal SQL is executed but never retained as a cache key',async()=>
     await db.close();
   }
 });
+
+live('transactional implicit queries reuse one handle without escaping transaction',async()=>{
+  const db=await connectDatabase(use(2));
+  const originalPrepare=db.prepareNative.bind(db);
+  let prepares=0;
+  db.prepareNative=async(...args)=>{prepares++;return originalPrepare(...args);};
+  try{
+    const outcome=await db.transaction(async tx=>{
+      for(let i=0;i<5;i++)
+        assert.equal((await tx.query('SELECT ? AS within_transaction',[i]))
+          .rows[0].within_transaction,BigInt(i));
+      return 'committed';
+    });
+    assert.equal(outcome,'committed');
+    assert.equal(prepares,1,'same server-owned prepared statement inside transaction');
+    assert.equal((await db.query('SELECT ? AS within_transaction',[77]))
+      .rows[0].within_transaction,77n);
+    assert.equal(prepares,1);
+    assert.equal(db.closed,false);
+  }finally{
+    db.prepareNative=originalPrepare;
+    await db.close();
+  }
+});
+
+live('failed unacknowledged cached eviction revokes the socket, never reuses it',async()=>{
+  const db=await connectDatabase(use(1));
+  const originalClose=db.closeNative.bind(db);
+  try{
+    assert.equal((await db.query('SELECT ? AS first',[1])).rows[0].first,1n);
+    db.closeNative=async()=>{throw Error('injected close transport failure');};
+    await assert.rejects(db.query('SELECT ? AS second',[2]),
+      /injected close transport failure/);
+    assert.equal(db.closed,true,
+      'COM_STMT_CLOSE uncertainty must retire the native session');
+    await assert.rejects(db.query('SELECT ? AS first',[3]),
+      error=>error.code==='CONNECTION_CLOSED');
+  }finally{
+    db.closeNative=originalClose;
+    await db.close();
+  }
+});
