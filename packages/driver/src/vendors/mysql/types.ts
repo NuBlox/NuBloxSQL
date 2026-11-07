@@ -3,25 +3,9 @@ import type {MysqlColumn} from '../../core/contracts.js';
 
 const pad=(n:number,width=2):string=>String(n).padStart(width,'0');
 const utf8=new TextDecoder('utf-8',{fatal:true});
-const western=new TextDecoder('windows-1252',{fatal:true});
-
-/** MySQL reports the output collation identifier in column metadata.
- * A binary collation (63) describes raw bytes, not UTF-8 text. */
-export function textValue(bytes:Buffer,charset:number):string{
-  // Identifiers used by utf8mb3 and utf8mb4 collations in MySQL 8.x.
-  // Avoid allocating a transient classification array for every text cell.
-  if(charset===33||charset===45||charset===46||charset===83||charset===255||
-    (charset>=192&&charset<=215)||
-    (charset>=224&&charset<=247)||
-    (charset>=256&&charset<=309))
-    return utf8.decode(bytes);
-  // MySQL latin1 has the Windows-1252 repertoire. ASCII is compatible with UTF-8.
-  if(charset===8||charset===15||charset===31||charset===47||
-    charset===48||charset===49||charset===94)
-    return western.decode(bytes);
-  if(charset===11||charset===65)return utf8.decode(bytes);
-  throw new Error('Unsupported MySQL result character-set collation '+charset);
-}
+export {decodeMysqlText as textValue} from './collations.js';
+import {decodeMysqlText} from './collations.js';
+const textValue=decodeMysqlText;
 function valueBytes(cursor:Cursor):Buffer{
   const value=cursor.lbytes();
   if(value===null)throw Error('Unexpected NULL outside MySQL result NULL bitmap');
