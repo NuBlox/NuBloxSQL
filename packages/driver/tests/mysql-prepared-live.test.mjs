@@ -9,6 +9,35 @@ const target={
   database:'nublox_test',security:'isolated-local',timeoutMs:6000
 };
 
+
+live('strict outbound Unicode rejects lossy SQL and bound text without closing session',async()=>{
+ const db=await connectDatabase({...target,statementCacheSize:2});
+ try{
+  const id=(await db.queryText('SELECT CONNECTION_ID() AS id')).rows[0].id;
+  const statement=await db.prepare('SELECT ? AS explicit_text');
+  try{
+   for(const malformed of ['\ud800','x\udc00','\ud800\ud800']){
+    await assert.rejects(db.query('SELECT ? AS bound_text',[malformed]),
+      error=>error.code==='INVALID_INPUT');
+    await assert.rejects(db.queryText("SELECT '"+malformed+"' AS literal_text"),
+      error=>error.code==='INVALID_INPUT');
+    await assert.rejects(db.prepare("SELECT '"+malformed+"' AS prepared_text"),
+      error=>error.code==='INVALID_INPUT');
+    await assert.rejects(statement.execute([malformed]),
+      error=>error.code==='INVALID_INPUT');
+   }
+   await assert.rejects(db.prepare('SELECT 1\0 SELECT 2'),
+     error=>error.code==='INVALID_INPUT');
+   assert.equal((await db.query('SELECT ? AS bound_text',['😀'])).rows[0].bound_text,'😀');
+   assert.equal((await db.queryText("SELECT '😀' AS literal_text")).rows[0].literal_text,'😀');
+   assert.equal((await statement.execute(['é😀'])).rows[0].explicit_text,'é😀');
+   assert.equal((await db.queryText('SELECT CONNECTION_ID() AS id')).rows[0].id,id,
+     'validation failures must not transmit SQL or change connection identity');
+   assert.equal(db.closed,false);
+  }finally{await statement.close();}
+ }finally{await db.close();}
+});
+
 live('one native prepared statement supports repeated bound execution, strict parameters and explicit close',async()=>{
  const db=await connectDatabase(target);
  try{
