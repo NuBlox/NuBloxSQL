@@ -2,7 +2,7 @@ import net, {type Socket} from 'node:net';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import tls from 'node:tls';
 import {PacketStream} from './protocol/framing.js';
-import {cstr,LIMIT,u32 ,wellFormedUtf16} from './protocol/primitives.js';
+import {cstr,LIMIT,u32,wellFormedUtf16} from './protocol/primitives.js';
 import {greeting,flags,login,sslRequest,authSwitchRequest,cachingSha2AuthMore,authenticationOk,type MysqlGreeting} from './protocol/handshake.js';
 import {assertSupportedAuthPlugin,token} from './auth/plugins.js';
 import {execute,fetchRows} from './protocol/commands.js';
