@@ -61,42 +61,98 @@ export function valuePacket(value:BindValue):EncodedValue {
   boundBodyLength(value);
   return encodeValue(value);
 }
-/** Allocate one final COM_STMT_EXECUTE buffer instead of temporary header,
- * bitmap and type buffers followed by Buffer.concat on every execution.
- * valuePacket retains existing type/range/UTF-8 rules. Size is checked
- * BEFORE allocating and all bytes of the unsafe buffer are initialised. */
+/** Write a length-encoded parameter byte count into the final command.
+ * Bound-body preflight guarantees a nonnegative, supported byte length. */
+function writeBoundLength(packet:Buffer,offset:number,length:number):number{
+  if(length<251){packet[offset]=length;return offset+1;}
+  if(length<=0xffff){
+    packet[offset]=252;
+    packet.writeUInt16LE(length,offset+1);
+    return offset+3;
+  }
+  if(length<=0xffffff){
+    packet[offset]=253;
+    packet[offset+1]=length&255;
+    packet[offset+2]=(length>>>8)&255;
+    packet[offset+3]=(length>>>16)&255;
+    return offset+4;
+  }
+  packet[offset]=254;
+  packet.writeBigUInt64LE(BigInt(length),offset+1);
+  return offset+9;
+}
+
+/** One final COM_STMT_EXECUTE allocation. Preflight ALL parameters first,
+ * then write their metadata, scalar values and UTF-8/binary payloads directly
+ * into the final buffer. Avoid per-bind Buffer creation and duplicate copies.
+ * Every byte of the unsafe allocation is explicitly initialised. */
 export function execute(id:number,params:readonly BindValue[],cursor=false):Buffer{
   if(params.length>MAX_PARAMETERS)throw RangeError('Too many parameters');
   const nullBytes=Math.ceil(params.length/8);
   let length=10+(params.length?nullBytes+1+params.length*2:0);
-  // Fail before allocating/duplicating any variable-length payload, even
-  // when the limit is exceeded only by *multiple* individually-valid binds.
+  // Validate all values, including Unicode and aggregate size, before
+  // allocating or encoding any parameter bytes.
   for(const parameter of params){
     length+=boundBodyLength(parameter);
     if(length>LIMIT)throw RangeError('Command exceeds limit');
   }
-  const values=params.map(encodeValue);
   const packet=Buffer.allocUnsafe(length);
   packet[0]=0x17;
   packet.writeUInt32LE(id>>>0,1);
   packet[5]=cursor?1:0;
   packet.writeUInt32LE(1,6);
-  if(!values.length)return packet;
-  let offset=10;
-  packet.fill(0,offset,offset+nullBytes);
-  const bitmapOffset=offset;
-  offset+=nullBytes;
-  packet[offset++]=1; // new-parameter-bound flag: types accompany each call
-  for(let i=0;i<values.length;i++){
-    const value=values[i];
-    if(value.nil)packet[bitmapOffset+(i>>3)]|=1<<(i%8);
-    packet[offset++]=value.type;
-    packet[offset++]=value.flag;
+  if(!params.length)return packet;
+
+  const bitmapOffset=10;
+  packet.fill(0,bitmapOffset,bitmapOffset+nullBytes);
+  packet[bitmapOffset+nullBytes]=1; // new-parameter-bound flag
+  let typeOffset=bitmapOffset+nullBytes+1;
+  let bodyOffset=typeOffset+params.length*2;
+  for(let i=0;i<params.length;i++){
+    const value=params[i];
+    let type:number;
+    let flag=0;
+    if(value===null){
+      type=T.NULL;
+      packet[bitmapOffset+(i>>3)]|=1<<(i&7);
+    }else if(typeof value==='boolean'){
+      type=T.TINY;
+      packet[bodyOffset++]=value?1:0;
+    }else if(typeof value==='string'){
+      type=T.VAR_STRING;
+      const bytes=Buffer.byteLength(value,'utf8');
+      bodyOffset=writeBoundLength(packet,bodyOffset,bytes);
+      const written=packet.write(value,bodyOffset,bytes,'utf8');
+      if(written!==bytes)throw new TypeError('Bound UTF-8 encoding length changed');
+      bodyOffset+=written;
+    }else if(value instanceof Uint8Array){
+      type=T.BLOB;
+      bodyOffset=writeBoundLength(packet,bodyOffset,value.byteLength);
+      packet.set(value,bodyOffset);
+      bodyOffset+=value.byteLength;
+    }else if(typeof value==='number'){
+      if(Number.isInteger(value)){
+        type=T.LONGLONG;
+        packet.writeBigInt64LE(BigInt(value),bodyOffset);
+      }else{
+        type=T.DOUBLE;
+        packet.writeDoubleLE(value,bodyOffset);
+      }
+      bodyOffset+=8;
+    }else if(typeof value==='bigint'){
+      type=T.LONGLONG;
+      flag=value>0x7fffffffffffffffn?128:0;
+      if(flag)packet.writeBigUInt64LE(value,bodyOffset);
+      else packet.writeBigInt64LE(value,bodyOffset);
+      bodyOffset+=8;
+    }else{
+      // Fail closed if an input violates the previously checked contract.
+      throw new TypeError('Unsupported bound parameter');
+    }
+    packet[typeOffset++]=type;
+    packet[typeOffset++]=flag;
   }
-  for(const value of values){
-    if(value.nil)continue;
-    offset+=value.body.copy(packet,offset);
-  }
+  if(bodyOffset!==length)throw new Error('Internal MySQL prepared packet size mismatch');
   return packet;
 }
 
