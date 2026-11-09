@@ -1,4 +1,4 @@
-import {T,u32,sized,utf,LIMIT} from './primitives.js';
+import {T,u32,sized,utf,LIMIT,wellFormedUtf16} from './primitives.js';
 import type {BindValue} from '../../../core/contracts.js';
 import {MAX_PARAMETERS} from '../../../core/resources.js';
 export interface EncodedValue {type:number;flag:number;body:Buffer;nil?:boolean}
@@ -14,6 +14,8 @@ function boundBodyLength(value:BindValue):number {
   if(value===null)return 0;
   if(typeof value==='boolean')return 1;
   if(typeof value==='string'||value instanceof Uint8Array){
+    if(typeof value==='string'&&!wellFormedUtf16(value))
+      throw new TypeError('Unpaired UTF-16 surrogate in bound MySQL text');
     const bytes=typeof value==='string'?Buffer.byteLength(value,'utf8'):value.byteLength;
     if(!Number.isSafeInteger(bytes)||bytes<0||bytes+prefixBytes(bytes)>LIMIT)
       throw RangeError('Bound parameter exceeds MySQL logical packet limit');
