@@ -64,8 +64,13 @@ try {
   **128 KiB per connection** (16 × 8 KiB).
 - Up to 16 reusable handles can be retained per native connection.
   Entries are refreshed **only after completed successful executions**.
-  On capacity pressure the least-recently used handle is explicitly closed;
-  failed executions are removed and never replayed automatically.
+  When this connection's cache is full, the least-recently-used handle is
+  explicitly closed **before preparing** a different SQL text. This prevents
+  a temporary extra handle from exceeding a restrictive server-wide
+  `max_prepared_stmt_count` quota; other sessions may still exhaust that
+  server-wide quota independently. SQL input is checked before eviction, so
+  malformed local SQL does not displace healthy cache entries. Failed
+  executions are removed and never replayed automatically.
   Closed or unusable sockets discard all cache entries.
 - The global native connection ceiling of 128 server prepared handles
   includes **both explicit `prepare()` handles and retained implicit cache

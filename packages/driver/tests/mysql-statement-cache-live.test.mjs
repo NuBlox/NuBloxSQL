@@ -41,6 +41,90 @@ live('opt-in cache reuses exact SQL and native statement ID across binds',async(
   }
 });
 
+
+live('full implicit cache retires oldest handle before preparing replacement under concurrent demand',
+  {timeout:30000},async()=>{
+  const db=await connectDatabase(use(2));
+  const originalPrepare=db.prepareNative.bind(db);
+  const originalClose=db.closeNative.bind(db);
+  const allocated=new Set();
+  const history=[];
+  let preparations=0,maxAllocated=0;
+  // Simulate an intentionally low server-wide prepared-statement quota.
+  // All real COM_STMT_PREPARE/CLOSE commands still reach MySQL; this
+  // wrapper records the actual handle lifetime and rejects transient +1.
+  db.prepareNative=async(...args)=>{
+    assert.ok(allocated.size<2,'a cached handle must close before replacement prepares');
+    const prepared=await originalPrepare(...args);
+    allocated.add(prepared.id);
+    maxAllocated=Math.max(maxAllocated,allocated.size);
+    history.push('prepare:'+args[0]);
+    preparations++;
+    return prepared;
+  };
+  db.closeNative=async id=>{
+    await originalClose(id);
+    assert.ok(allocated.delete(id),'must close only a tracked owned statement');
+    history.push('close');
+  };
+  try{
+    for(const [sql,id] of [['SELECT ? AS a',1],['SELECT ? AS b',2]]){
+      assert.equal(Object.values((await db.query(sql,[id])).rows[0])[0],BigInt(id));
+    }
+    assert.equal(allocated.size,2);
+    const values=await Promise.all(Array.from({length:96},(_,i)=>{
+      const alias=['a','b','c'][i%3];
+      return db.query('SELECT ? AS '+alias,[i]).then(result=>
+        result.rows[0][alias]);
+    }));
+    assert.deepEqual(values,Array.from({length:96},(_,i)=>BigInt(i)));
+    assert.equal(maxAllocated,2,'one native connection never exceeds configured cached handles');
+    assert.equal(allocated.size,2);
+    assert.equal(db.statementCache.size,2);
+    assert.ok(preparations>2,'workload must exercise actual evictions and reparations');
+    // The first cold C query must close a previous native handle before prepare.
+    assert.equal(history[2],'close');
+    assert.equal(history[3],'prepare:SELECT ? AS c');
+    assert.equal(db.closed,false);
+  }finally{
+    db.prepareNative=originalPrepare;
+    db.closeNative=originalClose;
+    await db.close();
+  }
+});
+
+live('invalid cached SQL never evicts a valid handle when the cache is full',async()=>{
+  const db=await connectDatabase(use(1));
+  const originalPrepare=db.prepareNative.bind(db);
+  const originalClose=db.closeNative.bind(db);
+  let preparations=0,closes=0;
+  db.prepareNative=async(...args)=>{
+    preparations++;
+    return originalPrepare(...args);
+  };
+  db.closeNative=async(...args)=>{
+    closes++;
+    return originalClose(...args);
+  };
+  try{
+    const sql='SELECT ? AS original';
+    assert.equal((await db.query(sql,[1])).rows[0].original,1n);
+    for(const bad of ['SELECT \0','SELECT \ud800','    ']){
+      await assert.rejects(db.query(bad,[1]),
+        error=>error.code==='INVALID_INPUT');
+    }
+    assert.equal(preparations,1,'no malformed SQL may call COM_STMT_PREPARE');
+    assert.equal(closes,0,'no malformed SQL may evict an existing valid handle');
+    assert.equal((await db.query(sql,[2])).rows[0].original,2n);
+    assert.equal(preparations,1,'prior prepared handle must be reusable');
+    assert.equal(db.closed,false);
+  }finally{
+    db.prepareNative=originalPrepare;
+    db.closeNative=originalClose;
+    await db.close();
+  }
+});
+
 live('LRU eviction closes oldest server statement without protocol desync',async()=>{
   const db=await connectDatabase(use(2));
   const originalClose=db.closeNative.bind(db);
