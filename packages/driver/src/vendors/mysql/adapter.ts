@@ -201,13 +201,19 @@ export class MysqlSession implements RelationalSession {
   private async get():Promise<Buffer>{return serverPacket(await this.stream.read());}
   private async metadata(count:number){return readMetadata(()=>this.get(),count);}
 
+  /** Validate before changing server-side cache ownership. A failed local
+   * SQL check must not evict a previously usable prepared statement. */
+  private validatePreparedSql(sql:string):void{
+    if(typeof sql!=='string'||!sql.trim()||sql.includes('\0')||
+       !wellFormedUtf16(sql)||Buffer.byteLength(sql,'utf8')+1>LIMIT)
+      throw fail('INVALID_INPUT','Invalid SQL statement');
+  }
+
   /** COM_STMT_PREPARE assigns one server statement ID; metadata is consumed
    * completely before the next command can enter the MySQL packet stream. */
   private async prepareNative(sql:string):Promise<{id:number;parameterCount:number}>{
     this.assertOpen();
-    if(typeof sql!=='string'||!sql.trim()||sql.includes('\0')||
-       !wellFormedUtf16(sql)||Buffer.byteLength(sql,'utf8')+1>LIMIT)
-      throw fail('INVALID_INPUT','Invalid SQL statement');
+    this.validatePreparedSql(sql);
     this.stream.reset();
     await this.send(Buffer.concat([Buffer.from([0x16]),Buffer.from(sql,'utf8')]));
     const {id,columnCount,parameterCount}=prepareOk(await this.get());
@@ -378,6 +384,13 @@ export class MysqlSession implements RelationalSession {
     let prepared:CachedMysqlStatement|undefined=this.statementCache.get(sql);
     const reused=prepared!==undefined;
     if(!prepared){
+      // Check SQL before evicting: malformed local input must leave the
+      // existing cache usable. Server max_prepared_stmt_count is global, so
+      // a full local cache must release an old handle BEFORE COM_STMT_PREPARE
+      // rather than briefly using capacity+1 prepared statements.
+      this.validatePreparedSql(sql);
+      if(this.statementCache.size>=this.statementCache.capacity)
+        await this.closeCachedOldest();
       await this.reservePreparedCapacity(1);
       prepared=await this.prepareNative(sql);
     }
