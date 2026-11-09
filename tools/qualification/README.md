@@ -5,6 +5,50 @@ release. No database credentials, query text, certificates or row contents are
 persisted in JSON reports. A full production gate also requires version-matrix,
 security, migration/compatibility, operational and comparative evidence.
 
+## Live concurrent prepared-statement cache and global-quota qualification
+
+The dedicated [native cache concurrency workflow](../../.github/workflows/mysql-cache-concurrency.yml)
+runs only against a disposable, pinned MySQL 8.4.11 service on GitHub
+Actions. It first verifies the exact server version and deliberately sets
+the server-wide `max_prepared_stmt_count` to **4**. The profile refuses to
+run outside explicitly opted-in CI (`CI=true`, `NUBLOX_LIVE_MYSQL=1`,
+`NUBLOX_CACHE_BENCH_FIXTURE=1`) and uses literal loopback connections.
+**Never** change that setting on a shared, customer or production server.
+
+Each of four independent native sessions uses a bounded serial command
+queue. The runner compares `statementCacheSize:0` against a one-entry
+implicit cache with the same hot prepared `SELECT ?` and bound integer
+values. Both modes receive four untimed warmups *per connection*.
+Sixty-four timed SQL round trips are scheduled across four concurrent
+physical connections per round; two rounds reverse hot-mode order.
+The separate **churn** mode alternates two exact SQL keys on every
+connection with `statementCacheSize:1`, so it tests eviction-before-prepare
+while all four global statement slots can already be occupied.
+
+Performance Schema provides a *SQL-specific* server-side prepared-handle
+census before, after warmup, after queries and after all native sessions
+are closed. Baseline queries must leave zero handles; cache and churn must
+retain exactly four while active; every mode must release all handles
+after disconnect. Incorrect SELECT values, over-quota prepares, incomplete
+work, unreleased handles and errors fail the workflow. There is **no
+automatic SQL retry**. The observer uses `queryText`, not a fifth
+server-side prepared handle.
+
+The redacted report is written to
+`artifacts/qualification/mysql-cache-concurrency-<run-id>.json` and
+uploaded as a workflow artifact for 60 days. It records per-operation
+p50/p95/p99 **end-to-end SQL round-trip times**, elapsed time, throughput,
+server/Node versions, workload parameters and handle counts; no SQL,
+credentials or returned data are persisted. The churn trial measures
+quota/correctness rather than an apples-to-apples hot-path speed comparison.
+GitHub-hosted runner timings are diagnostic and must not be presented as
+a production performance guarantee; confirm with repeated runs on pinned,
+dedicated hardware before making comparative claims.
+
+For deterministic tests (no MySQL service):
+
+`node --test tools/qualification/cache-concurrency.test.mjs`
+
 ## Current LTS verified-TLS qualification and evidence integrity
 
 The [current-release CI workflow](../../.github/workflows/mysql-current-support.yml)

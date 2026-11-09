@@ -1,0 +1,76 @@
+name: MySQL native cache concurrency and global quota qualification
+
+on:
+  pull_request:
+    paths:
+      - 'tools/qualification/cache-concurrency*.mjs'
+      - '.github/workflows/mysql-cache-concurrency.yml'
+      - 'packages/driver/**'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  cache-concurrency:
+    name: mysql-cache-concurrency-quota-4
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4.11
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: nublox_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and build native driver
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          node --test tools/qualification/cache-concurrency.test.mjs
+      - name: Pin disposable server identity and enforce four global prepared handles
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(docker ps -q --filter 'ancestor=mysql:8.4.11' | wc -l | tr -d ' ')" = '1'
+          container="$(docker ps -q --filter 'ancestor=mysql:8.4.11')"
+          mysql() {
+            docker exec -e MYSQL_PWD=test-password "$container" \
+              mysql --protocol=tcp -h127.0.0.1 -uroot -N -s "$@"
+          }
+          version="$(mysql -e 'SELECT VERSION()')"
+          case "$version" in
+            8.4.11|8.4.11-*) ;;
+            *) echo 'Unexpected MySQL fixture version'; exit 1 ;;
+          esac
+          mysql -e 'SET GLOBAL max_prepared_stmt_count = 4'
+          test "$(mysql -e 'SELECT @@GLOBAL.max_prepared_stmt_count')" = '4'
+      - name: Measure real MySQL concurrent hot queries and eviction churn
+        run: node tools/qualification/cache-concurrency-live.mjs --iterations=64 --concurrency=4 --rounds=2
+        env:
+          CI: 'true'
+          NUBLOX_LIVE_MYSQL: '1'
+          NUBLOX_CACHE_BENCH_FIXTURE: '1'
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test-password
+          MYSQL_PORT: '3306'
+      - name: Retain original redacted latency and prepared-handle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-cache-concurrency-${{ github.run_id }}
+          path: artifacts/qualification/mysql-cache-concurrency-*.json
+          if-no-files-found: warn
+          retention-days: 60
