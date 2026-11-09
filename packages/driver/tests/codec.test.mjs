@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {T,sized,LIMIT} from '../dist/vendors/mysql/protocol/primitives.js';
+import {T,sized,LIMIT,utf,cstr,wellFormedUtf16} from '../dist/vendors/mysql/protocol/primitives.js';
+import {validate} from '../dist/vendors/mysql/configuration.js';
 import {token} from '../dist/vendors/mysql/auth/plugins.js';
 import {execute,valuePacket} from '../dist/vendors/mysql/protocol/commands.js';
 import {binaryRow} from '../dist/vendors/mysql/types.js';
@@ -77,4 +78,50 @@ test('packet stream accepts coalesced messages but rejects unsafe queued traffic
  await assert.rejects(stream.read(),/limit/);
  await assert.rejects(stream.read(),/limit/);
  stream.destroy();
+});
+
+test('strict outbound UTF-8 preserves valid scalar text and rejects unpaired UTF-16',()=>{
+ const valid=['','ascii','Café','汉字','😀','x\ud83d\ude00y','😀'.repeat(80)];
+ for(const value of valid){
+  assert.equal(wellFormedUtf16(value),true);
+  assert.deepEqual(utf(value),Buffer.from(value,'utf8'));
+  assert.deepEqual(cstr(value),Buffer.concat([Buffer.from(value,'utf8'),Buffer.from([0])]));
+  assert.ok(execute(37,[value]).includes(Buffer.from(value,'utf8')));
+ }
+ const malformed=['\ud800','\udc00','before\ud800after','\ud800\ud800','\udc00\udc00',
+  '\ud800A','\ud83d','\ude00','ok\ud83d\ud83d\ude00'];
+ for(const value of malformed){
+  assert.equal(wellFormedUtf16(value),false);
+  assert.throws(()=>utf(value),TypeError);
+  assert.throws(()=>cstr(value),TypeError);
+  assert.throws(()=>valuePacket(value),TypeError);
+  assert.throws(()=>execute(37,[value]),TypeError);
+ }
+ // All parameters must pass validation before any UTF-8 conversion.
+ const original=Buffer.from;
+ let encoded=0;
+ Buffer.from=function(value,...args){
+  if(value==='valid-before-invalid')encoded++;
+  return original.call(Buffer,value,...args);
+ };
+ try{
+  assert.throws(()=>execute(37,['valid-before-invalid','\ud800']),TypeError);
+  assert.equal(encoded,0,'invalid later argument cannot trigger earlier text encoding');
+ }finally{Buffer.from=original;}
+});
+
+test('malformed connection identity and secret fields reject before socket creation',()=>{
+ const target={
+  engine:'mysql',host:'127.0.0.1',port:3306,user:'root',password:'test',
+  database:'test',security:'isolated-local'
+ };
+ for(const field of ['host','user','password','database']){
+  assert.throws(()=>validate({...target,[field]:'\ud800'}),
+   error=>error.code==='INVALID_INPUT',field);
+ }
+ for(const field of ['ca','serverName']){
+  assert.throws(()=>validate({...target,security:'verified-tls',[field]:'\udc00'}),
+   error=>error.code==='INVALID_INPUT',field);
+ }
+ assert.equal(validate({...target,user:'用户',password:'😀'}).user,'用户');
 });
