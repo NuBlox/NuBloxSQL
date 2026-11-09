@@ -2,7 +2,7 @@ import net, {type Socket} from 'node:net';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import tls from 'node:tls';
 import {PacketStream} from './protocol/framing.js';
-import {cstr,LIMIT,u32} from './protocol/primitives.js';
+import {cstr,LIMIT,u32,wellFormedUtf16} from './protocol/primitives.js';
 import {greeting,flags,login,sslRequest,authSwitchRequest,cachingSha2AuthMore,authenticationOk,type MysqlGreeting} from './protocol/handshake.js';
 import {assertSupportedAuthPlugin,token} from './auth/plugins.js';
 import {execute,fetchRows} from './protocol/commands.js';
@@ -205,7 +205,8 @@ export class MysqlSession implements RelationalSession {
    * completely before the next command can enter the MySQL packet stream. */
   private async prepareNative(sql:string):Promise<{id:number;parameterCount:number}>{
     this.assertOpen();
-    if(typeof sql!=='string'||!sql.trim()||Buffer.byteLength(sql,'utf8')>LIMIT)
+    if(typeof sql!=='string'||!sql.trim()||sql.includes('\0')||
+       !wellFormedUtf16(sql)||Buffer.byteLength(sql,'utf8')+1>LIMIT)
       throw fail('INVALID_INPUT','Invalid SQL statement');
     this.stream.reset();
     await this.send(Buffer.concat([Buffer.from([0x16]),Buffer.from(sql,'utf8')]));
@@ -503,7 +504,7 @@ export class MysqlSession implements RelationalSession {
   private async executeTextResults(sql:string):Promise<QueryResult[]>{
     this.assertOpen();
     if(typeof sql!=='string'||!sql.trim()||sql.includes('\0')||
-       Buffer.byteLength(sql,'utf8')+1>LIMIT)
+       !wellFormedUtf16(sql)||Buffer.byteLength(sql,'utf8')+1>LIMIT)
       throw fail('INVALID_INPUT','Invalid MySQL text-protocol SQL statement');
     const command=Buffer.concat([Buffer.from([0x03]),Buffer.from(sql,'utf8')]);
     this.stream.reset();
