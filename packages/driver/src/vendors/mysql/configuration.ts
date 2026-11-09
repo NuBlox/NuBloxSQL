@@ -1,5 +1,6 @@
 import {fail} from '../../core/errors.js';
 import {validDeadline} from '../../core/resources.js';
+import {wellFormedUtf16} from './protocol/primitives.js';
 import type {MysqlTarget} from '../../core/contracts.js';
 
 const containsNul=(value:string):boolean=>value.includes('\0');
@@ -16,12 +17,12 @@ export function validate(target:MysqlTarget):MysqlTarget & {timeoutMs:number}{
     timeoutMs=15000,statementCacheSize=0
   }=target;
 
-  if(typeof host!=='string'||!host||containsNul(host)||
+  if(typeof host!=='string'||!host||containsNul(host)||!wellFormedUtf16(host)||
     !Number.isInteger(port)||port<1||port>65535||
-    typeof user!=='string'||!user||containsNul(user)||
-    typeof password!=='string'||containsNul(password)||
+    typeof user!=='string'||!user||containsNul(user)||!wellFormedUtf16(user)||
+    typeof password!=='string'||containsNul(password)||!wellFormedUtf16(password)||
     (database!==undefined&&
-      (typeof database!=='string'||!database||containsNul(database)))||
+      (typeof database!=='string'||!database||containsNul(database)||!wellFormedUtf16(database)))||
     !validDeadline(timeoutMs)||
     !Number.isSafeInteger(statementCacheSize)||
     statementCacheSize<0||statementCacheSize>16)
@@ -35,9 +36,9 @@ export function validate(target:MysqlTarget):MysqlTarget & {timeoutMs:number}{
 
   if(security==='verified-tls'&&(
     (ca!==undefined&&
-      (typeof ca!=='string'||!ca.trim()||containsNul(ca)))||
+      (typeof ca!=='string'||!ca.trim()||containsNul(ca)||!wellFormedUtf16(ca)))||
     (serverName!==undefined&&
-      (typeof serverName!=='string'||!serverName.trim()||containsNul(serverName)))
+      (typeof serverName!=='string'||!serverName.trim()||containsNul(serverName)||!wellFormedUtf16(serverName)))
   ))
     throw fail('INVALID_INPUT','Invalid TLS identity configuration');
 
