@@ -153,3 +153,47 @@ test('invalid bindings and parameter ceiling fail as before without emitting a w
     0x17,42,0,0,0,1,1,0,0,0
   ]));
 });
+
+test('hot path writes text and sliced binary directly without temporary Buffer factories',()=>{
+  const backing=Uint8Array.from([99,98,0,255,1,2,3,97]);
+  const view=backing.subarray(2,7);
+  const mixed=[null,'é漢字🚀',view,true,-24n,18446744073709551615n,1.125];
+  const expected=legacyExecute(0xdeadbeef,mixed);
+  const from=Buffer.from,concat=Buffer.concat;
+  let factories=0;
+  Buffer.from=function(){factories++;throw Error('Unexpected temporary Buffer.from');};
+  Buffer.concat=function(){factories++;throw Error('Unexpected temporary Buffer.concat');};
+  try{
+    assert.deepEqual(execute(0xdeadbeef,mixed),expected);
+    assert.equal(factories,0,'encoding must write directly into the final command');
+  }finally{
+    Buffer.from=from;
+    Buffer.concat=concat;
+  }
+  // A caller-owned subarray encodes only its visible bytes.
+  assert.deepEqual(execute(9,[view]),legacyExecute(9,[view]));
+});
+
+test('prepared encoder preserves every length-prefix transition',()=>{
+  const lengths=[0,1,250,251,252,65535,65536,0xffffff,0x1000000];
+  for(const bytes of lengths){
+    const blob=Buffer.alloc(bytes,0xa6);
+    const encoded=execute(25,[blob]);
+    const reference=legacyExecute(25,[blob]);
+    assert.deepEqual(encoded,reference,'wire bytes differ at length '+bytes);
+  }
+});
+
+test('invalid later binds do not allocate the outgoing command',()=>{
+  const original=Buffer.allocUnsafe;
+  let allocations=0;
+  Buffer.allocUnsafe=function(...args){allocations++;return original.apply(Buffer,args);};
+  try{
+    assert.throws(()=>execute(41,['valid',Number.POSITIVE_INFINITY]),TypeError);
+    assert.throws(()=>execute(41,[Uint8Array.from([1,2]),'\ud800']),TypeError);
+    assert.throws(()=>execute(41,[Buffer.alloc(1),BigInt('18446744073709551616')]),RangeError);
+    assert.equal(allocations,0,'invalid input must fail before final packet allocation');
+  }finally{
+    Buffer.allocUnsafe=original;
+  }
+});
