@@ -4,7 +4,24 @@ export const T={DECIMAL:0,TINY:1,SHORT:2,LONG:3,FLOAT:4,DOUBLE:5,NULL:6,TIMESTAM
 export const LIMIT=MAX_PACKET_BYTES;
 export function u16(n:number):Buffer{const b=Buffer.alloc(2);b.writeUInt16LE(n);return b;}
 export function u32(n:number):Buffer{const b=Buffer.alloc(4);b.writeUInt32LE(n>>>0);return b;}
-export const utf=(s:string):Buffer=>Buffer.from(s,'utf8');
+/** JavaScript may contain isolated UTF-16 surrogates. Buffer.from silently
+ * replaces them with U+FFFD; native SQL and bound text must not be changed
+ * without the caller's consent. Check scalars before any UTF-8 conversion. */
+export function wellFormedUtf16(value:string):boolean{
+  for(let i=0;i<value.length;i++){
+    const code=value.charCodeAt(i);
+    if(code>=0xd800&&code<=0xdbff){
+      if(++i>=value.length)return false;
+      const low=value.charCodeAt(i);
+      if(low<0xdc00||low>0xdfff)return false;
+    }else if(code>=0xdc00&&code<=0xdfff)return false;
+  }
+  return true;
+}
+export const utf=(s:string):Buffer=>{
+  if(!wellFormedUtf16(s))throw new TypeError('Unpaired UTF-16 surrogate in MySQL text');
+  return Buffer.from(s,'utf8');
+};
 export const cstr=(s:string):Buffer=>Buffer.concat([utf(s),Buffer.from([0])]);
 export function size(n:number):Buffer{if(!Number.isSafeInteger(n)||n<0)throw Error('Invalid length');if(n<251)return Buffer.from([n]);if(n<=65535)return Buffer.concat([Buffer.from([252]),u16(n)]);if(n<=16777215)return Buffer.from([253,n&255,(n>>8)&255,(n>>16)&255]);const b=Buffer.alloc(9);b[0]=254;b.writeBigUInt64LE(BigInt(n),1);return b;}
 export const sized=(b:Buffer):Buffer=>Buffer.concat([size(b.length),b]);
