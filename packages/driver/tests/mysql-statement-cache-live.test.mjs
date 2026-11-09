@@ -109,8 +109,8 @@ live('invalid cached SQL never evicts a valid handle when the cache is full',asy
   try{
     const sql='SELECT ? AS original';
     assert.equal((await db.query(sql,[1])).rows[0].original,1n);
-    for(const bad of ['\0','\ud800','    ']){
-      await assert.rejects(db.query('SELECT '+bad,[1]),
+    for(const bad of ['SELECT \0','SELECT \ud800','    ']){
+      await assert.rejects(db.query(bad,[1]),
         error=>error.code==='INVALID_INPUT');
     }
     assert.equal(preparations,1,'no malformed SQL may call COM_STMT_PREPARE');
