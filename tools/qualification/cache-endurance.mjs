@@ -203,6 +203,7 @@ export async function runCacheEndurance({
     const outcomes=await Promise.allSettled(sessions.map(s=>s.close()));
     if(outcomes.some(x=>x.status==='rejected'))
       throw Error('Native cache endurance cleanup failed');
-    if(!completedRun)await waitForZero(inspect);
+    // Preflight has no owned handles to release: never mask its error.
+    if(!completedRun&&sessions.length>0)await waitForZero(inspect);
   }
 }
