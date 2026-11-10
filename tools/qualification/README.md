@@ -105,6 +105,72 @@ Validate the fixture admission and negative security tests without MySQL:
 
 `node --test tools/qualification/cache-fixture.test.mjs tools/qualification/cache-concurrency.test.mjs`
 
+## Sustained eight-session verified-TLS prepared-cache qualification
+
+The [TLS cache endurance workflow](../../.github/workflows/mysql-cache-endurance-tls.yml)
+extends the short four-/eight-session comparisons with a bounded **12-second
+PR/main smoke**, a **30-minute weekly scheduled endurance** profile, and
+optional **30- or 60-minute manual GitHub Actions** runs. These are
+distinct evidence classes: a successful PR smoke does **not** prove that
+a 30-minute or one-hour run has completed. A future scheduled job must
+actually finish for its original full-duration report to qualify.
+
+Every run uses an ephemeral, exact-version MySQL **8.4.13** container
+requiring certificate-verified TLS, with a temporary CA, explicit
+wrong-CA rejection, actual negotiated cipher, and server-wide
+`max_prepared_stmt_count=8`. The observer uses non-prepared `queryText`.
+Eight dedicated native connections retain a **single cached handle per
+session** and issue a validated, read-only `SELECT ?` workload. Every
+32nd operation on **each** session switches to a second statement key,
+exercising eviction-before-prepare even when all eight global statement
+slots are occupied. There is **no** SQL auto-replay, pool lease reuse,
+server-state mutation outside the disposable test fixture, production
+database access, or new runtime instrumentation.
+
+The runner records correct-result counts for every worker; the number
+of hot/reprepared operations, total SQL work, observed full-duration
+wall time, and the exact server-side handles before work, after work,
+and after connection disposal. A nonzero final handle census, wrong
+SQL value, missing per-worker hot/churn progress, premature work-ceiling
+termination or incorrect TLS identity **fails the job**.
+
+Long-running telemetry uses the existing bounded, deterministic
+**4,096-sample latency reservoirs** and a separate 1,024-sample
+reservoir per **30-second** interval. Reported p50/p95/p99 values are
+**nearest-rank approximations**, not full per-query latency traces or
+vendor speed rankings. The independently verified 30-second process
+heap/RSS/external/ArrayBuffer timeline and completed-SQL progress
+timeline have at most **256** points, full requested duration coverage,
+a maximum **90-second** observation/progress gap and conservative
+memory-growth guardrails. Peak memory and post-close forced-GC
+snapshots are **process-level diagnostics**, not evidence that any
+specific object was leaked or that memory automatically returned to
+baseline.
+
+The runner is restricted to GitHub Actions, the pinned fixture
+version and server identity, and a safe, event-locked duration:
+`pull_request` and `push` execute only 12 seconds,
+`schedule` executes 30 minutes, and `workflow_dispatch` permits only
+30 or 60 minutes. The **100,000,000-operation** ceiling is a safety
+stop, *not* a valid early completion. For sustained observations, the
+CI evidence gate independently requires the requested duration,
+nondecreasing counters, memory/progress continuity, exact revision
+and run identity, the two returned TLS security checks, all eight
+native sessions' completed SQL work, zero final prepared handles,
+and consistent bounded interval percentiles.
+
+Original redacted evidence
+`artifacts/qualification/mysql-cache-endurance-tls-<run-id>.json`
+and the independently validated same-run decision are retained as
+separate GitHub Actions artifacts for 60 days. No credentials,
+certificate material, SQL text or row contents are persisted. The
+CI evidence cannot establish cloud latency or multi-day memory
+retention: those require dedicated longer-running environments.
+
+For dependency-free local regressions:
+
+`node --test tools/qualification/cache-endurance.test.mjs`
+
 ## Current LTS verified-TLS qualification and evidence integrity
 
 The [current-release CI workflow](../../.github/workflows/mysql-current-support.yml)
