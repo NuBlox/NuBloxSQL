@@ -68,9 +68,17 @@ try {
   explicitly closed **before preparing** a different SQL text. This prevents
   a temporary extra handle from exceeding a restrictive server-wide
   `max_prepared_stmt_count` quota; other sessions may still exhaust that
-  server-wide quota independently. SQL input is checked before eviction, so
-  malformed local SQL does not displace healthy cache entries. Failed
-  executions are removed and never replayed automatically.
+  server-wide quota independently. SQL and locally invalid binding values
+  are checked **before eviction**: an unsupported value, nonfinite number,
+  malformed UTF-16 or oversized outgoing frame cannot displace a healthy
+  cached handle. This allocation-free preflight shares the actual native
+  encoder's validation rules; packet encoding itself still revalidates.
+  Reused cached statements also retain their handle when a binding is
+  rejected locally before any command is sent. A new statement's **server-
+  reported parameter count** is not known until after preparation; a
+  parameter-count mismatch on a cold cache miss may still evict an entry.
+  Server SQL errors and other failed executions still retire their handle
+  and are never automatically replayed.
   Closed or unusable sockets discard all cache entries.
 - The global native connection ceiling of 128 server prepared handles
   includes **both explicit `prepare()` handles and retained implicit cache

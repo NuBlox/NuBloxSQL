@@ -86,16 +86,28 @@ function writeBoundLength(packet:Buffer,offset:number,length:number):number{
  * then write their metadata, scalar values and UTF-8/binary payloads directly
  * into the final buffer. Avoid per-bind Buffer creation and duplicate copies.
  * Every byte of the unsafe allocation is explicitly initialised. */
-export function execute(id:number,params:readonly BindValue[],cursor=false):Buffer{
+/** Validate the entire COM_STMT_EXECUTE parameter payload without creating
+ * a packet or changing prepared-statement ownership. The cache-miss path
+ * calls this before evicting a healthy server-side statement. */
+export function validateExecuteParameters(params:readonly BindValue[]):number{
+  if(!Array.isArray(params))throw TypeError('Parameters must be an array');
   if(params.length>MAX_PARAMETERS)throw RangeError('Too many parameters');
   const nullBytes=Math.ceil(params.length/8);
   let length=10+(params.length?nullBytes+1+params.length*2:0);
-  // Validate all values, including Unicode and aggregate size, before
-  // allocating or encoding any parameter bytes.
+  // All scalar values, including Unicode and aggregate size, are checked
+  // before any packet allocation or server-side prepare/close operation.
   for(const parameter of params){
     length+=boundBodyLength(parameter);
     if(length>LIMIT)throw RangeError('Command exceeds limit');
   }
+  return length;
+}
+
+/** Native execute uses this exact same preflight, preserving validation and
+ * packet bytes on both cache hits and ordinary uncached execution. */
+export function execute(id:number,params:readonly BindValue[],cursor=false):Buffer{
+  const length=validateExecuteParameters(params);
+  const nullBytes=Math.ceil(params.length/8);
   const packet=Buffer.allocUnsafe(length);
   packet[0]=0x17;
   packet.writeUInt32LE(id>>>0,1);

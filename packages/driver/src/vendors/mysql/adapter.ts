@@ -5,7 +5,7 @@ import {PacketStream} from './protocol/framing.js';
 import {cstr,LIMIT,u32,wellFormedUtf16} from './protocol/primitives.js';
 import {greeting,flags,login,sslRequest,authSwitchRequest,cachingSha2AuthMore,authenticationOk,type MysqlGreeting} from './protocol/handshake.js';
 import {assertSupportedAuthPlugin,token} from './auth/plugins.js';
-import {execute,fetchRows} from './protocol/commands.js';
+import {execute,fetchRows,validateExecuteParameters} from './protocol/commands.js';
 import {MysqlCursor} from './cursor.js';
 import {cursorRowStream} from '../../core/row-stream.js';
 import {MysqlMaterializationBudget} from './materialization.js';
@@ -209,6 +209,18 @@ export class MysqlSession implements RelationalSession {
       throw fail('INVALID_INPUT','Invalid SQL statement');
   }
 
+  /** Preflight native binding types and full wire size before evicting an
+   * existing implicit cache handle. All errors remain the same typed
+   * INVALID_INPUT errors used by the encoder before any command is sent. */
+  private validateBoundValues(params:readonly BindValue[]):void{
+    try{validateExecuteParameters(params);}
+    catch(error){
+      if(error instanceof TypeError||error instanceof RangeError)
+        throw fail('INVALID_INPUT','Invalid prepared statement bound parameter');
+      throw error;
+    }
+  }
+
   /** COM_STMT_PREPARE assigns one server statement ID; metadata is consumed
    * completely before the next command can enter the MySQL packet stream. */
   private async prepareNative(sql:string):Promise<{id:number;parameterCount:number}>{
@@ -389,6 +401,7 @@ export class MysqlSession implements RelationalSession {
       // a full local cache must release an old handle BEFORE COM_STMT_PREPARE
       // rather than briefly using capacity+1 prepared statements.
       this.validatePreparedSql(sql);
+      this.validateBoundValues(params);
       if(this.statementCache.size>=this.statementCache.capacity)
         await this.closeCachedOldest();
       await this.reservePreparedCapacity(1);
@@ -429,7 +442,12 @@ export class MysqlSession implements RelationalSession {
                 }
               }
             }
-          }else{
+          }else if(!(reused&&executionError instanceof DriverError&&
+              executionError.code==='INVALID_INPUT')){
+            // INVALID_INPUT from executeNativeResults is raised by local
+            // parameter count/encoding checks before any SQL packet is
+            // transmitted. Such a rejected cache hit must not retire its
+            // still-valid server-side statement handle.
             this.statementCache.drop(sql);
             await this.closeNative(prepared.id);
           }
@@ -816,6 +834,9 @@ export class MysqlSession implements RelationalSession {
     this.preparing++;
     try{
       return await this.serial(async()=>{
+        // Explicit prepare can evict implicit entries under the shared
+        // connection-wide handle ceiling. Validate SQL before doing so.
+        this.validatePreparedSql(sql);
         await this.reservePreparedCapacity(0);
         const {id,parameterCount}=await this.prepareNative(sql);
         let statement!:MysqlPreparedStatement;
