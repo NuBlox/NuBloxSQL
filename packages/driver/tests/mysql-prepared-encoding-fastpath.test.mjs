@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {execute,valuePacket} from '../dist/vendors/mysql/protocol/commands.js';
+import {execute,valuePacket,validateExecuteParameters} from '../dist/vendors/mysql/protocol/commands.js';
 import {u32,LIMIT,T} from '../dist/vendors/mysql/protocol/primitives.js';
 import {MAX_PARAMETERS} from '../dist/core/resources.js';
 
@@ -193,6 +193,42 @@ test('invalid later binds do not allocate the outgoing command',()=>{
     assert.throws(()=>execute(41,[Uint8Array.from([1,2]),'\ud800']),TypeError);
     assert.throws(()=>execute(41,[Buffer.alloc(1),BigInt('18446744073709551616')]),RangeError);
     assert.equal(allocations,0,'invalid input must fail before final packet allocation');
+  }finally{
+    Buffer.allocUnsafe=original;
+  }
+});
+
+
+test('allocation-free bind preflight matches execute wire size and validity',()=>{
+  const cases=[
+    [],[null],[true,false,0,-1,1.5,3n],
+    ['é漢字🚀',new Uint8Array([0,1,255]),2n**63n],
+    Array.from({length:MAX_PARAMETERS},(_,i)=>i%2?null:i)
+  ];
+  for(const params of cases)
+    assert.equal(validateExecuteParameters(params),execute(17,params).length);
+  const bad=[NaN,Infinity,Number.MAX_SAFE_INTEGER+1,
+    '\ud800',{},new Date(),undefined];
+  for(const value of bad)
+    assert.throws(()=>validateExecuteParameters([value]),TypeError);
+  assert.throws(()=>validateExecuteParameters([-(2n**63n)-1n]),RangeError);
+  assert.throws(()=>validateExecuteParameters([2n**64n]),RangeError);
+  assert.throws(()=>validateExecuteParameters(
+    Array.from({length:MAX_PARAMETERS+1},()=>null)),RangeError);
+  assert.throws(()=>validateExecuteParameters(null),TypeError);
+  assert.throws(()=>validateExecuteParameters({length:0}),TypeError);
+});
+
+test('cache-miss bind preflight never allocates a packet for invalid input',()=>{
+  const large=new Uint8Array(12*1024*1024);
+  const original=Buffer.allocUnsafe;
+  let allocations=0;
+  Buffer.allocUnsafe=function(...args){allocations++;return original.apply(Buffer,args);};
+  try{
+    assert.throws(()=>validateExecuteParameters([large,large,large]),
+      /Command exceeds limit/);
+    assert.throws(()=>validateExecuteParameters(['valid',Infinity]),TypeError);
+    assert.equal(allocations,0,'no final COM_STMT_EXECUTE allocation during preflight');
   }finally{
     Buffer.allocUnsafe=original;
   }

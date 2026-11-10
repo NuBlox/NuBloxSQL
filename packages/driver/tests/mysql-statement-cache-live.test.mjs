@@ -337,3 +337,114 @@ live('failed unacknowledged cached eviction revokes the socket, never reuses it'
     await db.close();
   }
 });
+
+
+live('invalid new bind values cannot evict a valid native cached statement',
+  {timeout:30000},async()=>{
+  const db=await connectDatabase(use(1));
+  const nativePrepare=db.prepareNative.bind(db);
+  const nativeClose=db.closeNative.bind(db);
+  let preparations=0,closes=0;
+  db.prepareNative=async(...args)=>{
+    preparations++;
+    return nativePrepare(...args);
+  };
+  db.closeNative=async(...args)=>{
+    closes++;
+    return nativeClose(...args);
+  };
+  try{
+    const keep='SELECT ? AS stable_binding';
+    const newSql='SELECT ? AS rejected_new_binding';
+    assert.equal((await db.query(keep,[11])).rows[0].stable_binding,11n);
+    const initial=db.statementCache.get(keep);
+    assert.ok(initial);
+    assert.equal(preparations,1);
+    for(const invalid of [
+      [NaN],[Infinity],[Number.MAX_SAFE_INTEGER+1],
+      [2n**64n],[-(2n**63n)-1n],['\ud800'],
+      [undefined],[{}],[new Date()],null
+    ]){
+      await assert.rejects(db.query(newSql,invalid),
+        e=>e.code==='INVALID_INPUT');
+      assert.equal(db.statementCache.get(keep)?.id,initial.id,
+        'a rejected binding must leave the prior prepared ID allocated');
+      assert.equal(db.statementCache.get(newSql),undefined);
+      assert.equal(db.statementCache.size,1);
+      assert.equal(preparations,1,'never prepare a new SQL handle');
+      assert.equal(closes,0,'never close a healthy cached SQL handle');
+      assert.equal(db.closed,false);
+    }
+    assert.equal((await db.query(keep,[12])).rows[0].stable_binding,12n);
+    assert.equal(preparations,1);
+  }finally{
+    db.prepareNative=nativePrepare;
+    db.closeNative=nativeClose;
+    await db.close();
+  }
+});
+
+live('invalid cached-hit binds retain the native handle and do not emit SQL',
+  {timeout:30000},async()=>{
+  const db=await connectDatabase(use(1));
+  const nativePrepare=db.prepareNative.bind(db);
+  const nativeClose=db.closeNative.bind(db);
+  let preparations=0,closes=0;
+  db.prepareNative=async(...args)=>{
+    preparations++;
+    return nativePrepare(...args);
+  };
+  db.closeNative=async(...args)=>{
+    closes++;
+    return nativeClose(...args);
+  };
+  try{
+    const sql='SELECT ? AS reused_binding';
+    assert.equal((await db.query(sql,[21])).rows[0].reused_binding,21n);
+    const originalId=db.statementCache.get(sql)?.id;
+    assert.ok(Number.isInteger(originalId));
+    for(const invalid of [[Infinity],['\ud800'],[undefined],[1,2],null]){
+      await assert.rejects(db.query(sql,invalid),
+        e=>e.code==='INVALID_INPUT');
+      assert.equal(db.statementCache.get(sql)?.id,originalId);
+      assert.equal(preparations,1);
+      assert.equal(closes,0);
+      assert.equal(db.closed,false);
+    }
+    assert.equal((await db.query(sql,[22])).rows[0].reused_binding,22n);
+    assert.equal(preparations,1);
+  }finally{
+    db.prepareNative=nativePrepare;
+    db.closeNative=nativeClose;
+    await db.close();
+  }
+});
+
+live('malformed explicit prepare SQL is validated before reserving native capacity',
+  {timeout:30000},async()=>{
+  const db=await connectDatabase(use(1));
+  const originalReserve=db.reservePreparedCapacity.bind(db);
+  let reservations=0;
+  db.reservePreparedCapacity=async(...args)=>{
+    reservations++;
+    return originalReserve(...args);
+  };
+  try{
+    assert.equal((await db.query('SELECT ? AS retained',[3]))
+      .rows[0].retained,3n);
+    const retained=db.statementCache.get('SELECT ? AS retained');
+    reservations=0; // ignore the legitimate initial cache-miss reservation
+    for(const sql of ['SELECT \0','\ud800','   ']){
+      await assert.rejects(db.prepare(sql),
+        e=>e.code==='INVALID_INPUT');
+      assert.equal(db.statementCache.get('SELECT ? AS retained')?.id,
+        retained.id);
+      assert.equal(reservations,0,'invalid explicit prepare must not reserve or evict');
+    }
+    assert.equal((await db.query('SELECT ? AS retained',[4]))
+      .rows[0].retained,4n);
+  }finally{
+    db.reservePreparedCapacity=originalReserve;
+    await db.close();
+  }
+});
