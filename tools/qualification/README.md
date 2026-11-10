@@ -8,9 +8,9 @@ security, migration/compatibility, operational and comparative evidence.
 ## Live concurrent prepared-statement cache and global-quota qualification
 
 The dedicated [native cache concurrency workflow](../../.github/workflows/mysql-cache-concurrency.yml)
-runs only against a disposable, pinned MySQL 8.4.11 service on GitHub
-Actions. It first verifies the exact server version and deliberately sets
-the server-wide `max_prepared_stmt_count` to **4**. The profile refuses to
+has two independent, disposable MySQL jobs in GitHub Actions.
+The original isolated-local job runs against pinned MySQL 8.4.11. It first verifies the exact server version and deliberately sets
+the server-wide `max_prepared_stmt_count` to **4**. The local profile refuses to
 run outside explicitly opted-in CI (`CI=true`, `NUBLOX_LIVE_MYSQL=1`,
 `NUBLOX_CACHE_BENCH_FIXTURE=1`) and uses literal loopback connections.
 **Never** change that setting on a shared, customer or production server.
@@ -48,6 +48,42 @@ dedicated hardware before making comparative claims.
 For deterministic tests (no MySQL service):
 
 `node --test tools/qualification/cache-concurrency.test.mjs`
+
+### Eight-connection verified-TLS cache qualification
+
+A **separate** job in the same workflow uses the established temporary-CA,
+TLS-required MySQL **8.4.13** fixture on loopback. It independently verifies
+the Docker image and server version, `require_secure_transport=1`, and sets
+the **disposable server-only** global prepared-statement ceiling to **8**.
+Eight physical native connections each use `statementCacheSize:1`, with
+**256 measured queries per mode across three alternating rounds**.
+This gives 768 measured queries each for uncached, cached-hot, and
+eviction-churn workloads, excluding four per-session warmups each round.
+
+Before measuring, the driver must establish certificate-verified TLS with
+server name `localhost`, report a negotiated session `Ssl_cipher`, confirm
+server-required secure transport, and **reject the unrelated test CA**.
+The fixture identity and GitHub run SHA are strictly checked; a local
+or shared database, wrong MySQL version, wrong port, missing CA, or unexpected
+concurrency cannot satisfy the runner admission rules.
+
+The report uses a distinct
+`artifacts/qualification/mysql-cache-concurrency-tls-<run-id>.json`
+filename. It records booleans describing verified TLS checks (never
+certificates, private keys, passwords, SQL, or result values). Performance
+Schema must count exactly eight prepared handles after warmup and query
+execution in the cached and churn cases, **zero** in the uncached case,
+and zero remaining after native session closure. This checks *intermittently
+at defined boundaries*; it is not a continuous occupancy trace.
+
+The two transport profiles run in **independent, pinned throwaway MySQL
+fixtures**; do not compare their absolute times as an isolated TLS overhead
+measurement. Both remain short, hosted CI diagnostics, not multi-hour
+endurance or production throughput evidence.
+
+Validate the fixture admission and negative security tests without MySQL:
+
+`node --test tools/qualification/cache-fixture.test.mjs tools/qualification/cache-concurrency.test.mjs`
 
 ## Current LTS verified-TLS qualification and evidence integrity
 

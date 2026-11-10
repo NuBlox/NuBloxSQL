@@ -3,7 +3,8 @@ name: MySQL native cache concurrency and global quota qualification
 on:
   pull_request:
     paths:
-      - 'tools/qualification/cache-concurrency*.mjs'
+      - 'tools/qualification/cache-*.mjs'
+      - 'tools/qualification/README.md'
       - '.github/workflows/mysql-cache-concurrency.yml'
       - 'packages/driver/**'
   push:
@@ -39,7 +40,7 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build
-          node --test tools/qualification/cache-concurrency.test.mjs
+          node --test tools/qualification/cache-concurrency.test.mjs tools/qualification/cache-fixture.test.mjs
       - name: Pin disposable server identity and enforce four global prepared handles
         shell: bash
         run: |
@@ -63,6 +64,9 @@ jobs:
           CI: 'true'
           NUBLOX_LIVE_MYSQL: '1'
           NUBLOX_CACHE_BENCH_FIXTURE: '1'
+          NUBLOX_TEST_MYSQL_VERSION: '8.4.11'
+          NUBLOX_QUALIFICATION_MYSQL_VERSION: '8.4.11'
+          MYSQL_DATABASE: nublox_test
           MYSQL_USER: root
           MYSQL_PASSWORD: test-password
           MYSQL_PORT: '3306'
@@ -74,3 +78,64 @@ jobs:
           path: artifacts/qualification/mysql-cache-concurrency-*.json
           if-no-files-found: warn
           retention-days: 60
+
+  cache-concurrency-tls:
+    name: mysql-cache-verified-tls-quota-8
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      NUBLOX_LIVE_MYSQL_TLS: '1'
+      NUBLOX_CACHE_BENCH_FIXTURE: '1'
+      NUBLOX_TEST_MYSQL_VERSION: '8.4.13'
+      NUBLOX_QUALIFICATION_MYSQL_VERSION: '8.4.13'
+      MYSQL_TLS_PORT: '3307'
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test-password
+      MYSQL_DATABASE: nublox_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Start pinned certificate-verified TLS-required MySQL service
+        run: bash packages/driver/tests/fixtures/start-mysql-tls.sh
+      - name: Build native driver and test fixture admission/security invariants
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          node --test tools/qualification/cache-fixture.test.mjs tools/qualification/cache-concurrency.test.mjs
+      - name: Require TLS and enforce exactly eight server-wide prepared handles
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="$(docker inspect -f '{{.Config.Image}}' nubloxsql-mysql-tls)"
+          test "$image" = mysql:8.4.13
+          mysql() {
+            docker exec -e MYSQL_PWD=test-password nubloxsql-mysql-tls \
+              mysql --protocol=tcp -h127.0.0.1 -uroot -N -s "$@"
+          }
+          version="$(mysql -e 'SELECT VERSION()')"
+          case "$version" in
+            8.4.13|8.4.13-*) ;;
+            *) echo 'Unqualified TLS fixture version' >&2; exit 1 ;;
+          esac
+          test "$(mysql -e 'SELECT @@global.require_secure_transport')" = 1
+          mysql -e 'SET GLOBAL max_prepared_stmt_count = 8'
+          test "$(mysql -e 'SELECT @@GLOBAL.max_prepared_stmt_count')" = 8
+      - name: Qualify eight concurrent certificate-verified sessions over three rounds
+        run: node tools/qualification/cache-concurrency-live.mjs --iterations=256 --concurrency=8 --rounds=3
+      - name: Preserve original redacted TLS latency and handle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-cache-concurrency-tls-${{ github.run_id }}
+          path: artifacts/qualification/mysql-cache-concurrency-tls-*.json
+          if-no-files-found: error
+          retention-days: 60
+      - name: Destroy ephemeral TLS fixture and private CA keys
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f nubloxsql-mysql-tls >/dev/null 2>&1 || true
+          rm -rf "$RUNNER_TEMP/nubloxsql-mysql-tls"
