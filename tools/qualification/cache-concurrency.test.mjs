@@ -131,3 +131,90 @@ test('invalid trial setup is rejected before opening connections',async()=>{
   }
   assert.equal(env.openSessions,0);
 });
+
+test('progress evidence preserves completed trials and failed round/mode without SQL',async()=>{
+  const fixtureEnv=fixture();
+  const stages=[],completed=[];
+  await assert.rejects(runCacheMatrix({
+    open:async mode=>{
+      if(mode==='churn')throw Error('injected native open failure');
+      return fixtureEnv.open(mode);
+    },
+    inspect:fixtureEnv.inspect,iterations:32,concurrency:4,rounds:2,
+    onStage:stage=>stages.push(stage),
+    onTrial:trial=>completed.push(trial)
+  }),/injected native open failure/);
+  assert.deepEqual(completed.map(x=>[x.round,x.mode]),
+    [[1,'uncached'],[1,'cached']]);
+  assert.deepEqual(stages.at(-1),
+    {round:1,mode:'churn',phase:'opening-sessions'});
+  assert.equal(fixtureEnv.openSessions,0);
+  assert.ok(stages.every(stage=>Object.isFrozen(stage)));
+  assert.equal(JSON.stringify(stages).includes(CACHE_HOT_SQL),false);
+});
+
+test('failed warmup preserves its phase while session cleanup still runs',async()=>{
+  const fixtureEnv=fixture({wrongResult:true});
+  const stages=[];
+  await assert.rejects(runCacheMatrix({
+    open:fixtureEnv.open,inspect:fixtureEnv.inspect,
+    iterations:32,concurrency:4,rounds:2,
+    onStage:stage=>stages.push(stage)
+  }),/Incorrect warmup SELECT value/);
+  assert.deepEqual(stages.at(-1),
+    {round:1,mode:'uncached',phase:'warming-sessions'});
+  assert.equal(fixtureEnv.openSessions,0);
+});
+
+test('qualification progress callbacks must be callable',async()=>{
+  const fixtureEnv=fixture();
+  for(const options of [{onStage:null},{onTrial:12}]){
+    await assert.rejects(runCacheMatrix({
+      open:fixtureEnv.open,inspect:fixtureEnv.inspect,
+      iterations:32,concurrency:4,rounds:2,...options
+    }),/Invalid cache qualification progress callback/);
+  }
+  assert.equal(fixtureEnv.openSessions,0);
+});
+
+test('uncached census tolerates delayed unacknowledged server CLOSE packets',async()=>{
+  const env=fixture();
+  let reads=0;
+  const inspect=async()=>{
+    reads++;
+    // Before: zero. After warmup and after measured queries: two
+    // transient nonzero counts before a second connection sees the CLOSEs.
+    if([2,3,5,6].includes(reads))return 1;
+    return env.inspect();
+  };
+  const trial=await runCacheTrial({
+    open:env.open,inspect,mode:'uncached',
+    iterations:32,concurrency:4
+  });
+  assert.equal(trial.preparedAfterWarmup,0);
+  assert.equal(trial.preparedAfterWork,0);
+  assert.equal(trial.preparedAfterClose,0);
+  assert.ok(reads>=8);
+  assert.equal(env.openSessions,0);
+});
+
+test('uncached census still fails when server CLOSE remains unobserved',async()=>{
+  const env=fixture();
+  let reads=0;
+  const inspect=async()=>{
+    reads++;
+    // Preflight reads zero; the next 25 reads never settle. The final
+    // cleanup census succeeds, so the original bounded-check error remains.
+    if(reads>=2&&reads<=26)return 1;
+    return 0;
+  };
+  const stages=[];
+  await assert.rejects(runCacheTrial({
+    open:env.open,inspect,mode:'uncached',
+    iterations:32,concurrency:4,
+    onPhase:stage=>stages.push(stage)
+  }),/Unexpected native server prepared-statement count during after warmup/);
+  assert.equal(stages.at(-1),'warmup-census');
+  assert.equal(env.openSessions,0);
+  assert.equal(reads,27);
+});

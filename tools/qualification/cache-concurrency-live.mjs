@@ -38,6 +38,7 @@ const report={
     churnPurpose:'global-quota enforcement and eviction correctness'
   },
   observations:[],
+  progress:{round:null,mode:null,phase:'not-started'},
   errors:{codes:[]},
   caveat:'Disposable loopback MySQL only; timings include real SQL/network and session scheduling. Results are diagnostic, not commercial latency claims.'
 };
@@ -76,8 +77,13 @@ try{
     open:mode=>connectDatabase({
       ...profile.target,statementCacheSize:mode==='uncached'?0:1
     }),
-    inspect,...options
+    inspect,...options,
+    // Preserve already validated trials and a strictly enumerated,
+    // non-sensitive stage when a later MySQL operation fails.
+    onStage:stage=>{report.progress=stage;},
+    onTrial:trial=>{report.observations.push(trial);}
   });
+  report.progress={round:null,mode:null,phase:'completed'};
   report.status='passed';
 }catch(error){
   report.status='failed';
