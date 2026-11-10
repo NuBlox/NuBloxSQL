@@ -43,6 +43,17 @@ trials remain visible instead of being discarded. This metadata identifies
 the failing stage, **not** the underlying cause; redacted error codes remain
 authoritative, and failures must never be retried automatically.
 
+A native `COM_STMT_CLOSE` command has **no server acknowledgement**.
+The uncached workload can therefore finish writing its final close to one
+socket before a Performance Schema observer on a *different* socket sees it.
+For uncached warmup and post-query census only, the runner polls for exactly
+**zero** prepared handles for at most 25 samples spaced 40 ms apart
+(roughly one second); a count that fails to settle still fails qualification.
+This is **not** an automatic SQL retry or a relaxation of cached/churn
+handle-count assertions. It prevents a cross-session observation-ordering
+race from masquerading as a leaked handle, while retaining a clear bound
+and explicit negative regression coverage.
+
 The redacted report is written to
 `artifacts/qualification/mysql-cache-concurrency-<run-id>.json` and
 uploaded as a workflow artifact for 60 days. It records per-operation
