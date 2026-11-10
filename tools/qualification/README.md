@@ -34,6 +34,15 @@ work, unreleased handles and errors fail the workflow. There is **no
 automatic SQL retry**. The observer uses `queryText`, not a fifth
 server-side prepared handle.
 
+To make intermittent CI failures diagnosable without emitting SQL or
+credentials, the report also retains each **completed** trial immediately,
+plus a small enumerated `progress` record with the active round, one of the
+three fixed workload modes, and the last confirmed phase (opening, warmup,
+measurement, census or cleanup). When a later trial fails, earlier completed
+trials remain visible instead of being discarded. This metadata identifies
+the failing stage, **not** the underlying cause; redacted error codes remain
+authoritative, and failures must never be retried automatically.
+
 The redacted report is written to
 `artifacts/qualification/mysql-cache-concurrency-<run-id>.json` and
 uploaded as a workflow artifact for 60 days. It records per-operation

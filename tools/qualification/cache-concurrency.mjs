@@ -45,21 +45,26 @@ async function awaitReleased(inspect){
  * No pooling, cross-lease caching, retries, or unbounded scheduling.
  * Samples are end-to-end SQL command time, including real round trips. */
 export async function runCacheTrial({
-  open,inspect,mode,iterations,concurrency,now=()=>performance.now()
+  open,inspect,mode,iterations,concurrency,now=()=>performance.now(),
+  onPhase=()=>{}
 }){
   if(!CACHE_MODES.includes(mode)||typeof open!=='function'||
-    typeof inspect!=='function'||typeof now!=='function')
+    typeof inspect!=='function'||typeof now!=='function'||
+    typeof onPhase!=='function')
     throw Error('Invalid cache trial inputs');
   if(!Number.isSafeInteger(iterations)||iterations<1||
     !Number.isSafeInteger(concurrency)||concurrency<1||concurrency>8||
     iterations<concurrency)
     throw Error('Invalid bounded cache trial work');
+  onPhase('before-trial');
   checkHandleCount(await inspect(),0,'before trial');
   const sessions=[];
-  let result;
+  let result,primaryFailed=false;
   try{
+    onPhase('opening-sessions');
     for(let worker=0;worker<concurrency;worker++)
       sessions.push(await open(mode));
+    onPhase('warming-sessions');
     // Identical warmup quantity, query and bound types for both comparable
     // hot workloads; churn deliberately starts with the same hot statement.
     for(let worker=0;worker<sessions.length;worker++)
@@ -68,11 +73,13 @@ export async function runCacheTrial({
         if(value.rows[0]?.value!==BigInt(-1-warm))
           throw Error('Incorrect warmup SELECT value');
       }
+    onPhase('warmup-census');
     const expectedHandles=mode==='uncached'?0:concurrency;
     const preparedAfterWarmup=await inspect();
     checkHandleCount(preparedAfterWarmup,expectedHandles,'after warmup');
     let next=0;
     const samples=[];
+    onPhase('measured-queries');
     const started=now();
     await Promise.all(sessions.map(session=>(async()=>{
       let local=0;
@@ -91,6 +98,7 @@ export async function runCacheTrial({
       }
     })()));
     const elapsed=now()-started;
+    onPhase('post-work-census');
     const preparedAfterWork=await inspect();
     checkHandleCount(preparedAfterWork,expectedHandles,'after workload');
     const latency=summarize(samples,elapsed);
@@ -101,20 +109,29 @@ export async function runCacheTrial({
       maxExpectedServerHandles:concurrency,
       latency
     };
+  }catch(error){
+    // Keep the original failed stage when closing sessions in finally.
+    primaryFailed=true;
+    throw error;
   }finally{
+    if(!primaryFailed)onPhase('closing-sessions');
     // Never leave open sessions after a failed assertion or SQL error.
     const closed=await Promise.allSettled(sessions.map(s=>s.close()));
     if(closed.some(x=>x.status==='rejected'))
       throw Error('Native cache trial session cleanup failed');
+    if(!primaryFailed)onPhase('release-census');
     await awaitReleased(inspect);
   }
+  onPhase('completed');
   return Object.freeze({...result,preparedAfterClose:0});
 }
 
 export async function runCacheMatrix({
   open,inspect,iterations=64,concurrency=4,rounds=2,
-  now=()=>performance.now()
+  now=()=>performance.now(),onStage=()=>{},onTrial=()=>{}
 }){
+  if(typeof onStage!=='function'||typeof onTrial!=='function')
+    throw Error('Invalid cache qualification progress callback');
   const opts=cacheProfileOptions([
     '--iterations='+iterations,'--concurrency='+concurrency,'--rounds='+rounds
   ]);
@@ -125,11 +142,15 @@ export async function runCacheMatrix({
     const order=round%2===1
       ?CACHE_MODES:['cached','uncached','churn'];
     for(const mode of order){
+      const stage=phase=>onStage(Object.freeze({round,mode,phase}));
+      stage('trial-start');
       const trial=await runCacheTrial({
         open,inspect,mode,iterations:opts.iterations,
-        concurrency:opts.concurrency,now
+        concurrency:opts.concurrency,now,onPhase:stage
       });
-      results.push(Object.freeze({round,...trial}));
+      const observation=Object.freeze({round,...trial});
+      results.push(observation);
+      onTrial(observation);
     }
   }
   return Object.freeze(results);
