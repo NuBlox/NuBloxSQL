@@ -28,6 +28,21 @@ function checkHandleCount(actual,expected,phase){
     throw Error('Unexpected native server prepared-statement count during '+phase);
 }
 
+/** COM_STMT_CLOSE has no server response. On a different connection,
+ * a Performance Schema census can race the last unacknowledged close in the
+ * uncached query lifecycle. Wait only for the *expected* exact count, then
+ * fail if it does not settle within 1 second. Never hide SQL errors. */
+async function awaitCensusSettled(inspect,expected,phase){
+  for(let i=0;i<25;i++){
+    const count=await inspect();
+    if(!Number.isSafeInteger(count)||count<0)
+      throw Error('Invalid server prepared-statement census');
+    if(count===expected)return count;
+    if(i<24)await new Promise(resolve=>setTimeout(resolve,40));
+  }
+  throw Error('Unexpected native server prepared-statement count during '+phase);
+}
+
 /** Poll bounded server-side ownership after destroying the native sockets.
  * The TCP-close callback and server Performance Schema cleanup may race. */
 async function awaitReleased(inspect){
@@ -75,7 +90,9 @@ export async function runCacheTrial({
       }
     onPhase('warmup-census');
     const expectedHandles=mode==='uncached'?0:concurrency;
-    const preparedAfterWarmup=await inspect();
+    const preparedAfterWarmup=mode==='uncached'
+      ?await awaitCensusSettled(inspect,0,'after warmup')
+      :await inspect();
     checkHandleCount(preparedAfterWarmup,expectedHandles,'after warmup');
     let next=0;
     const samples=[];
@@ -99,7 +116,9 @@ export async function runCacheTrial({
     })()));
     const elapsed=now()-started;
     onPhase('post-work-census');
-    const preparedAfterWork=await inspect();
+    const preparedAfterWork=mode==='uncached'
+      ?await awaitCensusSettled(inspect,0,'after workload')
+      :await inspect();
     checkHandleCount(preparedAfterWork,expectedHandles,'after workload');
     const latency=summarize(samples,elapsed);
     if(latency.count!==iterations)
