@@ -153,7 +153,7 @@ live('LRU eviction closes oldest server statement without protocol desync',async
   }
 });
 
-live('invalid binds and recoverable server failures evict without automatic replay',async()=>{
+live('local invalid binds retain cached handles while server failures never auto-replay',async()=>{
   const db=await connectDatabase(use(2));
   const originalPrepare=db.prepareNative.bind(db);
   const originalClose=db.closeNative.bind(db);
@@ -165,16 +165,16 @@ live('invalid binds and recoverable server failures evict without automatic repl
     assert.equal(prepares,1);
     await assert.rejects(db.query('SELECT ? AS value',[Infinity]),
       error=>error.code==='INVALID_INPUT');
-    assert.equal(closes,1,'INVALID_INPUT must not leave a cached handle');
+    assert.equal(closes,0,'local pre-wire INVALID_INPUT preserves cached handle');
     assert.equal((await db.query('SELECT ? AS value',[2]))
       .rows[0].value,2n);
-    assert.equal(prepares,2,'fresh handle after failed input');
+    assert.equal(prepares,1,'reuse same native handle after bad input');
     await assert.rejects(db.query('SELECT ? AS failure FROM nublox_statement_cache_missing_table',[1]),
       error=>error.code==='DATABASE_ERROR');
     assert.equal(db.closed,false);
     assert.equal((await db.query('SELECT ? AS value',[3]))
       .rows[0].value,3n);
-    assert.equal(prepares,3,'SQL errors never replay submitted writes');
+    assert.equal(prepares,2,'failed server prepare is attempted once, never replayed');
   }finally{
     db.prepareNative=originalPrepare;
     db.closeNative=originalClose;
