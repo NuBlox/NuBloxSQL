@@ -34,8 +34,9 @@ test('bounded LRU retains exact SQL keys and evicts least recently used handle',
   assert.equal(cache.remember('SELECT ? AS a',prepared(1)),undefined);
   assert.equal(cache.remember('SELECT ? AS b',prepared(2)),undefined);
   assert.equal(cache.size,2);
-  assert.equal(cache.get('SELECT ? AS a')?.id,1);
-  assert.equal(cache.remember('SELECT ? AS a',prepared(1)),undefined);
+  const hit=cache.get('SELECT ? AS a');
+  assert.equal(hit?.id,1);
+  cache.promoteHit('SELECT ? AS a',hit);
   assert.deepEqual(cache.removeOldest(),prepared(2));
   cache.remember('SELECT ? AS b',prepared(3));
   assert.deepEqual(cache.remember('SELECT ? AS c',prepared(4)),prepared(1));
@@ -74,4 +75,16 @@ test('implicit cache never retains oversized SQL keys or lossy UTF-8 lengths',()
   assert.equal(cacheableMysqlSql(null),false);
   assert.equal(cacheableMysqlSql({toString(){throw Error('unsafe coercion');}}),
     false);
+});
+
+test('a successful single-entry hit retains the same handle without rewriting it',()=>{
+  const cache=new MysqlStatementCache(1);
+  const handle=prepared(1);
+  cache.remember('SELECT ?',handle);
+  const entries=cache.entries;
+  entries.delete=()=>assert.fail('single-entry hit must not delete');
+  entries.set=()=>assert.fail('single-entry hit must not reinsert');
+  cache.promoteHit('SELECT ?',handle);
+  assert.equal(cache.get('SELECT ?'),handle);
+  assert.equal(cache.size,1);
 });
