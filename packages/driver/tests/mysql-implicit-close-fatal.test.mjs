@@ -19,12 +19,13 @@ class FixtureSocket extends EventEmitter {
   }
 }
 
-function fixture(){
+function fixture(statementCacheSize=0){
   const socket=new FixtureSocket();
   const stream=new PacketStream(socket);
   const session=new MysqlSession(stream,socket,{
     engine:'mysql',host:'127.0.0.1',port:3306,user:'fixture',
-    password:'',database:'',security:'isolated-local',timeoutMs:2000
+    password:'',database:'',security:'isolated-local',timeoutMs:2000,
+    statementCacheSize
   },{
     version:'8.4.11-fixture',plugin:'caching_sha2_password',
     seed:Buffer.alloc(20),id:1,flags:0
@@ -112,4 +113,38 @@ test('pool never reuses a session after implicit close fails',async()=>{
   }finally{await pool.close();}
   assert.ok(sessions.every(({socket})=>socket.destroyed));
   assert.equal(pool.stats.size,0);
+});
+
+test('implicit cache hits keep the handle and only successful execution promotes it',async()=>{
+  const {session}=fixture(2);
+  const prepared=[],closed=[],executed=[];
+  session.prepareNative=async sql=>{
+    prepared.push(sql);
+    return {id:prepared.length,parameterCount:1};
+  };
+  session.closeNative=async id=>{closed.push(id);};
+  session.executeNativeResults=async(id,expected,params)=>{
+    assert.equal(expected,1);
+    executed.push(id);
+    if(params[0]===null)throw fail('INVALID_INPUT','fixture rejected bind');
+    return [result];
+  };
+  const a='SELECT ? AS a',b='SELECT ? AS b',c='SELECT ? AS c',d='SELECT ? AS d';
+  const oversized='SELECT ? /*'+'é'.repeat(4096)+'*/';
+  try{
+    await session.query(a,[1]);
+    await session.query(b,[1]);
+    await assert.rejects(session.query(a,[null]),{code:'INVALID_INPUT'});
+    assert.deepEqual(closed,[],'a rejected local bind keeps its handle');
+    await session.query(c,[1]);
+    assert.deepEqual(closed,[1],'failed execution must not promote the oldest entry');
+    await session.queryResults(b,[2]);
+    await session.query(d,[1]);
+    assert.deepEqual(closed,[1,3],'a successful hit promotes its original handle');
+    await session.query(oversized,[1]);
+    await session.query(oversized,[2]);
+    assert.deepEqual(prepared,[a,b,c,d,oversized,oversized]);
+    assert.deepEqual(closed,[1,3,5,6],'oversized keys bypass the cache without eviction');
+    assert.deepEqual(executed,[1,2,1,3,2,4,5,6]);
+  }finally{await session.close();}
 });

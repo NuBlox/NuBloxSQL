@@ -391,10 +391,9 @@ export class MysqlSession implements RelationalSession {
   }
 
   private async executeCachedResults(
-    sql:string,params:readonly BindValue[]
+    sql:string,params:readonly BindValue[],cached?:CachedMysqlStatement
   ):Promise<QueryResult[]>{
-    let prepared:CachedMysqlStatement|undefined=this.statementCache.get(sql);
-    const reused=prepared!==undefined;
+    let prepared=cached;
     if(!prepared){
       // Check SQL before evicting: malformed local input must leave the
       // existing cache usable. Server max_prepared_stmt_count is global, so
@@ -426,8 +425,9 @@ export class MysqlSession implements RelationalSession {
       if(!this.closed){
         try{
           if(successful){
-            if(!reused&&
-               this.statements.size+this.preparing+
+            if(cached){
+              this.statementCache.promoteHit(sql,cached);
+            }else if(this.statements.size+this.preparing+
                  this.statementCache.size>=MAX_PREPARED_STATEMENTS){
               // A queued explicit prepare reserved the final slot while
               // this query executed. Close rather than consuming its slot.
@@ -442,7 +442,7 @@ export class MysqlSession implements RelationalSession {
                 }
               }
             }
-          }else if(!(reused&&executionError instanceof DriverError&&
+          }else if(!(cached&&executionError instanceof DriverError&&
               executionError.code==='INVALID_INPUT')){
             // INVALID_INPUT from executeNativeResults is raised by local
             // parameter count/encoding checks before any SQL packet is
@@ -464,8 +464,14 @@ export class MysqlSession implements RelationalSession {
   private async executeResults(
     sql:string,params:readonly BindValue[]
   ):Promise<QueryResult[]>{
-    if(this.statementCache.capacity>0&&cacheableMysqlSql(sql))
-      return this.executeCachedResults(sql,params);
+    if(this.statementCache.capacity>0){
+      // Exact cache hits were already validated and sized on admission.
+      // Keep the lookup inside the serialized command and leave failed
+      // hits unpromoted until executeCachedResults confirms success.
+      const cached=this.statementCache.get(sql);
+      if(cached||cacheableMysqlSql(sql))
+        return this.executeCachedResults(sql,params,cached);
+    }
     const prepared=await this.prepareNative(sql);
     let executionFailed=false;
     let executionError:unknown;

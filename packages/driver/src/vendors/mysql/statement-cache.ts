@@ -29,7 +29,14 @@ export class MysqlStatementCache {
   get(sql:string):CachedMysqlStatement|undefined{
     return this.entries.get(sql);
   }
-  /** Refresh LRU only after confirmed successful execution. */
+  /** Called inside the serialized command for an existing successful hit.
+   * With only one entry there is no LRU order to update. */
+  promoteHit(sql:string,prepared:CachedMysqlStatement):void{
+    if(this.entries.size<=1)return;
+    this.entries.delete(sql);
+    this.entries.set(sql,prepared);
+  }
+  /** Admit a newly executed handle. */
   remember(sql:string,prepared:CachedMysqlStatement):CachedMysqlStatement|undefined{
     if(this.capacity===0)
       throw fail('INVALID_INPUT','MySQL statement caching is disabled');

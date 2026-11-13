@@ -63,7 +63,9 @@ try {
   prepare/execute/close lifecycle, bounding retained SQL-key bytes to
   **128 KiB per connection** (16 × 8 KiB).
 - Up to 16 reusable handles can be retained per native connection.
-  Entries are refreshed **only after completed successful executions**.
+  Only new SQL texts need the UTF-8 cache-size check. Cache hits refresh
+  recency **only after successful execution**, and a sole entry needs
+  no reordering.
   When this connection's cache is full, the least-recently-used handle is
   explicitly closed **before preparing** a different SQL text. This prevents
   a temporary extra handle from exceeding a restrictive server-wide
