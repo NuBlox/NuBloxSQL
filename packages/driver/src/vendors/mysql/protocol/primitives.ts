@@ -25,4 +25,53 @@ export const utf=(s:string):Buffer=>{
 export const cstr=(s:string):Buffer=>Buffer.concat([utf(s),Buffer.from([0])]);
 export function size(n:number):Buffer{if(!Number.isSafeInteger(n)||n<0)throw Error('Invalid length');if(n<251)return Buffer.from([n]);if(n<=65535)return Buffer.concat([Buffer.from([252]),u16(n)]);if(n<=16777215)return Buffer.from([253,n&255,(n>>8)&255,(n>>16)&255]);const b=Buffer.alloc(9);b[0]=254;b.writeBigUInt64LE(BigInt(n),1);return b;}
 export const sized=(b:Buffer):Buffer=>Buffer.concat([size(b.length),b]);
-export class Cursor{readonly b:Buffer; p:number;constructor(b:Buffer){this.b=b;this.p=0;}take(n:number):Buffer{if(!Number.isInteger(n)||n<0||n>this.b.length-this.p)throw Error('Malformed MySQL packet');const v=this.b.subarray(this.p,this.p+n);this.p+=n;return v;}byte():number{return this.take(1)[0];}two():number{return this.take(2).readUInt16LE();}four():number{return this.take(4).readUInt32LE();}eight():bigint{return this.take(8).readBigUInt64LE();}len():number|null{const n=this.byte();if(n<251)return n;if(n===251)return null;if(n===252)return this.two();if(n===253){const a=this.take(3);return a[0]+(a[1]<<8)+(a[2]<<16);}if(n===254){const v=this.eight();if(v>BigInt(Number.MAX_SAFE_INTEGER))throw Error('Overlarge length');return Number(v);}throw Error('Invalid encoded length');}lbytes():Buffer|null{const n=this.len();return n===null?null:this.take(n);}lstr():string|null{return this.lbytes()?.toString('utf8')??null;}zero():string{const i=this.b.indexOf(0,this.p);if(i<0)throw Error('Missing terminator');const s=this.b.toString('utf8',this.p,i);this.p=i+1;return s;}remaining():number{return this.b.length-this.p;}}
+export class Cursor {
+  readonly b:Buffer;
+  p:number;
+  constructor(b:Buffer){this.b=b;this.p=0;}
+  take(n:number):Buffer{
+    if(!Number.isInteger(n)||n<0||n>this.b.length-this.p)
+      throw Error('Malformed MySQL packet');
+    const v=this.b.subarray(this.p,this.p+n);
+    this.p+=n;
+    return v;
+  }
+  /** Fixed-size fields need no temporary Buffer view. Advance only after
+   * confirming the entire field fits, just as take() does. */
+  private advance(n:number):number{
+    const offset=this.p;
+    if(n>this.b.length-offset)throw Error('Malformed MySQL packet');
+    this.p=offset+n;
+    return offset;
+  }
+  byte():number{return this.b[this.advance(1)];}
+  two():number{return this.b.readUInt16LE(this.advance(2));}
+  four():number{return this.b.readUInt32LE(this.advance(4));}
+  eight():bigint{return this.b.readBigUInt64LE(this.advance(8));}
+  len():number|null{
+    const n=this.byte();
+    if(n<251)return n;
+    if(n===251)return null;
+    if(n===252)return this.two();
+    if(n===253){
+      const offset=this.advance(3);
+      return this.b[offset]+(this.b[offset+1]<<8)+(this.b[offset+2]<<16);
+    }
+    if(n===254){
+      const v=this.eight();
+      if(v>BigInt(Number.MAX_SAFE_INTEGER))throw Error('Overlarge length');
+      return Number(v);
+    }
+    throw Error('Invalid encoded length');
+  }
+  lbytes():Buffer|null{const n=this.len();return n===null?null:this.take(n);}
+  lstr():string|null{return this.lbytes()?.toString('utf8')??null;}
+  zero():string{
+    const i=this.b.indexOf(0,this.p);
+    if(i<0)throw Error('Missing terminator');
+    const s=this.b.toString('utf8',this.p,i);
+    this.p=i+1;
+    return s;
+  }
+  remaining():number{return this.b.length-this.p;}
+}
