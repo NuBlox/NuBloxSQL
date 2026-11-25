@@ -70,15 +70,16 @@ function scalar(bytes:Buffer,column:MysqlColumn):unknown{
   if(type===T.BIT||type===T.GEOMETRY)return bytes;
   if(type===T.JSON){
     // JSON column metadata can use a binary collation while payloads are
-    // UTF-8 text. Preserve the serialized representation and exact digits.
-    return new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+    // UTF-8 text. Preserve the serialized representation and exact digits,
+    // including a leading U+FEFF if present in the wire bytes.
+    return new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
   }
   if(type===T.VARCHAR||type===T.VAR_STRING||type===T.STRING||
      type===T.BLOB||type===T.TINY_BLOB||type===T.MEDIUM_BLOB||
      type===T.LONG_BLOB)
     return column.charset===63?bytes:textValue(bytes,column.charset);
   if(type===T.ENUM||type===T.SET)
-    return column.charset===63?new TextDecoder('utf-8',{fatal:true}).decode(bytes):
+    return column.charset===63?new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes):
       textValue(bytes,column.charset);
   if(type===T.NULL)
     throw Error('Unexpected value for MySQL NULL column type');

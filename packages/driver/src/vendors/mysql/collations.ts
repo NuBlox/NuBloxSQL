@@ -8,7 +8,8 @@
  * ID -> character-set mappings are exercised against the real server's
  * INFORMATION_SCHEMA.COLLATIONS in mysql-collations-live.test.mjs.
  */
-const utf8=new TextDecoder('utf-8',{fatal:true});
+// A database cell is not a file: leading U+FEFF is stored data, not a BOM to strip.
+const utf8=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true});
 const western=new TextDecoder('windows-1252',{fatal:true});
 
 type CharsetName=

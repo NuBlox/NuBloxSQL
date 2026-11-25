@@ -2,7 +2,8 @@ import {Cursor,T} from './protocol/primitives.js';
 import type {MysqlColumn} from '../../core/contracts.js';
 
 const pad=(n:number,width=2):string=>String(n).padStart(width,'0');
-const utf8=new TextDecoder('utf-8',{fatal:true});
+// Preserve leading U+FEFF in serialized values and binary-collated ENUM/SET.
+const utf8=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true});
 export {decodeMysqlText as textValue} from './collations.js';
 import {decodeMysqlText} from './collations.js';
 const textValue=decodeMysqlText;
