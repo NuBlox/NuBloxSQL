@@ -72,6 +72,18 @@ Source paths are relative to packages/driver/src; test paths are relative to pac
 
 Performance artifact metadata observed: concurrent comparison 15071907581 (expires 2026-12-09), native profile 15072217619 (expires 2026-12-09), TLS comparison 15071224213 and decision 15071982435 (expire 2027-01-24). Each identifies the audited main SHA. Download and securely retain redacted raw reports before expiry, verify digests against API metadata, then derive a baseline with environment/workload semantics and variability. No comparative speed or memory claim from this ledger alone.
 
+## Preserved performance report snapshots
+
+The [baseline report snapshot](evidence/mysql-performance-aa0e3b94.json) retains seven JSON reports from the original three workflow job logs, including 48 comparative trial summaries, ten synthetic stage summaries and both repeated-run analyses. It preserves original reported metrics, strips the runner-local path, and records source revision, run/job IDs and GitHub-reported artifact ZIP digests. It is not a byte-for-byte copy of the original ZIP archives; archive bytes have not been verified.
+
+| Workload | Local TCP p50 ratio (native / mysql2) | Verified TLS p50 ratio |
+|---|---:|---:|
+| Connection only | 0.525636 | 0.951894 |
+| Prepared sequential | 1.139433 | 1.150350 |
+| Prepared concurrent | 1.455896 | 1.229234 |
+
+Ratios are geometric means of paired run summaries, not throughput ratios. Reference is mysql2 3.24.6. Transports use different pinned server versions (8.4.11 local, 8.4.13 TLS), so this is not a controlled TLS overhead experiment. Both analyses report inconclusive evidence (two runs, two rounds, 12 operations per trial, concurrency 2). Concurrent prepared execution is a WP30 investigation candidate, not a proven bottleneck attribution or justification for skipping WP10/WP20. Refresh on a frozen candidate with larger matched workloads. Original ZIP retention/digest verification remains open.
+
 ## Ranked execution queue
 
 | Rank | Work package | Deliverable and acceptance |
