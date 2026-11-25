@@ -106,3 +106,28 @@ test('raw binary collation stays bytes, including invalid text encodings',()=>{
   assert.deepEqual(textValues(textRow(value),[column(63,T.VAR_STRING)])[0],
     value);
 });
+
+test('UTF-8 leading U+FEFF remains data in both row protocols',()=>{
+  const values=['\ufeff','\ufeffabc','\ufeff\ufeffé','abc\ufeff',''];
+  for(const id of [33,45,46,83,192,224,255,309]){
+    for(const value of values){
+      const bytes=Buffer.from(value,'utf8');
+      assert.equal(decodeMysqlText(bytes,id),value,'collation '+id);
+      assert.equal(binaryValues(binaryRow(bytes),[column(id)])[0],value);
+      assert.equal(textValues(textRow(bytes),[column(id)])[0],value);
+    }
+  }
+  const unicode='\ufeffé🚀';
+  const bytes=Buffer.from(unicode);
+  for(const type of [T.ENUM,T.SET]){
+    assert.equal(binaryValues(binaryRow(bytes),[column(63,type)])[0],unicode);
+    assert.equal(textValues(textRow(bytes),[column(63,type)])[0],unicode);
+  }
+  const corrupt=Buffer.from([0xef,0xbb,0xbf,0xff]);
+  assert.throws(()=>decodeMysqlText(corrupt,45));
+  assert.throws(()=>binaryValues(binaryRow(corrupt),[column(45)]));
+  assert.throws(()=>textValues(textRow(corrupt),[column(45)]),e=>e.code==='PROTOCOL_ERROR');
+  // A binary-collated byte column is still bytes, not decoded text.
+  assert.deepEqual(binaryValues(binaryRow(bytes),[column(63)])[0],bytes);
+  assert.deepEqual(textValues(textRow(bytes),[column(63)])[0],bytes);
+});

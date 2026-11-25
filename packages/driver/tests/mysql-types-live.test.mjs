@@ -78,3 +78,23 @@ live('real prepared query rejects data loss from unknown text conversion while p
    assert.equal(db.closed,false);
  }finally{await db.close();}
 });
+
+live('leading U+FEFF survives a real MySQL UTF-8 roundtrip in prepared and text protocols',async()=>{
+ const db=await connectDatabase(target);
+ try{
+  await db.query('CREATE TEMPORARY TABLE nublox_unicode_prefix (id INT PRIMARY KEY, value TEXT CHARACTER SET utf8mb4)');
+  const samples=['\ufeff','\ufeffabc','\ufeff\ufeffé🚀','abc\ufeff',''];
+  for(const [id,value] of samples.entries())
+   await db.query('INSERT INTO nublox_unicode_prefix (id,value) VALUES (?,?)',[id,value]);
+  for(const result of [
+   await db.query('SELECT value, HEX(value) AS encoded FROM nublox_unicode_prefix ORDER BY id'),
+   await db.queryText('SELECT value, HEX(value) AS encoded FROM nublox_unicode_prefix ORDER BY id')
+  ]){
+   assert.deepEqual(result.rows.map(row=>row.value),samples);
+   assert.deepEqual(result.rows.map(row=>row.encoded),
+     samples.map(value=>Buffer.from(value,'utf8').toString('hex').toUpperCase()));
+   assert.deepEqual(result.rowValues.map(row=>row[0]),samples);
+  }
+  assert.equal(db.closed,false);
+ }finally{await db.close();}
+});
