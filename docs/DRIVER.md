@@ -1,6 +1,6 @@
 # NuBloxSQL Driver — universal native architecture blueprint
 
-**Status:** engineering design proposal, 18 October 2026; pending founder approval. **Not implemented.** This document defines an actionable technical direction for the Driver only. The authoritative description of the product and its outcomes remains [PRODUCT.md](PRODUCT.md). This blueprint must not expand or redefine the product.
+**Status:** original architecture blueprint, 18 October 2026; implementation status reconciled 25 November 2026. The first-party MySQL vertical slice is implemented in pre-commercial engineering form; the full universal architecture and release acceptance gates are not complete. See [RELEASE.md](RELEASE.md) and [MYSQL-CAPABILITY-BASELINE.md](MYSQL-CAPABILITY-BASELINE.md). This document defines an actionable technical direction for the Driver only. The authoritative description of the product and its outcomes remains [PRODUCT.md](PRODUCT.md). This blueprint must not expand or redefine the product.
 
 ## 1. Outcome, not a collection of modules
 
@@ -114,7 +114,7 @@ The final names and programming language are **not** approved by this blueprint,
 
 ## 6. First complete vertical slice — proposal
 
-**First target (proposed): MySQL 8.4 LTS, local/isolated and verified-TLS TCP.** This choice follows the initial goal of developing a complete proprietary MySQL-capable driver module, not a commitment that other vendors or cloud products can already connect. Later target versions/deployments are separately qualified.
+**First engineering target: MySQL 8.4 LTS, local/isolated and verified-TLS TCP.** This choice follows the initial goal of developing a complete proprietary MySQL-capable driver module, not a commitment that other vendors or cloud products can already connect. Later target versions/deployments are separately qualified.
 
 **First user journey:** An application developer installs the NuBloxSQL Driver from a clean package, connects securely to a **real MySQL instance**, proves server identity, discovers server/schema information, runs parameterised reads and writes using **server-prepared statements**, controls a transaction, receives precise results/errors and closes every resource.
 
@@ -153,10 +153,10 @@ This ordering does not prevent security or correctness fixes. It prevents spread
 ## 8. Decision controls
 
 - Product scope and identity: **[PRODUCT.md](PRODUCT.md)** is authoritative.
-- This document: Driver architecture **proposal**, not a mandate to implement all files.
-- First vendor and technology choices: provisional until approved and verified.
+- This document: Driver architecture blueprint, not a mandate to implement all files.
+- First implemented vendor: MySQL; further vendor and deployment choices remain provisional until approved and verified.
 - Historic source: available in [ARCHIVES.md](ARCHIVES.md), but never automatically reintroduced.
 - External examples may inform engineering judgement **privately**; repo code, comments, commits and documentation must be original NuBloxSQL work.
 - Any architecture change must preserve public contract correctness, Native fidelity, testability and honest capability evidence.
 
-**Next actionable engineering decision:** approve or adjust the first complete Driver user journey and its exact supported MySQL target matrix; only then create the first runtime module and implement Gates A–J end to end.
+**Next actionable engineering work:** execute [master programme #490](https://github.com/NuBlox/NuBloxSQL/issues/490) in order; close remaining first-vendor correctness, capability and qualification gaps against Gates A–J. No new runtime module or architectural restart is required.

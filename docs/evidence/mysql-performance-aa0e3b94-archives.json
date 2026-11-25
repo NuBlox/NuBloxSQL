@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "aa0e3b94a5ce5ab52e4ec29d03d6543bbf165248",
+  "verifiedOn": "2026-11-25",
+  "verification": "Downloaded original GitHub Actions ZIP bytes; SHA-256 compared against published artifact metadata, ZIP CRC integrity checked, JSON parsed, exact revision and passed status checked for all six contained reports. Original ZIPs retained in downloadable evidence bundle outside Git; this manifest is not the original archive bytes.",
+  "bundle": {
+    "filename": "NuBloxSQL-performance-baseline-aa0e3b94.zip",
+    "sha256": "c876ca826731221608e0791e5125c9f40e973bce1c4639016fdcdc4f5aafc83a",
+    "bytes": 12549
+  },
+  "archives": [
+    {
+      "artifactId": 15071907581,
+      "runId": 45721118967,
+      "bytes": 3744,
+      "sha256": "c1c202950cdca8b7d62e4e8b2b8b259ccac4220bbdc0452912d7dba636c4f623",
+      "reports": [
+        {
+          "filename": "comparison-concurrent-45721118967-1795649108292.json",
+          "sha256": "4976727bddfee966c03cbb76f68bb52eade660713d04af53ac1a16c44b720457",
+          "bytes": 7945
+        },
+        {
+          "filename": "comparison-concurrent-45721118967-1795649108480.json",
+          "sha256": "3fde3c6b60263a7986703724436c3b7d8cbe6af84de18fede3c4b78d623775f0",
+          "bytes": 7957
+        }
+      ]
+    },
+    {
+      "artifactId": 15072217619,
+      "runId": 45721119201,
+      "bytes": 1190,
+      "sha256": "e9d64bbd41758f136ea112e8726d1067f3336ec65ca44a8d2cdf50b71f2c5da4",
+      "reports": [
+        {
+          "filename": "native-internal-profile-45721119201-1795649150548.json",
+          "sha256": "ffc4b9ffba075f5785f0031b426dd8f9a0fe87bc5763bf36a8d45efd1ecb1019",
+          "bytes": 4540
+        }
+      ]
+    },
+    {
+      "artifactId": 15071224213,
+      "runId": 45721119027,
+      "bytes": 3910,
+      "sha256": "c02292b1b7c71cd5f721f308931fcfdd01923b5b6d71641395ddef541743c7bd",
+      "reports": [
+        {
+          "filename": "comparison-concurrent-tls-45721119027-1795649144148.json",
+          "sha256": "d918a06f8423daec167cc83d472568b043444d565f1d86594b412eaceb75ed99",
+          "bytes": 8213
+        },
+        {
+          "filename": "comparison-concurrent-tls-45721119027-1795649144612.json",
+          "sha256": "a47aca82c9ddd4d18d0f2a0ae8d104efa7dae734a5fb1b81dd659b66d13492ed",
+          "bytes": 8225
+        }
+      ]
+    },
+    {
+      "artifactId": 15071982435,
+      "runId": 45721119027,
+      "bytes": 606,
+      "sha256": "324ccf29efef544b52c721b334985c65ec1391899223c13568a7750dbfd55900",
+      "reports": [
+        {
+          "filename": "mysql-verified-tls-comparison-45721119027.json",
+          "sha256": "c62ed6b1a3bb7b2490ed1de941cee9da7475a2013f92665bd9bd898a0f38f136",
+          "bytes": 819
+        }
+      ]
+    }
+  ]
+}
