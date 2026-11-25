@@ -137,18 +137,24 @@ export function binaryValues(buf:Buffer,cols:readonly MysqlColumn[]):unknown[]{
 export function columnKeys(columns:readonly Pick<MysqlColumn,'name'>[]):string[]{
   const originals=new Set(columns.map(c=>c.name));
   const used=new Set<string>();
+  // Allocate suffix tracking only when duplicate aliases occur. Previously
+  // occupied suffixes never become free during this pass, so restarting at
+  // 2 for each duplicate would needlessly repeat the same collision checks.
+  let nextSuffix:Map<string,number>|undefined;
   return columns.map(col=>{
     const name=col.name;
     if(!used.has(name)){
       used.add(name);
       return name;
     }
-    let suffix=2;
+    nextSuffix??=new Map<string,number>();
+    let suffix=nextSuffix.get(name)??2;
     let key=name+'#'+suffix;
     while(used.has(key)||originals.has(key)){
       suffix++;
       key=name+'#'+suffix;
     }
+    nextSuffix.set(name,suffix+1);
     used.add(key);
     return key;
   });
