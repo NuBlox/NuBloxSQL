@@ -681,7 +681,14 @@ export class MysqlSession implements RelationalSession {
         await this.send(command);
         const first=await this.get();
         if(isOk(first)){
-          ok(first);
+          // A single complete OK is a known command boundary. An invalid OK
+          // or one advertising further results is not: do not send CLOSE
+          // into a potentially unfinished response in the finally block.
+          try{ok(first);}
+          catch(error){
+            this.destroy(error instanceof DriverError?error:undefined);
+            throw error;
+          }
           throw fail('UNSUPPORTED_FEATURE','Cursor requires a row-producing SELECT statement');
         }
         let count:number;
@@ -716,8 +723,15 @@ export class MysqlSession implements RelationalSession {
           throw failure;
         }
         const {columns,status}=metadata;
-        if(!(status&0x40))
-          throw fail('UNSUPPORTED_FEATURE','MySQL did not open a native server-side cursor');
+        if(!(status&0x40)){
+          // Metadata EOF is not the end of an ordinary result set. If the
+          // server declined the cursor, ordinary rows may still be arriving,
+          // even when the local packet queue is temporarily empty. Retire
+          // the connection before finally can send COM_STMT_CLOSE.
+          const failure=fail('UNSUPPORTED_FEATURE','MySQL did not open a native server-side cursor');
+          this.destroy(failure);
+          throw failure;
+        }
         const keys=columnKeys(columns);
         cursor=new MysqlCursor(columns,keys,async()=>{
           this.assertOpen();
