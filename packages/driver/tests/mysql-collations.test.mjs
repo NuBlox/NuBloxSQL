@@ -131,3 +131,39 @@ test('UTF-8 leading U+FEFF remains data in both row protocols',()=>{
   assert.deepEqual(binaryValues(binaryRow(bytes),[column(63)])[0],bytes);
   assert.deepEqual(textValues(textRow(bytes),[column(63)])[0],bytes);
 });
+
+test('UTF8MB3 accepts BMP scalars but rejects supplementary characters across both row protocols',()=>{
+ const valid='\ufeffAé中\ufffd\uffff';
+ const supplementary=['🚀','\u{10000}','\u{10ffff}'];
+ for(const id of [33,83,...Array.from({length:24},(_,i)=>192+i)]){
+  const raw=Buffer.from(valid);
+  assert.equal(decodeMysqlText(raw,id),valid);
+  assert.deepEqual(binaryValues(binaryRow(raw),[column(id)]),[valid]);
+  assert.deepEqual(textValues(textRow(raw),[column(id)]),[valid]);
+  for(const value of supplementary){
+   const raw=Buffer.from(value);
+   assert.throws(()=>decodeMysqlText(raw,id),/utf8mb3/);
+   assert.throws(()=>binaryValues(binaryRow(raw),[column(id)]),/utf8mb3/);
+   assert.throws(()=>textValues(textRow(raw),[column(id)]),e=>e.code==='PROTOCOL_ERROR');
+  }
+ }
+ for(const id of [45,46,224,247,255,256,271,273,275,277,294,296,298,300,303,309])
+  for(const value of supplementary)assert.equal(decodeMysqlText(Buffer.from(value),id),value);
+});
+
+test('UTF8MB4 collation registry rejects unassigned IDs in the documented 0900 range',()=>{
+ const gaps=new Set([272,276,295,299,301,302]);
+ const value='é🚀';
+ const raw=Buffer.from(value);
+ for(let id=255;id<=309;id++){
+  if(gaps.has(id)){
+   assert.throws(()=>decodeMysqlText(raw,id),/Unsupported MySQL result character-set/);
+   assert.throws(()=>binaryValues(binaryRow(raw),[column(id)]));
+   assert.throws(()=>textValues(textRow(raw),[column(id)]),e=>e.code==='PROTOCOL_ERROR');
+  }else{
+   assert.equal(decodeMysqlText(raw,id),value);
+   assert.deepEqual(binaryValues(binaryRow(raw),[column(id)]),[value]);
+   assert.deepEqual(textValues(textRow(raw),[column(id)]),[value]);
+  }
+ }
+});
