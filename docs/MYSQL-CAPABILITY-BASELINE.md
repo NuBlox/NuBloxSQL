@@ -74,7 +74,7 @@ Performance artifact metadata observed: concurrent comparison 15071907581 (expir
 
 ## Preserved performance report snapshots
 
-The [baseline report snapshot](evidence/mysql-performance-aa0e3b94.json) retains seven JSON reports from the original three workflow job logs, including 48 comparative trial summaries, ten synthetic stage summaries and both repeated-run analyses. It preserves original reported metrics, strips the runner-local path, and records source revision, run/job IDs and GitHub-reported artifact ZIP digests. It is not a byte-for-byte copy of the original ZIP archives; archive bytes have not been verified.
+The [baseline report snapshot](evidence/mysql-performance-aa0e3b94.json) retains seven JSON reports from the original three workflow job logs, including 48 comparative trial summaries, ten synthetic stage summaries and both repeated-run analyses. It preserves original reported metrics, strips the runner-local path, and records source revision, run/job IDs and GitHub-reported artifact ZIP digests. It is not a byte-for-byte copy of the original ZIP archives. On 2026-11-25 all four original ZIPs were recovered and their SHA-256 digests, CRC integrity and six report revisions/statuses independently verified. The [archive verification manifest](evidence/mysql-performance-aa0e3b94-archives.json) records exact original and member digests; the original ZIPs were packaged separately for owner retention, not stored in Git.
 
 | Workload | Local TCP p50 ratio (native / mysql2) | Verified TLS p50 ratio |
 |---|---:|---:|
@@ -82,13 +82,13 @@ The [baseline report snapshot](evidence/mysql-performance-aa0e3b94.json) retains
 | Prepared sequential | 1.139433 | 1.150350 |
 | Prepared concurrent | 1.455896 | 1.229234 |
 
-Ratios are geometric means of paired run summaries, not throughput ratios. Reference is mysql2 3.24.6. Transports use different pinned server versions (8.4.11 local, 8.4.13 TLS), so this is not a controlled TLS overhead experiment. Both analyses report inconclusive evidence (two runs, two rounds, 12 operations per trial, concurrency 2). Concurrent prepared execution is a WP30 investigation candidate, not a proven bottleneck attribution or justification for skipping WP10/WP20. Refresh on a frozen candidate with larger matched workloads. Original ZIP retention/digest verification remains open.
+Ratios are geometric means of paired run summaries, not throughput ratios. Reference is mysql2 3.24.6. Transports use different pinned server versions (8.4.11 local, 8.4.13 TLS), so this is not a controlled TLS overhead experiment. Both analyses report inconclusive evidence (two runs, two rounds, 12 operations per trial, concurrency 2). Concurrent prepared execution is a WP30 investigation candidate, not a proven bottleneck attribution or justification for skipping WP10/WP20. Refresh on a frozen candidate with larger matched workloads. Original ZIP digest verification is complete; durable owner storage of the separately delivered archive bundle remains necessary.
 
 ## Ranked execution queue
 
 | Rank | Work package | Deliverable and acceptance |
 |---|---|---|
-| 1 | WP00 | Complete #489 with current-head CI, verify merged main, clean branch; freeze raw evidence and link digests. |
+| 1 | WP00 | #489 merged and post-merge CI verified; #492 report snapshot merged; original ZIP digests verified, manifest recorded here. |
 | 2 | WP00 | Complete clause-level protocol/test traceability and reconcile stale README/RELEASE/DRIVER scope descriptions with E2/E6; preserve all commercial gates. |
 | 3 | WP10 | Investigate OK packet unsigned 64-bit fidelity: current public affectedRows/insertId are number and Cursor.len rejects > MAX_SAFE_INTEGER. Design non-lossy compatible API before changing contract; synthetic and live high auto-increment ID tests, no silent rounding, no misleading failed write acknowledgement. |
 | 4 | WP10 | Audit framing, metadata strings, auth flags, all supported type/collation bounds; implement coverage-guided bounded fuzz harness with reproducible seeds and regression corpus. |
@@ -99,4 +99,4 @@ Ratios are geometric means of paired run summaries, not throughput ratios. Refer
 
 G1/G2/G3/G4/G5/G6/G7/G8/G11 have engineering evidence to varying degrees; G9/G10 and all final sign-offs remain open. Main ruleset 25231727 was read live: active, strict required checks, only docs context required, no bypass actors. Do not weaken it. No commercial decision changes made.
 
-WP00 is not closed: raw evidence retention, detailed conformance mapping, documentation reconciliation, and outstanding PR integration still require completion.
+WP00 is not closed: owner archive custody, remaining detailed conformance mapping, documentation reconciliation and outstanding PR integration require completion.

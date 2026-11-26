@@ -1,6 +1,6 @@
 # NuBloxSQL Driver — commercial release qualification
 
-**Status: experimental / pre-commercial, 22 October 2026.**
+**Status: experimental / pre-commercial (established 22 October 2026; engineering scope reconciled 25 November 2026).**
 A passing CI job or npm package does not grant commercial redistribution rights
 or establish a production service-level commitment. This register is a
 release-decision gate, not a marketing checklist.
@@ -83,8 +83,7 @@ OOM guarantee or commercial qualification sign-off.
 ## Current verified engineering scope
 
 The current implementation is a first-party MySQL Classic protocol client,
-tested primarily against **MySQL 8.4.11** with local isolated TCP and
-certificate-verified TLS. Public entrypoints support bound query and
+with pinned local isolated TCP and certificate-verified TLS engineering evidence. The [current release matrix](MYSQL-CURRENT-RELEASE-QUALIFICATION.md) records 8.4.13 and 9.7.4 local/TLS qualification and 26.10.0 local-only qualification; 8.0.44 and 8.4.11 remain legacy/baseline evidence. On the audited revision aa0e3b94, the [capability baseline](MYSQL-CAPABILITY-BASELINE.md) links successful exact-revision matrix checks. This is not commercial support for any version. Public entrypoints support bound query and
 transaction operations, reusable prepared statements, bounded pooling,
 read-only cursors, deadlines and cancellation, strict result decoding and
 bounded packet fragmentation. The current package is `@nublox/driver` at
@@ -95,14 +94,14 @@ licence; there is **no general downstream commercial grant**.
 
 | Gate | Current evidence | Status for a production commercial release |
 | --- | --- | --- |
-| G1. Repeatable functional integration | Pinned MySQL 8.4.11 and verified-TLS CI, installed-package consumer tests | **Partial**; extend versions and installation targets |
+| G1. Repeatable functional integration | Pinned baseline and current LTS/Innovation engineering matrix, verified-TLS CI, installed-package consumer tests | **Partial**; extend versions and installation targets |
 | G2. Protocol/types/correctness | Native packet tests, result/type regression fixtures, protocol malformed-input tests | **Partial**; broader fuzz coverage, recovery conditions and capability matrix |
 | G3. Secure authentication and transport | Negative CA, hostname, credentials, loopback-only plaintext, dependency audit and package preflight checks | **Partial**; formal threat model, independent penetration test, threat-driven fuzzing and least-privilege server users |
 | G4. Cancellation and transaction safety | Abort/deadline, session reset, pooled/cursor resource-ownership tests | **Partial**; failure injection during writes and ambiguous commit, severe outages |
 | G5. Reproducible performance | Workload scripts, latency/memory diagnostics and machine-readable evidence | **In progress**; quantitative baseline, competitor parity and stable hardware |
 | G6. Sustained stability | Timed pooled soak and reconnect workloads in CI | **In progress**; overnight/multi-day tests, heap profiles, database restarts and chaos matrix |
 | G7. Public API and package stability | Strict TypeScript, independently installed tarball tests, and automated publish-content/licence/import integrity validation | **Partial**; versioning guarantees, semantic compatibility tests and multi-Node qualification |
-| G8. Version/deployment matrix | MySQL 8.4.11 local/TLS pinned qualification | **Not met**; qualify other MySQL versions, OS/architectures, TLS deployments |
+| G8. Version/deployment matrix | Pinned local/TLS matrix including maintained LTS; Innovation local only | **Not met**; qualify remaining transports, OS/architectures and managed deployments |
 | G9. Support operations | No published response-time or escalation commitment | **Not met**; support contact, release policy, CVE/security process, change logs |
 | G10. Commercial licence and delivery | Proprietary ownership stated in LICENSE | **Not met**; legal review and explicit customer evaluation/production terms, billing, invoicing and redistribution |
 | G11. Disaster/recovery | Fail-closed session, pool and cursor invalidation | **Not met**; documented restore/failover operating guidance and sustained fault testing |
@@ -797,6 +796,6 @@ Before any performance comparison, run identical SQL, prepared parameter
 types, row counts, concurrency, server config, network, hardware,
 warmup, TLS, memory sampling and measurement windows against competitor
 clients, with independent raw outputs and an explicit fair-comparison
-method. The qualification runner currently measures **NuBloxSQL only**.
+method. The single-driver qualification runner measures NuBloxSQL; separate comparative workflows measure a pinned black-box reference under matching configured workloads. The [retained performance baseline](MYSQL-CAPABILITY-BASELINE.md#preserved-performance-report-snapshots) is exploratory and does not establish superiority.
 
 Open blockers must remain public in this document until separately verified.
