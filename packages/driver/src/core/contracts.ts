@@ -14,8 +14,10 @@ export interface QueryResult {
   columns:MysqlColumn[];
   columnKeys?:string[];
   rowValues?:unknown[][];
-  affectedRows:number;
-  insertId:number;
+  /** Exact unsigned count; bigint only above Number.MAX_SAFE_INTEGER. */
+  affectedRows:number|bigint;
+  /** Exact unsigned insert identifier; bigint only above Number.MAX_SAFE_INTEGER. */
+  insertId:number|bigint;
   status?:number;
   warnings?:number;
   /** True if this result set is the stored-procedure OUT parameter result. */

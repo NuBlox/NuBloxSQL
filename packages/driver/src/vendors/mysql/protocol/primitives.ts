@@ -48,7 +48,10 @@ export class Cursor {
   two():number{return this.b.readUInt16LE(this.advance(2));}
   four():number{return this.b.readUInt32LE(this.advance(4));}
   eight():bigint{return this.b.readBigUInt64LE(this.advance(8));}
-  len():number|null{
+  /** Decode a length-encoded numeric value without losing uint64 precision.
+   * Small values retain the historical number representation. Never use
+   * this method directly as a buffer length or allocation count. */
+  lenInteger():number|bigint|null{
     const n=this.byte();
     if(n<251)return n;
     if(n===251)return null;
@@ -59,10 +62,15 @@ export class Cursor {
     }
     if(n===254){
       const v=this.eight();
-      if(v>BigInt(Number.MAX_SAFE_INTEGER))throw Error('Overlarge length');
-      return Number(v);
+      return v>BigInt(Number.MAX_SAFE_INTEGER)?v:Number(v);
     }
     throw Error('Invalid encoded length');
+  }
+  /** Byte lengths and column counts must remain exactly representable. */
+  len():number|null{
+    const value=this.lenInteger();
+    if(typeof value==='bigint')throw Error('Overlarge length');
+    return value;
   }
   lbytes():Buffer|null{const n=this.len();return n===null?null:this.take(n);}
   lstr():string|null{return this.lbytes()?.toString('utf8')??null;}
