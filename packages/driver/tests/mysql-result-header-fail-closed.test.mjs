@@ -285,3 +285,74 @@ test('decoded text can exhaust heap estimate before the valid wire response limi
   await assert.rejects(f.session.query('SELECT 1'),
     error=>error.code==='CONNECTION_CLOSED');
 });
+
+test('cursor decoded memory budget revokes the socket even when callback catches fetch error',async()=>{
+  const opened=Buffer.from([0xfe,0,0,0x42,0]);
+  const exhausted=Buffer.from([0xfe,0,0,0x82,0]);
+  // Legal packet size but estimated decoded storage >64 MiB.
+  const length=MAX_PACKET_BYTES-80;
+  const column=Buffer.concat([
+    ...['def','','','','text_value',''].map(value=>sized(Buffer.from(value))),
+    Buffer.from([12]),u16(45),u32(MAX_PACKET_BYTES),Buffer.from([T.VAR_STRING]),
+    u16(0),Buffer.from([0,0,0])
+  ]);
+  const row=Buffer.concat([Buffer.from([0,0]),sized(Buffer.alloc(length,0x61))]);
+  assert.ok(row.length<MAX_PACKET_BYTES);
+  const f=fixture([Buffer.from([1]),column,opened,row,exhausted]);
+  await assert.rejects(f.session.withCursor('SELECT giant_text',[],async cursor=>{
+    try{await cursor.next();}
+    catch(error){assert.equal(error.code,'RESOURCE_LIMIT');}
+    return 'must not succeed';
+  },{fetchSize:1}),e=>e.code==='RESOURCE_LIMIT'&&/materialized result exceeds memory budget/.test(e.message));
+  assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17,0x1c]);
+  assert.equal(f.preparedClosed,false);
+  assert.equal(f.session.closed,true);
+  assert.equal(f.socket.destroyed,true);
+  assert.equal(f.remainingReplies,1);
+});
+
+test('wide NULL cursor batches enforce cell bounds before accepting the next row',async()=>{
+  const count=4096;
+  const columns=Array.from({length:count},(_,i)=>Buffer.concat([
+    ...['def','','','','field_'+i,''].map(value=>sized(Buffer.from(value))),
+    Buffer.from([12]),u16(63),u32(1),Buffer.from([T.TINY]),u16(0),Buffer.from([0,0,0])
+  ]));
+  const bitmap=Buffer.alloc(Math.ceil((count+2)/8),0xff);
+  bitmap[0]&=0xfc;
+  const row=Buffer.concat([Buffer.from([0]),bitmap]);
+  const opened=Buffer.from([0xfe,0,0,0x42,0]);
+  const exhausted=Buffer.from([0xfe,0,0,0x82,0]);
+  const rows=Math.floor(MAX_RESULT_CELLS/count)+1;
+  assert.ok(rows<=256&&row.length*rows<MAX_PACKET_BYTES);
+  const f=fixture([Buffer.from([0xfc,0,16]),...columns,opened,...Array(rows).fill(row),exhausted]);
+  await assert.rejects(f.session.withCursor('SELECT wide_nulls',[],async cursor=>cursor.next(),
+    {fetchSize:256}),e=>e.code==='RESOURCE_LIMIT'&&/materialized cell limit/.test(e.message));
+  assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17,0x1c]);
+  assert.equal(f.session.closed,true);
+  assert.equal(f.preparedClosed,false);
+});
+
+test('cursor memory accounting restarts for each independently bounded fetch batch',async()=>{
+  // Each 12 MiB text row costs roughly 24 MiB estimated memory.
+  // Three batches together exceed 64 MiB, but no individual batch does.
+  const size=12*1024*1024;
+  const column=Buffer.concat([
+    ...['def','','','','text_value',''].map(value=>sized(Buffer.from(value))),
+    Buffer.from([12]),u16(45),u32(size),Buffer.from([T.VAR_STRING]),
+    u16(0),Buffer.from([0,0,0])
+  ]);
+  const row=Buffer.concat([Buffer.from([0,0]),sized(Buffer.alloc(size,0x61))]);
+  const opened=Buffer.from([0xfe,0,0,0x42,0]);
+  const exhausted=Buffer.from([0xfe,0,0,0x82,0]);
+  const f=fixture([Buffer.from([1]),column,opened,row,opened,row,opened,row,exhausted]);
+  try{
+    const count=await f.session.withCursor('SELECT large_text',[],async cursor=>{
+      let count=0;
+      for await(const item of cursor){assert.equal(item.values[0].length,size);count++;}
+      return count;
+    },{fetchSize:1});
+    assert.equal(count,3);
+    assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17,0x1c,0x1c,0x1c,0x19]);
+    assert.equal(f.session.closed,false);
+  }finally{await f.session.close();}
+});

@@ -22,6 +22,9 @@ const RETAINED_CELL_BYTES=64;
 export class MysqlMaterializationBudget {
   private used=0;
 
+  /** Reuse an already validated metadata charge without retaining rows. */
+  constructor(initialBytes=0){this.add(initialBytes);}
+
   /** Diagnostic-only estimate; never interpret as actual V8 heap usage. */
   get estimatedBytes():number {return this.used;}
 
