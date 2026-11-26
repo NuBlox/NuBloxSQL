@@ -122,3 +122,28 @@ live('full 65-digit DECIMAL and 30-place scale retain exact values across both p
   assert.equal(db.closed,false);
  }finally{await db.close();}
 });
+
+live('MEDIUMINT YEAR and finite floating-point boundaries agree across result protocols',async()=>{
+ const db=await connectDatabase(target);
+ try{
+  await db.query('CREATE TEMPORARY TABLE nublox_numeric_domains (id INT PRIMARY KEY, signed_m MEDIUMINT, unsigned_m MEDIUMINT UNSIGNED, year_value YEAR, float_value FLOAT, double_value DOUBLE)');
+  const samples=[
+   [-8388608,0,1901,-1.25,-3.5],
+   [8388607,16777215,2155,3.25,1e100],
+   [0,8388608,0,0,0],
+   [null,null,null,null,null]
+  ];
+  for(const [id,values] of samples.entries())
+   await db.query('INSERT INTO nublox_numeric_domains VALUES (?,?,?,?,?,?)',[id,...values]);
+  for(const result of [
+   await db.query('SELECT signed_m,unsigned_m,year_value,float_value,double_value FROM nublox_numeric_domains ORDER BY id'),
+   await db.queryText('SELECT signed_m,unsigned_m,year_value,float_value,double_value FROM nublox_numeric_domains ORDER BY id')
+  ]){
+   assert.deepEqual(result.rowValues,samples);
+   assert.equal(result.columns[0].type,9);
+   assert.equal(result.columns[1].unsigned,true);
+   assert.equal(result.columns[2].type,13);
+  }
+  assert.equal(db.closed,false);
+ }finally{await db.close();}
+});

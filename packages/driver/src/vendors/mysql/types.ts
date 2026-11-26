@@ -85,16 +85,27 @@ function fixedScalar(cursor:Cursor,type:number,unsigned:boolean):number|bigint{
   let result:number|bigint;
   if(type===T.TINY)
     result=unsigned?cursor.b.readUInt8(offset):cursor.b.readInt8(offset);
-  else if(type===T.SHORT||type===T.YEAR)
+  else if(type===T.YEAR){
+    // YEAR is logically unsigned irrespective of the metadata flag.
+    result=cursor.b.readUInt16LE(offset);
+    if(result!==0&&(result<1901||result>2155))
+      throw fail('PROTOCOL_ERROR','Invalid MySQL YEAR value');
+  }else if(type===T.SHORT)
     result=unsigned?cursor.b.readUInt16LE(offset):cursor.b.readInt16LE(offset);
-  else if(type===T.LONG||type===T.INT24)
+  else if(type===T.INT24){
+    // MEDIUMINT uses four wire bytes but its SQL domain is only 24 bits.
+    result=unsigned?cursor.b.readUInt32LE(offset):cursor.b.readInt32LE(offset);
+    if(unsigned?result>16777215:result< -8388608||result>8388607)
+      throw fail('PROTOCOL_ERROR','MySQL MEDIUMINT value exceeds declared column width');
+  }else if(type===T.LONG)
     result=unsigned?cursor.b.readUInt32LE(offset):cursor.b.readInt32LE(offset);
   else if(type===T.LONGLONG)
     result=unsigned?cursor.b.readBigUInt64LE(offset):cursor.b.readBigInt64LE(offset);
-  else if(type===T.FLOAT)
-    result=cursor.b.readFloatLE(offset);
-  else
-    result=cursor.b.readDoubleLE(offset);
+  else{
+    result=type===T.FLOAT?cursor.b.readFloatLE(offset):cursor.b.readDoubleLE(offset);
+    if(!Number.isFinite(result))
+      throw fail('PROTOCOL_ERROR','Non-finite MySQL floating-point value');
+  }
   cursor.p=offset+bytes;
   return result;
 }
