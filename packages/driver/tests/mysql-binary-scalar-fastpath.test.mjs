@@ -8,12 +8,12 @@ const specs=[
   [T.TINY,true,[0,1,127,255]],
   [T.SHORT,false,[-32768,-1,0,32767]],
   [T.SHORT,true,[0,1,32768,65535]],
-  [T.YEAR,false,[0,1,2024,32767]],
-  [T.YEAR,true,[0,1,2024,65535]],
+  [T.YEAR,false,[0,1901,2024,2155]],
+  [T.YEAR,true,[0,1901,2024,2155]],
   [T.LONG,false,[-2147483648,-1,0,2147483647]],
   [T.LONG,true,[0,1,2147483648,4294967295]],
-  [T.INT24,false,[-2147483648,-1,0,2147483647]],
-  [T.INT24,true,[0,1,2147483648,4294967295]],
+  [T.INT24,false,[-8388608,-1,0,8388607]],
+  [T.INT24,true,[0,1,8388608,16777215]],
   [T.LONGLONG,false,[-(2n**63n),-1n,0n,2n**63n-1n]],
   [T.LONGLONG,true,[0n,1n,2n**63n,2n**64n-1n]],
   [T.FLOAT,false,[-1.25,-0,0,3.5]],
@@ -49,7 +49,7 @@ function scalarPacket(columns,rawValues){
   }
   return Buffer.concat([Buffer.from([0]),bitmap,...body]);
 }
-// Independent reference reproduces the previous implementation's
+// For valid SQL-domain values, the independent reference reproduces the previous implementation's
 // Cursor.take(width).read*LE behaviour; it never imports the candidate decoder.
 function reference(packet,columns){
   if(packet[0]!==0)throw Error('Invalid MySQL binary result row');
@@ -105,7 +105,7 @@ test('NULL bitmap crossing byte boundaries and interleaved signed/unsigned scala
       /Malformed MySQL packet|Trailing MySQL binary row bytes/);
   }
 });
-test('deterministic mixed numeric fields never differ from historical slice-based decoder',()=>{
+test('deterministic mixed valid numeric fields match the historical slice-based decoder',()=>{
   let seed=0x4e425851;
   const rand=()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return seed>>>0;};
   for(let round=0;round<1500;round++){

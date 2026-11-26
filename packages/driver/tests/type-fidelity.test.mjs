@@ -82,7 +82,7 @@ test('signed and unsigned widths keep exact numeric boundaries',()=>{
  const large=Buffer.alloc(8);large.writeBigUInt64LE(18446744073709551615n);
  const negative=Buffer.alloc(8);negative.writeBigInt64LE(-9223372036854775808n);
  const u4=Buffer.alloc(4);u4.writeUInt32LE(4294967295);
- const signed4=Buffer.alloc(4);signed4.writeInt32LE(-2147483648);
+ const signed4=Buffer.alloc(4);signed4.writeInt32LE(-8388608);
  const row=decode([
   col('bigunsigned',T.LONGLONG,{unsigned:true}),col('bigsigned',T.LONGLONG),
   col('intunsigned',T.LONG,{unsigned:true}),col('intsigned',T.INT24),
@@ -91,7 +91,7 @@ test('signed and unsigned widths keep exact numeric boundaries',()=>{
  assert.equal(row.bigunsigned,18446744073709551615n);
  assert.equal(row.bigsigned,-9223372036854775808n);
  assert.equal(row.intunsigned,4294967295);
- assert.equal(row.intsigned,-2147483648);
+ assert.equal(row.intsigned,-8388608);
  assert.equal(row.year,2024);
  assert.equal(row.tinynegative,-128);
 });
@@ -160,4 +160,65 @@ test('DECIMAL rejects malformed bytes consistently without rounding or replaceme
     e=>e.code==='PROTOCOL_ERROR',value.toString('hex'));
   }
  }
+});
+
+test('MEDIUMINT domain is narrower than its four-byte binary representation',()=>{
+ for(const unsigned of [false,true]){
+  const column=col('medium',T.INT24,{unsigned});
+  const valid=unsigned?[0,1,8388608,16777215]:[-8388608,-1,0,8388607];
+  const invalid=unsigned?[16777216,4294967295]:[-2147483648,-8388609,8388608,2147483647];
+  const encode=value=>{
+   const raw=Buffer.alloc(4);
+   unsigned?raw.writeUInt32LE(value):raw.writeInt32LE(value);
+   return raw;
+  };
+  for(const value of valid){
+   assert.deepEqual(binaryValues(wireRow([column],[encode(value)]),[column]),[value]);
+   assert.deepEqual(textValues(bytes(String(value)),[column]),[value]);
+  }
+  for(const value of invalid){
+   assert.throws(()=>binaryValues(wireRow([column],[encode(value)]),[column]),e=>e.code==='PROTOCOL_ERROR');
+   assert.throws(()=>textValues(bytes(String(value)),[column]),e=>e.code==='PROTOCOL_ERROR');
+  }
+  if(unsigned)assert.throws(()=>textValues(bytes('-1'),[column]),e=>e.code==='PROTOCOL_ERROR');
+ }
+});
+test('YEAR accepts only zero or the documented calendar domain irrespective of signed flag',()=>{
+ for(const unsigned of [false,true]){
+  const column=col('year',T.YEAR,{unsigned});
+  for(const value of [0,1901,2026,2155]){
+   assert.deepEqual(binaryValues(wireRow([column],[u16(value)]),[column]),[value]);
+   assert.deepEqual(textValues(bytes(String(value).padStart(4,'0')),[column]),[value]);
+  }
+  for(const value of [1,69,1900,2156,32767,32768,65535]){
+   assert.throws(()=>binaryValues(wireRow([column],[u16(value)]),[column]),e=>e.code==='PROTOCOL_ERROR');
+   assert.throws(()=>textValues(bytes(String(value)),[column]),e=>e.code==='PROTOCOL_ERROR');
+  }
+ }
+});
+test('non-finite FLOAT and DOUBLE and text FLOAT overflow are rejected',()=>{
+ for(const type of [T.FLOAT,T.DOUBLE]){
+  const column=col('floating',type);
+  const encode=value=>{
+   const raw=Buffer.alloc(type===T.FLOAT?4:8);
+   type===T.FLOAT?raw.writeFloatLE(value):raw.writeDoubleLE(value);
+   return raw;
+  };
+  for(const value of [NaN,Infinity,-Infinity]){
+   assert.throws(()=>binaryValues(wireRow([column],[encode(value)]),[column]),e=>e.code==='PROTOCOL_ERROR');
+   assert.throws(()=>textValues(bytes(String(value)),[column]),e=>e.code==='PROTOCOL_ERROR');
+  }
+  const maximum=type===T.FLOAT?Math.fround(3.4028234663852886e38):Number.MAX_VALUE;
+  const minimum=type===T.FLOAT?Math.fround(2**-149):Number.MIN_VALUE;
+  for(const value of [0,-0,1.25,-1.25,maximum,-maximum,minimum,-minimum]){
+   assert.deepEqual(binaryValues(wireRow([column],[encode(value)]),[column]),[value]);
+   const text=Object.is(value,-0)?'-0':String(value);
+   assert.deepEqual(textValues(bytes(text),[column]),[value]);
+  }
+  for(const value of ['1e999','-1e999',...(type===T.FLOAT?['1e39','-1e39']:[])]){
+   assert.throws(()=>textValues(bytes(value),[column]),e=>e.code==='PROTOCOL_ERROR');
+  }
+ }
+ // The text protocol's displayed approximation remains unchanged.
+ assert.deepEqual(textValues(bytes('0.1'),[col('float',T.FLOAT)]),[0.1]);
 });

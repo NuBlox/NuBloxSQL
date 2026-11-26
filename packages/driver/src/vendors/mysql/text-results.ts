@@ -23,7 +23,11 @@ function numeric(bytes:Buffer,column:MysqlColumn):number|bigint{
     if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(string))
       throw Error('Invalid MySQL floating-point text');
     const number=Number(string);
-    if(!Number.isFinite(number))throw Error('MySQL floating-point text overflow');
+    // A finite JavaScript double can still overflow the FLOAT wire domain.
+    // Check rounded binary32 representability, but retain the server's
+    // textual approximation rather than re-rounding valid display values.
+    if(!Number.isFinite(number)||(type===T.FLOAT&&!Number.isFinite(Math.fround(number))))
+      throw Error('MySQL floating-point text overflow');
     return number;
   }
   if(!/^-?\d+$/.test(string))
