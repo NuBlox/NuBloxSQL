@@ -98,3 +98,27 @@ live('leading U+FEFF survives a real MySQL UTF-8 roundtrip in prepared and text 
   assert.equal(db.closed,false);
  }finally{await db.close();}
 });
+
+live('full 65-digit DECIMAL and 30-place scale retain exact values across both protocols',async()=>{
+ const db=await connectDatabase(target);
+ try{
+  await db.query('CREATE TEMPORARY TABLE nublox_exact_decimal (id INT PRIMARY KEY, integer_value DECIMAL(65,0), fraction_value DECIMAL(65,30))');
+  const samples=[
+   ['9'.repeat(65),'9'.repeat(35)+'.'+'9'.repeat(30)],
+   ['-'+'9'.repeat(65),'-'+'9'.repeat(35)+'.'+'9'.repeat(30)],
+   ['0','0.'+'0'.repeat(30)],
+   ['1','-0.'+'0'.repeat(29)+'1'],
+   [null,null]
+  ];
+  for(const [i,[integer,fraction]] of samples.entries())
+   await db.query('INSERT INTO nublox_exact_decimal VALUES (?,?,?)',[i,integer,fraction]);
+  for(const result of [
+   await db.query('SELECT integer_value, fraction_value FROM nublox_exact_decimal ORDER BY id'),
+   await db.queryText('SELECT integer_value, fraction_value FROM nublox_exact_decimal ORDER BY id')
+  ]){
+   assert.deepEqual(result.rows.map(row=>[row.integer_value,row.fraction_value]),samples);
+   assert.deepEqual(result.rowValues,samples);
+  }
+  assert.equal(db.closed,false);
+ }finally{await db.close();}
+});

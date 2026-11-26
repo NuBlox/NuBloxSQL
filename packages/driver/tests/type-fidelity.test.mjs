@@ -1,7 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {T,sized,u16,u32} from '../dist/vendors/mysql/protocol/primitives.js';
-import {binaryRow} from '../dist/vendors/mysql/types.js';
+import {binaryRow,binaryValues} from '../dist/vendors/mysql/types.js';
+import {textValues} from '../dist/vendors/mysql/text-results.js';
 
 const col=(name,type,{charset=45,decimals=0,unsigned=false}={})=>({
  name,type,charset,decimals,unsigned,schema:null,table:null,length:0,flags:unsigned?32:0
@@ -123,4 +124,40 @@ test('binary decoder fails closed on invalid lengths, invalid utf8 and unknown t
  assert.throws(()=>decode([col('mystery',242)],[bytes('x')]),/Unsupported MySQL binary result type/);
  assert.throws(()=>decode([col('value',T.BLOB,{charset:45})],[Buffer.from([251])]),/NULL bitmap/);
  assert.throws(()=>binaryRow(Buffer.from([0,0,1,2]),[col('x',T.TINY)]),/Trailing/);
+});
+
+test('DECIMAL wire syntax and exact digits agree across both result protocols',()=>{
+ const values=['0','-0','0.000000','-0.000001','000123.4500','-12345678901234567890.000001',
+   '9'.repeat(65),'-'+'9'.repeat(35)+'.'+'9'.repeat(30)];
+ for(const type of [T.DECIMAL,T.NEWDECIMAL]){
+  const column=col('amount',type,{charset:63});
+  for(const value of values){
+   const payload=bytes(value);
+   assert.deepEqual(binaryValues(wireRow([column],[payload]),[column]),[value]);
+   assert.deepEqual(textValues(payload,[column]),[value]);
+  }
+  assert.deepEqual(binaryValues(wireRow([column],[null]),[column]),[null]);
+  assert.deepEqual(textValues(Buffer.from([0xfb]),[column]),[null]);
+ }
+});
+
+test('DECIMAL rejects malformed bytes consistently without rounding or replacement',()=>{
+ const invalid=['','-','+1','.1','1.','1..2','1e3','--1','1,2',' 1','1 ',
+   '1\n','1\r','1\r\n','1\0','NaN','Infinity','１','−1'].map(value=>Buffer.from(value));
+ // High-bit bytes must never be converted to apparently valid ASCII digits.
+ for(const character of [0x2d,0x2e,...Array.from({length:10},(_,i)=>0x30+i)])
+   invalid.push(Buffer.from([character|0x80,0x31]));
+ // Exhaust all possible single-byte values, except valid standalone digits.
+ for(let byte=0;byte<256;byte++)
+  if(byte<0x30||byte>0x39)invalid.push(Buffer.from([byte]));
+ for(const type of [T.DECIMAL,T.NEWDECIMAL]){
+  const column=col('amount',type,{charset:63});
+  for(const value of invalid){
+   const payload=sized(value);
+   assert.throws(()=>binaryValues(wireRow([column],[payload]),[column]),
+    e=>e.code==='PROTOCOL_ERROR',value.toString('hex'));
+   assert.throws(()=>textValues(payload,[column]),
+    e=>e.code==='PROTOCOL_ERROR',value.toString('hex'));
+  }
+ }
 });
