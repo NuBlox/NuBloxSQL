@@ -732,6 +732,13 @@ export class MysqlSession implements RelationalSession {
           this.destroy(failure);
           throw failure;
         }
+        if(status&0x80){
+          // LAST_ROW_SENT is a FETCH exhaustion signal, not a valid
+          // confirmation that EXECUTE opened a cursor.
+          const failure=fail('PROTOCOL_ERROR','Contradictory MySQL cursor opening status');
+          this.destroy(failure);
+          throw failure;
+        }
         const keys=columnKeys(columns);
         // Include retained metadata in every batch's independent estimate.
         // Preflight before exposing the iterator or transmitting FETCH.
@@ -757,16 +764,34 @@ export class MysqlSession implements RelationalSession {
               // failure. After any binary row, the fetch response is only
               // partially consumed; fail closed instead of issuing a native
               // statement close against unread data or reusing the socket.
-              if(rows.length)this.destroy(error instanceof DriverError?error:undefined);
-              throw error;
+              // Only a fully validated first-packet SQL ERR establishes
+              // a recoverable boundary. A malformed ERR or transport failure
+              // must retire the session even if the callback catches next().
+              if(!rows.length&&error instanceof DriverError&&error.code==='DATABASE_ERROR')
+                throw error;
+              const failure=error instanceof DriverError?error:
+                fail('PROTOCOL_ERROR','Incomplete MySQL cursor fetch response');
+              this.destroy(failure);
+              throw failure;
             }
             if(eof(packet)){
-              const end=eofStatus(packet);
-              assertSingleResult(end.status);
-              const done=!!(end.status&0x80);
-              if(!done&&!(end.status&0x40))
-                throw Error('MySQL fetch response lost cursor state');
-              return {rows,done};
+              try{
+                const end=eofStatus(packet);
+                assertSingleResult(end.status);
+                const opened=!!(end.status&0x40);
+                const done=!!(end.status&0x80);
+                // Exactly one state must hold. Empty exhausted batches are
+                // valid (including an extra fetch at an exact boundary),
+                // but an empty still-open batch would falsely end iteration.
+                if(opened===done||(!done&&rows.length===0))
+                  throw fail('PROTOCOL_ERROR','Invalid MySQL cursor fetch terminal state');
+                return {rows,done};
+              }catch(error){
+                const failure=error instanceof DriverError?error:
+                  fail('PROTOCOL_ERROR','Malformed MySQL cursor fetch EOF');
+                this.destroy(failure);
+                throw failure;
+              }
             }
             try{
               bytes+=packet.length;

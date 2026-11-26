@@ -396,3 +396,22 @@ live('pool replaces a cursor session while retaining its original callback error
     assert.ok(pool.stats.size<=1);
   }finally{await pool.close();}
 });
+
+live('native cursor exhausts empty, exact-batch and partial-batch results without losing rows',async()=>{
+ const db=await connectDatabase(target);
+ try{
+  await db.query('CREATE TEMPORARY TABLE nublox_cursor_boundaries (id INT PRIMARY KEY)');
+  await db.query('INSERT INTO nublox_cursor_boundaries VALUES (1),(2),(3),(4),(5)');
+  for(const count of [0,1,2,3,4,5]){
+   const result=await db.withCursor('SELECT id FROM nublox_cursor_boundaries WHERE id <= ? ORDER BY id',[count],async cursor=>{
+    const ids=[];
+    for await(const item of cursor)ids.push(item.values[0]);
+    assert.equal(cursor.closed,true);
+    return ids;
+   },{fetchSize:2});
+   assert.deepEqual(result,Array.from({length:count},(_,i)=>i+1));
+   assert.equal(db.closed,false);
+   assert.equal((await db.query('SELECT 1 AS healthy')).rows[0].healthy,1n);
+  }
+ }finally{await db.close();}
+});
