@@ -38,6 +38,10 @@ function fraction(microseconds:number,precision:number):string{
   // Expressions can advertise an unspecified precision. Preserve the six
   // available wire digits in that case when there is a nonzero fraction.
   const digits=precision>=0&&precision<=6?precision:(microseconds?6:0);
+  // A declared precision may remove only zero padding. Nonzero discarded
+  // digits indicate inconsistent wire metadata, not permission to round.
+  if(microseconds%10**(6-digits)!==0)
+    throw fail('PROTOCOL_ERROR','MySQL fractional seconds exceed declared precision');
   return digits?'.'+pad(microseconds,6).slice(0,digits):'';
 }
 /** Never coerce MySQL calendar/time values into JS Date: zero dates, negative
@@ -53,6 +57,7 @@ function temporal(c:Cursor,column:MysqlColumn):string{
     if(negative>1||hour>23||minute>59||second>59)
       throw Error('Invalid MySQL TIME fields');
     const totalHours=days*24+hour;
+    if(totalHours>838)throw fail('PROTOCOL_ERROR','MySQL TIME duration exceeds supported range');
     return (negative?'-':'')+pad(totalHours)+':'+pad(minute)+':'+pad(second)+fraction(microseconds,column.decimals);
   }
   if(length===0){
@@ -61,7 +66,8 @@ function temporal(c:Cursor,column:MysqlColumn):string{
   if(type===T.DATE&&length!==4)throw Error('Invalid MySQL DATE length');
   if(type!==T.DATE&&![4,7,11].includes(length))throw Error('Invalid MySQL DATETIME length');
   const year=c.two(),month=c.byte(),day=c.byte();
-  if(month>12||day>31)throw Error('Invalid MySQL date fields');
+  if(year>9999||month>12||day>31)
+    throw fail('PROTOCOL_ERROR','Invalid MySQL date fields');
   let value=pad(year,4)+'-'+pad(month)+'-'+pad(day);
   if(type===T.DATE)return value;
   let hour=0,minute=0,second=0,microseconds=0;

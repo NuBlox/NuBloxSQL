@@ -60,11 +60,25 @@ function scalar(bytes:Buffer,column:MysqlColumn):unknown{
     // Preserve literal zero dates, TIME durations >24 hours and fractional
     // seconds instead of coercing them into JavaScript Date or a timezone.
     const pattern=type===T.DATE
-      ?/^\d{4}-\d{2}-\d{2}$/
+      ?/^(\d{4})-(\d{2})-(\d{2})$/
       :type===T.TIME
-        ?/^-?\d{2,3}:\d{2}:\d{2}(?:\.\d{1,6})?$/
-        :/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?$/;
-    if(!pattern.test(value))throw Error('Invalid MySQL temporal text');
+        ?/^-?(\d{2,3}):(\d{2}):(\d{2})(?:\.\d{1,6})?$/
+        :/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?$/;
+    const match=pattern.exec(value);
+    // JavaScript $ can match before a trailing newline. Require the entire
+    // wire string, then validate components without imposing SQL modes.
+    if(!match||match[0]!==value)throw Error('Invalid MySQL temporal text');
+    if(type===T.TIME){
+      if(Number(match[1])>838||Number(match[2])>59||Number(match[3])>59)
+        throw Error('Invalid MySQL TIME fields');
+    }else{
+      if(Number(match[2])>12||Number(match[3])>31)
+        throw Error('Invalid MySQL date fields');
+      if(type!==T.DATE&&(Number(match[4])>23||Number(match[5])>59||Number(match[6])>59))
+        throw Error('Invalid MySQL datetime fields');
+    }
+    // Unlike binary values, the text wire already carries exact scale.
+    // Preserve it as transmitted; do not pad/truncate based on metadata.
     return value;
   }
   if(type===T.BIT||type===T.GEOMETRY)return bytes;

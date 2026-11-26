@@ -222,3 +222,67 @@ test('non-finite FLOAT and DOUBLE and text FLOAT overflow are rejected',()=>{
  // The text protocol's displayed approximation remains unchanged.
  assert.deepEqual(textValues(bytes('0.1'),[col('float',T.FLOAT)]),[0.1]);
 });
+
+const binaryDate=(year,month,day)=>Buffer.concat([Buffer.from([4]),u16(year),Buffer.from([month,day])]);
+const binaryDatetime=(year,month,day,hour,minute,second,microseconds)=>Buffer.concat([
+ Buffer.from([11]),u16(year),Buffer.from([month,day,hour,minute,second]),u32(microseconds)
+]);
+const binaryTime=(negative,days,hour,minute,second,microseconds)=>Buffer.concat([
+ Buffer.from([12,negative]),u32(days),Buffer.from([hour,minute,second]),u32(microseconds)
+]);
+test('binary temporal precision never silently discards nonzero microseconds',()=>{
+ for(const type of [T.DATETIME,T.TIMESTAMP,T.TIME]){
+  const encode=microseconds=>type===T.TIME?binaryTime(0,0,1,2,3,microseconds):
+    binaryDatetime(2024,2,29,1,2,3,microseconds);
+  const prefix=type===T.TIME?'01:02:03':'2024-02-29 01:02:03';
+  for(let precision=0;precision<=6;precision++){
+   const column=col('value',type,{decimals:precision});
+   const digits='123456'.slice(0,precision);
+   const microseconds=Number(digits.padEnd(6,'0'));
+   const expected=prefix+(precision?'.'+digits:'');
+   assert.deepEqual(binaryValues(wireRow([column],[encode(microseconds)]),[column]),[expected]);
+   assert.deepEqual(textValues(bytes(expected),[column]),[expected]);
+   if(precision<6)
+    assert.throws(()=>binaryValues(wireRow([column],[encode(microseconds+1)]),[column]),
+     e=>e.code==='PROTOCOL_ERROR'&&/declared precision/.test(e.message));
+  }
+  const unknown=col('value',type,{decimals:31});
+  assert.deepEqual(binaryValues(wireRow([unknown],[encode(123456)]),[unknown]),[prefix+'.123456']);
+  assert.throws(()=>binaryValues(wireRow([unknown],[encode(1000000)]),[unknown]),/fractional seconds/);
+ }
+});
+test('temporal component bounds agree without imposing calendar validity or timezone',()=>{
+ const valid=[
+  [T.DATE,binaryDate(0,0,0),'0000-00-00'],
+  [T.DATE,binaryDate(2024,0,15),'2024-00-15'],
+  [T.DATE,binaryDate(2024,2,31),'2024-02-31'],
+  [T.DATE,binaryDate(9999,12,31),'9999-12-31'],
+  [T.DATETIME,binaryDatetime(2024,4,31,23,59,59,123456),'2024-04-31 23:59:59.123456'],
+  [T.TIME,binaryTime(1,34,22,59,59,0),'-838:59:59.000000'],
+  [T.TIME,binaryTime(0,0,0,0,0,1),'00:00:00.000001']
+ ];
+ for(const [type,raw,value] of valid){
+  const column=col('value',type,{decimals:6});
+  assert.deepEqual(binaryValues(wireRow([column],[raw]),[column]),[value]);
+  assert.deepEqual(textValues(bytes(value),[column]),[value]);
+ }
+ const invalid=[
+  [T.DATE,binaryDate(10000,1,1),'10000-01-01'],
+  [T.DATE,binaryDate(2024,13,1),'2024-13-01'],
+  [T.DATE,binaryDate(2024,1,32),'2024-01-32'],
+  [T.DATETIME,binaryDatetime(2024,1,1,24,0,0,0),'2024-01-01 24:00:00'],
+  [T.TIMESTAMP,binaryDatetime(2024,1,1,0,60,0,0),'2024-01-01 00:60:00'],
+  [T.TIME,binaryTime(0,34,23,0,0,0),'839:00:00'],
+  [T.TIME,binaryTime(1,0,1,60,0,0),'-01:60:00'],
+  [T.TIME,binaryTime(0,0,1,0,60,0),'01:00:60']
+ ];
+ for(const [type,raw,value] of invalid){
+  const column=col('value',type,{decimals:6});
+  assert.throws(()=>binaryValues(wireRow([column],[raw]),[column]));
+  assert.throws(()=>textValues(bytes(value),[column]),e=>e.code==='PROTOCOL_ERROR');
+ }
+ for(const [type,value] of [[T.DATE,'2024-01-01'],[T.TIME,'01:02:03'],[T.DATETIME,'2024-01-01 01:02:03']]){
+  for(const tail of ['\n','\r','\r\n','\0',' '])
+   assert.throws(()=>textValues(bytes(value+tail),[col('value',type)]),e=>e.code==='PROTOCOL_ERROR');
+ }
+});
