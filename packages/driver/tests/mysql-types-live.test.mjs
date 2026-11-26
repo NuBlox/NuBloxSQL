@@ -156,3 +156,33 @@ live('MEDIUMINT YEAR and finite floating-point boundaries agree across result pr
   assert.equal(db.closed,false);
  }finally{await db.close();}
 });
+
+live('temporal results preserve all fractional precisions and permitted incomplete dates',async()=>{
+ const db=await connectDatabase(target);
+ try{
+  await db.query("SET SESSION time_zone = '+00:00'");
+  await db.query("SET SESSION sql_mode = 'ALLOW_INVALID_DATES'");
+  await db.query('CREATE TEMPORARY TABLE nublox_temporal_modes (id INT PRIMARY KEY, d DATE, dt DATETIME(6), t TIME(6), ts TIMESTAMP(6))');
+  const samples=[
+   ['0000-00-00','0000-00-00 00:00:00.000000','00:00:00.000000','0000-00-00 00:00:00.000000'],
+   ['2024-00-15','2024-04-31 12:34:56.123456','-838:59:59.000000','2024-02-29 12:34:56.123456'],
+   ['2024-02-31','2024-02-00 01:02:03.000001','838:59:59.000000','2024-02-29 00:00:00.000001'],
+   [null,null,null,null]
+  ];
+  for(const [id,values] of samples.entries())
+   await db.query('INSERT INTO nublox_temporal_modes VALUES (?,?,?,?,?)',[id,...values]);
+  const sql='SELECT d,dt,t,ts FROM nublox_temporal_modes ORDER BY id';
+  for(const result of [await db.query(sql),await db.queryText(sql)])
+   assert.deepEqual(result.rowValues,samples);
+  // Fixed trusted precision integers only; no user data is interpolated.
+  for(let precision=0;precision<=6;precision++){
+   const suffix=precision?'.'+'123456'.slice(0,precision):'';
+   const dt='2024-02-29 12:34:56'+suffix;
+   const t='-26:03:04'+suffix;
+   const cast="SELECT CAST('"+dt+"' AS DATETIME("+precision+")) AS dt, CAST('"+t+"' AS TIME("+precision+")) AS t";
+   for(const result of [await db.query(cast),await db.queryText(cast)])
+    assert.deepEqual(result.rowValues,[[dt,t]]);
+  }
+  assert.equal(db.closed,false);
+ }finally{await db.close();}
+});
