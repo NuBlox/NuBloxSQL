@@ -73,7 +73,7 @@ function parseOkPacket(buf:Buffer,allowMultiple:boolean):QueryResult{
     const c=new Cursor(buf);
     if(c.byte()!==0)
       throw fail('PROTOCOL_ERROR','Unexpected MySQL OK packet');
-    const affectedRows=c.len(),insertId=c.len();
+    const affectedRows=c.lenInteger(),insertId=c.lenInteger();
     if(affectedRows===null||insertId===null||c.remaining()<4)
       throw fail('PROTOCOL_ERROR','Incomplete MySQL OK packet');
     const status=c.two(),warnings=c.two();

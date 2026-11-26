@@ -27,6 +27,8 @@ type _PoolResult=Assert<Equal<ReturnType<typeof createDatabasePool>,DatabasePool
 type _TargetSecurity=Assert<Equal<MysqlTarget['security'],'verified-tls'|'isolated-local'>>;
 type _Values=Assert<Equal<BindValue,null|boolean|string|number|bigint|Uint8Array>>;
 type _Rows=Assert<Equal<QueryResult['rowValues'],unknown[][]|undefined>>;
+type _AffectedRows=Assert<Equal<QueryResult['affectedRows'],number|bigint>>;
+type _InsertId=Assert<Equal<QueryResult['insertId'],number|bigint>>;
 type _PoolCounterKeys=Assert<Equal<keyof PoolStats,
   'size'|'idle'|'active'|'connecting'|'pending'|'created'|'discarded'|
   'expired'|'healthChecks'|'healthFailures'|'acquireTimeouts'>>;
@@ -60,6 +62,11 @@ async function consumerUsage(session:RelationalSession,pool:DatabasePool,
   tx:RelationalTransaction,statement:RelationalPreparedStatement,
   cursor:RelationalCursor):Promise<void>{
   const r:QueryResult=await session.query('SELECT ? AS value',[42n],timeout);
+  const exactAffected:bigint=BigInt(r.affectedRows);
+  const exactInsertId:bigint=BigInt(r.insertId);
+  // @ts-expect-error an acknowledgement may exceed safe number precision
+  const unsafeNumber:number=r.insertId;
+  void [exactAffected,exactInsertId,unsafeNumber];
   const sets:QueryResult[]=await session.queryResults('SELECT ?',[1],timeout);
   const unprepared:QueryResult=await session.queryText('SHOW COUNT(*) WARNINGS',timeout);
   const unpreparedSets:QueryResult[]=await session.queryTextResults('SELECT 1',timeout);

@@ -66,11 +66,11 @@ Source paths are relative to packages/driver/src; test paths are relative to pac
 | E4 | [Cache concurrency](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721119188) | Quota 4 and verified-TLS quota 8 jobs succeeded |
 | E5 | [TLS cache endurance](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721118970) | Workload and evidence checks succeeded, not a multi-day claim |
 | E6 | [Outages/recovery](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721118969), [durable write](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721118910), [TLS write](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721119031) | Executed fault and write jobs succeeded; extended soak + evidence skipped |
-| E7 | [Internal profile](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721119201), [concurrent comparison](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721118967), [TLS comparison](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721119027) | Jobs succeeded; raw numeric results not inspected or retained independently yet |
+| E7 | [Internal profile](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721119201), [concurrent comparison](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721118967), [TLS comparison](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721119027) | Jobs succeeded; report snapshots and original ZIP verification recorded below |
 | E8 | [Package security](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721119007), [release provenance](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721118917) | Node22/24 and provenance checks succeeded; package not authorised for sale |
 | E9 | [Legacy/baseline version qualification](https://github.com/NuBlox/NuBloxSQL/actions/runs/45721118930) | 8.0.44 and 8.4.11 local/TLS succeeded; not a production support declaration |
 
-Performance artifact metadata observed: concurrent comparison 15071907581 (expires 2026-12-09), native profile 15072217619 (expires 2026-12-09), TLS comparison 15071224213 and decision 15071982435 (expire 2027-01-24). Each identifies the audited main SHA. Download and securely retain redacted raw reports before expiry, verify digests against API metadata, then derive a baseline with environment/workload semantics and variability. No comparative speed or memory claim from this ledger alone.
+Performance artifact metadata observed: concurrent comparison 15071907581 (expires 2026-12-09), native profile 15072217619 (expires 2026-12-09), TLS comparison 15071224213 and decision 15071982435 (expire 2027-01-24). Each identifies the audited main SHA. Original archives have been recovered and independently verified; retain the separately delivered owner bundle permanently. No comparative speed or memory claim from this ledger alone.
 
 ## Preserved performance report snapshots
 
@@ -99,4 +99,4 @@ Ratios are geometric means of paired run summaries, not throughput ratios. Refer
 
 G1/G2/G3/G4/G5/G6/G7/G8/G11 have engineering evidence to varying degrees; G9/G10 and all final sign-offs remain open. Main ruleset 25231727 was read live: active, strict required checks, only docs context required, no bypass actors. Do not weaken it. No commercial decision changes made.
 
-WP00 is not closed: owner archive custody, remaining detailed conformance mapping, documentation reconciliation and outstanding PR integration require completion.
+WP00 engineering baseline established by #491–#496, including 58 clause assessments, exact-revision benchmark reports, original archive verification and status reconciliation. Remaining clause gaps transfer explicitly to WP10/WP20 rather than delaying fixes. Owner archive custody remains outstanding; no release gate or independent approval is closed by this baseline.

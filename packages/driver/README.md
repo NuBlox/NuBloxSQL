@@ -195,6 +195,7 @@ construction and a safe query builder are separate future work.
 ### Binary result data fidelity
 
 - Signed/unsigned TINYINT, SMALLINT, INT and BIGINT respect native width. BIGINT values are returned as **bigint**, not lossy JavaScript numbers.
+- Statement acknowledgements (`affectedRows`, `insertId`) return an exact `number` through `Number.MAX_SAFE_INTEGER` and `bigint` above it, up to the full unsigned 64-bit limit. This is a reviewed preview TypeScript contract widening: narrow with `typeof`, or use `BigInt(result.insertId)` for exact arithmetic. JSON serialization requires an explicit bigint-to-string policy (e.g. `JSON.stringify(result, (_key, value) => typeof value === 'bigint' ? value.toString() : value)`). Never coerce large IDs to number. Existing small values retain their runtime representation.
 - DECIMAL/NEWDECIMAL retain exact digits and scale as **strings**, including negative and very large values. FLOAT/DOUBLE use JavaScript numbers.
 - TEXT and BLOB can share MySQL type codes: the native output collation (63 means binary) differentiates **string** from **Buffer**. VARCHAR/VARBINARY and CHAR/BINARY follow the same rule. BIT and GEOMETRY are raw **Buffer** bytes.
 - JSON is returned as a **serialized JSON string**, not implicitly parsed into a JavaScript object, so consumers control number precision and validation.
