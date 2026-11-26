@@ -260,3 +260,22 @@ test('Protocol 4.1 server errors require a complete marked five-byte SQLSTATE',(
       error=>error.code==='PROTOCOL_ERROR');
   }
 });
+
+test('ColumnDefinition41 fixed-width fields preserve independent boundary values and reject every truncation',()=>{
+ const fields=['def','database','alias','physical','display','actual'];
+ const prefix=Buffer.concat(fields.map(name=>sized(Buffer.from(name))));
+ const packet=Buffer.concat([prefix,Buffer.from([12]),u16(309),u32(0xffffffff),
+  Buffer.from([T.NEWDECIMAL]),u16(0x8020),Buffer.from([30,0,0])]);
+ assert.deepEqual(field(packet),{
+  name:'display',schema:'database',table:'alias',originalName:'actual',
+  originalTable:'physical',charset:309,length:0xffffffff,type:T.NEWDECIMAL,
+  flags:0x8020,decimals:30,unsigned:true
+ });
+ for(let n=0;n<packet.length;n++)assert.throws(()=>field(packet.subarray(0,n)),
+  undefined,'truncated metadata at byte '+n);
+ for(const fixed of [0,11,13,251]){
+  const malformed=Buffer.from(packet);
+  malformed[prefix.length]=fixed;
+  assert.throws(()=>field(malformed),/column metadata length/);
+ }
+});

@@ -12,6 +12,21 @@
 const utf8=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true});
 const western=new TextDecoder('windows-1252',{fatal:true});
 
+// Selected documented MySQL Unicode collation IDs. Keep the reserved
+// gaps in the 0900 series explicit; never infer charset from proximity.
+// https://dev.mysql.com/doc/refman/8.4/en/charset-mysql.html
+const utf8mb3Ids=new Set([
+  33,83,192,193,194,195,196,197,198,199,200,201,202,203,
+  204,205,206,207,208,209,210,211,212,213,214,215
+]);
+const utf8mb4Ids=new Set([
+  45,46,224,225,226,227,228,229,230,231,232,233,234,235,
+  236,237,238,239,240,241,242,243,244,245,246,247,
+  255,256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,
+  273,274,275,277,278,279,280,281,282,283,284,285,286,287,288,289,
+  290,291,292,293,294,296,297,298,300,303,304,305,306,307,308,309
+]);
+
 type CharsetName=
   'big5'|'sjis'|'cp932'|'euckr'|'gb2312'|'gbk'|'gb18030'|
   'latin2'|'cp1250'|'cp1251'|'greek'|'latin5'|'hebrew'|'cp1256'|
@@ -105,13 +120,15 @@ function ascii(bytes:Buffer):string{
 
 /** Decode one textual value or throw. Binary (63) stays a Buffer upstream. */
 export function decodeMysqlText(bytes:Buffer,collation:number):string{
-  // MySQL 8.x utf8mb3/utf8mb4 explicit known IDs and UCA ranges.
-  if(collation===33||collation===45||collation===46||collation===83||
-    collation===255||
-    (collation>=192&&collation<=215)||
-    (collation>=224&&collation<=247)||
-    (collation>=256&&collation<=309))
+  if(utf8mb3Ids.has(collation)){
+    // UTF8MB3 accepts BMP scalars only. A valid four-byte UTF-8
+    // sequence is nevertheless outside this declared character set.
+    // Fatal decoding below still validates overlong and surrogate forms.
+    for(const byte of bytes)if(byte>=0xf0)
+      throw Error('Supplementary Unicode scalar in MySQL utf8mb3 column');
     return utf8.decode(bytes);
+  }
+  if(utf8mb4Ids.has(collation))return utf8.decode(bytes);
   // MySQL's latin1 is Windows codepage 1252, not ISO-8859-1.
   if(collation===5||collation===8||collation===15||collation===31||
      collation===47||collation===48||collation===49||collation===94)
