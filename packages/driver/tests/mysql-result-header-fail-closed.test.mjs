@@ -356,3 +356,89 @@ test('cursor memory accounting restarts for each independently bounded fetch bat
     assert.equal(f.session.closed,false);
   }finally{await f.session.close();}
 });
+
+const cursorStatusPacket=status=>Buffer.concat([Buffer.from([0xfe,0,0]),u16(status)]);
+test('contradictory cursor opening flags revoke before callback or FETCH',async()=>{
+  const f=fixture([Buffer.from([1]),validColumn,cursorStatusPacket(0xc2)]);
+  await assert.rejects(f.session.withCursor('SELECT 42',[],async()=>{
+    assert.fail('callback must not run');
+  }),e=>e.code==='PROTOCOL_ERROR');
+  assert.deepEqual(f.sent.map(p=>p[0]),[0x17]);
+  assert.equal(f.preparedClosed,false);
+  assert.equal(f.session.closed,true);
+  assert.equal(f.socket.destroyed,true);
+});
+test('invalid cursor FETCH EOF states revoke even when callback catches the error',async()=>{
+  const opened=cursorStatusPacket(0x42);
+  const exhausted=cursorStatusPacket(0x82);
+  const cases=[
+    [[],opened,'PROTOCOL_ERROR'], // no progress, still open
+    [[binaryTinyRow(42)],cursorStatusPacket(2),'PROTOCOL_ERROR'],
+    [[binaryTinyRow(42)],cursorStatusPacket(0xc2),'PROTOCOL_ERROR'],
+    [[],cursorStatusPacket(0xc2),'PROTOCOL_ERROR'],
+    [[binaryTinyRow(42)],cursorStatusPacket(0x8a),'UNSUPPORTED_FEATURE'],
+    [[binaryTinyRow(42)],cursorStatusPacket(0x1082),'UNSUPPORTED_FEATURE'],
+    [[binaryTinyRow(42)],Buffer.from([0xfe]),'PROTOCOL_ERROR'],
+    [[],Buffer.from([0xfe,0,0,0x82]),'PROTOCOL_ERROR'],
+    [[],Buffer.from([0xfe,0,0,0x82,0,0]),'PROTOCOL_ERROR']
+  ];
+  for(const [rows,end,code] of cases){
+    const f=fixture([Buffer.from([1]),validColumn,opened,...rows,end,exhausted]);
+    await assert.rejects(f.session.withCursor('SELECT 42',[],async cursor=>{
+      await assert.rejects(cursor.next(),e=>e.code===code);
+      return 'must not report success';
+    }),e=>e.code===code);
+    assert.deepEqual(f.sent.map(p=>p[0]),[0x17,0x1c]);
+    assert.equal(f.remainingReplies,1);
+    assert.equal(f.preparedClosed,false);
+    assert.equal(f.session.closed,true);
+    assert.equal(f.socket.destroyed,true);
+    await assert.rejects(f.session.query('SELECT 2'),e=>e.code==='CONNECTION_CLOSED');
+  }
+});
+test('malformed first FETCH ERR cannot be treated as a recoverable SQL error',async()=>{
+  const opened=cursorStatusPacket(0x42);
+  for(const invalid of [Buffer.from([0xff]),Buffer.from([0xff,1,0,0x23,0x48,0x59,0x30,0x30,0xff])]){
+    const f=fixture([Buffer.from([1]),validColumn,opened,invalid]);
+    await assert.rejects(f.session.withCursor('SELECT 42',[],async cursor=>{
+      await assert.rejects(cursor.next(),e=>e.code==='PROTOCOL_ERROR');
+      return 'must not report success';
+    }),e=>e.code==='PROTOCOL_ERROR');
+    assert.deepEqual(f.sent.map(p=>p[0]),[0x17,0x1c]);
+    assert.equal(f.preparedClosed,false);
+    assert.equal(f.session.closed,true);
+  }
+});
+test('complete first FETCH ERR preserves SQL diagnostics and safe cleanup',async()=>{
+  const opened=cursorStatusPacket(0x42);
+  const err=Buffer.concat([Buffer.from([0xff]),u16(1325),Buffer.from('#24000fixture SQL error')]);
+  const f=fixture([Buffer.from([1]),validColumn,opened,err]);
+  try{
+    await assert.rejects(f.session.withCursor('SELECT 42',[],async cursor=>cursor.next()),
+      e=>e.code==='DATABASE_ERROR'&&e.vendorCode===1325&&e.sqlState==='24000');
+    assert.deepEqual(f.sent.map(p=>p[0]),[0x17,0x1c,0x19]);
+    assert.equal(f.preparedClosed,true);
+    assert.equal(f.session.closed,false);
+  }finally{await f.session.close();}
+});
+test('empty exhausted FETCH is valid both initially and after an exact full batch',async()=>{
+  const opened=cursorStatusPacket(0x42);
+  const exhausted=cursorStatusPacket(0x82);
+  for(const [packets,expected,commands] of [
+    [[exhausted],[],[0x17,0x1c,0x19]],
+    [[binaryTinyRow(42),opened,exhausted],[42],[0x17,0x1c,0x1c,0x19]]
+  ]){
+    const f=fixture([Buffer.from([1]),validColumn,opened,...packets]);
+    try{
+      const values=await f.session.withCursor('SELECT 42',[],async cursor=>{
+        const rows=[];
+        for await(const item of cursor)rows.push(item.values[0]);
+        return rows;
+      },{fetchSize:1});
+      assert.deepEqual(values,expected);
+      assert.deepEqual(f.sent.map(p=>p[0]),commands);
+      assert.equal(f.remainingReplies,0);
+      assert.equal(f.session.closed,false);
+    }finally{await f.session.close();}
+  }
+});

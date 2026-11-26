@@ -572,9 +572,13 @@ connection, revokes the cursor and skips `COM_STMT_CLOSE` into an
 untrusted response. A server error interrupting cursor result metadata
 after the row-set header is handled in the same fail-closed way.
 
-A first-packet fetch error is distinguished from a partial batch; valid
-early cursor termination still closes the native statement and preserves
-healthy session reuse. A pool discards any poisoned socket and acquires a
+Only a fully validated first-packet SQL error establishes a recoverable
+boundary. Malformed ERR/EOF packets, contradictory or missing cursor state
+flags, unsupported continuation flags and empty non-terminal fetch batches
+revoke the session even when caught inside the application callback.
+An empty terminal fetch is valid, including an extra round trip after an
+exact full batch. Valid early cursor termination still closes the native
+statement and preserves healthy session reuse. A pool discards any poisoned socket and acquires a
 new authenticated connection for subsequent independent work. No cursor
 fetch or application statement is replayed.
 
