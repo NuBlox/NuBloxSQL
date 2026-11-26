@@ -133,8 +133,17 @@ live('MEDIUMINT YEAR and finite floating-point boundaries agree across result pr
    [0,8388608,0,0,0],
    [null,null,null,null,null]
   ];
-  for(const [id,values] of samples.entries())
-   await db.query('INSERT INTO nublox_numeric_domains VALUES (?,?,?,?,?,?)',[id,...values]);
+  const insert='INSERT INTO nublox_numeric_domains VALUES (?,?,?,?,?,?)';
+  // JS represents 1e100 as an integer-valued number outside the safe
+  // integer domain. Preserve the existing input rejection policy; bind
+  // its decimal exponent string for the server's DOUBLE conversion.
+  await assert.rejects(db.query(insert,[1,...samples[1]]),e=>e.code==='INVALID_INPUT');
+  assert.equal(db.closed,false);
+  for(const [id,values] of samples.entries()){
+   const parameters=[...values];
+   if(id===1)parameters[4]='1e100';
+   await db.query(insert,[id,...parameters]);
+  }
   for(const result of [
    await db.query('SELECT signed_m,unsigned_m,year_value,float_value,double_value FROM nublox_numeric_domains ORDER BY id'),
    await db.queryText('SELECT signed_m,unsigned_m,year_value,float_value,double_value FROM nublox_numeric_domains ORDER BY id')
