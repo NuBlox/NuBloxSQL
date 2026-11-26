@@ -186,3 +186,24 @@ live('temporal results preserve all fractional precisions and permitted incomple
   assert.equal(db.closed,false);
  }finally{await db.close();}
 });
+
+live('UTF-8 column aliases and physical identifiers retain exact identity in both protocols',async()=>{
+ const db=await connectDatabase(target);
+ try{
+  await db.query("SET SESSION character_set_results = 'utf8mb4'");
+  await db.query('CREATE TEMPORARY TABLE nublox_metadata_identity (`café_東京` INT)');
+  await db.query('INSERT INTO nublox_metadata_identity VALUES (42)');
+  const sql='SELECT `café_東京` AS `résultat_東京`, `café_東京` AS `résultat_東京` FROM nublox_metadata_identity AS `別名`';
+  for(const result of [await db.query(sql),await db.queryText(sql)]){
+   assert.deepEqual(result.columnKeys,['résultat_東京','résultat_東京#2']);
+   assert.deepEqual(result.rowValues,[[42,42]]);
+   assert.equal(result.rows[0]['résultat_東京'],42);
+   for(const column of result.columns){
+    assert.equal(column.name,'résultat_東京');
+    assert.equal(column.originalName,'café_東京');
+    assert.equal(column.table,'別名');
+    assert.equal(column.originalTable,'nublox_metadata_identity');
+   }
+  }
+ }finally{await db.close();}
+});

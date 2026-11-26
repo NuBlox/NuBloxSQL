@@ -442,3 +442,21 @@ test('empty exhausted FETCH is valid both initially and after an exact full batc
     }finally{await f.session.close();}
   }
 });
+
+test('invalid metadata identity revokes prepared query and cursor before row or cleanup commands',async()=>{
+ const invalidColumn=Buffer.concat([
+  ...['def','','','','value',''].map((value,i)=>sized(i===4?Buffer.from([0xff]):Buffer.from(value))),
+  Buffer.from([12]),u16(45),u32(1),Buffer.from([T.TINY]),u16(0),Buffer.from([0,0,0])
+ ]);
+ for(const mode of ['query','cursor']){
+  const f=fixture([Buffer.from([1]),invalidColumn,metadataEof,binaryTinyRow(42),lastResultEof]);
+  const work=mode==='query'?f.session.query('SELECT 42'):
+   f.session.withCursor('SELECT 42',[],async()=>assert.fail('invalid metadata must not reach callback'));
+  await assert.rejects(work,e=>e.code==='PROTOCOL_ERROR');
+  assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17]);
+  assert.equal(f.preparedClosed,false);
+  assert.equal(f.session.closed,true);
+  assert.equal(f.socket.destroyed,true);
+  assert.equal(f.remainingReplies,3);
+ }
+});

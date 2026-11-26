@@ -38,26 +38,42 @@ export function binaryResultColumnCount(packet:Buffer):number{
   }
 }
 
+// The qualified metadata encoding is UTF-8 (or ASCII-compatible names
+// when a different result character set is used). Never infer identifier
+// encoding from the column value collation, and never replace invalid bytes.
+// Full session-aware metadata decoding requires negotiated state tracking.
+const metadataUtf8=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true});
+function metadataName(c:Cursor):string{
+  const bytes=c.lbytes();
+  if(bytes===null)throw fail('PROTOCOL_ERROR','NULL marker in MySQL column definition');
+  try{return metadataUtf8.decode(bytes);}
+  catch{throw fail('PROTOCOL_ERROR','Invalid UTF-8 in MySQL column metadata');}
+}
 export function field(buf:Buffer):MysqlColumn{
-  const c=new Cursor(buf);
-  const catalog=c.lstr(); // normally "def"
-  const schema=c.lstr();
-  const table=c.lstr();
-  const originalTable=c.lstr();
-  const name=c.lstr();
-  const originalName=c.lstr();
-  // ColumnDefinition41 declares six length-encoded strings, not nullable
-  // result values. A 0xfb NULL marker here would violate the wire contract.
-  // Empty strings remain valid for expression columns without table origin.
-  if(catalog===null||schema===null||table===null||
-     originalTable===null||name===null||originalName===null)
-    throw fail('PROTOCOL_ERROR','NULL marker in MySQL column definition');
-  const fixed=c.len();
-  if(fixed!==12)throw Error('Invalid MySQL 4.1 column metadata length');
-  const charset=c.two(),length=c.four(),type=c.byte(),flags=c.two(),decimals=c.byte();
-  c.take(2);
-  if(c.remaining()!==0)throw Error('Trailing MySQL column definition bytes');
-  return {name,schema,table,originalName,originalTable,charset,length,type,flags,decimals,unsigned:!!(flags&32)};
+  try{
+    const c=new Cursor(buf);
+    const catalog=c.lbytes();
+    if(catalog===null)throw fail('PROTOCOL_ERROR','NULL marker in MySQL column definition');
+    // The native MySQL Classic ColumnDefinition41 catalog is currently def.
+    if(catalog.length!==3||catalog[0]!==0x64||catalog[1]!==0x65||catalog[2]!==0x66)
+      throw fail('PROTOCOL_ERROR','Invalid MySQL column metadata catalog');
+    const schema=metadataName(c);
+    const table=metadataName(c);
+    const originalTable=metadataName(c);
+    const name=metadataName(c);
+    const originalName=metadataName(c);
+    const fixed=c.len();
+    if(fixed!==12)throw fail('PROTOCOL_ERROR','Invalid MySQL 4.1 column metadata length');
+    const charset=c.two(),length=c.four(),type=c.byte(),flags=c.two(),decimals=c.byte();
+    // The documented fixed-length section includes two trailing bytes.
+    // Retain their existing tolerance pending cross-version reserved-field evidence.
+    c.take(2);
+    if(c.remaining()!==0)throw fail('PROTOCOL_ERROR','Trailing MySQL column definition bytes');
+    return {name,schema,table,originalName,originalTable,charset,length,type,flags,decimals,unsigned:!!(flags&32)};
+  }catch(error){
+    if(error instanceof DriverError)throw error;
+    throw fail('PROTOCOL_ERROR','Malformed MySQL column definition');
+  }
 }
 /** All Classic 4.1 statement OK packets require status and warnings too. */
 export function ok(buf:Buffer,allowMultiple=false):QueryResult{

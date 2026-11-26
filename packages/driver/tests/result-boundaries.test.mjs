@@ -279,3 +279,29 @@ test('ColumnDefinition41 fixed-width fields preserve independent boundary values
   assert.throws(()=>field(malformed),/column metadata length/);
  }
 });
+
+test('metadata names preserve exact UTF-8 scalars, literal replacement character and leading U+FEFF',()=>{
+ const result=field(definition('\ufeffcafé_東京_\ufffd','original_é','別名','物理表'));
+ assert.equal(result.name,'\ufeffcafé_東京_\ufffd');
+ assert.equal(result.originalName,'original_é');
+ assert.equal(result.table,'別名');
+ assert.equal(result.originalTable,'物理表');
+ assert.equal(result.charset,63,'value collation does not determine metadata encoding');
+});
+test('metadata rejects invalid UTF-8 in each identifier without replacing bytes',()=>{
+ const names=['def','schema','alias','physical','display','actual'];
+ const fixed=Buffer.concat([Buffer.from([12]),u16(45),u32(1),Buffer.from([T.TINY]),u16(0),Buffer.from([0,0,0])]);
+ for(let index=1;index<names.length;index++)
+  for(const bad of [Buffer.from([0xff]),Buffer.from([0xc0,0xaf]),Buffer.from([0xed,0xa0,0x80]),Buffer.from([0xe2,0x82]),Buffer.from([0xe9])]){
+   const packet=Buffer.concat([...names.map((name,i)=>sized(i===index?bad:Buffer.from(name))),fixed]);
+   assert.throws(()=>field(packet),e=>e.code==='PROTOCOL_ERROR'&&/Invalid UTF-8/.test(e.message));
+  }
+});
+test('native metadata catalog must be the exact documented byte string',()=>{
+ const valid=definition('value');
+ for(const catalog of [Buffer.alloc(0),Buffer.from('DEF'),Buffer.from('xyz'),Buffer.from([0xe4,0x65,0x66]),Buffer.from('def\0')]){
+  const packet=Buffer.concat([sized(catalog),valid.subarray(4)]);
+  assert.throws(()=>field(packet),e=>e.code==='PROTOCOL_ERROR'&&/catalog/.test(e.message));
+ }
+ assert.equal(field(valid).name,'value');
+});
