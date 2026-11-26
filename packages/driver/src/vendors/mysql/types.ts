@@ -1,5 +1,6 @@
 import {Cursor,T} from './protocol/primitives.js';
 import type {MysqlColumn} from '../../core/contracts.js';
+import {fail} from '../../core/errors.js';
 
 const pad=(n:number,width=2):string=>String(n).padStart(width,'0');
 // Preserve leading U+FEFF in serialized values and binary-collated ENUM/SET.
@@ -7,6 +8,25 @@ const utf8=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true});
 export {decodeMysqlText as textValue} from './collations.js';
 import {decodeMysqlText} from './collations.js';
 const textValue=decodeMysqlText;
+/** Both Classic result protocols carry DECIMAL as an exact string.
+ * Validate the bytes before converting: Node's ASCII decoder masks bit 7.
+ * Accept a minus sign, integral digits and an optional nonempty fraction.
+ * No trimming, rounding, exponent conversion or inferred scale.
+ * Field-specific precision/domain checks remain separate from wire syntax. */
+export function decodeDecimal(bytes:Buffer):string{
+  const invalid=()=>fail('PROTOCOL_ERROR','Invalid MySQL DECIMAL text');
+  let i=bytes[0]===0x2d?1:0;
+  const start=i;
+  while(i<bytes.length&&bytes[i]>=0x30&&bytes[i]<=0x39)i++;
+  if(i===start)throw invalid();
+  if(i<bytes.length&&bytes[i]===0x2e){
+    const fractionStart=++i;
+    while(i<bytes.length&&bytes[i]>=0x30&&bytes[i]<=0x39)i++;
+    if(i===fractionStart)throw invalid();
+  }
+  if(i!==bytes.length)throw invalid();
+  return bytes.toString('ascii');
+}
 function valueBytes(cursor:Cursor):Buffer{
   const value=cursor.lbytes();
   if(value===null)throw Error('Unexpected NULL outside MySQL result NULL bitmap');
@@ -119,7 +139,7 @@ export function binaryValues(buf:Buffer,cols:readonly MysqlColumn[]):unknown[]{
       const bytes=valueBytes(cursor);
       value=(type===T.JSON||type===T.ENUM||type===T.SET)
         ? (column.charset===63?utf8.decode(bytes):textValue(bytes,column.charset))
-        :bytes.toString('ascii');
+        :decodeDecimal(bytes);
     }else{
       throw Error('Unsupported MySQL binary result type '+type);
     }

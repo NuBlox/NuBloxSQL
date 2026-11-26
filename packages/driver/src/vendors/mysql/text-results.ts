@@ -1,6 +1,6 @@
 import {Cursor,T} from './protocol/primitives.js';
 import type {MysqlColumn} from '../../core/contracts.js';
-import {textValue} from './types.js';
+import {decodeDecimal,textValue} from './types.js';
 import {DriverError,fail} from '../../core/errors.js';
 
 /** Strict Classic Text Protocol row decoder.
@@ -49,12 +49,8 @@ function scalar(bytes:Buffer,column:MysqlColumn):unknown{
   if(type===T.TINY||type===T.SHORT||type===T.LONG||
      type===T.INT24||type===T.LONGLONG||type===T.YEAR||
      type===T.FLOAT||type===T.DOUBLE)return numeric(bytes,column);
-  if(type===T.NEWDECIMAL||type===T.DECIMAL){
-    const value=ascii(bytes);
-    if(!/^-?\d+(?:\.\d+)?$/.test(value))
-      throw Error('Invalid MySQL DECIMAL text');
-    return value;
-  }
+  if(type===T.NEWDECIMAL||type===T.DECIMAL)
+    return decodeDecimal(bytes);
   if(type===T.DATE||type===T.DATETIME||type===T.TIMESTAMP||type===T.TIME){
     const value=ascii(bytes);
     // Preserve literal zero dates, TIME durations >24 hours and fractional
