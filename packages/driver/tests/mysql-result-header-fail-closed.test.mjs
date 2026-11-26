@@ -40,7 +40,8 @@ function fixture(header){
     if(!replies.length)throw Error('Unexpected fixture packet read');
     return replies.shift();
   };
-  return {socket,session,sent,get preparedClosed(){return preparedClosed;}};
+  return {socket,session,sent,get preparedClosed(){return preparedClosed;},
+    get remainingReplies(){return replies.length;}};
 }
 
 test('query rejects a malformed binary result header and revokes the native session',async()=>{
@@ -108,6 +109,70 @@ const binaryTinyRow=value=>Buffer.from([0,0,value]);
 const resultPackets=(column,row,end)=>[
   Buffer.from([1]),column,metadataEof,binaryTinyRow(row),end
 ];
+
+test('cursor fallback revokes session before ordinary rows arrive or statement cleanup starts',async()=>{
+  // The server has completed metadata but declined the requested cursor.
+  // Exercise both an empty receive queue (delayed rows) and already queued
+  // ordinary rows. A queue snapshot cannot prove an execution boundary.
+  for(const tail of [[],[binaryTinyRow(42),lastResultEof]]){
+    const f=fixture([Buffer.from([1]),validColumn,metadataEof,...tail]);
+    let invoked=false;
+    await assert.rejects(f.session.withCursor('SELECT 1',[],async()=>{
+      invoked=true;
+    }),error=>error.code==='UNSUPPORTED_FEATURE');
+    assert.equal(invoked,false);
+    assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17]);
+    assert.equal(f.preparedClosed,false);
+    assert.equal(f.remainingReplies,tail.length,'never attempt to materialize the fallback');
+    assert.equal(f.session.closed,true);
+    assert.equal(f.socket.destroyed,true);
+    await assert.rejects(f.session.query('SELECT 2'),error=>error.code==='CONNECTION_CLOSED');
+    assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17],'no retry or subsequent command');
+  }
+});
+
+test('cursor malformed or continuing OK responses never permit native statement cleanup',async()=>{
+  for(const packet of [Buffer.from([0]),Buffer.from([0,0,0,8,0,0,0]),Buffer.from([0,0,0,0,0x10,0,0])]){
+    const f=fixture(packet);
+    let invoked=false;
+    await assert.rejects(f.session.withCursor('CALL fixture()',[],async()=>{
+      invoked=true;
+    }),error=>error.code==='PROTOCOL_ERROR'||error.code==='UNSUPPORTED_FEATURE');
+    assert.equal(invoked,false);
+    assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17]);
+    assert.equal(f.preparedClosed,false);
+    assert.equal(f.session.closed,true);
+    assert.equal(f.socket.destroyed,true);
+  }
+});
+
+test('cursor complete single OK response allows cleanup without invoking callback',async()=>{
+  const f=fixture(Buffer.from([0,0,0,2,0,0,0]));
+  let invoked=false;
+  await assert.rejects(f.session.withCursor('DO 1',[],async()=>{
+    invoked=true;
+  }),error=>error.code==='UNSUPPORTED_FEATURE');
+  assert.equal(invoked,false);
+  assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17,0x19]);
+  assert.equal(f.preparedClosed,true);
+});
+
+test('normal cursor still fetches and closes at a confirmed boundary',async()=>{
+  const opened=Buffer.from([0xfe,0,0,0x42,0]);
+  const exhausted=Buffer.from([0xfe,0,0,0x82,0]);
+  const f=fixture([Buffer.from([1]),validColumn,opened,binaryTinyRow(42),exhausted]);
+  try{
+    const value=await f.session.withCursor('SELECT 42',[],async cursor=>{
+      const rows=[];
+      for await(const row of cursor)rows.push(row.values[0]);
+      return rows;
+    },{fetchSize:1});
+    assert.deepEqual(value,[42]);
+    assert.deepEqual(f.sent.map(packet=>packet[0]),[0x17,0x1c,0x19]);
+    assert.equal(f.preparedClosed,true);
+    assert.equal(f.session.closed,false);
+  }finally{await f.session.close();}
+});
 
 test('multiple valid prepared binary result sets retain row data and close safely',async()=>{
   const f=fixture([

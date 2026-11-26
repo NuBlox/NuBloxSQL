@@ -90,7 +90,7 @@ Ratios are geometric means of paired run summaries, not throughput ratios. Refer
 |---|---|---|
 | 1 | WP00 | #489 merged and post-merge CI verified; #492 report snapshot merged; original ZIP digests verified, manifest recorded here. |
 | 2 | WP00 | Complete clause-level protocol/test traceability and reconcile stale README/RELEASE/DRIVER scope descriptions with E2/E6; preserve all commercial gates. |
-| 3 | WP10 | Investigate OK packet unsigned 64-bit fidelity: current public affectedRows/insertId are number and Cursor.len rejects > MAX_SAFE_INTEGER. Design non-lossy compatible API before changing contract; synthetic and live high auto-increment ID tests, no silent rounding, no misleading failed write acknowledgement. |
+| 3 | WP10 | #497 merged: exact unsigned 64-bit acknowledgement fields; safe number or bigint, bounded allocation reader, synthetic and live high AUTO_INCREMENT tests. Follow with P054 cursor fallback safety, P039 binary DECIMAL validation and P056 cursor batch resource limits. |
 | 4 | WP10 | Audit framing, metadata strings, auth flags, all supported type/collation bounds; implement coverage-guided bounded fuzz harness with reproducible seeds and regression corpus. |
 | 5 | WP20 | First-class negotiated capability discovery and catalogue API, with permission-scoped live tests and explicit exclusions. |
 | 6 | WP20 | Scoped transaction isolation/access/savepoint API, expanded bind fidelity, streaming/batch designs. |
