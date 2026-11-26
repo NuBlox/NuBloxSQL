@@ -733,12 +733,22 @@ export class MysqlSession implements RelationalSession {
           throw failure;
         }
         const keys=columnKeys(columns);
+        // Include retained metadata in every batch's independent estimate.
+        // Preflight before exposing the iterator or transmitting FETCH.
+        const metadataBudget=new MysqlMaterializationBudget();
+        try{metadataBudget.columns(columns,keys);}
+        catch(error){
+          this.destroy(error);
+          throw error;
+        }
         cursor=new MysqlCursor(columns,keys,async()=>{
           this.assertOpen();
+          const budget=new MysqlMaterializationBudget(metadataBudget.estimatedBytes);
           this.stream.reset();
           await this.send(fetchRows(id,fetchSize));
           const rows:RelationalCursorRow[]=[];
           let bytes=0;
+          let cells=0;
           for(;;){
             let packet:Buffer;
             try{packet=await this.get();}
@@ -758,11 +768,28 @@ export class MysqlSession implements RelationalSession {
                 throw Error('MySQL fetch response lost cursor state');
               return {rows,done};
             }
-            bytes+=packet.length;
-            if(rows.length>=fetchSize||bytes>LIMIT)
-              throw fail('RESOURCE_LIMIT','Cursor fetch batch exceeded safety limit');
-            const values=binaryValues(packet,columns);
-            rows.push({row:objectRow(values,keys),values});
+            try{
+              bytes+=packet.length;
+              if(rows.length>=fetchSize||bytes>LIMIT)
+                throw fail('RESOURCE_LIMIT','Cursor fetch batch exceeded safety limit');
+              cells+=columns.length;
+              if(cells>MAX_RESULT_CELLS)
+                throw fail('RESOURCE_LIMIT','Cursor fetch batch exceeds materialized cell limit');
+              // Charge structural storage before decoding, then the decoded
+              // payload before constructing the named row object.
+              budget.beforeRow(columns.length);
+              const values=binaryValues(packet,columns);
+              budget.decoded(values);
+              rows.push({row:objectRow(values,keys),values});
+            }catch(error){
+              // A consumer may catch next() errors inside the callback.
+              // Revoke now, not merely when the outer serial operation fails.
+              // Unread fetch packets make CLOSE/reset unsafe.
+              const failure=error instanceof DriverError?error:
+                fail('PROTOCOL_ERROR','Malformed MySQL cursor result row');
+              this.destroy(failure);
+              throw failure;
+            }
           }
         });
         this.cursors.add(cursor);

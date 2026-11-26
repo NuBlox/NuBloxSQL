@@ -7,7 +7,7 @@ import type {RelationalCursor,RelationalCursorRow} from '../../models/relational
 export class MysqlCursor implements RelationalCursor {
   readonly columns:readonly MysqlColumn[];
   readonly columnKeys:readonly string[];
-  private readonly buffered:RelationalCursorRow[]=[];
+  private readonly buffered:Array<RelationalCursorRow|undefined>=[];
   private exhausted=false;
   private invalid=false;
   private fetching=false;
@@ -31,15 +31,22 @@ export class MysqlCursor implements RelationalCursor {
     this.fetching=true;
     try{
       if(this.batchIndex>=this.buffered.length&&!this.exhausted){
-        const result=await this.fetch();
+        // Release the consumed batch before awaiting another network fetch.
         this.buffered.length=0;
         this.batchIndex=0;
+        const result=await this.fetch();
+        // Revocation may occur while awaiting the fetch. Never repopulate a
+        // closed cursor with late-arriving rows.
+        if(this.invalid)return {done:true,value:undefined};
         this.buffered.push(...result.rows);
         this.exhausted=result.done;
       }
       if(this.invalid)return {done:true,value:undefined};
       if(this.batchIndex<this.buffered.length){
-        return {done:false,value:this.buffered[this.batchIndex++]};
+        const index=this.batchIndex++;
+        const value=this.buffered[index]!;
+        this.buffered[index]=undefined;
+        return {done:false,value};
       }
       await this.close();
       return {done:true,value:undefined};

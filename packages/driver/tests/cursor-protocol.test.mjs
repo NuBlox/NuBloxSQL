@@ -50,3 +50,31 @@ test('cursor early return discards pending rows without fetching again',async()=
  assert.deepEqual(await cursor.next(),{done:true,value:undefined});
  assert.equal(fetches,1);
 });
+
+test('consumed cursor rows are released before subsequent native fetch',async()=>{
+ const first={row:{x:1},values:[1]},second={row:{x:2},values:[2]};
+ let fetches=0;
+ let cursor;
+ cursor=new MysqlCursor([],[],async()=>{
+  if(++fetches===1)return {rows:[first,second],done:false};
+  assert.equal(cursor.buffered.length,0,'previous batch must not remain retained during fetch');
+  return {rows:[],done:true};
+ });
+ assert.equal((await cursor.next()).value,first);
+ assert.equal(cursor.buffered[0],undefined);
+ assert.equal(cursor.buffered[1],second);
+ assert.equal((await cursor.next()).value,second);
+ assert.equal(cursor.buffered[1],undefined);
+ assert.equal((await cursor.next()).done,true);
+});
+
+test('late fetch completion cannot repopulate an invalidated cursor',async()=>{
+ let finish;
+ const cursor=new MysqlCursor([],[],()=>new Promise(resolve=>{finish=resolve;}));
+ const pending=cursor.next();
+ cursor.invalidate();
+ finish({rows:[{row:{x:1},values:[1]}],done:false});
+ assert.deepEqual(await pending,{done:true,value:undefined});
+ assert.equal(cursor.closed,true);
+ assert.equal(cursor.buffered.length,0);
+});
